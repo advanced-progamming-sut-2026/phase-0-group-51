@@ -1,5 +1,4 @@
 package views;
-
 import java.util.Scanner;
 
 public class LeaderboardMenu implements AppMenu{
@@ -7,4 +6,5 @@ public class LeaderboardMenu implements AppMenu{
     public void check(Scanner scanner) {
 
     }
+
 }
