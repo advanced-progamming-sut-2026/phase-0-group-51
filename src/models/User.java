@@ -19,5 +19,11 @@ public class User {
     private int coins;
     private int gems;
     private Map<Level, Boolean> levels = new HashMap<>();
-
+    private String lastWonGame; //مثلا مرحله 1 فصل 3
+    private int miniGamesPlayed;
+    private int maxPoint;
+    private int questDailyNum;
+    private int questNonDailyNum;
+    private int seedPacket;
+    private int plantFoodNum;
 }

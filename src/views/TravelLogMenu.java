@@ -7,4 +7,5 @@ public class TravelLogMenu implements AppMenu{
     public void check(Scanner scanner) {
 
     }
+    public void handleChangePage(String input){}
 }

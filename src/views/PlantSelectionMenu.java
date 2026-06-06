@@ -5,6 +5,9 @@ import java.util.Scanner;
 public class PlantSelectionMenu implements AppMenu{
     @Override
     public void check(Scanner scanner) {
-
+ //توابع showAllPlants و showAvailablePlants و startGame در کنترلر قرار دارن
     }
+    public void handleAddPlant(String input){}
+    public void handleRemovePlant(String input){}
+    public void handleBoostPlant(String input){}
 }

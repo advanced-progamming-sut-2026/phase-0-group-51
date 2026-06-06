@@ -7,4 +7,6 @@ public class MainMenu implements AppMenu{
     public void check(Scanner scanner) {
 
     }
+    public void handleLogout(String input){}
+
 }

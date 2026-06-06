@@ -7,4 +7,5 @@ public class SettingMenu implements AppMenu{
     public void check(Scanner scanner) {
 
     }
+    public void handleChangeDifficulty(String input){}
 }

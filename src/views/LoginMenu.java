@@ -7,4 +7,9 @@ public class LoginMenu implements AppMenu{
     public void check(Scanner scanner) {
 
     }
+    public void handleLogin(String input){}
+    public void handleForgetPassword(String input){}
+    public void handleAnswerQuestion(String input){}
 }
+
+
