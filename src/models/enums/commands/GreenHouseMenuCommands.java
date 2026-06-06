@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public class GreenHouseMenuCommands {
+public enum GreenHouseMenuCommands {
 }

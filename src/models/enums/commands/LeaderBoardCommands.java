@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public class LeaderBoardCommands implements Commands{
+public enum LeaderBoardCommands implements Commands{
 }

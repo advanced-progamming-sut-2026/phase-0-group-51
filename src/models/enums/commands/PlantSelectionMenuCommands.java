@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public class PlantSelectionMenuCommands implements Commands{
+public enum PlantSelectionMenuCommands implements Commands{
 }

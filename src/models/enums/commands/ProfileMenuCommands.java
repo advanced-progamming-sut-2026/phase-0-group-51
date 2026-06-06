@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public class ProfileMenuCommands implements Commands{
+public enum ProfileMenuCommands implements Commands{
 }

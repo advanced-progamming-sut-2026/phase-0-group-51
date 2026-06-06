@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public class CollectionMenuCommands implements Commands{
+public enum CollectionMenuCommands implements Commands{
 }
