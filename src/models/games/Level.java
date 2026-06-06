@@ -1,4 +1,8 @@
 package models.games;
 
-public class Level {
-}
+import models.games.LevelType;
+
+public record Level(
+        int levelNumber,
+        LevelType type
+) {}

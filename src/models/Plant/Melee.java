@@ -1,4 +1,17 @@
 package models.Plant;
 
-public enum Melee implements PlantType{
+import models.games.GameState;
+
+public enum Melee implements PlantType {
+    ;
+
+    @Override
+    public void onTick(Plant plant, GameState gameState) {
+
+    }
+
+    @Override
+    public void onPlantFood(Plant plant, GameState gameState) {
+
+    }
 }
