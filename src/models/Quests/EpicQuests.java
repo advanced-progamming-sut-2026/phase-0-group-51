@@ -9,11 +9,11 @@ public  class EpicQuests extends Quest{
 
     }
     public static final List<Quest> EpicQuests =List.of(
-            new EpicQuests("استاد دفاع","اتمام یک مرحله دقیقا با صفر خورشید",
+            new EpicQuests("Defense Master","Finish a level with exactly zero sun",
                     QuestPriority.CRITICAL,200,QuestRewardType.CURRENCY_GEMS),
-            new EpicQuests("شب یا صبح","به پایان رساندن بازی روز با گیاهان شب (mushroom ها)",
+            new EpicQuests("Night or Morning","Finish a day level using only night plants (mushrooms)",
                     QuestPriority.HIGH,20,QuestRewardType.CURRENCY_GEMS),
-            new EpicQuests("وقت چمن زنی","حداقل n زامبی را با چمن زن بکش",
+            new EpicQuests("Mowing Time","Kill at least n zombies with lawn mowers",
                     QuestPriority.AVERAGE,n,QuestRewardType.CURRENCY_GEMS));
 
 }
