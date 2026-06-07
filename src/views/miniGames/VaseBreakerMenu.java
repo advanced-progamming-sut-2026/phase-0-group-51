@@ -1,4 +1,12 @@
 package views.miniGames;
 
-public class VaseBreakerMenu {
+import views.AppMenu;
+
+import java.util.Scanner;
+
+public class VaseBreakerMenu implements AppMenu {
+    @Override
+    public void check(Scanner scanner) {
+
+    }
 }

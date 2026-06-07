@@ -1,4 +1,12 @@
 package views.miniGames;
 
-public class ZombotanyMenu {
+import views.AppMenu;
+
+import java.util.Scanner;
+
+public class ZombotanyMenu implements AppMenu {
+    @Override
+    public void check(Scanner scanner) {
+
+    }
 }

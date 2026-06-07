@@ -1,4 +1,12 @@
 package views.miniGames;
 
-public class IZombieMenu {
+import views.AppMenu;
+
+import java.util.Scanner;
+
+public class IZombieMenu implements AppMenu {
+    @Override
+    public void check(Scanner scanner) {
+
+    }
 }
