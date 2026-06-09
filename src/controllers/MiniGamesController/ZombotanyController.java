@@ -1,6 +1,8 @@
 package controllers.MiniGamesController;
 
-public class ZombotanyController {
+import controllers.GamingController;
+
+public class ZombotanyController extends GamingController {
     public void advanceTime(int tick) {}
     public void spawnBotanyZombies(){}
     public void handleZombieAttacks(){} //مثلا اینکه این زامبی باید شوت کنه یا منفجر شه

@@ -1,4 +1,6 @@
 package controllers.MiniGamesController;
 
-public class BeghouledController {
+import controllers.GamingController;
+
+public class BeghouledController extends GamingController {
 }
