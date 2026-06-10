@@ -15,6 +15,16 @@ public  class EpicQuests extends Quest{
                     QuestPriority.HIGH,20,QuestRewardType.CURRENCY_GEMS),
             new EpicQuests("Mowing Time","Kill at least n zombies with lawn mowers",
                     QuestPriority.AVERAGE,n,QuestRewardType.CURRENCY_GEMS));
+    public Quest getEpicQuest(String QuestName){
+        for(Quest q : EpicQuests){
+            if(QuestName.equals(q.name)) return q;
+        }
+        return null;
+    }
+    @Override
+    public void setProgress(String EpicQuestName,int plus) {
+        getEpicQuest(EpicQuestName).progressAmount += plus;
+    }
 
 }
 
