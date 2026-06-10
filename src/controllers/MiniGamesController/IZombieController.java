@@ -1,9 +1,9 @@
 package controllers.MiniGamesController;
 
 import controllers.GamingController;
-import models.minigames.IZombie;
-import models.zombie.Zombie;
-import models.zombie.ZombieType;
+import models.Minigames.IZombie;
+import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
 
 public class IZombieController extends GamingController {
     IZombie IZombieGame;

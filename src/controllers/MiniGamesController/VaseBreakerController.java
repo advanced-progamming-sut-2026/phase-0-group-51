@@ -1,8 +1,8 @@
 package controllers.MiniGamesController;
 
 import controllers.GamingController;
-import models.board.Board;
-import models.minigames.Vase;
+import models.Board.Board;
+import models.Minigames.Vase;
 
 import java.util.ArrayList;
 import java.util.List;
