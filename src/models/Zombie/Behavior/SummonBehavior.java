@@ -35,10 +35,7 @@ public class SummonBehavior implements ZombieBehavior {
 
 
     public enum SummonType {
-        IMP_THROW,       // Gargantuar → throws imp at 50% HP
-        IMP_ON_DEATH,    // Gargantuar → throws imp on death
-        WEASELS_ON_HIT,  // WeaselHoarder → releases weasels when damaged
-        DODO_RIDER       // Dodo rider summons turkey flock
+
     }
 
 }

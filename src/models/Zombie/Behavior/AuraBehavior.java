@@ -22,9 +22,6 @@ public class AuraBehavior implements ZombieBehavior {
 
 
     public enum AuraType {
-        BUFF_SPEED_NEARBY,   // DarkKing  → nearby zombies move faster
-        BUFF_DAMAGE_NEARBY,  // DarkKing  → nearby zombies do more damage
-        TURQUOISE_DEBUFF,    // Turquoise → debuffs plants in radius
-        STEAL_SUN_PASSIVE    // Ra        → drains sun over time
+
     }
 }
