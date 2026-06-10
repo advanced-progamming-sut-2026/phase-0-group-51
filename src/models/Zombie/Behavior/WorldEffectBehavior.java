@@ -20,8 +20,6 @@ public class WorldEffectBehavior implements ZombieBehavior {
 
 
     public enum WorldEffectType {
-        SPAWN_TOMB,       // TombRaiser → creates tomb tile on lane
-        FREEZE_COLUMN,    // Troglobite ice block → freezes plants in column
-        CREATE_WAVE       // Surfer wave → pushes plants
+
     }
 }

@@ -20,12 +20,7 @@ public class DamageReactionBehavior implements ZombieBehavior {
 
 
     public enum DamageReactionType {
-        REFLECT_PROJECTILE,  // Juggler → reflects incoming projectile
-        SUBMERGE_DODGE,      // Snorkel → ducks underwater, only takes damage when eating
-        BOARD_ABSORB,        // Surfer  → surfboard absorbs first hits (shared with ArmorBehavior)
-        ICE_CHILL_ATTACKER,  // IceBlock → chills plant that attacks it
-        NEWSPAPER_RAGE,      // Newspaper → speed boost when newspaper destroyed
-        PHARAOH_SPEED_BOOST  // Pharaoh → runs faster when sarcophagus broken
+
     }
 
 }

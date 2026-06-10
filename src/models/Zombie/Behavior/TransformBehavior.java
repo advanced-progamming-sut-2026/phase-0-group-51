@@ -21,8 +21,7 @@ public class TransformBehavior implements ZombieBehavior {
 
 
     public enum TransformType {
-        SHEEP_TRANSFORM, // Wizard → plant becomes sheep
-        TURQUOISE_EFFECT // Turquoise Skull → changes lane behavior
+
     }
 
 }
