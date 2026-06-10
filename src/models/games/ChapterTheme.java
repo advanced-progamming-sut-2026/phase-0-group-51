@@ -1,6 +1,6 @@
 package models.games;
 
-import models.zombie.Zombie;
+import models.Zombie.Zombie;
 
 import java.util.List;
 

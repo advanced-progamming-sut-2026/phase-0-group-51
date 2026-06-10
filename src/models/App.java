@@ -1,7 +1,7 @@
 package models;
 
-import models.plant.Plant;
-import models.zombie.Zombie;
+import models.Plant.Plant;
+import models.Zombie.Zombie;
 import models.enums.Menu;
 
 import java.util.ArrayList;

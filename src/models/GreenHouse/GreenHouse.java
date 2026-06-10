@@ -1,10 +1,7 @@
-<<<<<<<< HEAD:src/models/items/GreenHouse.java
-package models.items;
-========
-package models.GreenHouse;
->>>>>>>> main:src/models/GreenHouse/GreenHouse.java
 
-import models.plant.Plant;
+package models.GreenHouse;
+
+import models.Plant.Plant;
 
 import java.util.HashMap;
 
