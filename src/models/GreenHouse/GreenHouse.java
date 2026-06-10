@@ -1,4 +1,4 @@
-package models;
+package models.GreenHouse;
 
 import models.Plant.Plant;
 

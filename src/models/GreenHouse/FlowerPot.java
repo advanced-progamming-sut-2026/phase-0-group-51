@@ -1,7 +1,5 @@
-package models;
+package models.GreenHouse;
 import models.Plant.Plant;
-
-import java.util.HashMap;
 
 public class FlowerPot {
     private int x,y;
