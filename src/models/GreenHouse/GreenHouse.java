@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:src/models/items/GreenHouse.java
 package models.items;
+========
+package models.GreenHouse;
+>>>>>>>> main:src/models/GreenHouse/GreenHouse.java
 
 import models.plant.Plant;
 

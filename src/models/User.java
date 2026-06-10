@@ -25,10 +25,6 @@ public class User {
     private int questNonDailyNum;
     private int seedPacket;
     private int plantFoodNum;
-    private int sunAmount;
 
-    public int getSunAmount() {
-        return sunAmount;
-    }
 }
 

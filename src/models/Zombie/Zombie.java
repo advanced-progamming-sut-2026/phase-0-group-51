@@ -10,6 +10,7 @@ public class Zombie {
     private int health;
     private int lane;
     private float x;
+    private boolean isGlowy;
     private final List<ZombieBehavior> behaviors = new ArrayList<>();
 
     public Zombie(String id, int health, int lane, float x) {
