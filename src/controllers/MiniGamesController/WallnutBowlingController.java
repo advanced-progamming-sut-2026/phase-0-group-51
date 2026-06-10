@@ -1,9 +1,9 @@
 package controllers.MiniGamesController;
 
 import controllers.GamingController;
-import models.Plant.PlantType;
-import models.Plant.WallNut;
-import models.Zombie.Zombie;
+import models.plant.PlantType;
+import models.plant.WallNut;
+import models.zombie.Zombie;
 
 import java.util.Queue;
 

@@ -4,7 +4,7 @@ import controllers.GamingController;
 import models.Minigames.IZombie;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
-import models.games.Level;
+
 public class IZombieController extends GamingController {
     IZombie IZombieGame;
     ZombieType selectedZombieType;

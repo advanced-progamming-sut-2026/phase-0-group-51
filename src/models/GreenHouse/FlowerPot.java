@@ -1,4 +1,5 @@
 package models.GreenHouse;
+
 import models.Plant.Plant;
 
 public class FlowerPot {
