@@ -5,7 +5,6 @@ import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public class GameState {
@@ -16,7 +15,6 @@ public class GameState {
     private final ChapterTheme chapterTheme;
     private Level currentLevel;
     private int tickConuter = 0;
-    //specific terms for every chapter
 
 
 

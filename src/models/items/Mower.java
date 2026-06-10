@@ -1,6 +1,4 @@
-package models;
-
-import java.util.List;
+package models.items;
 
 public class Mower {
     private int rowNumber;

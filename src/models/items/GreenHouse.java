@@ -1,6 +1,6 @@
-package models;
+package models.items;
 
-import models.Plant.Plant;
+import models.plant.Plant;
 
 import java.util.HashMap;
 

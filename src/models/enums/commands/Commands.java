@@ -1,6 +1,17 @@
 package models.enums.commands;
 
-public interface Commands {
-    // دستورات مشترک بین همه منو ها : مثل    menu enter و menu show current و menu exit
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+public interface Commands {
+    String getPattern();
+
+    default Matcher getMatcher(String input) {
+        Matcher matcher = Pattern.compile(getPattern()).matcher(input);
+
+        if (matcher.matches()) {
+            return matcher;
+        }
+        return null;
+    }
 }

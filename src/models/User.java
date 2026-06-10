@@ -15,11 +15,10 @@ public class User {
     private String answer;
     private int mostMeowPoint;
     private int gamesPlayed;
-    //private Map<PlantType, >;
     private int coins;
     private int gems;
     private Map<Level, Boolean> levels = new HashMap<>();
-    private String lastWonGame; //مثلا مرحله 1 فصل 3
+    private String lastWonGame;
     private int miniGamesPlayed;
     private int maxPoint;
     private int questDailyNum;

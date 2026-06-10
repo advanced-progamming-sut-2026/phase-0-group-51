@@ -1,4 +1,4 @@
-package models;
+package models.sun;
 
 public enum SunType {
     ORDINARY,
