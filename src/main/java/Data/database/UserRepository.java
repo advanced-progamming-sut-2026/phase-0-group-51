@@ -1,4 +1,96 @@
 package Data.database;
-
+import models.User;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 public class UserRepository {
-}
+
+        public boolean register(User user) {
+            String sql = "INSERT INTO users (username, email, password_hash, gender, nickname, security_question, answer) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            try (Connection conn = DataBaseManager.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setString(1, user.getUsername());
+                pstmt.setString(2, user.getEmail());
+                pstmt.setString(3, user.getPasswordHash());
+                pstmt.setString(4, user.getGender());
+                pstmt.setString(5, user.getNickname());
+                pstmt.setString(6, user.getSecurityQuestion());
+                pstmt.setString(7, user.getAnswer());
+
+                pstmt.executeUpdate();
+
+                initializeProgress(user.getUsername());
+                return true;
+            } catch (SQLException e) {
+                // اگر یوزرنیم یا ایمیل تکراری باشد
+                return false;
+            }
+        }
+
+        public User login(String username, String passwordHash) {
+            String sql = "SELECT * FROM users WHERE username = ? AND password_hash = ?";
+
+            try (Connection conn = DataBaseManager.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setString(1, username);
+                pstmt.setString(2, passwordHash);
+
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    return new User(
+                            rs.getInt("id"), rs.getString("username"), rs.getString("email"),
+                            rs.getString("password_hash"), rs.getString("gender"), rs.getString("nickname"),
+                            rs.getString("security_question"), rs.getString("answer"), rs.getInt("coins"),
+                            rs.getInt("gems"), rs.getInt("seed_packet"), rs.getInt("plant_food_num"),
+                            rs.getInt("most_meow_point"), rs.getInt("max_point"), rs.getInt("games_played"),
+                            rs.getInt("mini_games_played"), rs.getString("last_won_game")
+                    );
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return null; // لاگین ناموفق
+        }
+
+        public boolean updateStats(User user) {
+            String sql = "UPDATE users SET coins = ?, gems = ?, seed_packet = ?, plant_food_num = ?, " +
+                    "most_meow_point = ?, max_point = ?, games_played = ?, mini_games_played = ? WHERE id = ?";
+            try (Connection conn = DataBaseManager.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+                pstmt.setInt(1, user.getCoins());
+                pstmt.setInt(2, user.getGems());
+                pstmt.setInt(3, user.getSeedPacket());
+                pstmt.setInt(4, user.getPlantFoodNum());
+                pstmt.setInt(5, user.getMostMeowPoint());
+                pstmt.setInt(6, user.getMaxPoint());
+                pstmt.setInt(7, user.getGamesPlayed());
+                pstmt.setInt(8, user.getMiniGamesPlayed());
+                pstmt.setInt(9, user.getId());
+
+                pstmt.executeUpdate();
+                return true;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        @SuppressWarnings("CallToPrintStackTrace")
+        private void initializeProgress(String username) {
+            String sql = "INSERT INTO user_progress (user_id, chapter_index, level_index) " +
+                    "SELECT id, 1, 1 FROM users WHERE username = ?";
+            try (Connection conn = DataBaseManager.getConnection();
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, username);
+                pstmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
