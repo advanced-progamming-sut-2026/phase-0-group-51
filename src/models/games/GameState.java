@@ -17,7 +17,6 @@ public class GameState {
     private int tickConuter = 0;
 
 
-
     public GameState(Board board, ChapterTheme chapterTheme) {
         this.board = board;
         this.chapterTheme = chapterTheme;
