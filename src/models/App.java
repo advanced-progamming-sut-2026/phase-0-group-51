@@ -15,8 +15,6 @@ public class App {
     public List<Plant> allPlants = new ArrayList<>();
     public List<Zombie> allZombies = new ArrayList<>();
     public List<String> securityQuestions = new ArrayList<>();
-
-
     public Menu getCurrentMenu() {
         return this.currentMenu;
     }
