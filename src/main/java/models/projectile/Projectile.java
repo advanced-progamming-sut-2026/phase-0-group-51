@@ -1,9 +1,9 @@
 package models.projectile;
 
 import models.Plant.PlantTag;
-import models.projectile.move.MovingStrategy;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.projectile.move.MovingStrategy;
 
 import java.util.Set;
 

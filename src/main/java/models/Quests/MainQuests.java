@@ -1,7 +1,5 @@
 package models.Quests;
 
-import models.App;
-
 import java.util.List;
 
 public class MainQuests extends Quest{

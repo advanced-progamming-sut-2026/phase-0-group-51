@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/controllers/controllers.iml" filepath="$PROJECT_DIR$/controllers/controllers.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/phase-0-group-51.iml" filepath="$PROJECT_DIR$/.idea/phase-0-group-51.iml" />
-      <module fileurl="file://$PROJECT_DIR$/src/src.iml" filepath="$PROJECT_DIR$/src/src.iml" />
-      <module fileurl="file://$PROJECT_DIR$/views/views.iml" filepath="$PROJECT_DIR$/views/views.iml" />
+      <module fileurl="file://$PROJECT_DIR$/phase-0-group-51.iml" filepath="$PROJECT_DIR$/phase-0-group-51.iml" />
     </modules>
   </component>
 </project>

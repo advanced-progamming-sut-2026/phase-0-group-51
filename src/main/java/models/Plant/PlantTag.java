@@ -1,6 +1,5 @@
 package models.Plant;
 
-import models.Zombie.Zombie;
 import models.games.GameState;
 
 public enum PlantTag {

@@ -1,9 +1,9 @@
 package models.games;
 
-import models.Plant.Plant;
-import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
+import models.Plant.Plant;
+import models.Zombie.Zombie;
 
 import java.util.Set;
 

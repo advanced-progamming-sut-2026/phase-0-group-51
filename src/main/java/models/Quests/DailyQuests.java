@@ -1,7 +1,6 @@
 package models.Quests;
 
 import models.App;
-import views.AppView;
 
 import java.util.List;
 

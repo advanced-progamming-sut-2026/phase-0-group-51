@@ -1,7 +1,5 @@
 package views;
 
-import javax.swing.plaf.PanelUI;
-import java.security.PublicKey;
 import java.util.Scanner;
 
 public class GameMenu implements AppMenu{
