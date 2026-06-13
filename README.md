@@ -1,3 +1,7 @@
+# Plants vs. Zombies 2 Java Edition
+
+A Java-based strategy game inspired by Plants vs. Zombies 2.  
+
 Group 51
 
 ## Team Members
