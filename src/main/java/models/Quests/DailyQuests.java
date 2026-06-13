@@ -11,7 +11,7 @@ public class DailyQuests extends Quest{
         super(name,condition,priority, rewardAmount, rewardType,QuestType.DAILY);
         this.UnlockableId = unlockableId;
     }
-    public final List<Quest> DailyQuests =List.of(
+    public static final List<Quest> DailyQuests =List.of(
             new DailyQuests("Daily Sun Gather","Collect sun_amount units of sun during one day",
                     QuestPriority.AVERAGE,null, App.loggedInUser.getSunAmount()/100,QuestRewardType.CURRENCY_COINS),
             new DailyQuests("Pro Plant Killer","Kill ten zombies using only plants",
