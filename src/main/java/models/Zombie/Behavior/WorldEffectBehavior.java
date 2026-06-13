@@ -1,25 +1,30 @@
 package models.Zombie.Behavior;
 
 import models.Zombie.Zombie;
+import models.games.GameState;
 
 public class WorldEffectBehavior implements ZombieBehavior {
-    private final WorldEffectType effectType;
-    private final int             intervalTicks; //هر چند تیک یبار انحام بشه
-    private int cooldown; //یه تایمر برای انجام دادن رفتار
+    private final WorldEffectType type;
+    private final int             intervalTicks;
+    private final int             count;
+    private int cooldown;
 
-    public WorldEffectBehavior(WorldEffectType type, int intervalTicks) {
-        this.effectType    = type;
+    WorldEffectBehavior(WorldEffectType type, int intervalTicks, int count) {
+        this.type          = type;
         this.intervalTicks = intervalTicks;
+        this.count         = count;
         this.cooldown      = intervalTicks;
     }
 
     @Override
-    public void onTick(Zombie zombie) {}
+    public void onTick(Zombie zombie, GameState gs) {}
 
 
 
 
     public enum WorldEffectType {
+        SPAWN_TOMB,     // TombRaiser
+        FREEZE_COLUMN   // Troglobite ice block
 
     }
 }
