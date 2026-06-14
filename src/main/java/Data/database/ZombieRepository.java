@@ -23,4 +23,7 @@ public class ZombieRepository {
         this.conn = DataBaseManager.getConnection();
     }
 
+    public Map<String, Zombie> loadAllZombies() {
+        return null;
+    }
 }
