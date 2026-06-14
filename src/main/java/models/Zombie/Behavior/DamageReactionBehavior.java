@@ -3,8 +3,12 @@ package models.Zombie.Behavior;
 import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 @Getter
-public class DamageReactionBehavior implements ZombieBehavior {
+public class DamageReactionBehavior implements PersistableBehavior {
     private final DamageReactionType type;
     private final float param1;  // new speed after rage or triggerChance for reflect
     private final float param2;  // new damage after rage
@@ -27,10 +31,18 @@ public class DamageReactionBehavior implements ZombieBehavior {
     public int onHit(Zombie zombie, int rawDamage) {return 0;}
 
 
-
     public enum DamageReactionType {
         NEWSPAPER_RAGE,      // speed + damage boost when newspaper breaks
         SUBMERGE_DODGE,      // Snorkel dodges while underwater
         REFLECT_PROJECTILE   // Juggler / LostCityJane reflects back
+    }
+
+    @Override public String behaviorType() { return "DAMAGE_REACTION"; }
+
+    @Override
+    public void applyToStatement(PreparedStatement ps) throws SQLException {
+        ps.setString(13, type.name());
+        ps.setDouble(14, param1);
+        ps.setDouble(15, param2);
     }
 }

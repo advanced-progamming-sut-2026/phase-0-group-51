@@ -3,8 +3,12 @@ package models.Zombie.Behavior;
 import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 @Getter
-public class RangedAttackBehavior implements ZombieBehavior {
+public class RangedAttackBehavior implements PersistableBehavior {
     private final RangedAttackType type;
     private final int intervalTicks;
     private final int range;
@@ -36,6 +40,16 @@ public class RangedAttackBehavior implements ZombieBehavior {
         JUGGLE_BALL,  // Juggler
         SPELL_SHEEP,  // Wizard
         LASER_BEAM    // Crystal Skull
+    }
+
+    @Override public String behaviorType() { return "RANGED_ATTACK"; }
+
+    @Override
+    public void applyToStatement(PreparedStatement ps) throws SQLException {
+        ps.setString(5, type.name());
+        ps.setInt(6, intervalTicks);
+        ps.setInt(7, range);
+        ps.setInt(8, extraParam);
     }
 
 }

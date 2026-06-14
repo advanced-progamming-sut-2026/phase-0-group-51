@@ -4,8 +4,12 @@ import lombok.Getter;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.GameState;
+
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 @Getter
-public class SummonBehavior implements ZombieBehavior {
+public class SummonBehavior implements PersistableBehavior {
     private final SummonType type;
     private final String unitAlias;
     private final int        count; // تعداد زامبی اسپان شده
@@ -35,6 +39,16 @@ public class SummonBehavior implements ZombieBehavior {
     public enum SummonType {
         IMP_THROW,    // Gargantuar at HP threshold
         IMP_ON_DEATH  // Gargantuar on death
+    }
+
+    @Override public String behaviorType() { return "SUMMON"; }
+
+    @Override
+    public void applyToStatement(PreparedStatement ps) throws SQLException {
+        ps.setString(9,  type.name());
+        ps.setString(10, unitAlias);
+        ps.setInt(11, count);
+        ps.setInt(12, hpThreshold);
     }
 
 }

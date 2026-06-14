@@ -1,31 +1,60 @@
 package models.Zombie;
 
 public enum ZombieType {
-    // All Chapters
-    BASIC, CONEHEAD, BUCKETHEAD, BRICKHEAD,
-    GARGANTUAR_BASIC, IMP_BASIC, FLAG,
+    // Basic / Armored (objclass: ZombiePropertySheet)
+    DEFAULT("ZombieDefault"),
+    ARMOR_1("ZombieArmor1"),
+    ARMOR_2("ZombieArmor2"),
+    ARMOR_4("ZombieArmor4"),
+    DARK_ARMOR_3("ZombieDarkArmor3"),
+    IMP("ZombieImp"),
+    DARK_IMP_DRAGON("ZombieDarkImpDragon"),
 
-    // Ancient Egypt
-    MUMMY, MUMMY_CONEHEAD, MUMMY_BUCKETHEAD, MUMMY_BRICKHEAD,
-    PHARAOH, RA, EXPLORER, TOMB_RAISER, CAMEL,
-    GARGANTUAR_EGYPT, IMP_EGYPT,
+    // Gargantuar
+    GARGANTUAR("ZombieGargantuar"),
+
+    //  Ancient Egypt
+    RA("ZombieRa"),
+    EXPLORER("ZombieExplorer"),
+    TOMB_RAISER("ZombieTombRaiser"),
 
     // Frostbite Caves
-    ICEAGE, ICEAGE_CONEHEAD, ICEAGE_BUCKETHEAD, ICEAGE_ICEBLOCK,
-    ICEAGE_HUNTER, TROGLOBITE, DODO, WEASEL_HOARDER, WEASEL,
-    GARGANTUAR_ICEAGE, IMP_ICEAGE,
+    ICE_AGE_DODO("ZombieIceAgeDodo"),
+    ICE_AGE_HUNTER("ZombieIceAgeHunter"),
+    ICE_AGE_TROGLOBITE("ZombieIceAgeTroglobite"),
 
     // Big Wave Beach
-    BEACH, BEACH_CONEHEAD, BEACH_BUCKETHEAD,
-    SNORKEL, SURFER, FISHERMAN, OCTOPUS, FAST_SWIMMER,
-    GARGANTUAR_BEACH, IMP_BEACH,
+    BEACH_FISHERMAN("ZombieBeachFisherman"),
+    BEACH_OCTOPUS("ZombieBeachOctopus"),
+    BEACH_SNORKEL("ZombieBeachSnorkel"),
 
     // Dark Ages
-    DARK, DARK_CONEHEAD, DARK_BUCKETHEAD, DARK_SHOULDER_ARMOR, DARK_BRICKHEAD,
-    WIZARD, JUGGLER, DARK_KING,
-    GARGANTUAR_DARK, IMP_DARK,
+    DARK_JUGGLER("ZombieDarkJuggler"),
+    WIZARD("ZombieWizard"),
+    DARK_KING("ZombieDarkKing"),
 
-    // Bosses
-    ZOMBOSS_EGYPT, ZOMBOSS_PIRATE, ZOMBOSS_COWBOY, ZOMBOSS_DARK,
-    SUN_PRODUCER_ZOMBIE
+    // Modern Day
+    MODERN_ALL_STAR("ZombieModernAllStar"),
+    LOST_CITY_JANE("ZombieLostCityJane"),
+    CRYSTAL_SKULL("ZombieCrystalSkull"),
+    PROSPECTOR("ZombieProspector"),
+    PIANO("ZombiePiano"),
+    NEWSPAPER("ZombieNewspaper"),
+    ARCADE("ZombieArcade");
+
+    private final String alias;
+
+    ZombieType(String alias) {
+        this.alias = alias;
+    }
+    public String getAlias() {
+        return alias;
+    }
+
+    public static ZombieType fromAlias(String alias) {
+        for (ZombieType type : values()) {
+            if (type.alias.equals(alias)) return type;
+        }
+        throw new IllegalArgumentException("Unknown zombie alias: " + alias);
+    }
 }
