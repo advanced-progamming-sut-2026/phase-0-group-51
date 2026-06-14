@@ -5,6 +5,11 @@ import models.Zombie.Zombie;
 
 public class RollingWallnut extends Plant {
     private WallnutType wallnutType;
+
+    public RollingWallnut() {
+        super(, );
+    }
+
     public void move(){}
     private int damage; //به هر زامبی ای بخوره با له یا انفجار چه اسیبی میرسونه بهش
     private int directionX;
