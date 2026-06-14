@@ -5,7 +5,9 @@ import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 
+import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class GameState {
     private final Board board;
