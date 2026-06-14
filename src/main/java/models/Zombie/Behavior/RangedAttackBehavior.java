@@ -1,8 +1,9 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
-
+@Getter
 public class RangedAttackBehavior implements ZombieBehavior {
     private final RangedAttackType type;
     private final int intervalTicks;
@@ -10,11 +11,11 @@ public class RangedAttackBehavior implements ZombieBehavior {
     private final int extraParam;
     private int cooldown;
 
-    RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
+    public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
         this(type, intervalTicks, range, 0);
     }
 
-    RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range, int extraParam) {
+    public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range, int extraParam) {
         this.type          = type;
         this.intervalTicks = intervalTicks;
         this.range         = range;

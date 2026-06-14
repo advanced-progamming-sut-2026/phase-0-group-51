@@ -1,13 +1,16 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
+
+@Getter
 public class DeathEffectBehavior implements ZombieBehavior {
     private final DeathEffectType type;
     private final String          spawnAlias; // null if not a spawn effect
     private final int             spawnCount;
 
-    DeathEffectBehavior(DeathEffectType type) { this(type, null, 0); }
+    public DeathEffectBehavior(DeathEffectType type) { this(type, null, 0); }
 
-    DeathEffectBehavior(DeathEffectType type, String spawnAlias, int count) {
+    public DeathEffectBehavior(DeathEffectType type, String spawnAlias, int count) {
         this.type       = type;
         this.spawnAlias = spawnAlias;
         this.spawnCount = count;

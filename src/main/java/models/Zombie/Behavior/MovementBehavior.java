@@ -1,19 +1,20 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
 
 import java.util.Collections;
 import java.util.List;
-
+@Getter
 public class MovementBehavior implements ZombieBehavior {
     private final MovementType type;
     private final float        extraParam;
     private final List<String> flyOverTargets;
 
-    MovementBehavior(MovementType type) { this(type, 0, Collections.emptyList()); }
-    MovementBehavior(MovementType type, float extraParam) { this(type, extraParam, Collections.emptyList()); }
-    MovementBehavior(MovementType type, List<String> targets) { this(type, 0, targets); }
+    public MovementBehavior(MovementType type) { this(type, 0, Collections.emptyList()); }
+    public MovementBehavior(MovementType type, float extraParam) { this(type, extraParam, Collections.emptyList()); }
+    public MovementBehavior(MovementType type, List<String> targets) { this(type, 0, targets); }
     MovementBehavior(MovementType type, float extraParam, List<String> targets) {
         this.type           = type;
         this.extraParam     = extraParam;
@@ -31,7 +32,8 @@ public class MovementBehavior implements ZombieBehavior {
         UNDERGROUND,        // Snorkel
         PROSPECTOR_JUMP,    // Prospector jumps to back row
         PIANO_CRUSH,        // Piano rolls and crushes plants
-        TACKLE_RUN          // AllStar charges
+        TACKLE_RUN ,      // AllStar charges
+        PUSH_PLANT_BACK
 
     }
 }

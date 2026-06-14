@@ -1,9 +1,10 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.GameState;
-
+@Getter
 public class SummonBehavior implements ZombieBehavior {
     private final SummonType type;
     private final String unitAlias;
@@ -11,7 +12,7 @@ public class SummonBehavior implements ZombieBehavior {
     private final int        hpThreshold;   // اون مقدار جونی که اگر بهش برسیم یچیزی اسپان بشه .میتونه صفر باشه
     private boolean          fired = false;   // یه فلگ برای اینکه بفهمیم یبار اسپان انجام شده
 
-    SummonBehavior(SummonType type, String unitAlias, int count, int hpThreshold) {
+    public SummonBehavior(SummonType type, String unitAlias, int count, int hpThreshold) {
         this.type        = type;
         this.unitAlias   = unitAlias;
         this.count       = count;

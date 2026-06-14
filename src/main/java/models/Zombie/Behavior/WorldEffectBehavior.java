@@ -1,15 +1,16 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
-
+@Getter
 public class WorldEffectBehavior implements ZombieBehavior {
     private final WorldEffectType type;
     private final int             intervalTicks;
     private final int             count;
     private int cooldown;
 
-    WorldEffectBehavior(WorldEffectType type, int intervalTicks, int count) {
+    public WorldEffectBehavior(WorldEffectType type, int intervalTicks, int count) {
         this.type          = type;
         this.intervalTicks = intervalTicks;
         this.count         = count;

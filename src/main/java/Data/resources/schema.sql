@@ -84,3 +84,81 @@ CREATE TABLE IF NOT EXISTS user_news (
     is_read INTEGER DEFAULT 0, -- 0 یعنی نخوانده، 1 یعنی خوانده شده
     PRIMARY KEY (user_id, news_id)
 );
+
+
+
+CREATE TABLE IF NOT EXISTS armor_definition (
+    alias TEXT PRIMARY KEY,
+    base_health INTEGER NOT NULL,
+    metallic INTEGER NOT NULL DEFAULT 0,
+    pass_damage INTEGER NOT NULL DEFAULT 0,
+    layer_thresholds TEXT NOT NULL DEFAULT ''
+);
+
+
+CREATE TABLE IF NOT EXISTS zombie_template (
+     alias TEXT PRIMARY KEY,
+     hitpoints INTEGER NOT NULL,
+     speed REAL NOT NULL,
+     eat_dps REAL NOT NULL,
+     wave_point_cost INTEGER NOT NULL DEFAULT 100,
+     weight INTEGER NOT NULL DEFAULT 1000
+);
+
+CREATE TABLE IF NOT EXISTS zombie_behavior_template (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+     zombie_alias TEXT NOT NULL
+     REFERENCES zombie_template(alias) ON DELETE CASCADE,
+
+     behavior_type TEXT NOT NULL,
+     chain_order INTEGER NOT NULL DEFAULT 0,
+
+    -- ArmorBehavior
+      armor_alias TEXT
+      REFERENCES armor_definition(alias),
+
+    -- RangedAttackBehavior
+       ranged_type TEXT,
+       interval_ticks INTEGER,
+       range INTEGER,
+       extra_param INTEGER,
+
+    -- SummonBehavior
+       summon_type TEXT,
+       summon_alias TEXT,
+       summon_count INTEGER,
+       hp_threshold INTEGER,
+
+    -- DamageReactionBehavior
+       reaction_type TEXT,
+       param1 REAL DEFAULT 1.0,
+       param2 REAL DEFAULT 1.0,
+
+    -- MovementBehavior
+       movement_type TEXT,
+       movement_param REAL,
+
+    -- WorldEffectBehavior
+       world_effect_type TEXT,
+       effect_interval INTEGER,
+       effect_count INTEGER,
+
+    -- AuraBehavior
+       aura_type TEXT,
+       aura_radius REAL,
+       aura_interval INTEGER,
+
+    -- DeathEffectBehavior
+       death_effect_type TEXT,
+       death_spawn_alias TEXT,
+       death_spawn_count INTEGER,
+
+    -- TransformBehavior
+       transform_type TEXT,
+       transform_interval INTEGER,
+       transform_range INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_behavior_zombie
+    ON zombie_behavior_template(zombie_alias, chain_order);

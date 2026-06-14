@@ -1,15 +1,17 @@
 package models.Zombie;
 
-import java.util.List;
+import lombok.Getter;
 
-public class Armor {
+import java.util.List;
+@Getter
+public class ArmorDefinition {
     public final String      alias;
     public final int         baseHealth;
     public final boolean     metallic;        // immune to certain fire/ice effects
     public final boolean     passDamage;      // true = ShoulderArmor (lets damage through)
     public final List<Float> layerThresholds; // [0.666, 0.333] → art changes at these HP fractions
 
-    public Armor(String alias, int baseHealth,
+    public ArmorDefinition(String alias, int baseHealth,
                            boolean metallic, boolean passDamage,
                            List<Float> layerThresholds) {
         this.alias           = alias;

@@ -1,15 +1,16 @@
 package models.Zombie.Behavior;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
-
+@Getter
 public class AuraBehavior implements ZombieBehavior {
     private final AuraType auraType;
     private final float    radius;
     private final int      intervalTicks;
     private int timer;
 
-    AuraBehavior(AuraType type, float radius, int intervalTicks) {
+    public AuraBehavior(AuraType type, float radius, int intervalTicks) {
         this.auraType      = type;
         this.radius        = radius;
         this.intervalTicks = intervalTicks;
