@@ -14,12 +14,7 @@ public class ZombieRegistry {
     }
 
     public Zombie getTemplate(String alias) {
-        Zombie zombie = templates.get(alias);
-
-        if (zombie == null) {
-            throw new IllegalArgumentException("Unknown zombie alias: " + alias);
-        }
-
-        return zombie;
+        Zombie template = templates.get(alias);
+        return template.copy();
     }
 }

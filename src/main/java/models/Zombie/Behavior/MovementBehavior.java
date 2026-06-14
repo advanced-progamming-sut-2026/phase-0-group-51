@@ -4,10 +4,12 @@ import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 @Getter
-public class MovementBehavior implements ZombieBehavior {
+public class MovementBehavior implements PersistableBehavior {
     private final MovementType type;
     private final float        extraParam;
     private final List<String> flyOverTargets;
@@ -23,8 +25,6 @@ public class MovementBehavior implements ZombieBehavior {
     @Override
     public void onTick(Zombie zombie, GameState gs) {}
 
-
-
     public enum MovementType {
         NORMAL_WALK,
         FLY_OVER,           // Dodo
@@ -35,5 +35,13 @@ public class MovementBehavior implements ZombieBehavior {
         TACKLE_RUN ,      // AllStar charges
         PUSH_PLANT_BACK
 
+    }
+
+    @Override public String behaviorType() { return "MOVEMENT"; }
+
+    @Override
+    public void applyToStatement(PreparedStatement ps) throws SQLException {
+        ps.setString(16, type.name()); // movement_type
+        ps.setDouble(17, extraParam);  // movement_param
     }
 }

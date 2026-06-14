@@ -54,4 +54,12 @@ public class Zombie {
             .findFirst().orElse(null);
     }
 
+    public Zombie copy() {
+        Zombie z = new Zombie(alias, maxHitpoints, baseSpeed, baseEatDPS, wavePointCost, weight);
+        for (ZombieBehavior behavior : behaviors) {
+            z.addBehavior(behavior);
+        }
+        return z;
+    }
+
 }
