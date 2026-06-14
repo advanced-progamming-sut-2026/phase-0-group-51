@@ -1,5 +1,7 @@
 package models;
 
+import Data.database.DataBaseManager;
+import Data.loader.PlantLoader;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.enums.Menu;
@@ -17,5 +19,9 @@ public class App {
     public List<String> securityQuestions = new ArrayList<>();
     public Menu getCurrentMenu() {
         return this.currentMenu;
+    }
+    private App(){
+        DataBaseManager.initializeDatabase();
+        PlantLoader.load();
     }
 }
