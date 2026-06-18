@@ -14,7 +14,7 @@ public  class EpicQuests extends Quest{
             new EpicQuests("Night or Morning","Finish a day level using only night plants (mushrooms)",
                     QuestPriority.HIGH,20,QuestRewardType.CURRENCY_GEMS),
             new EpicQuests("Mowing Time","Kill at least n zombies with lawn mowers",
-                    QuestPriority.AVERAGE,n,QuestRewardType.CURRENCY_GEMS));
+                    QuestPriority.AVERAGE,5,QuestRewardType.CURRENCY_GEMS));
     public Quest getEpicQuest(String QuestName){
         for(Quest q : EpicQuests){
             if(QuestName.equals(q.name)) return q;
@@ -23,7 +23,7 @@ public  class EpicQuests extends Quest{
     }
     @Override
     public void setProgress(String EpicQuestName,int plus) {
-        getEpicQuest(EpicQuestName).progressAmount += plus;
+        //getEpicQuest(EpicQuestName).progressAmount += plus;
     }
 
 }

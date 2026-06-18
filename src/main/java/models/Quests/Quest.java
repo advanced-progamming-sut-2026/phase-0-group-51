@@ -1,15 +1,18 @@
 package models.Quests;
 
+import lombok.Setter;
+
 public abstract class Quest {
+    protected int id;
     protected String name;
     protected String condition;
+    @Setter
     protected boolean isCompleted;
     protected QuestRewardType rewardType;
     protected int rewardAmount;
-    protected String UnlockableId;
+    protected static String UnlockableId;
      protected QuestPriority priority;
      protected QuestType type;
-     protected int progressAmount;
     protected void giveReward(){}
     public void checkComplete(){}
     abstract public void setProgress(String QuestName,int plusAmount); //چک میشه اگر لازم بود progressAmount اضافه میشه
@@ -21,10 +24,6 @@ public abstract class Quest {
         this.rewardAmount = rewardAmount;
         this.rewardType = rewardType;
         this.type=type;
-        this.progressAmount =0;
     }
 
-    public void setCompleted(boolean completed) {
-        isCompleted = completed;
-    }
 }

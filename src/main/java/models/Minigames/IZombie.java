@@ -8,8 +8,7 @@ import models.games.GameState;
 
 import java.util.List;
 public class IZombie extends GameState {
-    App app = new App();
-    int playerSun=app.loggedInUser.getSunAmount();
+    //int playerSun=App.getInstance().loggedInUser.getSunAmount();
     Brain[] brains= new Brain[5]; // یک مغز برای هر ردیف
     int redLineColumn; // ستون خط قرمز
     List<ZombieType> availableZombies; // 5 زامبی انتخابی این مرحله

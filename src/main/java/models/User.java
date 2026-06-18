@@ -15,7 +15,7 @@ public class User {
     private String passwordHash;
     private String gender;
     private String nickname;
-    private String securityQuestion;
+    private int securityQuestion;
     private String answer;
     private int mostMeowPoint;
     private int gamesPlayed;
@@ -24,16 +24,17 @@ public class User {
     private Map<Level, Boolean> levels = new HashMap<>();
     private String lastWonGame;
     private int miniGamesPlayed;
+    private int difficultyLevel;
     private int maxPoint;
     private int questDailyNum;
     private int questNonDailyNum;
     private int seedPacket;
     private int plantFoodNum;
-    //  کانستراکتور (برای موقعی که یوزری که قبلا ثبت نام کرده رو از دیتابیس می‌خونیم)
+
     public User(int id, String username, String email, String passwordHash, String gender,
-                String nickname, String securityQuestion, String answer, int coins, int gems,
+                String nickname, int securityQuestion, String answer, int coins, int gems,
                 int seedPacket, int plantFoodNum, int mostMeowPoint, int maxPoint,
-                int gamesPlayed, int miniGamesPlayed, String lastWonGame) {
+                int gamesPlayed, int miniGamesPlayed, String lastWonGame, int difficultyLevel) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -51,11 +52,12 @@ public class User {
         this.gamesPlayed = gamesPlayed;
         this.miniGamesPlayed = miniGamesPlayed;
         this.lastWonGame = lastWonGame;
+        this.difficultyLevel=difficultyLevel;
     }
 
-    // کانستراکتور برای ساخت یوزر جدید
+
     public User(String username, String email, String passwordHash, String gender,
-                String nickname, String securityQuestion, String answer) {
+                String nickname, int securityQuestion, String answer) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -63,8 +65,9 @@ public class User {
         this.nickname = nickname;
         this.securityQuestion = securityQuestion;
         this.answer = answer;
-        //بقیه فیلد ها توی دیتابیس خود به خود 0 تنظیم می‌شن
+        this.difficultyLevel = 3;
     }
+
 
 }
 

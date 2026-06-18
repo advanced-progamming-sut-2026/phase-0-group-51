@@ -24,6 +24,6 @@ public class MainQuests extends Quest{
      }
     @Override
     public void setProgress(String MainQuestName,int plus) {
-    getMainQuest(MainQuestName).progressAmount += plus;
+    //getMainQuest(MainQuestName).progressAmount += plus;
     }
 }

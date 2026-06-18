@@ -8,7 +8,6 @@ import java.sql.PreparedStatement;
 import java.util.Objects;
     public class QuestLoader {
         public static void loadQuestsToDatabase() {
-            // نام فایل در پوشه resources
             String csvFile = "/Quests.csv";
 
             String sql = "INSERT OR IGNORE INTO quests (name, condition, priority, reward_amount, reward_type, quest_type) VALUES (?,?,?,?,?,?)";
@@ -22,7 +21,7 @@ import java.util.Objects;
                 br.readLine(); // رد کردن خط اول (هدر)
 
                 while ((line = br.readLine()) != null) {
-                    String[] data = line.split(","); // فرض: name, condition, priority, rewardAmount, rewardType, questType
+                    String[] data = line.split(",");
 
                     pstmt.setString(1, data[0].trim()); // name
                     pstmt.setString(2, data[1].trim()); // condition

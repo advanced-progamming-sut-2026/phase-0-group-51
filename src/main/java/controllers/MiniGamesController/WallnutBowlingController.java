@@ -1,16 +1,16 @@
 package controllers.MiniGamesController;
 
 import controllers.GamingController;
-import models.plant.PlantType;
-import models.plant.WallNut;
-import models.zombie.Zombie;
+import models.Plant.PlantType;
+import models.Plant.WallNut;
+import models.Zombie.Zombie;
 
 import java.util.Queue;
 
 public class WallnutBowlingController extends GamingController {
     Queue<PlantType> conveyorBelt=new Queue<PlantType>() {
         // این داخل  بعدا باید توابع اضافه کردن و برداشتن والنات به نوار رو هندل کنیم
-    };//  نوبت‌بندی والنات‌هایی که کاربر می‌تونه بیندازه مثل یک صف والنات ها میان
+    //};//  نوبت‌بندی والنات‌هایی که کاربر می‌تونه بیندازه مثل یک صف والنات ها میان
     int redLineColumn; //	ستون خط قرمز . زامبی‌ها از این ستون رد نشن، وگرنه میبازه
     public void rollWallnut(int yRow, int xCol){}//	یه والنات جدید رو توی ردیف row از ستون col به حرکت در میاره
     public void handleCollision(WallNut wallnut, Zombie targetZombie){}//	وقتی والنات به زامبی برخورد کرد آسیب بزنه، منفجر بشه، یا explode راه بیندازه
