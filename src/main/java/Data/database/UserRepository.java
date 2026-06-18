@@ -17,7 +17,7 @@ public class UserRepository {
                 pstmt.setString(3, user.getPasswordHash());
                 pstmt.setString(4, user.getGender());
                 pstmt.setString(5, user.getNickname());
-                pstmt.setString(6, user.getSecurityQuestion());
+                pstmt.setInt(6, user.getSecurityQuestion());
                 pstmt.setString(7, user.getAnswer());
 
                 pstmt.executeUpdate();
@@ -29,33 +29,116 @@ public class UserRepository {
                 return false;
             }
         }
+    public boolean usernameExists(String username) {
+        String sql = "SELECT 1 FROM users WHERE username = ?";
 
-        public User login(String username, String passwordHash) {
-            String sql = "SELECT * FROM users WHERE username = ? AND password_hash = ?";
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            try (Connection conn = DataBaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
 
-                pstmt.setString(1, username);
-                pstmt.setString(2, passwordHash);
+            ResultSet rs = pstmt.executeQuery();
 
-                ResultSet rs = pstmt.executeQuery();
-                if (rs.next()) {
-                    return new User(
-                            rs.getInt("id"), rs.getString("username"), rs.getString("email"),
-                            rs.getString("password_hash"), rs.getString("gender"), rs.getString("nickname"),
-                            rs.getString("security_question"), rs.getString("answer"), rs.getInt("coins"),
-                            rs.getInt("gems"), rs.getInt("seed_packet"), rs.getInt("plant_food_num"),
-                            rs.getInt("most_meow_point"), rs.getInt("max_point"), rs.getInt("games_played"),
-                            rs.getInt("mini_games_played"), rs.getString("last_won_game")
-                    );
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
+            return rs.next();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public User getUserByUsername(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("email"),
+                        rs.getString("password_hash"),
+                        rs.getString("gender"),
+                        rs.getString("nickname"),
+                        rs.getInt("security_question"),
+                        rs.getString("answer"),
+                        rs.getInt("coins"),
+                        rs.getInt("gems"),
+                        rs.getInt("seed_packet"),
+                        rs.getInt("plant_food_num"),
+                        rs.getInt("most_meow_point"),
+                        rs.getInt("max_point"),
+                        rs.getInt("games_played"),
+                        rs.getInt("mini_games_played"),
+                        rs.getString("last_won_game"),
+                        rs.getInt("difficulty_level")
+                );
             }
-            return null; // لاگین ناموفق
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
 
+        return null;
+    }
+
+    public void setStayLoggedIn(int userId, boolean value) {
+        String sql =
+                "UPDATE users SET stay_logged_in = ? WHERE id = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, value ? 1 : 0);
+            pstmt.setInt(2, userId);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public User getRememberedUser() {
+        String sql =
+                "SELECT * FROM users WHERE stay_logged_in = 1 LIMIT 1";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("email"),
+                        rs.getString("password_hash"),
+                        rs.getString("gender"),
+                        rs.getString("nickname"),
+                        rs.getInt("security_question"),
+                        rs.getString("answer"),
+                        rs.getInt("coins"),
+                        rs.getInt("gems"),
+                        rs.getInt("seed_packet"),
+                        rs.getInt("plant_food_num"),
+                        rs.getInt("most_meow_point"),
+                        rs.getInt("max_point"),
+                        rs.getInt("games_played"),
+                        rs.getInt("mini_games_played"),
+                        rs.getString("last_won_game"),
+                        rs.getInt("difficulty_level")
+                );
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
         public boolean updateStats(User user) {
             String sql = "UPDATE users SET coins = ?, gems = ?, seed_packet = ?, plant_food_num = ?, " +
                     "most_meow_point = ?, max_point = ?, games_played = ?, mini_games_played = ? WHERE id = ?";
@@ -92,5 +175,41 @@ public class UserRepository {
                 e.printStackTrace();
             }
         }
+    public void updatePassword(String username,
+                               String passwordHash) {
+
+        String sql =
+                "UPDATE users SET password_hash = ? WHERE username = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, passwordHash);
+            pstmt.setString(2, username);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public void updateDifficulty(String username, int difficultyLevel) {
+
+        String sql =
+                "UPDATE users SET difficulty_level = ? WHERE username = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, difficultyLevel);
+            pstmt.setString(2, username);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     }
 

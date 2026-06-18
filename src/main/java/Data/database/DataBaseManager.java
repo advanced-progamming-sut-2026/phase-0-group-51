@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Objects;
 import java.util.stream.Collectors;
 public class DataBaseManager {
     private static final String URL = "jdbc:sqlite:pvz_database.db";
@@ -17,7 +18,7 @@ public class DataBaseManager {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
             String schemaSql = new BufferedReader(
-                new InputStreamReader(DataBaseManager.class.getResourceAsStream("/schema.sql")))
+                new InputStreamReader(Objects.requireNonNull(DataBaseManager.class.getResourceAsStream("/schema.sql"))))
                 .lines().collect(Collectors.joining("\n"));
 
             String[] queries = schemaSql.split(";");

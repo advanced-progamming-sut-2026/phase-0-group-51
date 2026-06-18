@@ -7,12 +7,11 @@ import java.util.Scanner;
 public enum Menu {
     LoginMenu(new LoginMenu()),
     SignUpMenu(new SignUpMenu()),
-    CoinWalletMenu(new CoinWalletMenu()),
     ProfileMenu(new ProfileMenu()),
-    MainMenu(new MainMenu),
+    MainMenu(new MainMenu()),
     GameMenu(new GameMenu()),
     SettingMenu(new SettingMenu()),
-    Network(new NetworkMenu()),
+    NetworkMenu(new NetworkMenu()),
     NewsMenu(new NewsMenu()),
     ExitMenu(new ExitMenu());
     private final AppMenu menu;

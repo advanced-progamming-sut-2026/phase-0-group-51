@@ -1,4 +1,4 @@
 package models.enums.commands;
 
-public enum ShopMenuCommands implements Commands{
+public enum ShopMenuCommands {
 }

@@ -1,13 +1,14 @@
 package models.Minigames;
 
 import models.Plant.Plant;
+import models.Plant.PlantType;
 import models.Zombie.Zombie;
 
-public class RollingWallnut extends Plant {
+public class RollingWallnut  { //extend plant
     private WallnutType wallnutType;
 
     public RollingWallnut() {
-        super(, );
+        super(5,"", PlantType);
     }
 
     public void move(){}

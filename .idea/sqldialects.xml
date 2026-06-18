@@ -3,6 +3,5 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/src/main/java/Data/database/ProgressRepository.java" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/Data/database/UserRepository.java" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/src/main/java/Data/resources/schema.sql" dialect="SQLite" />
   </component>
 </project>

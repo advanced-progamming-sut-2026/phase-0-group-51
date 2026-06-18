@@ -1,6 +1,7 @@
 package models.Quests;
 
 import models.App;
+import models.games.Game;
 import views.AppView;
 
 import java.util.List;
@@ -13,7 +14,7 @@ public class DailyQuests extends Quest{
     }
     public static final List<Quest> DailyQuests =List.of(
             new DailyQuests("Daily Sun Gather","Collect sun_amount units of sun during one day",
-                    QuestPriority.AVERAGE,null, App.loggedInUser.getSunAmount()/100,QuestRewardType.CURRENCY_COINS),
+                   QuestPriority.AVERAGE,null, App.loggedInUser.getSunAmount()/100,QuestRewardType.CURRENCY_COINS),
             new DailyQuests("Pro Plant Killer","Kill ten zombies using only plants",
              QuestPriority.HIGH,UnlockableId,0,QuestRewardType.UNLOCKABLE),
             new DailyQuests("Only Cactus","Kill ten zombies using only cactus",
@@ -50,6 +51,7 @@ public class DailyQuests extends Quest{
     }
     @Override
     public void setProgress(String DailyQuestName,int plus) {
-        getDailyQuest(DailyQuestName).progressAmount += plus;
+        //getDailyQuest(DailyQuestName).progressAmount += plus;
     }
 }
+//App.loggedInUser.getSunAmount()/100
