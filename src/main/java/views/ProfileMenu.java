@@ -5,6 +5,7 @@ import java.util.Scanner;
 public class ProfileMenu implements AppMenu{
     @Override
     public void check(Scanner scanner) {
+        String line = scanner.nextLine().trim();
      //به جز 4 تابع زیر , تابع profileShowInfo کنترلر صدا زده شود
     }
     public void handleChangeUsername(String input){}

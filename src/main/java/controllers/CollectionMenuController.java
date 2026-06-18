@@ -1,12 +1,34 @@
 package controllers;
 
+import models.Result;
+
 public class CollectionMenuController {
-//    public String showPlants(){}
-//    public String showAllPlants(){}
-//    public String showZombies(){}
-//    public String showAllZombies(){}
-//    public String showOnePlant(String plantName){}
-//    public String showOneZombie(String zombieName){}
-    public void upgradePlant(String plantName){}
-    public void purchasePlant(String planeName){}
+
+    public Result showAllPlants() {
+        return null;
+    }
+
+    public Result showPlants() {
+        return null;
+    }
+
+    public Result showZombies() {
+        return null;
+    }
+
+    public Result showAllZombies() {
+        return null;
+    }
+
+    public Result purchase(String plantName) {
+        return null;
+    }
+
+    public Result upgrade(String plantName) {
+        return null;
+    }
+
+    public Result showAZombie(String zombieName) {
+        return null;
+    }
 }

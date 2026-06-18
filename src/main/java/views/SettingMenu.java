@@ -11,7 +11,7 @@ public class SettingMenu implements AppMenu{
     public SettingMenu(){this.controller=new SettingMenuController();}
     @Override
     public void check(Scanner scanner) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
      if(SettingMenuCommands.changeDifficultyLevel.matches(line)){
          handleChangeDifficulty(line);
      }
@@ -26,7 +26,7 @@ public class SettingMenu implements AppMenu{
      else invalidCommand();
     }
     public void handleChangeDifficulty(String input){
-        Matcher matcher = SettingMenuCommands.changeDifficultyLevel.MatchRegex(input);
+        Matcher matcher = SettingMenuCommands.changeDifficultyLevel.getMatcher(input);
         String difficultyLevel = matcher.group(1);
         Result result = controller.changeDifficulty(difficultyLevel);
         System.out.println(result.message());
