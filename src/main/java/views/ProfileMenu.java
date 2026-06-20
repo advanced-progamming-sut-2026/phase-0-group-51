@@ -38,26 +38,26 @@ public class ProfileMenu implements AppMenu{
         else invalidCommand();
     }
     public void handleChangeUsername(String input){
-        Matcher matcher = ProfileMenuCommands.changeUsernameRegex.MatchRegex(input);
+        Matcher matcher = ProfileMenuCommands.changeUsernameRegex.getMatcher(input);
         String newUsername = matcher.group(1).trim();
         Result result = controller.changeUsername(newUsername);
         System.out.println(result.message());
     }
 
     public void handleChangeNickname(String input){
-        Matcher matcher = ProfileMenuCommands.changeNicknameRegex.MatchRegex(input);
+        Matcher matcher = ProfileMenuCommands.changeNicknameRegex.getMatcher(input);
         String newNickname = matcher.group(1).trim();
         Result result = controller.changeNickname(newNickname);
         System.out.println(result.message());
     }
     public void handleChangeEmail(String input){
-        Matcher matcher = ProfileMenuCommands.changeEmailRegex.MatchRegex(input);
+        Matcher matcher = ProfileMenuCommands.changeEmailRegex.getMatcher(input);
         String newEmail = matcher.group(1).trim();
         Result result = controller.changeEmail(newEmail);
         System.out.println(result.message());
     }
     public void handleChangePassword(String input){
-        Matcher matcher = ProfileMenuCommands.changePasswordRegex.MatchRegex(input);
+        Matcher matcher = ProfileMenuCommands.changePasswordRegex.getMatcher(input);
         String newPassword = matcher.group(1).trim();
         String oldPassword = matcher.group(2).trim();
         Result result = controller.changePassword(newPassword, oldPassword);
