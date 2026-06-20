@@ -175,6 +175,52 @@ public class UserRepository {
                 e.printStackTrace();
             }
         }
+    public void updateUsername(int userId, String newUsername) {
+        String sql = "UPDATE users SET username = ? WHERE id = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newUsername);
+            pstmt.setInt(2, userId);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public void updateNickname(int userId, String newNickname) {
+        String sql = "UPDATE users SET nickname = ? WHERE id = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newNickname);
+            pstmt.setInt(2, userId);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public void updateEmail(int userId, String newEmail) {
+        String sql = "UPDATE users SET email = ? WHERE id = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newEmail);
+            pstmt.setInt(2, userId);
+
+            pstmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void updatePassword(String username,
                                String passwordHash) {
 
@@ -210,6 +256,38 @@ public class UserRepository {
             e.printStackTrace();
         }
     }
+    private static final int LEVELS_PER_CHAPTER = 4;
 
+    public int getPassedLevels(int userId) {
+
+        String sql =
+                "SELECT chapter_index, level_index " +
+                        "FROM user_progress WHERE user_id = ?";
+
+        try (Connection conn = DataBaseManager.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, userId);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+
+                int chapterIndex =
+                        rs.getInt("chapter_index");
+
+                int levelIndex =
+                        rs.getInt("level_index");
+
+                return (chapterIndex - 1) * LEVELS_PER_CHAPTER
+                        + (levelIndex - 1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
     }
 
