@@ -2,6 +2,9 @@ package models.Zombie;
 
 import lombok.Getter;
 import lombok.Setter;
+import models.Zombie.Behavior.ArmorBehavior;
+import models.Zombie.Behavior.DamageReactionBehavior;
+import models.Zombie.Behavior.DeathEffectBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.games.GameState;
 
@@ -54,10 +57,49 @@ public class Zombie {
             .findFirst().orElse(null);
     }
 
+    public void takeDamage(int rawDamage, GameState gs) {
+        if (dead) return;
+        int damage = rawDamage;
+        for (ZombieBehavior behavior : behaviors) {
+            damage = behavior.onHit(this, damage);
+            if (behavior instanceof ArmorBehavior armor && armor.isDestroyed()) {
+                DamageReactionBehavior reaction = getBehavior(DamageReactionBehavior.class);
+                if (reaction != null
+                    && reaction.getType() == DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE) {
+                    reaction.triggerRage(this);
+                }
+            }
+        }
+        hitpoints -= damage;
+        if (hitpoints <= 0) {
+            hitpoints = 0;
+            die(gs);
+        }
+    }
+
+    public void onTick(GameState gs) {
+        if (dead) return;
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onTick(this, gs);
+        }
+    }
+
+    private void die(GameState gs) {
+        if (dead) return;
+        dead = true;
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onDeath(this,gs);
+            if (behavior instanceof DeathEffectBehavior deathEffect) {
+                deathEffect.onDeath(this, gs);
+            }
+        }
+        gs.removeZombie(this);
+    }
+
     public Zombie copy() {
         Zombie z = new Zombie(alias, maxHitpoints, baseSpeed, baseEatDPS, wavePointCost, weight);
         for (ZombieBehavior behavior : behaviors) {
-            z.addBehavior(behavior);
+            z.addBehavior(behavior.copy());
         }
         return z;
     }

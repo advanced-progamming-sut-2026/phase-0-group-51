@@ -1,25 +1,99 @@
 package models.Board;
 
+import lombok.Getter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.projectile.Projectile;
+import models.sun.Sun;
 
 import java.util.ArrayList;
 import java.util.List;
-
+@Getter
 public class Board {
-    private final int laneCount;
-    private final int columnCount;
+    private final int laneCount = 5;
+    private final int columnCount = 9;
+    private final Tile[][] tiles = new Tile[laneCount][columnCount];
+    private final List<Sun> suns = new ArrayList<>();
 
-    private final List<Plant> plants;
-    private final List<Zombie> zombies;
-    private final List<Projectile> projectiles;
-
-    public Board(int laneCount, int columnCount) {
-        this.laneCount    = laneCount;
-        this.columnCount  = columnCount;
-        this.plants       = new ArrayList<>();
-        this.zombies      = new ArrayList<>();
-        this.projectiles  = new ArrayList<>();
+    public Board() {
+        initializeTiles();
     }
+
+    private void initializeTiles() {
+        for (int i = 0; i < laneCount; i++) {
+            for (int j = 0; j < columnCount; j++) {
+                tiles[i][j] = new Tile(i, j);
+            }
+        }
+    }
+    public Tile getTile(int lane, int column) {
+        return tiles[lane][column];
+    }
+    public Plant getPlant(int lane, float x) {
+        int column = (int) (x/Tile.tileWidth);
+        Tile tile = getTile(lane,column);
+        return tile.getPlant();
+    }
+    public void removePlant(int lane, int column) {
+        Tile tile = getTile(lane, column);
+        if (tile != null) tile.removePlant();
+    }
+    public Plant findNearestPlantInRange(int lane, int fromColumn, int range) {
+        int minCol = Math.max(0, fromColumn - range);
+        for (int col = fromColumn; col >= minCol; col--) {
+            Tile tile = getTile(lane, col);
+            if (tile != null && tile.hasPlant()) {
+                return tile.getPlant();
+            }
+        }
+        return null;
+    }
+    public List<Plant> getPlantsInLane(int lane) {
+        List<Plant> result = new ArrayList<>();
+        for (int col = 0; col < columnCount; col++) {
+            Tile tile = getTile(lane, col);
+            if (tile != null && tile.hasPlant()) {
+                result.add(tile.getPlant());
+            }
+        }
+        return result;
+    }
+    public boolean pushPlantBack(int lane, int column) {
+        Tile current = getTile(lane, column);
+        if (current == null || !current.hasPlant()) return false;
+
+        Tile behind = getTile(lane, column - 1);
+        if (behind == null || behind.hasPlant() || !behind.isOccupiable()) return false;
+
+        Plant plant = current.getPlant();
+        plant.setPosX(behind.getColumn());
+        behind.setPlant(plant);
+        current.setPlant(null);
+        return true;
+    }
+    public void setIceBlock(int lane, int column, boolean blocked) {
+        Tile tile = getTile(lane, column);
+        if (tile != null) tile.setIceBlocked(blocked);
+    }
+    public List<Tile> dropIceBlocks(int lane, int column, int count) {
+        List<Tile> blocked = new ArrayList<>();
+        int placed = 0;
+        for (int offset = 0; offset < laneCount && placed < count; offset++) {
+            int l = lane + offset;
+            if (l >= laneCount) break;
+            Tile tile = getTile(l, column);
+            if (tile != null && !tile.hasPlant()) {
+                tile.setIceBlocked(true);
+                blocked.add(tile);
+                placed++;
+            }
+        }
+        return blocked;
+    }
+    public void addSun(Sun sun) { suns.add(sun); }
+    public void removeSun(Sun sun) {
+        sun.setCollected(true);
+        suns.remove(sun);
+    }
+
 }
