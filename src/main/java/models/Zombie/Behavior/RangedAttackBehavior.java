@@ -1,6 +1,8 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Board.Board;
+import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
 
@@ -27,13 +29,20 @@ public class RangedAttackBehavior implements PersistableBehavior {
         this.cooldown      = intervalTicks;
     }
     @Override
-    public void onTick(Zombie zombie, GameState gs) {}
+    public void onTick(Zombie zombie, GameState gs) {
+        if (--cooldown > 0) return;
+        cooldown = intervalTicks;
+
+        Board board = gs.getBoard();
+        int lane = zombie.getLane();
+        int col  = (int) zombie.getX();
+        switch(type) {
+
+        }
+    }
 
 
     public enum RangedAttackType {
-        SUN_STEAL,    // Ra
-        TORCH_FIRE,   // Explorer
-        BONE_THROW,   // TombRaiser
         SNOWBALL,     // IceAge Hunter
         HOOK_PULL,    // Fisherman
         OCTOPUS_NET,  // Octopus

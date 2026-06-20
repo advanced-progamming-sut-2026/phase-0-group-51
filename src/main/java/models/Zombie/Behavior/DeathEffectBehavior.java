@@ -21,7 +21,6 @@ public class DeathEffectBehavior implements PersistableBehavior {
 
     public enum DeathEffectType {
         SPAWN_IMP,          // Gargantuar
-        TOMBSTONE_CRUMBLE   // TombRaiser
     }
 
     @Override public String behaviorType() { return "DEATH_EFFECT"; }

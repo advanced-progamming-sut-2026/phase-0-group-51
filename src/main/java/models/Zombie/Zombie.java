@@ -7,6 +7,7 @@ import models.Zombie.Behavior.DamageReactionBehavior;
 import models.Zombie.Behavior.DeathEffectBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.games.GameState;
+import models.projectile.ElementType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,12 +57,21 @@ public class Zombie {
             .filter(cls::isInstance)
             .findFirst().orElse(null);
     }
+    public boolean pullMetallicArmor() {
+        for (ZombieBehavior behavior : behaviors) {
+            if (behavior instanceof ArmorBehavior armor && armor.tryMagnetPull()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    public void takeDamage(int rawDamage, GameState gs) {
+    public void takeDamage(int rawDamage, ElementType element, GameState gs) {
         if (dead) return;
         int damage = rawDamage;
         for (ZombieBehavior behavior : behaviors) {
-            damage = behavior.onHit(this, damage);
+            damage = behavior.onHit(this, damage, element);
+
             if (behavior instanceof ArmorBehavior armor && armor.isDestroyed()) {
                 DamageReactionBehavior reaction = getBehavior(DamageReactionBehavior.class);
                 if (reaction != null
@@ -75,6 +85,9 @@ public class Zombie {
             hitpoints = 0;
             die(gs);
         }
+    }
+    public void takeDamage(int rawDamage, GameState gs) {
+        takeDamage(rawDamage, ElementType.NORMAL, gs);
     }
 
     public void onTick(GameState gs) {

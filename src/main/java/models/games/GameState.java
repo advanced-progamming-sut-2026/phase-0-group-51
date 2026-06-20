@@ -31,7 +31,9 @@ public class GameState {
     }
     public void spawnWave(){}
     public void spawnBoss(){}
-    public void addSun(){}
+    public void addSun(int amount){
+        this.sun += amount;
+    }
     public void plantPlant(Plant plant, Tile tile){}
     public void pluckPlant(Plant plant, Tile tile){}
     public void applyChapterFeature(ChapterFeature feature){}

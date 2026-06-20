@@ -30,7 +30,7 @@ public class SummonBehavior implements PersistableBehavior {
     public int onHit(Zombie zombie, int rawDamage) {return 0;}
 
     @Override
-    public void onDeath(Zombie zombie) {}
+    public void onDeath(Zombie zombie, GameState gs) {}
 
     private void spawnUnits() {}
 

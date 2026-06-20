@@ -8,12 +8,15 @@ import models.sun.Sun;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+
 @Getter
 public class Board {
     private final int laneCount = 5;
     private final int columnCount = 9;
     private final Tile[][] tiles = new Tile[laneCount][columnCount];
     private final List<Sun> suns = new ArrayList<>();
+    private Random random = new Random();
 
     public Board() {
         initializeTiles();
@@ -94,6 +97,28 @@ public class Board {
     public void removeSun(Sun sun) {
         sun.setCollected(true);
         suns.remove(sun);
+    }
+    public List<Sun> getActiveSuns() {
+        List<Sun> result = new ArrayList<>();
+        for (Sun sun : suns) {
+            if (sun.isActive()) result.add(sun);
+        }
+        return result;
+    }
+    public Tile placeGraveOnRandomTile() {
+        List<Tile> eligible = new ArrayList<>();
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int col = 0; col < columnCount; col++) {
+                Tile tile = tiles[lane][col];
+                if (!tile.hasPlant() && !tile.isGrave() && tile.isOccupiable()) {
+                    eligible.add(tile);
+                }
+            }
+        }
+        if (eligible.isEmpty()) return null;
+        Tile chosen = eligible.get(random.nextInt(eligible.size()));
+        chosen.setGrave(true);
+        return chosen;
     }
 
 }

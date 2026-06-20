@@ -13,6 +13,7 @@ public class Tile {
     private Plant plant;
     private boolean iceBlocked = false;
     private boolean frosted = false;
+    private boolean grave = false;
 
     static final float tileWidth = 80f; // for example , we'll change it later in phase 2
     static final float tileHeight = 70f;
@@ -33,7 +34,7 @@ public class Tile {
         this.plant = null;
     }
     public boolean isOccupiable() {
-        return !iceBlocked;
+        return !iceBlocked && !grave;
     }
     public static int toTiles(double worldUnits) {
         return (int) Math.ceil(worldUnits / tileWidth);
