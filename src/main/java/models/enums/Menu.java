@@ -13,6 +13,10 @@ public enum Menu {
     SettingMenu(new SettingMenu()),
     NetworkMenu(new NetworkMenu()),
     NewsMenu(new NewsMenu()),
+    COLLECTION_MENU(new CollectionMenu()),
+    GREENHOUSE_MENU(new GreenHouseMenu()),
+    TRAVELLOG_MENU(new TravelLogMenu()),
+    LEADERBOARD_MENU(new LeaderboardMenu()),
     ExitMenu(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){

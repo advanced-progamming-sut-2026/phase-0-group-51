@@ -11,7 +11,7 @@ public class LoginMenu implements AppMenu{
     public LoginMenu(){this.controller = new LoginMenuController();}
     @Override
     public void check(Scanner scanner ) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
         if(controller.isWaitingForNewPassword()){
             Result result = controller.setNewPassword(line.trim());
             System.out.println(result.message());
@@ -39,7 +39,7 @@ public class LoginMenu implements AppMenu{
         else invalidCommand();
     }
     public void handleLogin(String input){
-        Matcher matcher = LoginMenuCommands.loginRegex.MatchRegex(input);
+        Matcher matcher = LoginMenuCommands.loginRegex.getMatcher(input);
         String username= matcher.group("username").trim();
         String password = matcher.group("password").trim();
         boolean stayLoggedIn = matcher.group("stay") != null;
@@ -47,21 +47,21 @@ public class LoginMenu implements AppMenu{
         System.out.println(result.message());
     }
     public void handleForgetPassword(String input){
-        Matcher matcher = LoginMenuCommands.forgetPasswordRegex.MatchRegex(input);
+        Matcher matcher = LoginMenuCommands.forgetPasswordRegex.getMatcher(input);
         String username = matcher.group(1).trim();
         String email = matcher.group(2).trim();
         Result result = controller.forgetPassword(username,email);
         System.out.println(result.message());
     }
     public void handleAnswerQuestion(String input){
-        Matcher matcher = LoginMenuCommands.answerQuestionRegex.MatchRegex(input);
+        Matcher matcher = LoginMenuCommands.answerQuestionRegex.getMatcher(input);
         String answer = matcher.group(1).trim();
         Result result = controller.answerQuestion(answer);
         System.out.println(result.message());
     }
     public void handleEnterMenu(String input){
-        Matcher matcher = LoginMenuCommands.enterMenuRegex.MatchRegex(input);
-        String menuName = matcher.group(1).trim();
+        Matcher matcher = LoginMenuCommands.enterMenuRegex.getMatcher(input);
+        String menuName = matcher.group("menuName");
         Result result = controller.enterMenu(menuName);
         System.out.println(result.message());
     }
