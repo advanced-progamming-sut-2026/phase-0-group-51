@@ -11,6 +11,7 @@ public class Plant {
     private final int id;
     private final String name;
     private final PlantType plantType;
+    private int currentHP;
     private final List<PlantUpgrade> upgrades;
     private final List<PlantTag> plantTags;
     private PlantStats plantStat;
@@ -23,10 +24,11 @@ public class Plant {
 
     private int damage;
 
-    public Plant(int id, String name, PlantType plantType, List<PlantUpgrade> upgrades, List<PlantTag> plantTags) {
+    public Plant(int id, String name, PlantType plantType,int currentHP, List<PlantUpgrade> upgrades, List<PlantTag> plantTags) {
         this.id = id;
         this.name = name;
         this.plantType = plantType;
+        this.currentHP = currentHP;
         this.upgrades = upgrades;
         this.plantTags = plantTags;
     }

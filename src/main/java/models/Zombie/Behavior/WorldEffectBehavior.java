@@ -1,11 +1,14 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Board.Board;
+import models.Board.Tile;
 import models.Zombie.Zombie;
 import models.games.GameState;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Random;
 
 @Getter
 public class WorldEffectBehavior implements PersistableBehavior {
@@ -22,7 +25,22 @@ public class WorldEffectBehavior implements PersistableBehavior {
     }
 
     @Override
-    public void onTick(Zombie zombie, GameState gs) {}
+    public void onTick(Zombie zombie, GameState gs) {
+        if (--cooldown > 0) return;
+        cooldown = intervalTicks;
+
+        Board board = gs.getBoard();
+        int lane = zombie.getLane();
+        int col  = (int) zombie.getX();
+        switch (type) {
+            case SPAWN_TOMB -> {
+                for (int i = 0; i < count; i++) {
+                    Tile placed = board.placeGraveOnRandomTile();
+                    if (placed == null) break;
+                }
+            }
+        }
+    }
 
     public enum WorldEffectType {
         SPAWN_TOMB,     // TombRaiser

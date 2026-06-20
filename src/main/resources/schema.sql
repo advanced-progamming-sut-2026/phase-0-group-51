@@ -162,6 +162,8 @@ CREATE TABLE IF NOT EXISTS zombie_behavior_template (
        transform_type TEXT,
        transform_interval INTEGER,
        transform_range INTEGER
+    -- Sun steal
+       sun_steal_max_amount INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_behavior_zombie
