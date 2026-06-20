@@ -11,7 +11,7 @@ public class ProfileMenu implements AppMenu{
     public ProfileMenu(){this.controller = new ProfileMenuController();}
     @Override
     public void check(Scanner scanner) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
         if(ProfileMenuCommands.showInfoRegex.matches(line)){
             Result result = controller.profileShowInfo();
             System.out.println(result.message());
@@ -62,5 +62,7 @@ public class ProfileMenu implements AppMenu{
         String oldPassword = matcher.group(2).trim();
         Result result = controller.changePassword(newPassword, oldPassword);
         System.out.println(result.message());
+       
+    
     }
 }

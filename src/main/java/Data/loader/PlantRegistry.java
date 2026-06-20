@@ -3,6 +3,7 @@ package Data.loader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class PlantRegistry {
     private static final Map<Integer, PlantData> ALL = new HashMap<>();
@@ -11,4 +12,12 @@ public class PlantRegistry {
     public static PlantData get(int id)          { return ALL.get(id); }
     public static List<PlantData> getAll()       { return List.copyOf(ALL.values()); }
     public static boolean contains(int id)       { return ALL.containsKey(id); }
+    public static PlantData getByName(String name) {
+        for (PlantData data : ALL.values()) {
+            if (data.name().equalsIgnoreCase(name)) {
+                return data;
+            }
+        }
+        return null;
+    }
 }

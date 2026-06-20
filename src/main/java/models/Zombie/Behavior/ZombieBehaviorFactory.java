@@ -1,6 +1,7 @@
 package models.Zombie.Behavior;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import models.Board.Tile;
 import models.Zombie.ArmorDefinition;
 import models.Zombie.Behavior.*;
 
@@ -104,6 +105,7 @@ public class ZombieBehaviorFactory {
     }
 
     public static List<ZombieBehavior> fromJson(
+        String alias,
         String objclass,
         JsonNode d,
         Map<String, ArmorDefinition> armorRegistry) {
@@ -112,9 +114,14 @@ public class ZombieBehaviorFactory {
 
         switch (objclass) {
 
-            case "ZombiePropertySheet" ->
-                resolveArmorProps(d, armorRegistry, behaviors);
-
+            case "ZombiePropertySheet" -> {
+                if (alias.equals("ZombieDarkArmor3")) {
+                    addArmorByAlias("CrownDefault@ArmorTypes", armorRegistry, behaviors);
+                    addArmorByAlias("ShoulderArmorDefault@ArmorTypes", armorRegistry, behaviors);
+                } else {
+                    resolveArmorProps(d, armorRegistry, behaviors);
+                }
+            }
             case "ZombieNewspaperProps" -> {
                 resolveArmorProps(d, armorRegistry, behaviors);
                 behaviors.add(new DamageReactionBehavior(
@@ -138,27 +145,19 @@ public class ZombieBehaviorFactory {
             }
 
             case "ZombieRaProps" -> {
-                int maxSun = d.path("MaxClaimedSunCurrency").asInt(250);
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.SUN_STEAL, 60, 999, maxSun));
-                behaviors.add(new AuraBehavior(
-                    AuraBehavior.AuraType.STEAL_SUN_PASSIVE, 0, 120));
+                int maxAmount = d.path("MaxClaimedSunCurrency").asInt(250);
+                behaviors.add(new SunStealBehavior(maxAmount,20));
             }
 
-            case "ZombieExplorerProps" ->
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.TORCH_FIRE,
-                    45, d.path("MaxTorchReach").asInt(37)));
+            case "ZombieExplorerProps" -> {
+                behaviors.add(new TorchBehavior(1));
+            }
 
             case "ZombieTombRaiserProps" -> {
-                int interval = (int)(d.path("TimeBetweenRaisings").asDouble(6) * 60);
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.BONE_THROW, interval, 999));
+                int interval = (int)(d.path("TimeBetweenRaisings").asDouble(6) * 10);
                 behaviors.add(new WorldEffectBehavior(
                     WorldEffectBehavior.WorldEffectType.SPAWN_TOMB,
                     interval, d.path("NumberOfTombsToSpawn").asInt(2)));
-                behaviors.add(new DeathEffectBehavior(
-                    DeathEffectBehavior.DeathEffectType.TOMBSTONE_CRUMBLE));
             }
 
             case "ZombieIceAgeDodoProps" -> {
@@ -291,6 +290,16 @@ public class ZombieBehaviorFactory {
             if (!trimmed.isEmpty()) result.add(Float.parseFloat(trimmed));
         }
         return result;
+    }
+    private static void addArmorByAlias(
+        String armorKey,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors) {
+
+        ArmorDefinition def = armorRegistry.get(armorKey);
+        if (def != null) {
+            behaviors.add(new ArmorBehavior(def));
+        }
     }
 
 

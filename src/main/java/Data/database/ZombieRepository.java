@@ -97,9 +97,10 @@ public class ZombieRepository {
                  world_effect_type, effect_interval, effect_count,
                  aura_type, aura_radius, aura_interval,
                  death_effect_type, death_spawn_alias, death_spawn_count,
-                 transform_type, transform_interval, transform_range)
+                 transform_type, transform_interval, transform_range
+                 sun_steal_max_amount)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)
         """;
 
         if (!(behavior instanceof PersistableBehavior pb)) {

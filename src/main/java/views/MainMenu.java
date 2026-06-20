@@ -2,7 +2,6 @@ package views;
 
 import controllers.MainMenuController;
 import models.Result;
-import models.enums.commands.LoginMenuCommands;
 import models.enums.commands.MainMenuCommands;
 import models.enums.commands.SignUpMenuCommands;
 
@@ -16,21 +15,19 @@ public class MainMenu implements AppMenu{
     }
     @Override
     public void check(Scanner scanner) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
     if(MainMenuCommands.logoutRegex.matches(line)){
         controller.logout();
-    }
-    else if(MainMenuCommands.currentMenuRegex.matches(line)) {
+    } else if(MainMenuCommands.currentMenuRegex.matches(line)) {
         Result result = controller.showCurrentMenu();
         System.out.println(result.message());
-    }
-    else if(MainMenuCommands.enterMenuRegex.matches(line)){
+    } else if(MainMenuCommands.enterMenuRegex.matches(line)){
         handleEnterMenu(line);
     }
     else invalidCommand();
     }
     public void handleEnterMenu(String input){
-        Matcher matcher = SignUpMenuCommands.enterMenuRegex.MatchRegex(input);
+        Matcher matcher = SignUpMenuCommands.enterMenuRegex.getMatcher(input);
         String menuName = matcher.group(1).trim();
         Result result = controller.enterMenu(menuName);
         System.out.println(result.message());

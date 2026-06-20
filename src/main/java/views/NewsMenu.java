@@ -11,7 +11,7 @@ public class NewsMenu implements AppMenu{
     public NewsMenu(){this.controller = new NewsMenuController();}
     @Override
     public void check(Scanner scanner) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
         if(NewsMenuCommands.showAllNewsRegex.matches(line)){
             Result result = controller.showAllNews();
             System.out.println(result.message());

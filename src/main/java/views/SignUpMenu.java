@@ -2,8 +2,6 @@ package views;
 
 import controllers.SignUpMenuController;
 import models.Result;
-import models.enums.Menu;
-import models.enums.commands.LoginMenuCommands;
 import models.enums.commands.SignUpMenuCommands;
 
 import java.util.Scanner;
@@ -14,7 +12,7 @@ public class SignUpMenu implements AppMenu{
     public SignUpMenu(){this.controller= new SignUpMenuController();}
     @Override
     public void check(Scanner scanner) {
-        String line = scanner.nextLine();
+        String line = scanner.nextLine().trim();
         if(SignUpMenuCommands.exitMenuRegex.matches(line)) {
             Result result = controller.exitMenu();
             System.out.println(result.message());}
@@ -29,7 +27,7 @@ public class SignUpMenu implements AppMenu{
     public void handleRegister(String input) {
         StringBuilder sb = new StringBuilder();
         Result result;
-        Matcher matcher = SignUpMenuCommands.registerRegex.MatchRegex(input);
+        Matcher matcher = SignUpMenuCommands.registerRegex.getMatcher(input);
         String username = matcher.group("username");
         result=controller.setUsername(username);
         sb.append(result.message());
@@ -54,14 +52,14 @@ public class SignUpMenu implements AppMenu{
     }
 
     public void handleEnterMenu(String input){
-        Matcher matcher = SignUpMenuCommands.enterMenuRegex.MatchRegex(input);
-        String menuName = matcher.group(1).trim();
+        Matcher matcher = SignUpMenuCommands.enterMenuRegex.getMatcher(input);
+        String menuName = matcher.group("menuName");
         Result result = controller.enterMenu(menuName);
         System.out.println(result.message());
     }
 
     public void handlePickQuestion(String input){
-        Matcher matcher = SignUpMenuCommands.pickSecurityQuestion.MatchRegex(input);
+        Matcher matcher = SignUpMenuCommands.pickSecurityQuestion.getMatcher(input);
         String questionNum = matcher.group(1).trim();
         String answer = matcher.group(2).trim().toLowerCase();
         String answerConfirm = matcher.group(3).trim();
