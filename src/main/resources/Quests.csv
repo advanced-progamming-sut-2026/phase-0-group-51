@@ -1,21 +1,24 @@
-﻿نام کوئست ها,دسته بندی,شرط تکمیلی,نوع پاداش,اولویت,متغیر
-آفتاب گیر روزانه,روزانه,جمع آوری sun_amount واحد خورشید در طول یک روز,sun_amount / ۱۰۰ سکه,متوسط,3000-4000-5000
-شکارچی chapter,اصلی,شکست دادن ۵۰ زامبی از فصل chapter,۱۰ پک دانه,بالا,هرکدام از فصل‌های بازی
-plant باز حرفه‌ای,روزانه,ده تا زامبی را فقط با plant بکش,گیاه جدید شانسی,بالا,هر گیاهی که قابلیت کشتن دارد
-only cactus,روزانه,ده تا زامبی را فقط با کاکتوس بکش,۲۰ الماس (Gem),بالا,
-گیاه خوار اقتصادی,اصلی,پیروزی در یک مرحله بدون از دست دادن بیش از n گیاه,۲۰ - n پک دانه,بالا,0-1-2-3-4-5
-استاد دفاع,چالش (Epic),اتمام یک مرحله دقیقا با صفر خورشید,۲۰۰ الماس (Gem),بحرانی,
-سرعت عمل,اصلی,کشتن ۱۰ زامبی در کمتر از ۳۰ ثانیه از شروع موج اول حمله زامبی ها,۵۰۰ سکه (Coin),متوسط,
-تخریب گر حرفه ای,روزانه,استفاده از ۳ گیاه انفجاری در یک مرحله,۱۰۰ سکه (Coin),کم,
-تقارن,روزانه,باغچه بازی در نهایت باید متقارن باشد,۵۰۰ سکه (Coin),بالا,
-کشتار خانوادگی,روزانه,تنها از گیاهان family_type برای کشتن زامبی ها استفاده شود,۱۰۰۰ سکه,متوسط,خانواده‌ی گیاهان
-شکوفایی در محدودیت‌ها,روزانه,برای برد در مرحله از هیچ گیاهی از خانواده family_type استفاده نشود,۱۰۰ الماس (Gem),بالا,خانواده‌ی گیاهان
-شب یا صبح,چالش (Epic),تبه پایان رساندن بازی روز با گیاهان شب (mushroom ها),۲۰ الماس (Gem),بالا,
-برد پشت برد,روزانه,۵ مرحله را پشت سر هم با بیشترین سختی ببر,۵۰۰۰ سکه(Coin),متوسط,
-تقریبا پیروز,روزانه,۱۰ زامبی را در ستون اول ردیفی بکش که چمن‌زن ندارد,۳۰۰ سکه(Coin),متوسط,
-OCD نَمَنَ,روزانه,در حالتی مرحله را ببر که هیچ تقارنی در باغچه وجود ندارد (به جز ردیف وسط),۸۰۰ سکه(Coin),متوسط,
-روز ابری,روزانه,یک مرحله را تنها با ۳ تا گیاه تولیدکننده خورشید بزن,۱۰ الماس (Gem),بالا,
-یه ستون کمتر,روزانه,یک مرحله را در صورتی ببرد که در ستون nام گیاهی نکاشته باشد,۱۰ الماس (Gem),بالا,تعداد ستون‌ها
-سطر بی دفاع,روزانه,یک مرحله را در صورتی ببرد که سطر nام را هیچ گیاهی نکاشته باشد,۲۰ الماس (Gem),بالا,تعداد سطرها
-صلیب بی دفاع,روزانه, یک مرحله را در صورتی ببرد که ستون و ردیف nام خالی باشد,۲۵ الماس (Gem),بالا,مینیمم تعداد سطر و ستون
-,,,,,
+﻿Name,Condition,Priority,TargetAmount,RewardAmount,RewardType,QuestType,UnlockableId
+Daily Sun Gather I,Collect 3000 units of sun during one day,AVERAGE,3000,30,CURRENCY_COINS,DAILY,NONE
+Daily Sun Gather II,Collect 4000 units of sun during one day,AVERAGE,4000,40,CURRENCY_COINS,DAILY,NONE
+Daily Sun Gather III,Collect 5000 units of sun during one day,AVERAGE,5000,50,CURRENCY_COINS,DAILY,NONE
+Chapter Hunter,Defeat 50 zombies from a chapter,HIGH,50,10,INVENTORY,MAIN,NONE
+Pro Plant Killer,Kill ten zombies using only plants,HIGH,10,0,UNLOCKABLE,DAILY,any_plant
+Only Cactus,Kill ten zombies using only cactus,HIGH,10,20,CURRENCY_GEMS,DAILY,NONE
+Economic Vegetarian I,Win a level without losing more than 1 plants,HIGH,1,19,INVENTORY,MAIN,NONE
+Economic Vegetarian II,Win a level without losing more than 3 plants,HIGH,1,17,INVENTORY,MAIN,NONE
+Economic Vegetarian III,Win a level without losing more than 5 plants,HIGH,1,15,INVENTORY,MAIN,NONE
+Defense Master,Finish a level with exactly zero sun,CRITICAL,1,200,CURRENCY_GEMS,EPIC,NONE
+Speedrun,Kill 10 zombies in less than 30 seconds from the start of the first wave,AVERAGE,10,500,CURRENCY_COINS,MAIN,NONE
+Professional Demolisher,Use 3 explosive plants in one level,LOW,3,100,CURRENCY_COINS,DAILY,NONE
+Symmetry,The garden must end up symmetrical,HIGH,1,500,CURRENCY_COINS,DAILY,NONE
+Family Slaughter,Use only plants of a specific family to kill zombies,AVERAGE,1,1000,CURRENCY_COINS,DAILY,NONE
+Blooming within Limits,Win the level without using any plant from a specific family,HIGH,1,100,CURRENCY_GEMS,DAILY,NONE
+Night or Morning,Finish a day level using only night plants (mushrooms),HIGH,1,20,CURRENCY_GEMS,EPIC,NONE
+Back-to-Back Victory,Win 5 consecutive levels on the highest difficulty,AVERAGE,5,5000,CURRENCY_COINS,DAILY,NONE
+Almost Win,Kill 10 zombies in the first column of a row that has no lawn mower,AVERAGE,10,300,CURRENCY_COINS,DAILY,NONE
+No OCD,Win the level with no symmetry in the garden (except the middle row),AVERAGE,1,800,CURRENCY_COINS,DAILY,NONE
+Cloudy Day,Play a level using only 3 sun-producing plants,HIGH,1,10,CURRENCY_GEMS,DAILY,NONE
+One Less Column,Win a level without planting anything in a specific column,HIGH,1,10,CURRENCY_GEMS,DAILY,NONE
+Defenseless Row,Win a level without planting anything in a specific row,HIGH,1,20,CURRENCY_GEMS,DAILY,NONE
+Defenseless Cross,Win a level leaving a specific column and row empty,HIGH,1,25,CURRENCY_GEMS,DAILY,NONE
