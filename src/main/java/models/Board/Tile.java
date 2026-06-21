@@ -15,8 +15,8 @@ public class Tile {
     private boolean frosted = false;
     private boolean grave = false;
 
-    static final float tileWidth = 80f; // for example , we'll change it later in phase 2
-    static final float tileHeight = 70f;
+    static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
+    static final float TILEHEIGHT = 70f;
 
     public Tile(int lane,int column){
         this.lane = lane;

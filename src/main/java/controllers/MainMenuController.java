@@ -19,7 +19,8 @@ public class MainMenuController {
             case "news"-> App.getInstance().setCurrentMenu(Menu.NewsMenu);
             case "profile" -> App.getInstance().setCurrentMenu(Menu.ProfileMenu);
             default -> {
-                return new Result(false,"You can only enter game,setting,news,network,profile menus from the main menu.\n",null);
+                return new Result(false,
+                 "You can only enter game,setting,news,network,profile menus from the main menu.\n",null);
             }
         }
          return new Result(true,"",null);

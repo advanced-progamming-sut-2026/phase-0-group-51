@@ -42,10 +42,14 @@ public class SignUpMenuController {
             StringBuilder sb = new StringBuilder();
             sb.append("Password is too weak.\n");
             if(!validation.isWeakPasswordLongEnough(pass)) sb.append("It must be at least 8 characters long!\n");
-            if(!validation.hasWeakPasswordUpperCaseLetter(pass)) sb.append("It must contain at least one uppercase letter.\n");
-            if(!validation.hasWeakPasswordLowerCaseLetter(pass)) sb.append("It must contain at least one lowercase letter.\n");
-            if(!validation.hasWeakPasswordNum(pass)) sb.append("It must contain at least one number.\n");
-            if(!validation.hasWeakPasswordSpecialSymbol(pass)) sb.append("It must contain at least one special symbol.\n");
+            if(!validation.hasWeakPasswordUpperCaseLetter(pass))
+                sb.append("It must contain at least one uppercase letter.\n");
+            if(!validation.hasWeakPasswordLowerCaseLetter(pass))
+                sb.append("It must contain at least one lowercase letter.\n");
+            if(!validation.hasWeakPasswordNum(pass))
+                sb.append("It must contain at least one number.\n");
+            if(!validation.hasWeakPasswordSpecialSymbol(pass))
+                sb.append("It must contain at least one special symbol.\n");
             return new Result(false, sb.toString(),null);
         }
         this.passwordHash = HashUtil.hashPassword(pass);
@@ -97,7 +101,9 @@ public class SignUpMenuController {
             return new Result(false,"Please select a valid gender\n",null);
         }
         this.gender = gender;
-        return new Result(true, "Please choose a security question and enter an answer without spaces.\n"+SecurityQuestions.listOfSecurityQuestions(),null);
+        return new Result(true,
+                "Please choose a security question and enter an answer without spaces.\n"
+                        +SecurityQuestions.listOfSecurityQuestions(),null);
     }
     public Result setQuestion(String questionNum,String answer,String answerConfirm){
         if(!validation.isQuestionNumValid(questionNum)){

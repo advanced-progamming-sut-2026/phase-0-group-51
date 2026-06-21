@@ -7,7 +7,8 @@ import java.sql.SQLException;
 public class UserRepository {
 
         public boolean register(User user) {
-            String sql = "INSERT INTO users (username, email, password_hash, gender, nickname, security_question, answer) " +
+            String sql = "INSERT INTO users (username, email, password_hash, gender, nickname, security_question," +
+                    " answer) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (Connection conn = DataBaseManager.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {

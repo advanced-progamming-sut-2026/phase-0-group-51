@@ -10,7 +10,8 @@ import java.util.Objects;
         public static void loadQuestsToDatabase() {
             String csvFile = "/Quests.csv";
 
-            String sql = "INSERT OR IGNORE INTO quests (name, condition, priority, reward_amount, reward_type, quest_type,unlockable_id) VALUES (?,?,?,?,?,?,?)";
+            String sql = "INSERT OR IGNORE INTO quests (name, condition, priority, reward_amount," +
+                    " reward_type, quest_type,unlockable_id) VALUES (?,?,?,?,?,?,?)";
 
             try (BufferedReader br = new BufferedReader(new InputStreamReader(
                     Objects.requireNonNull(QuestLoader.class.getResourceAsStream(csvFile))));
