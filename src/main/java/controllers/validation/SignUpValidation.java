@@ -5,13 +5,13 @@ import models.enums.commands.SignUpMenuCommands;
 public class SignUpValidation {
     public int questionNum;
     public boolean isUsernameValid(String username){
-        return SignUpMenuCommands.usernameRegex.matches(username);
+        return SignUpMenuCommands.USERNAME_REGEX.matches(username);
     }
     public boolean isPasswordValid(String password){
-        return SignUpMenuCommands.passwordRegex.matches(password);
+        return SignUpMenuCommands.PASSWORD_REGEX.matches(password);
     }
     public boolean isPasswordStrong(String password){
-        return SignUpMenuCommands.strongPasswordRegex.matches(password);
+        return SignUpMenuCommands.STRONG_PASSWORD_REGEX.matches(password);
     }
     public boolean isWeakPasswordLongEnough(String password){
         return password.length()>=8;
@@ -26,7 +26,7 @@ public class SignUpValidation {
         return password.matches(".*\\d.*");
     }
     public boolean hasWeakPasswordSpecialSymbol(String password){
-        return SignUpMenuCommands.specialSymbolsRegex.matches(password);
+        return SignUpMenuCommands.SPECIAL_SYMBOLS_REGEX.matches(password);
     }
     public boolean are2passwordsSame(String pass, String pass2){
         return pass.equals(pass2);
@@ -38,10 +38,10 @@ public class SignUpValidation {
         return email.matches("^[^@]+@[^@]+$");
     }
     public boolean isFirstPartEmailValid(String firstPart) {
-        return SignUpMenuCommands.emailFirstPartRegex.matches(firstPart);
+        return SignUpMenuCommands.EMAIL_FIRST_PART_REGEX.matches(firstPart);
     }
     public boolean isSecondPartEmailValid(String secondPart) {
-        return SignUpMenuCommands.emailSecondPartRegex.matches(secondPart);
+        return SignUpMenuCommands.EMAIL_SECOND_PART_REGEX.matches(secondPart);
     }
     public boolean hasInvalidChar(String email){
         return email.matches("^.*[^a-zA-Z0-9._@-].*$");

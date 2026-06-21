@@ -33,9 +33,12 @@ public class QuestsRepository {
             String unlockableId = rs.getString("unlockable_id");
 
             Quest quest =  switch (type) {
-                case DAILY -> new DailyQuests(name, condition, priority, unlockableId,targetAmount, rewardAmount, rewardType);
-                case MAIN -> new MainQuests(name, condition, priority,unlockableId,targetAmount, rewardAmount, rewardType);
-                case EPIC -> new EpicQuests(name, condition, priority,unlockableId,targetAmount, rewardAmount, rewardType);
+                case DAILY -> new DailyQuests(name, condition, priority, unlockableId,
+                        targetAmount, rewardAmount, rewardType);
+                case MAIN -> new MainQuests(name, condition, priority,unlockableId,
+                        targetAmount, rewardAmount, rewardType);
+                case EPIC -> new EpicQuests(name, condition, priority,unlockableId,
+                        targetAmount, rewardAmount, rewardType);
             };
             quest.setId(id);
             return quest;

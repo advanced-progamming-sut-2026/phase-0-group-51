@@ -13,21 +13,21 @@ public class SignUpMenu implements AppMenu{
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
-        if(SignUpMenuCommands.exitMenuRegex.matches(line)) {
+        if(SignUpMenuCommands.EXIT_MENU_REGEX.matches(line)) {
             Result result = controller.exitMenu();
             System.out.println(result.message());}
-        else if(SignUpMenuCommands.enterMenuRegex.matches(line)) {handleEnterMenu(line);}
-        else if(SignUpMenuCommands.currentMenuRegex.matches(line)) {
+        else if(SignUpMenuCommands.ENTER_MENU_REGEX.matches(line)) {handleEnterMenu(line);}
+        else if(SignUpMenuCommands.CURRENT_MENU_REGEX.matches(line)) {
             Result result = controller.showCurrentMenu();
             System.out.println(result.message());}
-        else if(SignUpMenuCommands.registerRegex.matches(line)){handleRegister(line);}
-        else if(SignUpMenuCommands.pickSecurityQuestion.matches(line)){handlePickQuestion(line);}
+        else if(SignUpMenuCommands.REGISTER_REGEX.matches(line)){handleRegister(line);}
+        else if(SignUpMenuCommands.PICK_SECURITY_QUESTION_REGEX.matches(line)){handlePickQuestion(line);}
         else invalidCommand();
     }
     public void handleRegister(String input) {
         StringBuilder sb = new StringBuilder();
         Result result;
-        Matcher matcher = SignUpMenuCommands.registerRegex.getMatcher(input);
+        Matcher matcher = SignUpMenuCommands.REGISTER_REGEX.getMatcher(input);
         String username = matcher.group("username");
         result=controller.setUsername(username);
         sb.append(result.message());
@@ -52,14 +52,14 @@ public class SignUpMenu implements AppMenu{
     }
 
     public void handleEnterMenu(String input){
-        Matcher matcher = SignUpMenuCommands.enterMenuRegex.getMatcher(input);
+        Matcher matcher = SignUpMenuCommands.ENTER_MENU_REGEX.getMatcher(input);
         String menuName = matcher.group("menuName");
         Result result = controller.enterMenu(menuName);
         System.out.println(result.message());
     }
 
     public void handlePickQuestion(String input){
-        Matcher matcher = SignUpMenuCommands.pickSecurityQuestion.getMatcher(input);
+        Matcher matcher = SignUpMenuCommands.PICK_SECURITY_QUESTION_REGEX.getMatcher(input);
         String questionNum = matcher.group(1).trim();
         String answer = matcher.group(2).trim().toLowerCase();
         String answerConfirm = matcher.group(3).trim();

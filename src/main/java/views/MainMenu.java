@@ -16,18 +16,18 @@ public class MainMenu implements AppMenu{
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
-    if(MainMenuCommands.logoutRegex.matches(line)){
+    if(MainMenuCommands.LOGOUT_REGEX.matches(line)){
         controller.logout();
-    } else if(MainMenuCommands.currentMenuRegex.matches(line)) {
+    } else if(MainMenuCommands.CURRENT_MENU_REGEX.matches(line)) {
         Result result = controller.showCurrentMenu();
         System.out.println(result.message());
-    } else if(MainMenuCommands.enterMenuRegex.matches(line)){
+    } else if(MainMenuCommands.ENTER_MENU_REGEX.matches(line)){
         handleEnterMenu(line);
     }
     else invalidCommand();
     }
     public void handleEnterMenu(String input){
-        Matcher matcher = SignUpMenuCommands.enterMenuRegex.getMatcher(input);
+        Matcher matcher = SignUpMenuCommands.ENTER_MENU_REGEX.getMatcher(input);
         String menuName = matcher.group(1).trim();
         Result result = controller.enterMenu(menuName);
         System.out.println(result.message());

@@ -24,7 +24,8 @@ public class Plant {
 
     private int damage;
 
-    public Plant(int id, String name, PlantType plantType,int currentHP, List<PlantUpgrade> upgrades, List<PlantTag> plantTags) {
+    public Plant(int id, String name, PlantType plantType,int currentHP,
+                 List<PlantUpgrade> upgrades, List<PlantTag> plantTags) {
         this.id = id;
         this.name = name;
         this.plantType = plantType;

@@ -1,17 +1,17 @@
 package models.enums.commands;
 
 public enum CollectionMenuCommands implements Commands{
-    exitMenuRegex(Commands.exitMenuRegex),
-    currentMenuRegex(Commands.currentMenuRegex),
-    enterMenuRegex(Commands.enterMenuRegex),
-    SHOW_ALL_PLANTS("^menu\\s+collection\\s+show-all-plants$"),
-    SHOW_PLANTS("^menu\\s+collection\\s+show-plants$"),
-    SHOW_ZOMBIES("^menu\\s+collection\\s+show-zombies$"),
-    SHOW_ALL_ZOMBIES("^menu\\s+collection\\s+show-all-zombies$"),
-    SHOW_A_PLANT("^menu\\s+collection\\s+show-plant\\s+-p\\s+(?<plantName>\\S+)$"),
-    SHOW_A_ZOMBIE("^menu\\s+collection\\s+show-zombie\\s+-z\\s+(?<zombieName>\\S+)$"),
-    UPGRADE_PLANT("^menu\\s+collection\\s+upgrade-plant\\s+-p\\s+(?<plantName>\\S+)$"),
-    PURCHASE_PLANT("^menu\\s+collection\\s+purchase-plant\\s+-p\\s+(?<plantName>\\S+)$")
+    EXIT_MENU_REGEX(Commands.EXIT_MENU_REGEX),
+    CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX),
+    ENTER_MENU_REGEX(Commands.ENTER_MENU_REGEX),
+    SHOW_ALL_PLANTS_REGEX("^menu\\s+collection\\s+show-all-plants$"),
+    SHOW_PLANTS_REGEX("^menu\\s+collection\\s+show-plants$"),
+    SHOW_ZOMBIES_REGEX("^menu\\s+collection\\s+show-zombies$"),
+    SHOW_ALL_ZOMBIES_REGEX("^menu\\s+collection\\s+show-all-zombies$"),
+    SHOW_A_PLANT_REGEX("^menu\\s+collection\\s+show-plant\\s+-p\\s+(?<plantName>\\S+)$"),
+    SHOW_A_ZOMBIE_REGEX("^menu\\s+collection\\s+show-zombie\\s+-z\\s+(?<zombieName>\\S+)$"),
+    UPGRADE_PLANT_REGEX("^menu\\s+collection\\s+upgrade-plant\\s+-p\\s+(?<plantName>\\S+)$"),
+    PURCHASE_PLANT_REGEX("^menu\\s+collection\\s+purchase-plant\\s+-p\\s+(?<plantName>\\S+)$")
     ;
 
     private final String regex;

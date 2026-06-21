@@ -4,10 +4,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public interface Commands {
-    String exitMenuRegex = "^\\s*menu\\s+exit\\s*$";
-    String currentMenuRegex = "^\\s*menu\\s+show\\s+current\\s*$";
-    String enterMenuRegex="^\\s*menu\\s+enter\\s+(?<menuName>\\S+)\\s*$";
-    String menuNamesRegex=("^(?i)(Main|Game|Login|SignUp|Setting|Network|News|Profile|Collection)$");
+    String EXIT_MENU_REGEX = "^\\s*menu\\s+exit\\s*$";
+    String CURRENT_MENU_REGEX = "^\\s*menu\\s+show\\s+current\\s*$";
+    String ENTER_MENU_REGEX="^\\s*menu\\s+enter\\s+(?<menuName>\\S+)\\s*$";
+    String MENU_NAME_REGEX=("^(?i)(Main|Game|Login|SignUp|Setting|Network|News|Profile|Collection)$");
     String getPattern();
     default Matcher getMatcher(String input) {
         Matcher matcher = Pattern.compile(getPattern()).matcher(input);
