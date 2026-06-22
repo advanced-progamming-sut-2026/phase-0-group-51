@@ -44,7 +44,7 @@ import java.util.List;
             }
         }
 
-        public void createNewGlobalNews(String content) {
+        public void createNewGlobalNews(String content) {//برای فاز شبکه فکرکنم نیاز شه
             String sqlNews = "INSERT INTO news (content) VALUES (?)";
             String sqlUserNews = "INSERT INTO user_news (user_id, news_id) SELECT id, ? FROM users";
 
@@ -59,6 +59,30 @@ import java.util.List;
                     int newsId = rs.getInt(1);
                     PreparedStatement pstmt2 = conn.prepareStatement(sqlUserNews);
                     pstmt2.setInt(1, newsId);
+                    pstmt2.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        public void createNewsForUser(int userId, String content) {
+            String sqlNews = "INSERT INTO news (content) VALUES (?)";
+            String sqlUserNews = "INSERT INTO user_news (user_id, news_id) VALUES (?, ?)";
+
+            try (Connection conn = DataBaseManager.getConnection()) {
+                conn.setAutoCommit(false);
+
+                PreparedStatement pstmt1 = conn.prepareStatement(sqlNews, Statement.RETURN_GENERATED_KEYS);
+                pstmt1.setString(1, content);
+                pstmt1.executeUpdate();
+
+                ResultSet rs = pstmt1.getGeneratedKeys();
+                if (rs.next()) {
+                    int newsId = rs.getInt(1);
+                    PreparedStatement pstmt2 = conn.prepareStatement(sqlUserNews);
+                    pstmt2.setInt(1, userId);
+                    pstmt2.setInt(2, newsId);
                     pstmt2.executeUpdate();
                 }
                 conn.commit();

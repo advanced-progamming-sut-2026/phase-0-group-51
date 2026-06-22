@@ -76,10 +76,10 @@ public class ZombieRepository {
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, zombie.getAlias());
-            ps.setInt(2, zombie.getMaxHitpoints());
-            ps.setDouble(3, zombie.getBaseSpeed());
-            ps.setDouble(4, zombie.getBaseEatDPS());
-            ps.setInt(5, zombie.getWavePointCost());
+            ps.setFloat(2, zombie.getMaxHitpoints());
+            ps.setFloat(3, zombie.getBaseSpeed());
+            ps.setFloat(4, zombie.getBaseEatDPS());
+            ps.setFloat(5, zombie.getWavePointCost());
             ps.setInt(6, zombie.getWeight());
             ps.executeUpdate();
         }
@@ -152,10 +152,10 @@ public class ZombieRepository {
                 if (!rs.next()) throw new IllegalArgumentException("No zombie template: " + alias);
                 return new Zombie(
                     rs.getString("alias"),
-                    rs.getInt("hitpoints"),
+                    rs.getFloat("hitpoints"),
                     rs.getFloat("speed"),
                     rs.getFloat("eat_dps"),
-                    rs.getInt("wave_point_cost"),
+                    rs.getFloat("wave_point_cost"),
                     rs.getInt("weight")
                 );
             }
