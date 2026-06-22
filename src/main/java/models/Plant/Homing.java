@@ -2,18 +2,19 @@ package models.Plant;
 
 import models.games.GameState;
 
+import java.util.Arrays;
+import java.util.List;
+
 public enum Homing implements PlantType{
     ;
     private final int id;
-    private final PlantUpgrade upgrade2;
-    private final PlantUpgrade upgrade3;
-    private final PlantUpgrade upgrade4;
+    private final List<PlantUpgrade> upgrades;
+
 
     Homing(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
         this.id = id;
-        this.upgrade2 = upgrade2;
-        this.upgrade3 = upgrade3;
-        this.upgrade4 = upgrade4;
+        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
+
     }
 
     @Override

@@ -16,6 +16,8 @@ public class Board {
     private final int columnCount = 9;
     private final Tile[][] tiles = new Tile[laneCount][columnCount];
     private final List<Sun> suns = new ArrayList<>();
+    private final List<Zombie> zombies = new ArrayList<>();
+    private final List<Projectile> projectiles = new ArrayList<>();
     private Random random = new Random();
 
     public Board() {
@@ -119,6 +121,25 @@ public class Board {
         Tile chosen = eligible.get(random.nextInt(eligible.size()));
         chosen.setGrave(true);
         return chosen;
+    }
+    public Zombie getFirstZombieInLane(int lane) {
+        Zombie first = null;
+        for (Zombie zombie : zombies) {
+            if (zombie.getLane() == lane) {
+                if (first == null || zombie.getX() < first.getX()) {
+                    first = zombie;
+                }
+            }
+        }
+        return first;
+    }
+    public List<Zombie> getZombiesInLane(int lane) {
+        List<Zombie> result = new ArrayList<>();
+        for (Zombie zombie : zombies) {
+            if (zombie.getLane() == lane) {
+                result.add(zombie);
+            }
+        }return result;
     }
 
 }
