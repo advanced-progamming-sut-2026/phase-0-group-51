@@ -2,18 +2,36 @@ package models.Plant;
 
 import models.games.GameState;
 
+import java.util.Arrays;
+import java.util.List;
+
 public enum Lobber implements PlantType{
-    ;
+    CABBAGE_PULT(25,
+            new PlantUpgrade() {
+                @Override
+                public PlantStats apply(PlantStats current) {
+                    return current.withDamage(current.damage() + 10);
+                }
+            },
+            new PlantUpgrade() {
+                @Override
+                public PlantStats apply(PlantStats current) {
+                    return current.withInterval(current.actionInterval() * 0.85);
+                }
+            },
+            new PlantUpgrade() {
+                @Override
+                public PlantStats apply(PlantStats current) {
+                    return current.withMaxHp(current.maxHp() + 150);
+                }
+            }
+    );
     private final int id;
-    private final PlantUpgrade upgrade2;
-    private final PlantUpgrade upgrade3;
-    private final PlantUpgrade upgrade4;
+    private final List<PlantUpgrade> upgrades;
 
     Lobber(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
         this.id = id;
-        this.upgrade2 = upgrade2;
-        this.upgrade3 = upgrade3;
-        this.upgrade4 = upgrade4;
+        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
     }
 
     @Override
