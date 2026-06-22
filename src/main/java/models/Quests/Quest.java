@@ -1,7 +1,10 @@
 package models.Quests;
 
+import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
+import models.User;
+
 @Setter
 @Getter
 public abstract class Quest {
@@ -27,6 +30,25 @@ public abstract class Quest {
         this.rewardAmount = rewardAmount;
         this.rewardType = rewardType;
         this.type=type;
+    }
+    public void giveReward(User user, UserRepository userRepository) {
+        if (this.rewardType == null) return;
+
+        switch (this.rewardType.toString()) {
+            case "CURRENCY_COINS":
+                user.setCoins(user.getCoins() + this.rewardAmount);
+                break;
+            case "CURRENCY_GEMS":
+                user.setGems(user.getGems() + this.rewardAmount);
+                break;
+            case "INVENTORY":
+                user.setSeedPacket(user.getSeedPacket() + this.rewardAmount);
+                break;
+            case "UNLOCKABLE":
+                //  باید منطق باز شدن گیاه جدید توی جدول user_unlocked_plants پیاده بشه
+                break;
+        }
+        userRepository.updateStats(user);
     }
 
 }
