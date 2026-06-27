@@ -1,8 +1,12 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Plant.Lobber;
+import models.Plant.Plant;
+import models.Plant.PlantType;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.projectile.ElementType;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -28,21 +32,30 @@ public class DamageReactionBehavior implements PersistableBehavior {
     public void onTick(Zombie zombie, GameState gs) {}
 
     @Override
-    public int onHit(Zombie zombie, int rawDamage) {return 0;}
+    public int onHit(Zombie zombie, int rawDamage, ElementType elementType, Plant plant) {
+        switch (type) {
+            case REFLECT_PROJECTILE:
+                if (plant.getPlantType().equals(Lobber.class)) {
+                    return 0;
+                }
+        }
+        return rawDamage;
+    }
 
 
     public enum DamageReactionType {
         NEWSPAPER_RAGE,      // speed + damage boost when newspaper breaks
-        SUBMERGE_DODGE,      // Snorkel dodges while underwater
-        REFLECT_PROJECTILE   // Juggler / LostCityJane reflects back
+        REFLECT_PROJECTILE
     }
 
     @Override public String behaviorType() { return "DAMAGE_REACTION"; }
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setString(13, type.name());
-        ps.setDouble(14, param1);
-        ps.setDouble(15, param2);
+
+    }
+    @Override
+    public ZombieBehavior copy() {
+        return new DamageReactionBehavior(type, param1, param2);
     }
 }

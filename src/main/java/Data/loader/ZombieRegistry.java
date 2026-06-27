@@ -12,9 +12,11 @@ public class ZombieRegistry {
     public ZombieRegistry(ZombieRepository repository) throws SQLException {
         this.templates = repository.loadAllZombies();
     }
-
-    public Zombie getTemplate(String alias) {
+    public static Zombie getTemplate(String alias) {
         Zombie template = templates.get(alias);
+        if (template == null) {
+            throw new IllegalArgumentException("Unknown zombie alias: " + alias);
+        }
         return template.copy();
     }
 }

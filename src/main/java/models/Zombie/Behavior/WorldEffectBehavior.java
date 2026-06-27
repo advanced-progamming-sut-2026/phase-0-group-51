@@ -39,12 +39,18 @@ public class WorldEffectBehavior implements PersistableBehavior {
                     if (placed == null) break;
                 }
             }
+            case RANDOM_LANE_SWAP -> {
+                gs.swapRandomZombieLanes(count);
+                break;
+            }
+
         }
     }
 
     public enum WorldEffectType {
         SPAWN_TOMB,     // TombRaiser
-        FREEZE_COLUMN   // Troglobite ice block
+        FREEZE_COLUMN ,  // Troglobite ice block
+        RANDOM_LANE_SWAP
 
     }
 
@@ -52,8 +58,6 @@ public class WorldEffectBehavior implements PersistableBehavior {
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setString(18, type.name()); // world_effect_type
-        ps.setInt(19, intervalTicks);  // effect_interval
-        ps.setInt(20, count);          // effect_count
+
     }
 }

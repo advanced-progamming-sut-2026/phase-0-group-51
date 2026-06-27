@@ -26,16 +26,12 @@ public class AuraBehavior implements PersistableBehavior {
     public enum AuraType {
         BUFF_SPEED_NEARBY,   // DarkKing
         BUFF_DAMAGE_NEARBY,  // DarkKing
-        STEAL_SUN_PASSIVE    // Ra
-
     }
 
     @Override public String behaviorType() { return "AURA"; }
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setString(21, auraType.name());
-        ps.setDouble(22, radius);
-        ps.setInt(23, intervalTicks);
+
     }
 }
