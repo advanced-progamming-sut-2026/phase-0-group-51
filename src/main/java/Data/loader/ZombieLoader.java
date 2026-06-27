@@ -55,10 +55,10 @@ public class ZombieLoader {
 
             Zombie zombie = new Zombie(
                 alias,
-                d.path("Hitpoints").asInt(190),
+                (float) d.path("Hitpoints").asDouble(190),
                 (float) d.path("Speed").asDouble(0.185),
                 (float) d.path("EatDPS").asDouble(100),
-                d.path("WavePointCost").asInt(100),
+                (float)d.path("WavePointCost").asDouble(100),
                 d.path("Weight").asInt(1000)
             );
 

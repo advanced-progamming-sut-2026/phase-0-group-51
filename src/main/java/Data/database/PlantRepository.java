@@ -60,5 +60,4 @@ public class PlantRepository {
             stmt.setInt(2, plantId);
             stmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
-    }
-}
+    }}

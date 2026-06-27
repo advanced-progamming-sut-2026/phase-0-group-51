@@ -21,7 +21,7 @@ public class Zombie {
     private int          hitpoints;   //current zombie's health
     private final float  baseSpeed;
     private final float  baseEatDPS;  //Damage per second  (while eating plant)
-    private final int    wavePointCost;
+    private final float    wavePointCost;
     private final int    weight;
 
 
@@ -38,7 +38,7 @@ public class Zombie {
 
     private final List<ZombieBehavior> behaviors = new ArrayList<>();
 
-    public Zombie(String alias, int hp, float speed, float eatDPS, int wpc, int weight) {
+    public Zombie(String alias, float hp, float speed, float eatDPS, float wpc, int weight) {
         this.alias         = alias;
         this.maxHitpoints  = hp;
         this.hitpoints     = hp;
@@ -128,7 +128,13 @@ public class Zombie {
     }
 
     public Zombie copy() {
-        Zombie z = new Zombie(alias, maxHitpoints, baseSpeed, baseEatDPS, wavePointCost, weight);
+        float increaseMultiplier = App.getInstance().getLoggedInUser().getDifficultyLevel() / 3.0f;
+        float decreaseMultiplier = 3.0f / App.getInstance().getLoggedInUser().getDifficultyLevel();
+        float newMaxHitpoints = this.maxHitpoints * increaseMultiplier;
+        float newBaseEatDPS = this.baseEatDPS * increaseMultiplier;
+        float newBaseSpeed = this.baseSpeed * increaseMultiplier;
+        float newWavePointCost = this.wavePointCost * decreaseMultiplier;
+        Zombie z = new Zombie(alias, newMaxHitpoints, newBaseSpeed, newBaseEatDPS, newWavePointCost, weight);
         for (ZombieBehavior behavior : behaviors) {
             z.addBehavior(behavior.copy());
         }

@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
     public class NewsRepository {
-        // گرفتن تمام اخبار یک کاربر خاص (همخوان شده با جدول user_news)
         public List<News> getNewsForUser(int userId) {
             List<News> newsList = new ArrayList<>();
-            // ترکیب جدول اخبار اصلی با جدول وضعیت خواندن کاربر
             String sql = "SELECT n.id, n.content, un.is_read " +
                     "FROM news n " +
                     "JOIN user_news un ON n.id = un.news_id " +
@@ -33,9 +31,7 @@ import java.util.List;
             }
             return newsList;
         }
-
-        // تغییر وضعیت یک خبر به "خوانده شده" برای یک کاربر خاص
-        public void markAsRead(int userId, int newsId) {
+    public void markAsRead(int userId, int newsId) {
             String sql = "UPDATE user_news SET is_read = 1 WHERE user_id = ? AND news_id = ?";
             try (Connection conn = DataBaseManager.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -48,8 +44,7 @@ import java.util.List;
             }
         }
 
-        // اضافه کردن یک خبر جدید به سیستم و اختصاص دادن آن به تمام کاربران (اختیاری)
-        public void createNewGlobalNews(String content) {
+        public void createNewGlobalNews(String content) {//برای فاز شبکه فکرکنم نیاز شه
             String sqlNews = "INSERT INTO news (content) VALUES (?)";
             String sqlUserNews = "INSERT INTO user_news (user_id, news_id) SELECT id, ? FROM users";
 
@@ -64,6 +59,30 @@ import java.util.List;
                     int newsId = rs.getInt(1);
                     PreparedStatement pstmt2 = conn.prepareStatement(sqlUserNews);
                     pstmt2.setInt(1, newsId);
+                    pstmt2.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        public void createNewsForUser(int userId, String content) {
+            String sqlNews = "INSERT INTO news (content) VALUES (?)";
+            String sqlUserNews = "INSERT INTO user_news (user_id, news_id) VALUES (?, ?)";
+
+            try (Connection conn = DataBaseManager.getConnection()) {
+                conn.setAutoCommit(false);
+
+                PreparedStatement pstmt1 = conn.prepareStatement(sqlNews, Statement.RETURN_GENERATED_KEYS);
+                pstmt1.setString(1, content);
+                pstmt1.executeUpdate();
+
+                ResultSet rs = pstmt1.getGeneratedKeys();
+                if (rs.next()) {
+                    int newsId = rs.getInt(1);
+                    PreparedStatement pstmt2 = conn.prepareStatement(sqlUserNews);
+                    pstmt2.setInt(1, userId);
+                    pstmt2.setInt(2, newsId);
                     pstmt2.executeUpdate();
                 }
                 conn.commit();

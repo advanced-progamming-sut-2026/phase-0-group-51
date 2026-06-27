@@ -51,21 +51,23 @@ CREATE TABLE IF NOT EXISTS user_scores (
 CREATE TABLE IF NOT EXISTS quests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE NOT NULL,
-    condition TEXT NOT NULL,
-    priority TEXT NOT NULL,      -- ذخیره نام اینام (CRITICAL, HIGH, ...)
-    reward_amount INTEGER NOT NULL,
-    reward_type TEXT NOT NULL,   -- ذخیره نام اینام (CURRENCY_COINS, ...)
-    quest_type TEXT NOT NULL     -- ذخیره نام اینام (DAILY, MAIN, EPIC)
+    condition TEXT ,
+    priority TEXT ,
+    target_amount INTEGER,
+    reward_amount INTEGER ,
+    reward_type TEXT ,
+    quest_type TEXT ,
+    unlockable_id TEXT
 );
 CREATE TABLE IF NOT EXISTS user_quests (
-    user_id INTEGER NOT NULL,
-    quest_id INTEGER NOT NULL,
+    user_id INTEGER ,
+    quest_id INTEGER ,
     progress INTEGER DEFAULT 0,
     is_completed INTEGER DEFAULT 0,
-    reset_date TEXT,
+    reset_date DATA,
     PRIMARY KEY (user_id, quest_id),
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(quest_id) REFERENCES quests(id)
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE ,
+    FOREIGN KEY(quest_id) REFERENCES quests(id) ON DELETE CASCADE
     );
 
 CREATE TABLE IF NOT EXISTS user_minigames (
@@ -85,7 +87,7 @@ CREATE TABLE IF NOT EXISTS news (
 CREATE TABLE IF NOT EXISTS user_news (
     user_id INTEGER REFERENCES users(id),
     news_id INTEGER REFERENCES news(id),
-    is_read INTEGER DEFAULT 0, -- 0 یعنی نخوانده، 1 یعنی خوانده شده
+    is_read INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, news_id)
 );
 
@@ -102,10 +104,10 @@ CREATE TABLE IF NOT EXISTS armor_definition (
 
 CREATE TABLE IF NOT EXISTS zombie_template (
      alias TEXT PRIMARY KEY,
-     hitpoints INTEGER NOT NULL,
+     hitpoints REAL NOT NULL,
      speed REAL NOT NULL,
      eat_dps REAL NOT NULL,
-     wave_point_cost INTEGER NOT NULL DEFAULT 100,
+     wave_point_cost REAL NOT NULL DEFAULT 100,
      weight INTEGER NOT NULL DEFAULT 1000
 );
 
