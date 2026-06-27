@@ -1,9 +1,7 @@
 package models.Zombie.Behavior;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import models.Board.Tile;
 import models.Zombie.ArmorDefinition;
-import models.Zombie.Behavior.*;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -49,8 +47,8 @@ public class ZombieBehaviorFactory {
     }
 
     private static ZombieBehavior buildSummon(ResultSet rs) throws SQLException {
-        return new SummonBehavior(
-            SummonBehavior.SummonType.valueOf(rs.getString("summon_type")),
+        return new ImpThrowBehavior(
+            ImpThrowBehavior.SummonType.valueOf(rs.getString("summon_type")),
             rs.getString("summon_alias"),
             rs.getInt("summon_count"),
             rs.getInt("hp_threshold")
@@ -138,8 +136,8 @@ public class ZombieBehaviorFactory {
                 if (layers.isArray() && !layers.isEmpty())
                     throwPercent = (float) layers.get(0).path("HealthPercentThrowImp").asDouble(0.5);
 
-                behaviors.add(new SummonBehavior(
-                    SummonBehavior.SummonType.IMP_THROW, "ZombieImp", 1, (int)(hp * throwPercent)));
+                behaviors.add(new ImpThrowBehavior(
+                    ImpThrowBehavior.SummonType.IMP_THROW, "ZombieImp", 1, (int)(hp * throwPercent)));
                 behaviors.add(new DeathEffectBehavior(
                     DeathEffectBehavior.DeathEffectType.SPAWN_IMP, "ZombieImp", 1));
             }
@@ -150,7 +148,7 @@ public class ZombieBehaviorFactory {
             }
 
             case "ZombieExplorerProps" -> {
-                behaviors.add(new TorchBehavior(1));
+                behaviors.add(new TorchBehavior());
             }
 
             case "ZombieTombRaiserProps" -> {
@@ -236,10 +234,6 @@ public class ZombieBehaviorFactory {
                     MovementBehavior.MovementType.PIANO_CRUSH,
                     (float) d.path("FastMoveSpeed").asDouble(0.4)));
 
-            case "ZombieModernAllStarProps" ->
-                behaviors.add(new MovementBehavior(
-                    MovementBehavior.MovementType.TACKLE_RUN,
-                    (float) d.path("RunningSpeedScale").asDouble(0.5)));
 
             case "ZombieLostCityJaneProps" ->
                 behaviors.add(new DamageReactionBehavior(

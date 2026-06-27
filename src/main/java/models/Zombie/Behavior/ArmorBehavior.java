@@ -1,6 +1,8 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Plant.Plant;
+import models.Plant.PlantType;
 import models.Zombie.ArmorDefinition;
 import models.Zombie.Zombie;
 import models.projectile.ElementType;
@@ -23,7 +25,7 @@ public class ArmorBehavior implements PersistableBehavior {
         this.currentHP = def.getBaseHealth();
     }
     @Override
-    public int onHit(Zombie zombie, int rawDamage, ElementType element) {
+    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         if (element == ElementType.POISON) {
             return rawDamage;
         }
@@ -57,7 +59,7 @@ public class ArmorBehavior implements PersistableBehavior {
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setString(4, def.alias); // armor_alias
+
     }
 
     @Override

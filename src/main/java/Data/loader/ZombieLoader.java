@@ -1,6 +1,6 @@
 package Data.loader;
 
-import Data.database.ZombieRepository;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import models.Zombie.ArmorDefinition;
@@ -14,52 +14,27 @@ import java.util.*;
 public class ZombieLoader {
 
     private final Map<String, ArmorDefinition> armorRegistry = new HashMap<>();
-    public Map<String, ArmorDefinition> getArmorRegistry() {
-        return armorRegistry;
-    }
-
-    public static void load() {
-        ZombieLoader loader = new ZombieLoader();
-        try {
-            loader.loadArmors("/ArmorTypeData.json");
-            Map<String, Zombie> zombies = loader.loadZombies("/zombies.json");
-
-            ZombieRepository repo = new ZombieRepository();
-            for (ArmorDefinition armor : loader.getArmorRegistry().values()) {
-                repo.saveArmorDefinition(armor);
-            }
-            for (Zombie zombie : zombies.values()) {
-                repo.saveZombieTemplate(zombie);
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load zombies", e);
-        }
-    }
-
 
     public void loadArmors(String jsonPath) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(new File(jsonPath));
 
         for (JsonNode entry : root) {
-            String alias = entry.path("aliases").get(0).asText();
-            JsonNode d = entry.path("objdata");
+            String alias   = entry.path("aliases").get(0).asText();
+            JsonNode d     = entry.path("objdata");
 
-            int hp = d.path("BaseHealth").asInt(300);
-            boolean metallic = false;
+            int     hp         = d.path("BaseHealth").asInt(300);
+            boolean metallic   = false;
             boolean passDamage = false;
 
             for (JsonNode flag : d.path("ArmorFlags")) {
-                String f = flag.asText();
-                if (f.equals("metallic")) metallic = true;
-                if (f.equals("passdamage")) passDamage = true;
+                if (flag.asText().equals("metallic"))   metallic   = true;
+                if (flag.asText().equals("passdamage")) passDamage = true;
             }
 
             List<Float> thresholds = new ArrayList<>();
-            for (JsonNode t : d.path("ArmorLayerHealth")) {
+            for (JsonNode t : d.path("ArmorLayerHealth"))
                 thresholds.add((float) t.asDouble());
-            }
 
             ArmorDefinition def = new ArmorDefinition(alias, hp, metallic, passDamage, thresholds);
             armorRegistry.put(alias, def);
@@ -74,9 +49,9 @@ public class ZombieLoader {
         Map<String, Zombie> result = new LinkedHashMap<>();
 
         for (JsonNode entry : root) {
-            String alias = entry.path("aliases").get(0).asText();
+            String alias    = entry.path("aliases").get(0).asText();
             String objclass = entry.path("objclass").asText();
-            JsonNode d = entry.path("objdata");
+            JsonNode d      = entry.path("objdata");
 
             Zombie zombie = new Zombie(
                 alias,
@@ -87,11 +62,13 @@ public class ZombieLoader {
                 d.path("Weight").asInt(1000)
             );
 
-            for (ZombieBehavior behavior : ZombieBehaviorFactory.fromJson(objclass, d, armorRegistry)) {
+            for (ZombieBehavior behavior : ZombieBehaviorFactory.fromJson(alias, objclass, d, armorRegistry)) {
                 zombie.addBehavior(behavior);
             }
+
             result.put(alias, zombie);
         }
+
         return result;
     }
 }
