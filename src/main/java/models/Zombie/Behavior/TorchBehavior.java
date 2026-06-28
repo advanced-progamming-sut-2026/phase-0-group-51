@@ -1,7 +1,8 @@
 package models.Zombie.Behavior;
 
-import models.Board.Board;
+import lombok.Getter;
 import models.Plant.Plant;
+import models.Plant.PlantType;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
@@ -9,23 +10,29 @@ import models.projectile.ElementType;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class TorchBehavior implements PersistableBehavior{
-    private final int range;
+@Getter
+public class TorchBehavior implements PersistableBehavior {
+
+    private final InstantKillBehavior killLogic;
     private boolean lit = true;
-    public TorchBehavior(int range) {
-        this.range = range;
+
+    public TorchBehavior() {
+        this.killLogic = new InstantKillBehavior(1,true);
     }
+
     @Override
     public void onTick(Zombie zombie, GameState gs) {
         if (!lit) return;
-        Board board = gs.getBoard();
-        Plant target = board.findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), range);
-        if (target != null) {
-            target.takeDamage(target.getCurrentHP());
-        }
+        killLogic.onTick(zombie, gs);
     }
+
     @Override
-    public int onHit(Zombie zombie, int rawDamage, ElementType element) {
+    public boolean suppressesDefaultEating(Zombie zombie) {
+        return lit;
+    }
+
+    @Override
+    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         if (element == ElementType.ICE) {
             lit = false;
         } else if (element == ElementType.FIRE) {
@@ -38,11 +45,11 @@ public class TorchBehavior implements PersistableBehavior{
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setInt(33, range);
+
     }
 
     @Override
     public ZombieBehavior copy() {
-        return new TorchBehavior(range);
+        return new TorchBehavior();
     }
 }

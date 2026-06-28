@@ -55,10 +55,7 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
     @Override
     public void applyToStatement(PreparedStatement ps) throws SQLException {
-        ps.setString(5, type.name());
-        ps.setInt(6, intervalTicks);
-        ps.setInt(7, range);
-        ps.setInt(8, extraParam);
+
     }
 
 }

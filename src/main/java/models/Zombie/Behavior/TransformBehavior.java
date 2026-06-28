@@ -11,8 +11,8 @@ import java.sql.SQLException;
 public class TransformBehavior implements PersistableBehavior {
 
     private final TransformType type;
-    private final int           intervalTicks; //هر چند تیک یبار شرط تبدیل رو چک کنیم
-    private final int           range; //در چه فاصله ای از تارگت این تبدیل انجام شود
+    private final int           intervalTicks;
+    private final int           range;
     private int cooldown;
 
     public TransformBehavior(TransformType type, int intervalTicks, int range) {

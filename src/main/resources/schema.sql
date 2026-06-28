@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS news (
 CREATE TABLE IF NOT EXISTS user_news (
     user_id INTEGER REFERENCES users(id),
     news_id INTEGER REFERENCES news(id),
-    is_read INTEGER DEFAULT 0, -- 0 یعنی نخوانده، 1 یعنی خوانده شده
+    is_read INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, news_id)
 );
 
@@ -104,10 +104,10 @@ CREATE TABLE IF NOT EXISTS armor_definition (
 
 CREATE TABLE IF NOT EXISTS zombie_template (
      alias TEXT PRIMARY KEY,
-     hitpoints INTEGER NOT NULL,
+     hitpoints REAL NOT NULL,
      speed REAL NOT NULL,
      eat_dps REAL NOT NULL,
-     wave_point_cost INTEGER NOT NULL DEFAULT 100,
+     wave_point_cost REAL NOT NULL DEFAULT 100,
      weight INTEGER NOT NULL DEFAULT 1000
 );
 
