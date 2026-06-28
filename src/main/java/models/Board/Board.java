@@ -142,4 +142,39 @@ public class Board {
         }return result;
     }
 
+    public Zombie getZombieInPosition(int lane, int column) {
+        for (Zombie zombie : getZombiesInLane(lane)) {
+            if(zombie.getX() == column) {
+                return zombie;
+            }
+        }return null;
+    }
+
+    public List<Tile> getTwoRandomTilesWithoutPlants(){
+        List<Tile> eligible = new ArrayList<>();
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int col = 0; col < columnCount; col++) {
+                Tile tile = tiles[lane][col];
+                if (!tile.hasPlant() && !tile.isGrave() && tile.isOccupiable()) {
+                    eligible.add(tile);
+                }
+            }
+        }
+        if (eligible.isEmpty()) return null;
+        List<Tile> chosen = new ArrayList<>();
+        List<Tile> pool = new ArrayList<>(eligible);
+        for (int i = 0; i < 2; i++) {
+            int index = random.nextInt(pool.size());
+            chosen.add(pool.remove(index));
+        }
+        return chosen;
+    }
+
+    public void removeProjectile(Projectile projectile) {
+        projectiles.remove(projectile);
+    }
+
+    public void addProjectile(Projectile projectile) {
+        projectiles.add(projectile);
+    }
 }

@@ -4,6 +4,9 @@ import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.projectile.ElementType;
+import models.projectile.Projectile;
+import models.projectile.move.ArcMove;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,17 +60,23 @@ public enum Shooter implements PlantType{
 
     @Override
     public void onTick(Plant plant, GameState state) {
-        Zombie firstZombie = state.getBoard().getFirstZombieInLane(plant.getPosY());
-        if(firstZombie != null){
-            firstZombie.takeDamage(plant.getDamage(), state);
+        boolean canShoot = false;
+        List<Zombie> zombies = state.getBoard().getZombiesInLane(plant.getPosY());
+        for(Zombie zombie : zombies){
+            if(zombie.getX() >= plant.getPosX()){
+                canShoot = true;
+                break;
+            }
+        }
+        if(canShoot){
+            Projectile projectile = new Projectile(plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
+                    plant.getPlantStat().projectileSpeed(), plant.getPosX(), plant.getPosY(), new ArcMove());
+            state.getBoard().addProjectile(projectile);
         }
     }
 
     @Override
     public void onPlantFood(Plant plant, GameState state) {
-        List<Zombie> zombies = state.getBoard().getZombiesInLane(plant.getPosY());
-        for(Zombie zombie : zombies){
-            zombie.takeDamage(plant.getDamage(), state);
-        }
+        //Action interval decrease
     }
 }
