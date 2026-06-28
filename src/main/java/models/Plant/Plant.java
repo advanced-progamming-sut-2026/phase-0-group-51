@@ -22,6 +22,8 @@ public class Plant {
     private float tickFromLastShoot;
     private float tickFromLastAct;
     private float ticksOfPlantFood;
+    private float armTicker = 0;
+    private float armedTicks; // i should somehow initialize it
     private int posX;
     private int posY;
 
@@ -36,11 +38,16 @@ public class Plant {
         this.currentHP = plantStat.maxHp();
         this.upgrades  = upgrades;
         this.plantTags = plantTags;
+
     }
 
 
     public void tick(GameState gameState) {
+        armTicker++;
         tickFromLastAct++;
+        if(plantTags.contains(PlantTag.CHARGE) && armTicker < armedTicks){
+            return;
+        }
         if(isOnPlantFood()){
             plantType.onPlantFood(this, gameState);
             ticksOfPlantFood--;
@@ -48,6 +55,7 @@ public class Plant {
             plantType.onTick(this, gameState);
         }
     }
+
     public boolean canAct(){
         if(tickFromLastAct >= plantStat.actionInterval()){
             tickFromLastAct = 0;
