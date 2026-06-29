@@ -1,5 +1,7 @@
 package Data.loader;
 
+import models.Plant.PlantType;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,4 +22,15 @@ public class PlantRegistry {
         }
         return null;
     }
+    public static PlantData getById(int plantId) {
+
+        for (PlantData data : ALL.values()) {
+            if (data.id()== plantId) {
+                return data;
+            }
+        }
+
+        return null;
+    }
+
 }

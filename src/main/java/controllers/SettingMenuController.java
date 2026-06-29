@@ -24,7 +24,7 @@ public class SettingMenuController {
         return new Result(true, "Difficulty level changed successfully.", null);
     }
     public Result exitMenu(){
-        App.getInstance().setCurrentMenu(Menu.MainMenu);
+        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
         return new Result(true,"",null);
     }
     public Result showCurrentMenu(){

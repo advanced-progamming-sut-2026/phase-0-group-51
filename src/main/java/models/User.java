@@ -2,6 +2,7 @@ package models;
 
 import lombok.Getter;
 import lombok.Setter;
+import models.GreenHouse.GreenHouse;
 import models.games.Level;
 
 import java.util.HashMap;
@@ -28,12 +29,11 @@ public class User {
     private int maxPoint;
     private int questDailyNum;
     private int questNonDailyNum;
-    private int seedPacket;
     private int plantFoodNum;
+    private GreenHouse greenHouse;
 
     public User(int id, String username, String email, String passwordHash, String gender,
-                String nickname, int securityQuestion, String answer, int coins, int gems,
-                int seedPacket, int plantFoodNum, int mostMeowPoint, int maxPoint,
+                String nickname, int securityQuestion, String answer, int coins, int gems, int plantFoodNum, int mostMeowPoint, int maxPoint,
                 int gamesPlayed, int miniGamesPlayed, String lastWonGame, int difficultyLevel) {
         this.id = id;
         this.username = username;
@@ -45,7 +45,6 @@ public class User {
         this.answer = answer;
         this.coins = coins;
         this.gems = gems;
-        this.seedPacket = seedPacket;
         this.plantFoodNum = plantFoodNum;
         this.mostMeowPoint = mostMeowPoint;
         this.maxPoint = maxPoint;

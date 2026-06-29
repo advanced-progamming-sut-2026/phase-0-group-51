@@ -5,19 +5,20 @@ import views.*;
 import java.util.Scanner;
 
 public enum Menu {
-    LoginMenu(new LoginMenu()),
-    SignUpMenu(new SignUpMenu()),
-    ProfileMenu(new ProfileMenu()),
-    MainMenu(new MainMenu()),
-    GameMenu(new GameMenu()),
-    SettingMenu(new SettingMenu()),
-    NetworkMenu(new NetworkMenu()),
-    NewsMenu(new NewsMenu()),
+    LOGIN_MENU(new LoginMenu()),
+    SIGN_UP_MENU(new SignUpMenu()),
+    PROFILE_MENU(new ProfileMenu()),
+    MAIN_MENU(new MainMenu()),
+    GAME_MENU(new GameMenu()),
+    SETTING_MENU(new SettingMenu()),
+    NETWORK_MENU(new NetworkMenu()),
+    NEWS_MENU(new NewsMenu()),
+    SHOP_MENU(new ShopMenu()),
     COLLECTION_MENU(new CollectionMenu()),
     GREENHOUSE_MENU(new GreenHouseMenu()),
     TRAVELLOG_MENU(new TravelLogMenu()),
     LEADERBOARD_MENU(new LeaderboardMenu()),
-    ExitMenu(new ExitMenu());
+    EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){
         this.menu = menu;
