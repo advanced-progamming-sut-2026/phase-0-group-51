@@ -31,9 +31,9 @@ public class App {
 
         if (rememberedUser != null) {
             loggedInUser = rememberedUser;
-            currentMenu = Menu.MainMenu;
+            currentMenu = Menu.MAIN_MENU;
         } else {
-            currentMenu = Menu.SignUpMenu;
+            currentMenu = Menu.SIGN_UP_MENU;
         }
     }
     public static App getInstance(){

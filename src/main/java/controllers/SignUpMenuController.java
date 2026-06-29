@@ -1,5 +1,6 @@
 package controllers;
 
+import Data.database.GreenHouseRepository;
 import Data.database.UserRepository;
 import controllers.validation.SignUpValidation;
 import models.App;
@@ -126,6 +127,7 @@ public class SignUpMenuController {
             isRegisterValid = false;
             return new Result(false, "Registration failed\n", null);
         }
+        GreenHouseRepository.createForUser(user.getId());
         resetFields();
         return new Result(true, "Registration completed successfully.\n", null);
     }
@@ -144,7 +146,7 @@ public class SignUpMenuController {
         if(!menuName.equalsIgnoreCase("login")){
             return new Result(false,"You can only enter the login menu from the signup menu.\n",null);
         }
-        App.getInstance().currentMenu = Menu.LoginMenu;
+        App.getInstance().currentMenu = Menu.LOGIN_MENU;
         return new Result(true,"",null);
     }
     private void resetFields() {

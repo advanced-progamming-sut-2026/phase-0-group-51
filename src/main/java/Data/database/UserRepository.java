@@ -1,9 +1,8 @@
 package Data.database;
 import models.User;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+
+import java.sql.*;
+
 public class UserRepository {
 
         public boolean register(User user) {
@@ -11,7 +10,9 @@ public class UserRepository {
                     " answer) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (Connection conn = DataBaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                PreparedStatement pstmt = conn.prepareStatement(
+                         sql,
+                         Statement.RETURN_GENERATED_KEYS)) {
 
                 pstmt.setString(1, user.getUsername());
                 pstmt.setString(2, user.getEmail());
@@ -22,7 +23,10 @@ public class UserRepository {
                 pstmt.setString(7, user.getAnswer());
 
                 pstmt.executeUpdate();
-
+                ResultSet rs = pstmt.getGeneratedKeys();
+                if (rs.next()) {
+                    user.setId(rs.getInt(1));
+                }
                 initializeProgress(user.getUsername());
                 return true;
             } catch (SQLException e) {
@@ -69,7 +73,6 @@ public class UserRepository {
                         rs.getString("answer"),
                         rs.getInt("coins"),
                         rs.getInt("gems"),
-                        rs.getInt("seed_packet"),
                         rs.getInt("plant_food_num"),
                         rs.getInt("most_meow_point"),
                         rs.getInt("max_point"),
@@ -123,7 +126,6 @@ public class UserRepository {
                         rs.getString("answer"),
                         rs.getInt("coins"),
                         rs.getInt("gems"),
-                        rs.getInt("seed_packet"),
                         rs.getInt("plant_food_num"),
                         rs.getInt("most_meow_point"),
                         rs.getInt("max_point"),
@@ -141,20 +143,19 @@ public class UserRepository {
         return null;
     }
         public boolean updateStats(User user) {
-            String sql = "UPDATE users SET coins = ?, gems = ?, seed_packet = ?, plant_food_num = ?, " +
+            String sql = "UPDATE users SET coins = ?, gems = ?, plant_food_num = ?, " +
                     "most_meow_point = ?, max_point = ?, games_played = ?, mini_games_played = ? WHERE id = ?";
             try (Connection conn = DataBaseManager.getConnection();
                  PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
                 pstmt.setInt(1, user.getCoins());
                 pstmt.setInt(2, user.getGems());
-                pstmt.setInt(3, user.getSeedPacket());
-                pstmt.setInt(4, user.getPlantFoodNum());
-                pstmt.setInt(5, user.getMostMeowPoint());
-                pstmt.setInt(6, user.getMaxPoint());
-                pstmt.setInt(7, user.getGamesPlayed());
-                pstmt.setInt(8, user.getMiniGamesPlayed());
-                pstmt.setInt(9, user.getId());
+                pstmt.setInt(3, user.getPlantFoodNum());
+                pstmt.setInt(4, user.getMostMeowPoint());
+                pstmt.setInt(5, user.getMaxPoint());
+                pstmt.setInt(6, user.getGamesPlayed());
+                pstmt.setInt(7, user.getMiniGamesPlayed());
+                pstmt.setInt(8, user.getId());
 
                 pstmt.executeUpdate();
                 return true;

@@ -2,7 +2,6 @@ package controllers;
 
 import Data.database.UserRepository;
 import controllers.validation.ProfileMenuValidation;
-import controllers.validation.SignUpValidation;
 import models.App;
 import models.Result;
 import models.User;
@@ -81,6 +80,6 @@ public class ProfileMenuController {
         return new Result(true,"You are now in the profile menu.\n",null);
     }
     public void exitMenu(){
-        App.getInstance().setCurrentMenu(Menu.MainMenu);
+        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
     }
 }
