@@ -8,6 +8,8 @@ import models.enums.Menu;
 
 public class GameMenuController {
     public Result handleEnterChapter(String chapter) {
+        App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
+        //بعدا هندل کردن مراحل رو انجام میدیم
         return null;
     }
 

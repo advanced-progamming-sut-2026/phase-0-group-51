@@ -18,6 +18,7 @@ public enum Menu {
     GREENHOUSE_MENU(new GreenHouseMenu()),
     TRAVELLOG_MENU(new TravelLogMenu()),
     LEADERBOARD_MENU(new LeaderboardMenu()),
+    PlantSelection_Menu(new PlantSelectionMenu()),
     EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){
