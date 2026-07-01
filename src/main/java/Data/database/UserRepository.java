@@ -30,7 +30,6 @@ public class UserRepository {
                 initializeProgress(user.getUsername());
                 return true;
             } catch (SQLException e) {
-                // اگر یوزرنیم یا ایمیل تکراری باشد
                 return false;
             }
         }
