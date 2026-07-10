@@ -44,8 +44,8 @@ public class GameState {
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);
     }
-    //for zombie's actions
-    public void stealSun(float amount){
+    for zombie's actions
+    public void stealSun(int amount){
         this.sun = Math.max(0, this.sun - amount);
     }
     public Zombie findNearestHypnotizedZombieInRange(Zombie self, int lane, float x, int range) {

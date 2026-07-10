@@ -2,6 +2,7 @@ package models.Zombie;
 
 import lombok.Getter;
 import lombok.Setter;
+import models.App;
 import models.Plant.Plant;
 import models.Plant.PlantType;
 import models.Zombie.Behavior.ArmorBehavior;
@@ -17,7 +18,7 @@ import java.util.List;
 @Setter
 public class Zombie {
     private final String alias;
-    private final int    maxHitpoints; //from json
+  private final int    maxHitpoints; //from json
     private int          hitpoints;   //current zombie's health
     private final float  baseSpeed;
     private final float  baseEatDPS;  //Damage per second  (while eating plant)
@@ -130,11 +131,11 @@ public class Zombie {
     public Zombie copy() {
         float increaseMultiplier = App.getInstance().getLoggedInUser().getDifficultyLevel() / 3.0f;
         float decreaseMultiplier = 3.0f / App.getInstance().getLoggedInUser().getDifficultyLevel();
-        float newMaxHitpoints = this.maxHitpoints * increaseMultiplier;
+       float newMaxHitpoints = this.maxHitpoints * increaseMultiplier;
         float newBaseEatDPS = this.baseEatDPS * increaseMultiplier;
         float newBaseSpeed = this.baseSpeed * increaseMultiplier;
         float newWavePointCost = this.wavePointCost * decreaseMultiplier;
-        Zombie z = new Zombie(alias, newMaxHitpoints, newBaseSpeed, newBaseEatDPS, newWavePointCost, weight);
+      Zombie z = new Zombie(alias, newMaxHitpoints, newBaseSpeed, newBaseEatDPS, newWavePointCost, weight);
         for (ZombieBehavior behavior : behaviors) {
             z.addBehavior(behavior.copy());
         }

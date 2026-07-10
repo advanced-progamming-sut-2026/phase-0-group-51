@@ -31,10 +31,10 @@ public class Projectile {
     private void tick(GameState state) {
         movingStrategy.move(this, speed);
         Zombie target = state.getBoard().getZombieInPosition(lane, (int) posX); // for now it is cast into int
-        if (target != null) {
-            target.takeDamage(damage, state);
-            elementType.onHit(); // each type has its own behavior
-            state.getBoard().removeProjectile(this);
-        }
+//        if (target != null) {
+//            target.takeDamage(damage, state);
+//            elementType.onHit(); // each type has its own behavior
+//            state.getBoard().removeProjectile(this);
+//        }
     }
 }
