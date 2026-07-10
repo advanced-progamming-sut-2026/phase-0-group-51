@@ -1,12 +1,13 @@
 package models.items;
 
+import lombok.Getter;
 import models.Zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
+@Getter
 public class Wave {
     private final int waveNumber;
     private final float difficulty;
@@ -50,23 +51,8 @@ public class Wave {
         return true;
     }
 
-    public int getWaveNumber() {
-        return waveNumber;
-    }
-
-    public float getDifficulty() {
-        return difficulty;
-    }
-
-    public boolean isFinalWave() {
-        return finalWave;
-    }
-
     public List<Zombie> getZombies() {
         return Collections.unmodifiableList(zombies);
     }
 
-    public int getInitialTotalHealth() {
-        return initialTotalHealth;
-    }
 }

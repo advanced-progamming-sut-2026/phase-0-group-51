@@ -93,9 +93,6 @@ public class ZombieWaveManager {
         return currentWave == null ? 0 : currentWave.getWaveNumber();
     }
 
-    public List<Wave> getWaves() {
-        return waves;
-    }
 
 
     private void startNextWave() {
