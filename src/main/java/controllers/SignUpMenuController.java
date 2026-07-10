@@ -91,7 +91,7 @@ public class SignUpMenuController {
         if (!validation.isSecondPartEmailValid(parts[1])){
             isRegisterValid=false;
         return new Result(false,
-        "The second part of email must start and end with a letter or digit and be separated by dots.\n",null);
+        "The second part of email must start and end with a letter or digit and be separated by one dot.\n",null);
         }
         this.email = email;
         return new Result(true, "", null);
@@ -99,7 +99,7 @@ public class SignUpMenuController {
     public Result setGender(String gender){
         if (!validation.isGenderValid(gender)){
             isRegisterValid = false;
-            return new Result(false,"Please select a valid gender\n",null);
+            return new Result(false,"Please select a valid gender.\n",null);
         }
         this.gender = gender;
         return new Result(true,

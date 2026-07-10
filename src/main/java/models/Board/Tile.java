@@ -9,19 +9,20 @@ public class Tile {
     private final int lane;
     private final int column;
     private final float x;
-
+    private final float y;
     private Plant plant;
     private boolean iceBlocked = false;
     private boolean frosted = false;
     private boolean grave = false;
 
-    static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
-    static final float TILEHEIGHT = 70f;
+    public static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
+    public static final float TILEHEIGHT = 70f;
 
     public Tile(int lane,int column){
         this.lane = lane;
         this.column = column;
-        this.x = column * tileWidth;
+        this.x = column * TILEWIDTH;
+        this.y = lane * TILEHEIGHT;
     }
 
     public boolean hasPlant() {
@@ -37,7 +38,7 @@ public class Tile {
         return !iceBlocked && !grave;
     }
     public static int toTiles(double worldUnits) {
-        return (int) Math.ceil(worldUnits / tileWidth);
+        return (int) Math.ceil(worldUnits / TILEWIDTH);
     }
 
 

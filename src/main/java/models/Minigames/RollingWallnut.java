@@ -8,7 +8,7 @@ public class RollingWallnut  { //extend plant
     private WallnutType wallnutType;
 
     public RollingWallnut() {
-        super(5,"", PlantType);
+      //  super(5,"", PlantType);
     }
 
     public void move(){}

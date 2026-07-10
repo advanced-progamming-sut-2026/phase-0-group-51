@@ -2,7 +2,10 @@ package models.Plant;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import models.Board.Tile;
 import models.games.GameState;
+import models.sun.Sun;
+import models.sun.SunType;
 
 import java.util.Arrays;
 import java.util.List;
@@ -56,7 +59,17 @@ public enum SunProducer implements PlantType{
 
     @Override
     public void onTick(Plant plant, GameState state) {
-        state.addSun(50);
+        Tile tile = state.getBoard().getTileForPlant(plant);
+        if (tile == null) return;
+        boolean hasUncollectedSun = state.getBoard().getActiveSuns().stream()
+                .anyMatch(s -> s.getX() == tile.getX() && s.getLane() == tile.getLane() && s.isGrounded());
+        if (hasUncollectedSun) {
+            return;
+        }
+        Sun plantSun = new Sun(tile.getX(), tile.getY(), tile.getLane(), SunType.ORDINARY, 25, Integer.MAX_VALUE);
+        plantSun.setGrounded(true);
+        state.getBoard().addSun(plantSun);
+        System.out.printf("plant %s produced a sun at (%.0f, %.0f)\n", plant.getName(), plantSun.getX(), plantSun.getY());
     }
 
     @Override

@@ -57,7 +57,7 @@ public class TurquoiseLaserBehavior implements PersistableBehavior {
         stealAccumulator = (float) stealPerSecond / 10;
         float actuallyStolen = (gs.getSun()>stealAccumulator) ? stealAccumulator : gs.getSun();
         if (actuallyStolen > 0) {
-            gs.stealSun(actuallyStolen);
+          //  gs.stealSun(actuallyStolen);
             totalStolen += actuallyStolen;
         }
         if (ticksInPhase >= stealDurationTicks) {

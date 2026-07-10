@@ -39,7 +39,7 @@ public class InstantKillBehavior implements PersistableBehavior {
                 zombie, zombie.getLane(), (int) zombie.getX(), 0);
 
             if (hypnotized != null) {
-                hypnotized.takeDamage(hypnotized.getMaxHitpoints(), gs, null);
+              //  hypnotized.takeDamage(hypnotized.getMaxHitpoints(), gs, null);
                 applySpeedAfterKill(zombie);
                 hasKilled = true;
             }

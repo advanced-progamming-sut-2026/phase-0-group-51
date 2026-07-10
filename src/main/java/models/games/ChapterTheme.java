@@ -1,9 +1,11 @@
 package models.games;
 
 import lombok.Getter;
+import lombok.Setter;
 import models.Zombie.Zombie;
 
 import java.util.List;
+@Getter
 
 public enum ChapterTheme {
     ANCIENT_EGYPT(),
@@ -11,7 +13,7 @@ public enum ChapterTheme {
     BIG_WAVE_BEACH(),
     DARK_AGES();
 
-   @Getter
+
    public final String name;
     public final List<Zombie> allowedZombies;
     public final List<ChapterFeature> chapterFeatures;

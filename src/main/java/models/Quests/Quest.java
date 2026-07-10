@@ -42,7 +42,7 @@ public abstract class Quest {
                 user.setGems(user.getGems() + this.rewardAmount);
                 break;
             case "INVENTORY":
-                user.setSeedPacket(user.getSeedPacket() + this.rewardAmount);
+             //  user.setSeedPacket(user.getSeedPacket() + this.rewardAmount);
                 break;
             case "UNLOCKABLE":
                 //  باید منطق باز شدن گیاه جدید توی جدول user_unlocked_plants پیاده بشه

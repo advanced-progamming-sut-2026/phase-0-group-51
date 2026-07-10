@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS user_plants (
     PRIMARY KEY (user_id, plant_id)
 
     );
-CREATE TABLE plant_boosts (
+CREATE TABLE IF NOT EXISTS plant_boosts (
        user_id INTEGER NOT NULL,
        plant_id INTEGER NOT NULL,
        PRIMARY KEY(user_id, plant_id),
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS user_news (
     PRIMARY KEY (user_id, news_id)
 );
 
-CREATE TABLE greenhouse_pots (
+CREATE TABLE IF NOT EXISTS greenhouse_pots (
     user_id INTEGER NOT NULL,
     row INTEGER NOT NULL,
     column INTEGER NOT NULL,
