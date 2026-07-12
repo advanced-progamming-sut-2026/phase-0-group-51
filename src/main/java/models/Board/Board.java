@@ -150,6 +150,32 @@ public class Board {
         }return null;
     }
 
+    public Zombie getClosestZombieAnywhere(int fromLane, int fromColumn) {
+        Zombie closest = null;
+        double closestDistSq = Double.MAX_VALUE;
+        for (Zombie zombie : zombies) {
+            double dLane = zombie.getLane() - fromLane;
+            double dCol = zombie.getX() - fromColumn;
+            double distSq = dLane * dLane + dCol * dCol;
+            if (distSq < closestDistSq) {
+                closestDistSq = distSq;
+                closest = zombie;
+            }
+        }
+        return closest;
+    }
+
+    public List<Zombie> getRandomZombies(int count) {
+        List<Zombie> pool = new ArrayList<>(zombies);
+        List<Zombie> chosen = new ArrayList<>();
+        int n = Math.min(count, pool.size());
+        for (int i = 0; i < n; i++) {
+            int index = random.nextInt(pool.size());
+            chosen.add(pool.remove(index));
+        }
+        return chosen;
+    }
+
     public List<Tile> getTwoRandomTilesWithoutPlants(){
         List<Tile> eligible = new ArrayList<>();
         for (int lane = 0; lane < laneCount; lane++) {

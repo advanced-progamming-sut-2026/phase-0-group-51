@@ -7,9 +7,9 @@ import models.games.GameState;
 import java.util.Arrays;
 import java.util.List;
 
-public enum SunProducer implements PlantType{
-    SUNFLOWER(
-            1,
+public enum SunProducer implements PlantType {
+
+    SUNFLOWER(1,
             new PlantUpgrade() {
                 @Override
                 public PlantStats apply(PlantStats s) {
@@ -25,10 +25,35 @@ public enum SunProducer implements PlantType{
             new PlantUpgrade() {
                 @Override
                 public PlantStats apply(PlantStats s) {
-                    return s;//what is double sun chance? =)
+                    // Double Sun Chance: just flips a flag on PlantStats,
+                    // checked in onTick below. No new class, no change to
+                    // any other plant.
+                    return s.withDoubleSunChance(true);
                 }
+            }) {
+        private static final int BASE_SUN = 50;
+        private static final int DOUBLE_SUN_CHANCE_PERCENT = 25; // tweak to taste
+
+        @Override
+        public void onTick(Plant plant, GameState state) {
+            int sun = BASE_SUN;
+            if (plant.getPlantStat().doubleSunChance()
+                    && state.getBoard().getRandom().nextInt(100) < DOUBLE_SUN_CHANCE_PERCENT) {
+                sun *= 2;
             }
-    );
+            state.addSun(sun);
+        }
+
+        @Override
+        public void onFeed(Plant plant, GameState state) {
+            state.addSun(150);
+        }
+
+        @Override
+        public void onFoodTick(Plant plant, GameState state) {}
+    },
+    ;
+
     private final int id;
     private final List<PlantUpgrade> upgrades;
 
@@ -44,6 +69,7 @@ public enum SunProducer implements PlantType{
                 data.damage(),
                 data.cost(),
                 data.actionInterval(),
+                data.recharge(),
                 0
         );
         return new Plant(
@@ -52,15 +78,5 @@ public enum SunProducer implements PlantType{
                 upgrades,
                 data.tags()
         );
-    }
-
-    @Override
-    public void onTick(Plant plant, GameState state) {
-        state.addSun(50);
-    }
-
-    @Override
-    public void onPlantFood(Plant plant, GameState state) {
-        state.addSun(150);
     }
 }

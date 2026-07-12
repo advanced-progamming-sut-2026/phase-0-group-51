@@ -23,7 +23,7 @@ public enum Melee implements PlantType {
     }
 
     @Override
-    public void onPlantFood(Plant plant, GameState gameState) {
+    public void onFeed(Plant plant, GameState gameState) {
 
     }
 }

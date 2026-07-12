@@ -13,17 +13,26 @@ public class Plant {
     private final String name;
     private final PlantType plantType;
     private int currentHP;
+    private static final float PLANT_FOOD_DURATION_TICKS = 10;
     private final List<PlantUpgrade> upgrades;
     private final List<PlantTag> plantTags;
     private PlantStats plantStat;
     private int level = 1;
     private int sunPer;
-    private float tickFromLastSun;
-    private float tickFromLastShoot;
     private float tickFromLastAct;
     private float ticksOfPlantFood;
-    private float armTicker = 0;
-    private float armedTicks; // i should somehow initialize it
+    // "can't act right now" timer.
+    // covers arm delay (Potato Mine)
+    // (Chomper), charge-up (Citron, Bowling Bulb), etc.
+    private float disabledTicksRemaining;
+    // plants with limited life span:
+    private float lifespanRemaining;
+    //for stack plants:
+    private int stackCount = 1;
+    // for wramp-up plants
+    private int growthStage = 0;
+    // removing themselves after acting
+    private boolean markedForRemoval = false;
     private int posX;
     private int posY;
 
@@ -43,33 +52,59 @@ public class Plant {
 
 
     public void tick(GameState gameState) {
-        armTicker++;
-        tickFromLastAct++;
-        if(plantTags.contains(PlantTag.CHARGE) && armTicker < armedTicks){
+        if (disabledTicksRemaining > 0) {
+            disabledTicksRemaining--;
             return;
         }
-        if(isOnPlantFood()){
-            plantType.onPlantFood(this, gameState);
+
+        if (lifespanRemaining > 0) {
+            lifespanRemaining--;
+            if (lifespanRemaining <= 0) {
+                markedForRemoval = true;
+                return;
+            }
+        }
+
+        tickFromLastAct++;
+
+        if (isOnPlantFood()) {
+            // boost acts
+            plantType.onFoodTick(this, gameState);
             ticksOfPlantFood--;
-        }else if(canAct()){
+        } else if (canAct()) {
             plantType.onTick(this, gameState);
         }
     }
 
-    public boolean canAct(){
-        if(tickFromLastAct >= plantStat.actionInterval()){
+    public boolean canAct() {
+        if (tickFromLastAct >= plantStat.actionInterval()) {
             tickFromLastAct = 0;
             return true;
-        } return  false;
+        }
+        return false;
     }
-    public boolean isOnPlantFood(){
-        if(ticksOfPlantFood > 0){
-            return true;
-        } return  false;
+
+    public boolean isOnPlantFood() {
+        return ticksOfPlantFood > 0;
+    }
+
+    public void feed(GameState gameState) {
+        plantType.onFeed(this, gameState);
+        ticksOfPlantFood = PLANT_FOOD_DURATION_TICKS;
+    }
+    public void disableFor(float ticks) {
+        this.disabledTicksRemaining = ticks;
+    }
+
+    public boolean isDisabled() {
+        return disabledTicksRemaining > 0;
     }
     public void activatePlantFood(){}
-    public void levelUp(){}
-    public void takeDamage(int damage){
+    public void levelUp() {
+        if (level >= upgrades.size() + 1) return;
+        plantStat = upgrades.get(level - 1).apply(plantStat);
+        level++;
+    }    public void takeDamage(int damage){
         this.currentHP -= damage;
     }
     public boolean isDead(){
