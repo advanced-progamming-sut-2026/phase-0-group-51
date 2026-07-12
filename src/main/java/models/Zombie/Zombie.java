@@ -36,6 +36,11 @@ public class Zombie {
     private boolean dead   = false;
     private boolean hypnotized = false;
 
+    private float slowTicksRemaining = 0f;
+    private float poisonDPS = 0f;
+    private float poisonTicksRemaining = 0f;
+    private float poisonDamageAccumulator = 0f;
+
     private final List<ZombieBehavior> behaviors = new ArrayList<>();
 
     public Zombie(String alias, float hp, float speed, float eatDPS, float wpc, int weight) {
@@ -87,6 +92,26 @@ public class Zombie {
     public void takeDamage(int rawDamage, GameState gs, Plant plant) {
         takeDamage(rawDamage, ElementType.NORMAL, gs, plant);
     }
+
+    public void takeDamage(int rawDamage, GameState gs) {
+        takeDamage(rawDamage, ElementType.NORMAL, gs, null);
+    }
+
+    public void applySlow(GameState gs, float multiplier, float durationSeconds) {
+        this.speedMultiplier = multiplier;
+        this.slowTicksRemaining = durationSeconds * gs.getTicksPerSecond();
+    }
+
+    public void removeSlowEffect() {
+        this.speedMultiplier = 1.0f;
+        this.slowTicksRemaining = 0f;
+    }
+
+    public void applyPoison(GameState gs, float damagePerSecond, float durationSeconds) {
+        this.poisonDPS = damagePerSecond;
+        this.poisonTicksRemaining = durationSeconds * gs.getTicksPerSecond();
+    }
+
     private float eatDamageAccumulator = 0f;
     public void onTick(GameState gs) {
         if (dead) return;
@@ -94,6 +119,11 @@ public class Zombie {
             behavior.onTick(this, gs);
         }
         if (dead) return;
+
+        tickSlow();
+        tickPoison(gs);
+        if (dead) return;
+
         boolean suppressed = behaviors.stream().anyMatch(b -> b.suppressesDefaultEating(this));
         if (suppressed) {
             eating = false;
@@ -113,6 +143,29 @@ public class Zombie {
             boolean movementSuppressed = behaviors.stream().anyMatch(b -> b.suppressesMovement(this));
             if (!movementSuppressed) {
                 x -= baseSpeed * speedMultiplier;
+            }
+        }
+    }
+
+    private void tickSlow() {
+        if (slowTicksRemaining <= 0) return;
+        slowTicksRemaining--;
+        if (slowTicksRemaining <= 0) {
+            speedMultiplier = 1.0f;
+        }
+    }
+
+    private void tickPoison(GameState gs) {
+        if (poisonTicksRemaining <= 0) return;
+        poisonTicksRemaining--;
+        poisonDamageAccumulator += poisonDPS / gs.getTicksPerSecond();
+        int whole = (int) poisonDamageAccumulator;
+        if (whole > 0) {
+            poisonDamageAccumulator -= whole;
+            hitpoints -= whole;
+            if (hitpoints <= 0) {
+                hitpoints = 0;
+                die(gs);
             }
         }
     }

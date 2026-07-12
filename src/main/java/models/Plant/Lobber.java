@@ -42,24 +42,20 @@ public enum Lobber implements PlantType {
         }
 
         @Override
+        public void onFeed(Plant plant, GameState gameState) {
+
+        }
+
+        @Override
         public void onFoodTick(Plant plant, GameState gameState) {
-            // "پرتاب کلم به چند زامبی تصادفی" — lob at several random zombies
-            // on the board at once, not just the closest one in-lane. The
-            // exact count isn't specified by the source game, 3-4 is typical;
-            // pick a number and centralize it as a constant if several
-            // Lobbers share this "food = N random targets" pattern.
-            // NOTE: getRandomZombies(int) and a targeting Projectile factory
-            // aren't in the files you've shown me — you'll need to add these
-            // (or equivalent) to Board/Projectile. Left as the intended call
-            // shape so the "several random zombies" pattern (which recurs for
-            // Melon-pult, Winter Melon, Pepper-pult, Kernel-pult's food effect,
-            // Caulipower, Electric Blueberry) only needs writing once.
             int targets = 3;
             for (Zombie zombie : gameState.getBoard().getRandomZombies(targets)) {
-                gameState.getBoard().addProjectile(Projectile.targeting(
+                gameState.getBoard().addProjectile(Projectile.targeted(
                         plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
                         plant.getPlantStat().projectileSpeed(),
-                        plant.getPosX(), plant.getPosY(), zombie));
+                        plant.getPosX(), plant.getPosY(),
+                        zombie.getX(), zombie.getLane(),
+                        new ArcMove(), 0));
             }
         }
     },
