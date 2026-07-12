@@ -56,7 +56,6 @@ public class Plant {
             disabledTicksRemaining--;
             return;
         }
-
         if (lifespanRemaining > 0) {
             lifespanRemaining--;
             if (lifespanRemaining <= 0) {
@@ -64,13 +63,12 @@ public class Plant {
                 return;
             }
         }
-
         tickFromLastAct++;
 
         if (isOnPlantFood()) {
-            // boost acts
             plantType.onFoodTick(this, gameState);
             ticksOfPlantFood--;
+            if (markedForRemoval) return;
         } else if (canAct()) {
             plantType.onTick(this, gameState);
         }
@@ -102,9 +100,13 @@ public class Plant {
     public void activatePlantFood(){}
     public void levelUp() {
         if (level >= upgrades.size() + 1) return;
+        int oldMaxHp = plantStat.maxHp();
         plantStat = upgrades.get(level - 1).apply(plantStat);
+        int hpGain = plantStat.maxHp() - oldMaxHp;
+        if (hpGain > 0) currentHP += hpGain;
         level++;
-    }    public void takeDamage(int damage){
+    }
+    public void takeDamage(int damage){
         this.currentHP -= damage;
     }
     public boolean isDead(){
@@ -112,6 +114,15 @@ public class Plant {
     }
     public void addArmor(int hp){
         this.currentHP += hp;
+    }
+    private void die(GameState gameState) {
+        if (markedForRemoval) return;
+        markedForRemoval = true;
+        plantType.onDeath(this, gameState);
+        gameState.getBoard().removePlant(posY, posX);
+    }
+    public int getDamage() {
+        return plantStat.damage();
     }
     public void updateTick(int tick){}
     public void shoot(){}

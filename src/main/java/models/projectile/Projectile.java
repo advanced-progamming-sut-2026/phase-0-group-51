@@ -35,8 +35,6 @@ public class Projectile {
     private final MovingStrategy movingStrategy;
 
     // How many more zombies this can still hit before being destroyed.
-    // 1 = normal (destroyed after first hit). Use a large number for
-    // "unlimited pierce" (Fume-shroom's upgraded strike-through).
     private int pierceRemaining;
 
     // 0 = single-target hit. >0 = splash radius in tiles around impact.
@@ -60,9 +58,7 @@ public class Projectile {
     @Getter
     private boolean markedForRemoval = false;
 
-    // ---- factory methods: pick the one matching the plant's category ----
-
-    /** Straight/contact shot with pierce support. Peashooter family, Cactus, Goo Peashooter, etc. */
+    // Peashooter family, Cactus, Goo Peashooter, etc.
     public static Projectile straight(int damage, ElementType elementType, List<PlantTag> tags,
                                       double speed, double posX, int lane,
                                       MovingStrategy movingStrategy, int pierceCount) {
@@ -70,7 +66,7 @@ public class Projectile {
                 movingStrategy, pierceCount, 0, null, null, null);
     }
 
-    /** Off-axis contact shot. Starfruit, Rotobaga. dirX/dirY should be a (roughly) unit vector. */
+    // Starfruit, Rotobaga. dirX/dirY should be a (roughly) unit vector.
     public static Projectile directional(int damage, ElementType elementType, List<PlantTag> tags,
                                          double speed, double posX, int lane,
                                          double dirX, double dirY, MovingStrategy movingStrategy) {
@@ -78,7 +74,7 @@ public class Projectile {
                 movingStrategy, 1, 0, null, null, null);
     }
 
-    /** Lobbed shot toward a fixed point. Cabbage-pult, Kernel-pult. aoeRadius=0 for single target. */
+    // Lobbed shot toward a fixed point. Cabbage-pult, Kernel-pult. aoeRadius=0 for single target.
     public static Projectile targeted(int damage, ElementType elementType, List<PlantTag> tags,
                                       double speed, double posX, int lane,
                                       double targetX, double targetLane,
@@ -87,7 +83,7 @@ public class Projectile {
                 movingStrategy, 1, aoeRadius, targetX, targetLane, null);
     }
 
-    /** Homing shot. Cat-tail, Magnet-shroom, Electric Blueberry, Caulipower. */
+    // Homing shot. Cat-tail, Magnet-shroom, Electric Blueberry, Caulipower.
     public static Projectile homing(int damage, ElementType elementType, List<PlantTag> tags,
                                     double speed, double posX, int lane,
                                     Zombie initialTarget, MovingStrategy movingStrategy) {
@@ -150,18 +146,9 @@ public class Projectile {
         }
     }
 
-    /**
-     * Applies damage/element effects and, unless this shot still has
-     * pierce left, consumes the projectile. `primaryTarget` is the zombie
-     * directly hit for contact shots; null for a targeted/lobbed shot,
-     * which resolves its own target(s) below.
-     */
     private void impact(GameState state, Zombie primaryTarget) {
         if (aoeRadius > 0) {
-            // TODO: add getZombiesInRadius(double lane, double column, double radius)
-            // to Board — same pattern as getClosestZombieAnywhere/getRandomZombies
-            // added earlier. Needed for Melon-pult, Winter Melon, Pepper-pult,
-            // Cherry Bomb-style splash, etc.
+            // Needed for Melon-pult, Winter Melon, Pepper-pult, Cherry Bomb-style splash, etc.
             for (Zombie zombie : state.getBoard().getZombiesInRadius(posY, posX, aoeRadius)) {
                 hit(zombie, state);
             }

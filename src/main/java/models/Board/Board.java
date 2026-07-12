@@ -221,6 +221,18 @@ public class Board {
         return closest;
     }
 
+    public List<Zombie> getZombiesInRadius(double lane, double column, double radius) {
+        List<Zombie> result = new ArrayList<>();
+        for (Zombie zombie : zombies) {
+            double dLane = zombie.getLane() - lane;
+            double dCol = zombie.getX() - column;
+            if (Math.sqrt(dLane * dLane + dCol * dCol) <= radius) {
+                result.add(zombie);
+            }
+        }
+        return result;
+    }
+
     public List<Zombie> getRandomZombies(int count) {
         List<Zombie> pool = new ArrayList<>(zombies);
         List<Zombie> chosen = new ArrayList<>();

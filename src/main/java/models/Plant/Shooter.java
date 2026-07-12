@@ -7,16 +7,12 @@ import models.games.GameState;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.projectile.move.ArcMove;
+import models.projectile.move.StraightMove;
 
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Every Shooter constant overrides onTick (and onFoodTick if its boosted
- * behaviour isn't "just fire faster"). Shared firing logic lives in the
- * private static helpers below so new constants don't need to re-copy the
- * lane-scan loop.
- */
+
 public enum Shooter implements PlantType {
 
     PEASHOOTER(6,
@@ -91,14 +87,13 @@ public enum Shooter implements PlantType {
 
     // helpers for shooters
 
-    /** Fires `shotCount` sequential straight shots down this plant's lane, if a zombie is in range. */
     static void shootStraight(Plant plant, GameState state, int shotCount, ElementType element) {
         if (!zombieInLane(plant, state)) return;
         for (int i = 0; i < shotCount; i++) {
             state.getBoard().addProjectile(new Projectile(
                     plant.getDamage(), element, plant.getPlantTags(),
                     plant.getPlantStat().projectileSpeed(),
-                    plant.getPosX(), plant.getPosY(), new ArcMove()));
+                    plant.getPosX(), plant.getPosY(), new StraightMove()));
         }
     }
 
