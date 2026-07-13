@@ -94,4 +94,25 @@ public enum SunProducer implements PlantType {
                 data.tags()
         );
     }
+
+    @Override
+    public void onTick(Plant plant, GameState state) {
+        Tile tile = state.getBoard().getTileForPlant(plant);
+        if (tile == null) return;
+        boolean hasUncollectedSun = state.getBoard().getActiveSuns().stream()
+                .anyMatch(s -> s.getX() == tile.getX() && s.getLane() == tile.getLane() && s.isGrounded());
+        if (hasUncollectedSun) {
+            return;
+        }
+        Sun plantSun = new Sun(tile.getX(), tile.getY(), tile.getLane(), SunType.ORDINARY, 25, Integer.MAX_VALUE);
+        plantSun.setGrounded(true);
+        state.getBoard().spawnSun(plantSun);
+        state.logEvent("plant "+plant.getName()+" produced a sun at ("+ plantSun.getX()+", "+ plantSun.getY()+")\n");
+    }
+
+    @Override
+    public void onPlantFood(Plant plant, GameState state) {
+        state.increaseSunBalance(150);
+    }
+}
 }

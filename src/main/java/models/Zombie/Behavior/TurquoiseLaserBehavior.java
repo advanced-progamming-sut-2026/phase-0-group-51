@@ -65,7 +65,7 @@ public class TurquoiseLaserBehavior implements PersistableBehavior {
             stealAccumulator -= whole;
             int actuallyStolen = Math.min(whole, gs.getSun());
             if (actuallyStolen > 0) {
-                gs.stealSun(actuallyStolen);
+                gs.decreaseSunBalance(actuallyStolen);
                 totalStolen += actuallyStolen;
             }
         }
@@ -99,7 +99,7 @@ public class TurquoiseLaserBehavior implements PersistableBehavior {
         if (totalStolen > 0) {
             int dropped = totalStolen / 2;
             if (dropped > 0) {
-                gs.addSun(dropped);
+                gs.increaseSunBalance(dropped);
             }
         }
     }

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Board.Board;
+import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.sun.SkySunSpawner;
@@ -55,7 +56,7 @@ public class Game{
             }
         }
         if (theme.getChapterFeatures().contains(ChapterFeature.TORNADO)) {
-
+            waveManager.setTornadoFinalWave(true);
         }
     }
     public void onTick(){
@@ -70,9 +71,16 @@ public class Game{
             zombie.onTick(gameState);
         }
         gameState.tickMowers();
-        gameState.getBoard().tickSuns();
-        if (gameState.getZombieWaveManager().isLevelCleared() || gameState.checkLoseCondition()) {
+        gameState.getBoard().tickSuns(gameState);
+        if (gameState.getZombieWaveManager().isLevelCleared()) {
             gameState.setFinished(true);
+            gameState.setWon(true);
+            gameState.logEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.\n");
+            saveProgressInDatabase();
+        }
+        else if (gameState.checkLoseCondition()) {
+            gameState.setFinished(true);
+            gameState.setWon(false);
         }
 
     }
@@ -82,6 +90,30 @@ public class Game{
         int actualTicks = Math.round(requestedTicks * speedMultiplier);
         for (int i = 0; i < actualTicks; i++) {
             onTick();
+        }
+    }
+    private void saveProgressInDatabase() {
+        ChapterTheme currentTheme = chapters.get(currentChapterIndex);
+        int nextLevelIndex = currentLevelIndex;
+        int nextChapterIndex = currentChapterIndex;
+
+        if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
+            nextLevelIndex++;
+        } else if (currentChapterIndex + 1 < chapters.size()) {
+            nextChapterIndex++;
+            nextLevelIndex = 0;
+        }
+
+        int newChapter = nextChapterIndex + 1;
+        int newLevel = nextLevelIndex + 1;
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {
+            Data.database.ProgressRepository progressRepo = new Data.database.ProgressRepository();
+            int[] currentProgress = progressRepo.getCurrentProgress(user.getId());
+            if (newChapter > currentProgress[0] || (newChapter == currentProgress[0] && newLevel > currentProgress[1])) {
+                progressRepo.saveProgress(user.getId(), newChapter, newLevel);
+            }
         }
     }
 }

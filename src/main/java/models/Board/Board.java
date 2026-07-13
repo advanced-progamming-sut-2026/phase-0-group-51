@@ -1,6 +1,7 @@
 package models.Board;
 
 import lombok.Getter;
+import lombok.Setter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -9,25 +10,26 @@ import models.projectile.Projectile;
 import models.sun.Sun;
 import models.sun.SunType;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
+@Setter
 @Getter
 public class Board {
     private final int laneCount = 5;
     private final int columnCount = 9;
     private final Tile[][] tiles = new Tile[laneCount][columnCount];
     private final List<Sun> suns = new ArrayList<>();
-    private final List<Zombie> zombies = new ArrayList<>();
     private final List<Projectile> projectiles = new ArrayList<>();
+    private Set<Zombie> zombies;
     private Random random = new Random();
 
     public Board() {
         initializeTiles();
-    }
 
+    }
+    public void setZombie(Set<Zombie> zombies){
+        this.zombies = zombies;
+    }
     private void initializeTiles() {
         for (int i = 0; i < laneCount; i++) {
             for (int j = 0; j < columnCount; j++) {
@@ -99,7 +101,6 @@ public class Board {
         }
         return blocked;
     }
-    public void addSun(Sun sun) { suns.add(sun); }
     public void removeSun(Sun sun) {
         sun.setCollected(true);
         suns.remove(sun);
@@ -117,7 +118,7 @@ public class Board {
         if (sun.getSunType() == SunType.RADIOACTIVE && !sun.isGrounded()) {
             explodeRadioactiveSun(sun,game);
         } else {
-            game.addSun(sun.getAmount());
+            game.increaseSunBalance(sun.getAmount());
         }
         sun.setCollected(true);
         suns.remove(sun);
@@ -128,11 +129,11 @@ public class Board {
         int sunLane = sun.getLane();
         int sunColumn = (int) (sun.getX() / Tile.TILEWIDTH);
 
-        for (Zombie zombie : zombies) {
+        for (Zombie zombie : gs.getZombiesInTheGame()) {
             int zombieLane = zombie.getLane();
             int zombieColumn = (int) (zombie.getX() / Tile.TILEWIDTH);
-            if (Math.abs(zombieLane-sunLane)<= 2 && Math.abs(zombieColumn - sunColumn)<= 2) {
-                zombie.takeDamage(150,gs,null);
+            if (Math.abs(zombieLane - sunLane) <= 2 && Math.abs(zombieColumn - sunColumn) <= 2) {
+                zombie.takeDamage(150, gs, null);
             }
         }
 
@@ -155,14 +156,21 @@ public class Board {
             }
         }
     }
-    public void tickSuns(){
+    public void tickSuns(GameState gs){
         Iterator<Sun> iterator = suns.iterator();
         while(iterator.hasNext()){
             Sun sun = iterator.next();
-            sun.tick();
-            if(sun.isExpired())
+            models.Result result = sun.tick();
+            if (result.isSuccess() && result.getMessage() != null && !result.getMessage().isEmpty()) {
+                gs.logEvent(result.getMessage());
+            }
+            if (sun.isExpired() || sun.isCollected()) {
                 iterator.remove();
+            }
         }
+    }
+    public void spawnSun(Sun sun) {
+        suns.add(sun);
     }
     public Tile placeGraveOnRandomTile() {
         List<Tile> eligible = new ArrayList<>();
@@ -183,8 +191,8 @@ public class Board {
     }
     public Zombie getFirstZombieInLane(int lane) {
         Zombie first = null;
-        for (Zombie zombie : zombies) {
-            if (zombie.getLane() == lane) {
+        for (Zombie zombie :zombies) {
+            if (zombie.getLane() == lane && !zombie.isDead()) {
                 if (first == null || zombie.getX() < first.getX()) {
                     first = zombie;
                 }
@@ -195,7 +203,7 @@ public class Board {
     public List<Zombie> getZombiesInLane(int lane) {
         List<Zombie> result = new ArrayList<>();
         for (Zombie zombie : zombies) {
-            if (zombie.getLane() == lane) {
+            if (zombie.getLane() == lane && !zombie.isDead()) {
                 result.add(zombie);
             }
         }return result;
@@ -252,7 +260,7 @@ public class Board {
         for (int lane = 0; lane < laneCount; lane++) {
             for (int col = 0; col < columnCount; col++) {
                 Tile tile = tiles[lane][col];
-                if (!tile.hasPlant() && !tile.isGrave() && tile.isOccupiable()) {
+                if (!tile.hasPlant() && !tile.hasGrave() && tile.isOccupiable()) {
                     eligible.add(tile);
                 }
             }
