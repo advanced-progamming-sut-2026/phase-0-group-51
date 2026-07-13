@@ -2,34 +2,58 @@ package models.games;
 
 public enum LevelType {
     NORMAL{
-
+        @Override
+        public void initialize(GameState state) { }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     },
     CONVEYOR_BELT{
-
+        @Override
+        public void initialize(GameState state) {
+            // توقف  خورشید و تنظیم اولیه نوار گیاه
+        }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     },
-    LOCKED_PLANTS{
 
-    },
     SAVE_OUR_SEEDS{
-
+        @Override
+        public void initialize(GameState state) { }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     },
-    TIMED_WAR{
 
-    },
     NIGHT_OPS{
-
+        @Override
+        public void initialize(GameState state) { }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     },
-    DEAD_LINE{
 
-    },
-    LOVE_YOUR_PLANTS{
-
-    },
     PLANT_WHAT_YOU_GET{
-
+        @Override
+        // دادن خورشید اولیه  و توقف  خورشید و کاشت هرچی گیاه که میخوایم
+        public void initialize(GameState state) { }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     },
     BOSS{
-
+        @Override
+        public void initialize(GameState state) { }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
     };
 
     public abstract void initialize(GameState state);

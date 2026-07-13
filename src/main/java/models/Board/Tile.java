@@ -3,6 +3,8 @@ package models.Board;
 import lombok.Getter;
 import lombok.Setter;
 import models.Plant.Plant;
+import models.games.ancientEgypt.Grave;
+
 @Getter
 @Setter
 public class Tile {
@@ -13,7 +15,7 @@ public class Tile {
     private Plant plant;
     private boolean iceBlocked = false;
     private boolean frosted = false;
-    private boolean grave = false;
+    private Grave grave;
 
     public static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
     public static final float TILEHEIGHT = 70f;
@@ -31,15 +33,23 @@ public class Tile {
         }
         return true;
     }
+
+    public boolean hasGrave() {
+        return this.grave != null;
+    }
+
     public void removePlant() {
         this.plant = null;
-    }
-    public boolean isOccupiable() {
-        return !iceBlocked && !grave;
     }
     public static int toTiles(double worldUnits) {
         return (int) Math.ceil(worldUnits / TILEWIDTH);
     }
+    public boolean isOccupiable() {
+        return !iceBlocked && !hasGrave() && !hasPlant();
+    }
 
+    public void removeGrave() {
+        this.grave = null;
+    }
 
 }

@@ -10,6 +10,7 @@ public enum Menu {
     PROFILE_MENU(new ProfileMenu()),
     MAIN_MENU(new MainMenu()),
     GAME_MENU(new GameMenu()),
+    GAME_VIEW(new GameView()),
     SETTING_MENU(new SettingMenu()),
     NETWORK_MENU(new NetworkMenu()),
     NEWS_MENU(new NewsMenu()),

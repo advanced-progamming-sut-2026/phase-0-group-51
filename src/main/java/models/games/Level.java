@@ -7,6 +7,7 @@ import java.util.List;
 
 public record Level(
         int levelNumber,
-       LevelType type,
-        List<Wave> waves
+        LevelType type,
+        int totalWaves,
+        float baseDifficulty
 ) {}

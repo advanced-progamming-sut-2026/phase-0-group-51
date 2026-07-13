@@ -1,14 +1,20 @@
 package controllers;
 
 import models.App;
-import models.Plant.PlantUpgrade;
 import models.Result;
-import models.enums.commands.GameCommands;
+import models.games.Game;
 import models.games.GameState;
 import models.sun.Sun;
 
 public class GamingController {
-    public void advanceTime(int tick){}
+    public Result advanceTime(int tick){
+            Game game = App.getInstance().getCurrentGame();
+            if (game == null || game.getGameState() == null) {
+                return new Result(false, "No active game found.\n", null);
+            }
+            game.forward(tick);
+            return new Result(true, "Game Advanced By " + tick + " ticks.\n", null);
+    }
 //    public String winTheGame(){}
 //    public String handleWave(){}
 //    public String handleMower(){}

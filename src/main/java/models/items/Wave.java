@@ -14,7 +14,6 @@ public class Wave {
     private final boolean finalWave;
     private final List<Zombie> zombies = new ArrayList<>();
     private int initialTotalHealth = 0;
-
     public Wave(int waveNumber, float difficulty, boolean finalWave) {
         this.waveNumber = waveNumber;
         this.difficulty = difficulty;

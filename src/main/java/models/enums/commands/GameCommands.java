@@ -2,7 +2,7 @@ package models.enums.commands;
 
 public enum GameCommands implements Commands {
     CHEAT_SPAWN_ZOMBIE("^\\s*cheat\\s+spawn-zombie\\s+-t\\s+(?<zombie-type>.+?)\\s+-l" +
-            "\\s+<(?<x>\\d+),\\s*(?<y>\\d+)>\\s*$"),
+            "^\\s+<(?<x>\\d+),\\s*(?<y>\\d+)>\\s*$"),
     ZOMBIES_INFO_REGEX("^\\s*zombies\\s+info\\s*$"),
     SHOW_TILE_STATUS_REGEX("^\\s*show\\s+tile\\s+status\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)$"),
     SHOW_PLANTS_STATUS_REGEX("^\\s*show\\s+plants\\s+status\\s*$"),

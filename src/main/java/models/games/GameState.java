@@ -1,14 +1,16 @@
 package models.games;
 
 import lombok.Getter;
+import lombok.Setter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
+import models.items.Mower;
 
 import java.util.HashSet;
 import java.util.Set;
-
+@Setter
 @Getter
 public class GameState {
     private final int ticksPerSecond = 10;
@@ -19,13 +21,36 @@ public class GameState {
     private final ChapterTheme chapterTheme;
     private Level currentLevel;
     private int tickCounter = 0;
-
-
+    private ZombieWaveManager zombieWaveManager;
+    private final Mower[] lawnMowers;
     public GameState(Board board, ChapterTheme chapterTheme) {
         this.board = board;
         this.chapterTheme = chapterTheme;
+        this.lawnMowers = new Mower[board.getLaneCount()];
+        for (int i = 0; i < lawnMowers.length; i++) {
+            lawnMowers[i] = new Mower(i);
+        }
     }
-
+    public boolean checkLoseCondition() {
+        for (Zombie zombie : zombiesInTheGame) {
+            if (!zombie.isDead() && zombie.getX() < 0) {
+                int lane = zombie.getLane();
+                Mower mower = lawnMowers[lane];
+                if (mower.isActivated() || mower.isDestroyed()) {
+                    System.out.println("The zombie ate your brain; LOSER!!!\n");
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    private void killAllZombiesInLane(int lane) {
+        for (Zombie z : zombiesInTheGame) {
+            if (z.getLane() == lane) {
+                z.killInstantly(this);
+            }
+        }
+    }
     public void addTick(int tick){
         this.tickCounter += tick;
     }
@@ -36,7 +61,7 @@ public class GameState {
     }
     public void plantPlant(Plant plant, Tile tile){}
     public void pluckPlant(Plant plant, Tile tile){}
-    public void applyChapterFeature(ChapterFeature feature){}
+
 
     public void addZombie(Zombie zombie) {
         zombiesInTheGame.add(zombie);
@@ -44,7 +69,6 @@ public class GameState {
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);
     }
-    for zombie's actions
     public void stealSun(int amount){
         this.sun = Math.max(0, this.sun - amount);
     }
@@ -61,6 +85,11 @@ public class GameState {
             }
         }
         return nearest;
+    }
+    public void tickMowers() {
+        for (Mower mower : lawnMowers) {
+            mower.update(this.board);
+        }
     }
     public void swapRandomZombieLanes(int swapCount) {
         for (Zombie z : getZombiesInTheGame()) {
