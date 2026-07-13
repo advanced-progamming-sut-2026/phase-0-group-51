@@ -17,13 +17,10 @@ import java.util.Map;
 @Getter
 @Setter
 public class Zombie {
-    private final String alias;
-  private final int    maxHitpoints; //from json
-    private int          hitpoints;   //current zombie's health
-    private final float  baseSpeed;
-    private final float  baseEatDPS;  //Damage per second  (while eating plant)
-    private final float    wavePointCost;
-    private final int    weight;
+    public static final String EFFECT_CHILLED = "chilled";
+    public static final String EFFECT_FROZEN = "frozen";
+    public static final String EFFECT_BUTTERED = "buttered";
+    private static final float CHILL_SPEED_FACTOR = 0.5f;
 
     private final String alias;
     private final int maxHitpoints;
@@ -35,7 +32,7 @@ public class Zombie {
 
     private int lane;
     private float x;
-    private int direction = 1; // 1 = normal, -1 = reversed
+    private int direction = 1; // 1 = walking normal, -1 = reversed
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
@@ -46,6 +43,11 @@ public class Zombie {
 
     // effect name -> remaining ticks
     private final Map<String, Integer> effects = new LinkedHashMap<>();
+
+    private float poisonDPS = 0f;
+    private float poisonTicksRemaining = 0f;
+    private float poisonDamageAccumulator = 0f;
+
     private final List<ZombieBehavior> behaviors = new ArrayList<>();
     private float eatDamageAccumulator = 0f;
 
@@ -80,6 +82,9 @@ public class Zombie {
     public void applyFreeze(int ticks) {
         effects.merge(EFFECT_FROZEN, ticks, Math::max);
     }
+    public void applyButter(int ticks) {
+        effects.merge(EFFECT_BUTTERED, ticks, Math::max);
+    }
 
     public void clearColdEffects() {
         effects.remove(EFFECT_CHILLED);
@@ -92,6 +97,9 @@ public class Zombie {
 
     public boolean isChilled() {
         return effects.getOrDefault(EFFECT_CHILLED, 0) > 0;
+    }
+    public boolean isButtered() {
+        return effects.containsKey(EFFECT_BUTTERED);
     }
 
     public Map<String, Integer> getEffects() {
@@ -149,12 +157,20 @@ public class Zombie {
         die(gs);
     }
 
+
+    public void applyPoison(GameState gs, float damagePerSecond, float durationSeconds) {
+        this.poisonDPS = damagePerSecond;
+        this.poisonTicksRemaining = durationSeconds * gs.getTicksPerSecond();
+    }
+
+
     public void onTick(GameState gs) {
         if (dead) {
             return;
         }
         tickEffects();
-        if (isFrozen()) {
+        tickPoison(gs);
+        if (isFrozen() || isChilled()) {
             return;
         }
         for (ZombieBehavior behavior : new ArrayList<>(behaviors)) {
@@ -189,6 +205,24 @@ public class Zombie {
         effects.values().removeIf(ticks -> ticks <= 0);
     }
 
+
+    private void tickPoison(GameState gs) {
+        if (poisonTicksRemaining <= 0) return;
+        poisonTicksRemaining--;
+        poisonDamageAccumulator += poisonDPS / gs.getTicksPerSecond();
+        int whole = (int) poisonDamageAccumulator;
+        if (whole > 0) {
+            poisonDamageAccumulator -= whole;
+            hitpoints -= whole;
+            if (hitpoints <= 0) {
+                hitpoints = 0;
+                die(gs);
+            }
+        }
+    }
+
+
+
     private void die(GameState gs) {
         if (dead) {
             return;
@@ -201,13 +235,15 @@ public class Zombie {
     }
 
     public Zombie copy() {
-        float increaseMultiplier = App.getInstance().getLoggedInUser().getDifficultyLevel() / 3.0f;
-        float decreaseMultiplier = 3.0f / App.getInstance().getLoggedInUser().getDifficultyLevel();
-       float newMaxHitpoints = this.maxHitpoints * increaseMultiplier;
-        float newBaseEatDPS = this.baseEatDPS * increaseMultiplier;
-        float newBaseSpeed = this.baseSpeed * increaseMultiplier;
-        float newWavePointCost = this.wavePointCost * decreaseMultiplier;
-      Zombie z = new Zombie(alias, newMaxHitpoints, newBaseSpeed, newBaseEatDPS, newWavePointCost, weight);
+        int difficultyLevel = App.getInstance().getLoggedInUser().getDifficultyLevel();
+        float increaseMultiplier = difficultyLevel / 3.0f;
+        float decreaseMultiplier = 3.0f / difficultyLevel;
+        Zombie z = new Zombie(alias,
+            maxHitpoints * increaseMultiplier,
+            baseSpeed,
+            baseEatDps * increaseMultiplier,
+            wavePointCost * decreaseMultiplier,
+            weight);
         for (ZombieBehavior behavior : behaviors) {
             z.addBehavior(behavior.copy());
         }
@@ -215,6 +251,6 @@ public class Zombie {
     }
 
     public void reverseDirection() {
-        direction = -1;
+        direction = direction * -1;
     }
 }
