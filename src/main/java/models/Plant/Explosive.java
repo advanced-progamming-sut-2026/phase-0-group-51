@@ -95,7 +95,7 @@ public enum Explosive implements PlantType {
     private static void explodeIfZombiePresent(Plant plant, GameState gameState) {
         Zombie zombie = gameState.getBoard().getZombieInPosition(plant.getPosY(), plant.getPosX());
         if (zombie != null) {
-            zombie.takeDamage(plant.getDamage(), gameState);
+            zombie.takeDamage(plant.getDamage(), gameState,plant);
             plant.setMarkedForRemoval(true);
             gameState.getBoard().removePlant(plant.getPosY(), plant.getPosX());
         }

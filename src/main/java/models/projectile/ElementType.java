@@ -15,7 +15,7 @@ public enum ElementType {
     FIRE {
         @Override
         public void onHit(Zombie target, GameState state) {
-            target.removeSlowEffect();
+            target.clearColdEffects();
         }
     },
 
@@ -23,7 +23,7 @@ public enum ElementType {
         @Override
         public void onHit(Zombie target, GameState state) {
             // Slows the zombie for a while (Snow Pea, Winter Melon).
-            target.applySlow(state, 0.5f, 6f); // 50% speed for 6s
+            target.applyChill(60); // 50% speed for 6s
         }
     },
 
@@ -37,7 +37,7 @@ public enum ElementType {
     BUTTER {
         @Override
         public void onHit(Zombie target, GameState state) {
-            target.applySlow(state, 0f, 4f); // fully stopped for 4s
+            target.applyButter(40); // fully stopped for 4s
         }
     };
 

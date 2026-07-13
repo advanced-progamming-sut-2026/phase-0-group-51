@@ -19,6 +19,7 @@ import java.util.Map;
 public class Zombie {
     public static final String EFFECT_CHILLED = "chilled";
     public static final String EFFECT_FROZEN = "frozen";
+    public static final String EFFECT_BUTTERED = "buttered";
     private static final float CHILL_SPEED_FACTOR = 0.5f;
 
     private final String alias;
@@ -42,7 +43,7 @@ public class Zombie {
 
     // effect name -> remaining ticks
     private final Map<String, Integer> effects = new LinkedHashMap<>();
-    private float slowTicksRemaining = 0f;
+
     private float poisonDPS = 0f;
     private float poisonTicksRemaining = 0f;
     private float poisonDamageAccumulator = 0f;
@@ -81,6 +82,9 @@ public class Zombie {
     public void applyFreeze(int ticks) {
         effects.merge(EFFECT_FROZEN, ticks, Math::max);
     }
+    public void applyButter(int ticks) {
+        effects.merge(EFFECT_BUTTERED, ticks, Math::max);
+    }
 
     public void clearColdEffects() {
         effects.remove(EFFECT_CHILLED);
@@ -93,6 +97,9 @@ public class Zombie {
 
     public boolean isChilled() {
         return effects.getOrDefault(EFFECT_CHILLED, 0) > 0;
+    }
+    public boolean isButtered() {
+        return effects.containsKey(EFFECT_BUTTERED);
     }
 
     public Map<String, Integer> getEffects() {
@@ -149,33 +156,21 @@ public class Zombie {
         hitpoints = 0;
         die(gs);
     }
-    public void takeDamage(int rawDamage, GameState gs) {
-        takeDamage(rawDamage, ElementType.NORMAL, gs, null);
-    }
 
-    public void applySlow(GameState gs, float multiplier, float durationSeconds) {
-        this.speedMultiplier = multiplier;
-        this.slowTicksRemaining = durationSeconds * gs.getTicksPerSecond();
-    }
-
-    public void removeSlowEffect() {
-        this.speedMultiplier = 1.0f;
-        this.slowTicksRemaining = 0f;
-    }
 
     public void applyPoison(GameState gs, float damagePerSecond, float durationSeconds) {
         this.poisonDPS = damagePerSecond;
         this.poisonTicksRemaining = durationSeconds * gs.getTicksPerSecond();
     }
 
-    private float eatDamageAccumulator = 0f;
 
     public void onTick(GameState gs) {
         if (dead) {
             return;
         }
         tickEffects();
-        if (isFrozen()) {
+        tickPoison(gs);
+        if (isFrozen() || isChilled()) {
             return;
         }
         for (ZombieBehavior behavior : new ArrayList<>(behaviors)) {
@@ -209,13 +204,7 @@ public class Zombie {
         effects.replaceAll((name, ticks) -> ticks - 1);
         effects.values().removeIf(ticks -> ticks <= 0);
     }
-    private void tickSlow() {
-        if (slowTicksRemaining <= 0) return;
-        slowTicksRemaining--;
-        if (slowTicksRemaining <= 0) {
-            speedMultiplier = 1.0f;
-        }
-    }
+
 
     private void tickPoison(GameState gs) {
         if (poisonTicksRemaining <= 0) return;
