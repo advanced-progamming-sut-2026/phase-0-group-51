@@ -8,7 +8,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 public class ZombieBehaviorFactory {
+    private static final int TICKS_PER_SECOND = 10;
+
     public static ZombieBehavior fromResultSet(ResultSet rs) throws SQLException {
         String type = rs.getString("behavior_type");
 
@@ -22,6 +25,13 @@ public class ZombieBehaviorFactory {
             case "AURA"            -> buildAura(rs);
             case "DEATH_EFFECT"    -> buildDeathEffect(rs);
             case "TRANSFORM"       -> buildTransform(rs);
+            case "PUSH_OBJECT"     -> buildPushObject(rs);
+            case "CONTACT_KILL"    -> buildContactKill(rs);
+            case "TORCH"           -> new TorchBehavior(rs.getInt("torch_reach"));
+            case "DYNAMITE"        -> new DynamiteBehavior(rs.getInt("explosion_delay"));
+            case "SUN_STEAL"       -> new SunStealBehavior(rs.getInt("max_amount"), rs.getInt("steal_interval"));
+            case "TURQUOISE_LASER" -> new TurquoiseLaserBehavior(
+                rs.getInt("detect_range"), rs.getInt("steal_duration"), rs.getInt("steal_per_second"));
             default                -> null;
         };
     }
@@ -64,10 +74,13 @@ public class ZombieBehaviorFactory {
     }
 
     private static ZombieBehavior buildMovement(ResultSet rs) throws SQLException {
-        return new MovementBehavior(
-            MovementBehavior.MovementType.valueOf(rs.getString("movement_type")),
-            rs.getFloat("movement_param")
-        );
+        MovementBehavior.MovementType type =
+            MovementBehavior.MovementType.valueOf(rs.getString("movement_type"));
+        String targets = rs.getString("movement_targets");
+        if (targets != null && !targets.isBlank()) {
+            return new MovementBehavior(type, List.of(targets.split(",")));
+        }
+        return new MovementBehavior(type, rs.getFloat("movement_param"));
     }
 
     private static ZombieBehavior buildWorldEffect(ResultSet rs) throws SQLException {
@@ -102,6 +115,25 @@ public class ZombieBehaviorFactory {
         );
     }
 
+    private static ZombieBehavior buildPushObject(ResultSet rs) throws SQLException {
+        return new PushObjectBehavior(
+            PushObjectBehavior.PushType.valueOf(rs.getString("push_type")),
+            rs.getInt("object_hp"),
+            rs.getInt("object_count"),
+            rs.getString("spawn_alias"),
+            rs.getInt("spawn_count")
+        );
+    }
+
+    private static ZombieBehavior buildContactKill(ResultSet rs) throws SQLException {
+        return new InstantKillBehavior(
+            rs.getFloat("speed_scale"),
+            rs.getInt("kill_hypnotized") == 1,
+            rs.getFloat("running_speed_scale"),
+            rs.getInt("repeating") == 1
+        );
+    }
+
     public static List<ZombieBehavior> fromJson(
         String alias,
         String objclass,
@@ -119,7 +151,12 @@ public class ZombieBehaviorFactory {
                 } else {
                     resolveArmorProps(d, armorRegistry, behaviors);
                 }
+                if (alias.equals("ZombieDarkImpDragon")) {
+                    behaviors.add(new DamageReactionBehavior(
+                        DamageReactionBehavior.DamageReactionType.FIRE_IMMUNE));
+                }
             }
+
             case "ZombieNewspaperProps" -> {
                 resolveArmorProps(d, armorRegistry, behaviors);
                 behaviors.add(new DamageReactionBehavior(
@@ -137,22 +174,21 @@ public class ZombieBehaviorFactory {
                     throwPercent = (float) layers.get(0).path("HealthPercentThrowImp").asDouble(0.5);
 
                 behaviors.add(new ImpThrowBehavior(
-                    ImpThrowBehavior.SummonType.IMP_THROW, "ZombieImp", 1, (int)(hp * throwPercent)));
-                behaviors.add(new DeathEffectBehavior(
-                    DeathEffectBehavior.DeathEffectType.SPAWN_IMP, "ZombieImp", 1));
+                    ImpThrowBehavior.SummonType.IMP_THROW, "ZombieImp", 1, (int) (hp * throwPercent)));
+                behaviors.add(new InstantKillBehavior(1.0f, true, 0f, true));
             }
 
             case "ZombieRaProps" -> {
                 int maxAmount = d.path("MaxClaimedSunCurrency").asInt(250);
-                behaviors.add(new SunStealBehavior(maxAmount,20));
+                behaviors.add(new SunStealBehavior(maxAmount, 20));
             }
 
-            case "ZombieExplorerProps" -> {
-                behaviors.add(new TorchBehavior());
-            }
+            case "ZombieExplorerProps" ->
+                behaviors.add(new TorchBehavior(
+                    Math.max(0, d.path("MaxTorchReach").asInt(1) - 1)));
 
             case "ZombieTombRaiserProps" -> {
-                int interval = (int)(d.path("TimeBetweenRaisings").asDouble(6) * 10);
+                int interval = (int) (d.path("TimeBetweenRaisings").asDouble(6) * TICKS_PER_SECOND);
                 behaviors.add(new WorldEffectBehavior(
                     WorldEffectBehavior.WorldEffectType.SPAWN_TOMB,
                     interval, d.path("NumberOfTombsToSpawn").asInt(2)));
@@ -173,17 +209,16 @@ public class ZombieBehaviorFactory {
                     d.path("SnowballsPerBarrage").asInt(3)
                 ));
 
-            case "ZombieIceAgeTroglobiteProps" -> {
-                behaviors.add(new MovementBehavior(MovementBehavior.MovementType.PUSH_ICE_BLOCK));
-                behaviors.add(new WorldEffectBehavior(
-                    WorldEffectBehavior.WorldEffectType.FREEZE_COLUMN,
-                    30, d.path("NumberOfIceblocksToSpawnWith").asInt(3)));
-            }
+            case "ZombieIceAgeTroglobiteProps" ->
+                behaviors.add(new PushObjectBehavior(
+                    PushObjectBehavior.PushType.ICE_BLOCK,
+                    600,
+                    d.path("NumberOfIceblocksToSpawnWith").asInt(3)));
 
             case "ZombieBeachFishermanProps" ->
                 behaviors.add(new RangedAttackBehavior(
                     RangedAttackBehavior.RangedAttackType.HOOK_PULL,
-                    (int)(d.path("DelayBetweenCasting").asDouble(2.5) * 60),
+                    (int) (d.path("DelayBetweenCasting").asDouble(2.5) * TICKS_PER_SECOND),
                     d.path("CastingAreaMaxRange").asInt(8)
                 ));
 
@@ -199,48 +234,69 @@ public class ZombieBehaviorFactory {
 
             case "ZombieDarkJugglerProps" -> {
                 behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.JUGGLE_BALL, 35, 5));
+                    RangedAttackBehavior.RangedAttackType.JUGGLE_BALL, 35, 5, 20));
                 behaviors.add(new DamageReactionBehavior(
                     DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE, 0.75f));
             }
 
-            case "ZombieDarkWizardProps" -> {
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.SPELL_SHEEP, 60, 4));
+            case "ZombieDarkWizardProps" ->
                 behaviors.add(new TransformBehavior(
                     TransformBehavior.TransformType.SHEEP_TRANSFORM, 60, 4));
-            }
 
             case "ZombieDarkKingProps" -> {
-                int interval = (int)(d.path("DelayBetweenKnightings").asDouble(2.5) * 60);
+                int interval = (int) (d.path("DelayBetweenKnightings").asDouble(2.5) * TICKS_PER_SECOND);
                 int area     = d.path("KnightingAreaX").asInt(4);
-                behaviors.add(new AuraBehavior(AuraBehavior.AuraType.BUFF_SPEED_NEARBY,  area, interval));
-                behaviors.add(new AuraBehavior(AuraBehavior.AuraType.BUFF_DAMAGE_NEARBY, area, interval));
+                List<ArmorDefinition> knightArmors = new ArrayList<>();
+                ArmorDefinition crown    = armorRegistry.get("CrownDefault@ArmorTypes");
+                ArmorDefinition shoulder = armorRegistry.get("ShoulderArmorDefault@ArmorTypes");
+                if (crown != null)    knightArmors.add(crown);
+                if (shoulder != null) knightArmors.add(shoulder);
+                behaviors.add(new AuraBehavior(
+                    AuraBehavior.AuraType.KNIGHT_NEARBY, area, interval, knightArmors));
             }
 
             case "ZombieCrystalSkullProps" ->
                 behaviors.add(new RangedAttackBehavior(
                     RangedAttackBehavior.RangedAttackType.LASER_BEAM,
-                    (int)(d.path("LaserCooldownTime").asDouble(5) * 60),
-                    999,
+                    (int) (d.path("LaserCooldownTime").asDouble(5) * TICKS_PER_SECOND),
+                    d.path("LaserBeamLength").asInt(999),
                     d.path("LaserBeamDamage").asInt(4001)
                 ));
 
-            case "ZombieProspectorProps" ->
+            case "ZombieProspectorProps" -> {
                 behaviors.add(new MovementBehavior(MovementBehavior.MovementType.PROSPECTOR_JUMP));
+                behaviors.add(new DynamiteBehavior(
+                    (int) (d.path("LaunchCountdown").asDouble(10) * TICKS_PER_SECOND)));
+            }
 
-            case "ZombiePianoProps" ->
+            case "ZombiePianoProps" -> {
                 behaviors.add(new MovementBehavior(
                     MovementBehavior.MovementType.PIANO_CRUSH,
                     (float) d.path("FastMoveSpeed").asDouble(0.4)));
+                behaviors.add(new WorldEffectBehavior(
+                    WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 30, 1));
+            }
 
+            case "ZombieModernAllStarProps" ->
+                behaviors.add(new InstantKillBehavior(
+                    0.3f, true,
+                    (float) d.path("RunningSpeedScale").asDouble(2.5)));
 
             case "ZombieLostCityJaneProps" ->
+                // Parasol
                 behaviors.add(new DamageReactionBehavior(
-                    DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE, 1.0f));
+                    DamageReactionBehavior.DamageReactionType.DEFLECT_LOBBER));
 
             case "ZombieArcadeProps" ->
-                behaviors.add(new MovementBehavior(MovementBehavior.MovementType.PUSH_PLANT_BACK));
+                behaviors.add(new PushObjectBehavior(
+                    PushObjectBehavior.PushType.ARCADE_MACHINE, 1100, 1));
+
+            case "ZombieBarrelRollerProps" ->
+                behaviors.add(new PushObjectBehavior(
+                    PushObjectBehavior.PushType.BARREL, 1100, 1, "ZombieImp", 2));
+
+            case "ZombieTurquoiseProps" ->
+                behaviors.add(new TurquoiseLaserBehavior(4, 5, 25));
 
             default ->
                 System.out.println("[ZombieBehaviorFactory] Unknown objclass: " + objclass);
@@ -285,6 +341,7 @@ public class ZombieBehaviorFactory {
         }
         return result;
     }
+
     private static void addArmorByAlias(
         String armorKey,
         Map<String, ArmorDefinition> armorRegistry,
@@ -295,6 +352,4 @@ public class ZombieBehaviorFactory {
             behaviors.add(new ArmorBehavior(def));
         }
     }
-
-
 }

@@ -1,9 +1,10 @@
 package models.Zombie.Behavior;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.Map;
 
-public interface PersistableBehavior extends ZombieBehavior{
+
+public interface PersistableBehavior extends ZombieBehavior {
     String behaviorType();
-    void applyToStatement(PreparedStatement ps) throws SQLException;
+
+    void applyToStatement(Map<String, Object> cols);
 }

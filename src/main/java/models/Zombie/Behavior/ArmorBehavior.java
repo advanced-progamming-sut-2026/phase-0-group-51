@@ -2,13 +2,10 @@ package models.Zombie.Behavior;
 
 import lombok.Getter;
 import models.Plant.Plant;
-import models.Plant.PlantType;
 import models.Zombie.ArmorDefinition;
 import models.Zombie.Zombie;
 import models.projectile.ElementType;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.Map;
 
 @Getter
 public class ArmorBehavior implements PersistableBehavior {
@@ -16,29 +13,30 @@ public class ArmorBehavior implements PersistableBehavior {
     private int currentHP;
     private boolean destroyed = false;
     private boolean removed = false;
-    public boolean isGone() {
-        return destroyed || removed;
-    }
 
     public ArmorBehavior(ArmorDefinition def) {
         this.def = def;
         this.currentHP = def.getBaseHealth();
     }
+
+    public boolean isGone() {
+        return destroyed || removed;
+    }
+
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         if (element == ElementType.POISON) {
             return rawDamage;
         }
-
         if (isGone()) {
             return rawDamage;
         }
         int leftOver = 0;
         if (def.isPassDamage()) {
-            int absorbed = rawDamage/2;
+            int absorbed = rawDamage / 2;
             leftOver = rawDamage - absorbed;
             currentHP -= absorbed;
-        }else {
+        } else {
             currentHP -= rawDamage;
         }
         if (currentHP <= 0) {
@@ -49,17 +47,26 @@ public class ArmorBehavior implements PersistableBehavior {
         }
         return leftOver;
     }
+
     public boolean tryMagnetPull() {
         if (!def.isMetallic() || isGone()) return false;
         removed = true;
         return true;
     }
 
-    @Override public String behaviorType() { return "ARMOR"; }
+    public ArmorDefinition getDefinition() {
+        return def;
+    }
+
 
     @Override
-    public void applyToStatement(PreparedStatement ps) throws SQLException {
+    public String behaviorType() {
+        return "ARMOR";
+    }
 
+    @Override
+    public void applyToStatement(Map<String, Object> cols) {
+        cols.put("armor_alias", getDefinition().getAlias());
     }
 
     @Override
