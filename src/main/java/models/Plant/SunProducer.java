@@ -28,6 +28,9 @@ public enum SunProducer implements PlantType {
             new PlantUpgrade() {
                 @Override
                 public PlantStats apply(PlantStats s) {
+                    // Double Sun Chance: just flips a flag on PlantStats,
+                    // checked in onTick below. No new class, no change to
+                    // any other plant.
                     return s.withDoubleSunChance(true);
                 }
             }) {
@@ -91,6 +94,4 @@ public enum SunProducer implements PlantType {
                 data.tags()
         );
     }
-
 }
-
