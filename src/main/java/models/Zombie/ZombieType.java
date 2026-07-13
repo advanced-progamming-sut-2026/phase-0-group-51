@@ -40,13 +40,18 @@ public enum ZombieType {
     PROSPECTOR("ZombieProspector"),
     PIANO("ZombiePiano"),
     NEWSPAPER("ZombieNewspaper"),
-    ARCADE("ZombieArcade");
+    ARCADE("ZombieArcade"),
+
+    // Extra zombies from the project document
+    BARREL_ROLLER("ZombieBarrelRoller"),
+    TURQUOISE("ZombieTurquoise");
 
     private final String alias;
 
     ZombieType(String alias) {
         this.alias = alias;
     }
+
     public String getAlias() {
         return alias;
     }

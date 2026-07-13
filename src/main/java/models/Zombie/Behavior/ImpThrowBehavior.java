@@ -4,52 +4,68 @@ import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import models.Zombie.Zombie;
 import models.games.GameState;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.function.BiConsumer;
+import java.util.Map;
 
 
 @Getter
 public class ImpThrowBehavior implements PersistableBehavior {
+    private static final int TARGET_COLUMN = 2;
 
+    private final SummonType type;
+    private final String summonAlias;
+    private final int summonCount;
     private final int hpThreshold;
-    private final int impCount;
-    private final int targetColumn;
     private boolean fired = false;
 
-
-    public void spawnImps(int lane, int column, int count, GameState gs) {
-        for (int i = 0; i < count; i++) {
-            Zombie imp = ZombieRegistry.getTemplate("ZombieImp");
-            imp.setLane(lane);
-            imp.setX(column);
-            gs.addZombie(imp);
-        }
-
-    }
-
-    public ImpThrowBehavior(int hpThreshold, int impCount, int targetColumn) {
+    public ImpThrowBehavior(SummonType type, String summonAlias, int summonCount, int hpThreshold) {
+        this.type = type;
+        this.summonAlias = summonAlias;
+        this.summonCount = summonCount;
         this.hpThreshold = hpThreshold;
-        this.impCount = impCount;
-        this.targetColumn = targetColumn;
     }
 
     @Override
     public void onTick(Zombie zombie, GameState gs) {
-        if (fired || zombie.getHitpoints() > hpThreshold) return;
+        if (fired || zombie.getHitpoints() > hpThreshold) {
+            return;
+        }
         fired = true;
-        spawnImps(zombie.getLane(), targetColumn, impCount, gs);
+        spawn(zombie.getLane(), TARGET_COLUMN, summonCount, gs);
     }
 
-    @Override public String behaviorType() { return "IMP_THROW"; }
+    private void spawn(int lane, int column, int count, GameState gs) {
+        for (int i = 0; i < count; i++) {
+            Zombie template = ZombieRegistry.getTemplate(summonAlias);
+            if (template == null) {
+                return;
+            }
+            Zombie summoned = template.copy();
+            summoned.setLane(lane);
+            summoned.setX(column);
+            gs.addZombie(summoned);
+        }
+    }
+
+
+    public enum SummonType {
+        IMP_THROW
+    }
 
     @Override
-    public void applyToStatement(PreparedStatement ps) throws SQLException {
-
+    public String behaviorType() {
+        return "SUMMON";
     }
+
+    @Override
+    public void applyToStatement(Map<String, Object> cols) {
+        cols.put("summon_type", getType().name());
+        cols.put("summon_alias", getSummonAlias());
+        cols.put("summon_count", getSummonCount());
+        cols.put("hp_threshold", getHpThreshold());
+    }
+
     @Override
     public ZombieBehavior copy() {
-        return new ImpThrowBehavior(hpThreshold, impCount, targetColumn);
+        return new ImpThrowBehavior(type, summonAlias, summonCount, hpThreshold);
     }
 }

@@ -3,57 +3,92 @@ package models.Zombie.Behavior;
 import lombok.Getter;
 import models.Plant.Lobber;
 import models.Plant.Plant;
-import models.Plant.PlantType;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.util.Map;
 
 @Getter
 public class DamageReactionBehavior implements PersistableBehavior {
+
     private final DamageReactionType type;
-    private final float param1;  // new speed after rage or triggerChance for reflect
-    private final float param2;  // new damage after rage
-    private boolean reacted = false;
+    private final float param1;  // rage speed scale / reflect chance
+    private final float param2;  // rage damage scale
+    private boolean raged = false;
+    private boolean spinning = false;
 
-    public DamageReactionBehavior(DamageReactionType type) { this(type, 1.0f, 1.0f); }
+    public DamageReactionBehavior(DamageReactionType type) {
+        this(type, 1.0f, 1.0f);
+    }
 
-    public DamageReactionBehavior(DamageReactionType type, float param1) { this(type, param1, 1.0f); }
+    public DamageReactionBehavior(DamageReactionType type, float param1) {
+        this(type, param1, 1.0f);
+    }
 
     public DamageReactionBehavior(DamageReactionType type, float param1, float param2) {
-        this.type   = type;
+        this.type = type;
         this.param1 = param1;
         this.param2 = param2;
     }
 
     @Override
-    public void onTick(Zombie zombie, GameState gs) {}
+    public void onTick(Zombie zombie, GameState gs) {
+        // Newspaper zombie
+        if (type == DamageReactionType.NEWSPAPER_RAGE && !raged) {
+            ArmorBehavior armor = zombie.getBehavior(ArmorBehavior.class);
+            if (armor != null && armor.isGone()) {
+                raged = true;
+                zombie.applySpeedScale(param1);
+                zombie.applyDamageScale(param2);
+            }
+        }
+    }
 
     @Override
-    public int onHit(Zombie zombie, int rawDamage, ElementType elementType, Plant plant) {
+    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         switch (type) {
-            case REFLECT_PROJECTILE:
+            case REFLECT_PROJECTILE -> {
+            }
+            case SUBMERGE_DODGE -> {
+            }
+            case DEFLECT_LOBBER -> {
+                // Parasol
                 if (plant.getPlantType().equals(Lobber.class)) {
                     return 0;
                 }
+            }
+            case FIRE_IMMUNE -> {
+                // Imp dragon
+                if (element == ElementType.FIRE) {
+                    return 0;
+                }
+            }
+            default -> {
+            }
         }
         return rawDamage;
     }
 
-
     public enum DamageReactionType {
-        NEWSPAPER_RAGE,      // speed + damage boost when newspaper breaks
-        REFLECT_PROJECTILE
+        NEWSPAPER_RAGE,
+        REFLECT_PROJECTILE,  // juggler
+        SUBMERGE_DODGE,      // snorkel
+        DEFLECT_LOBBER,      // parasol
+        FIRE_IMMUNE          // imp dragon
     }
-
-    @Override public String behaviorType() { return "DAMAGE_REACTION"; }
 
     @Override
-    public void applyToStatement(PreparedStatement ps) throws SQLException {
-
+    public String behaviorType() {
+        return "DAMAGE_REACTION";
     }
+
+    @Override
+    public void applyToStatement(Map<String, Object> cols) {
+        cols.put("reaction_type", getType().name());
+        cols.put("param1", getParam1());
+        cols.put("param2", getParam2());
+    }
+
     @Override
     public ZombieBehavior copy() {
         return new DamageReactionBehavior(type, param1, param2);

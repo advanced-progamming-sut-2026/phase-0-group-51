@@ -1,5 +1,7 @@
 package models.Zombie;
 
+import lombok.Getter;
+import lombok.Setter;
 import models.App;
 import models.Plant.Plant;
 import models.Zombie.Behavior.ArmorBehavior;
@@ -12,7 +14,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
+@Getter
+@Setter
 public class Zombie {
     public static final String EFFECT_CHILLED = "chilled";
     public static final String EFFECT_FROZEN = "frozen";
@@ -28,7 +31,7 @@ public class Zombie {
 
     private int lane;
     private float x;
-    private int direction = 1; // 1 = walking left , -1 = reversed
+    private int direction = 1; // 1 = normal, -1 = reversed
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
@@ -50,74 +53,6 @@ public class Zombie {
         this.baseEatDps = eatDps;
         this.wavePointCost = wpc;
         this.weight = weight;
-    }
-
-    public String getAlias() {
-        return alias;
-    }
-
-    public int getMaxHitpoints() {
-        return maxHitpoints;
-    }
-
-    public int getHitpoints() {
-        return hitpoints;
-    }
-
-    public float getBaseSpeed() {
-        return baseSpeed;
-    }
-
-    public float getBaseEatDps() {
-        return baseEatDps;
-    }
-
-    public float getWavePointCost() {
-        return wavePointCost;
-    }
-
-    public int getWeight() {
-        return weight;
-    }
-
-    public int getLane() {
-        return lane;
-    }
-
-    public void setLane(int lane) {
-        this.lane = lane;
-    }
-
-    public float getX() {
-        return x;
-    }
-
-    public void setX(float x) {
-        this.x = x;
-    }
-
-    public int getDirection() {
-        return direction;
-    }
-
-    public void reverseDirection() {
-        this.direction = -this.direction;
-    }
-
-    public boolean isEating() {
-        return eating;
-    }
-
-    public boolean isDead() {
-        return dead;
-    }
-
-    public boolean isHypnotized() {
-        return hypnotized;
-    }
-
-    public void setHypnotized(boolean hypnotized) {
-        this.hypnotized = hypnotized;
     }
 
     public void setSpeedMultiplier(float speedScale) {
@@ -275,5 +210,9 @@ public class Zombie {
             z.addBehavior(behavior.copy());
         }
         return z;
+    }
+
+    public void reverseDirection() {
+        direction = -1;
     }
 }

@@ -1,29 +1,35 @@
 package models.Zombie.Behavior;
 
-import lombok.Getter;
 import models.Plant.Plant;
-import models.Plant.PlantType;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
+import java.util.Map;
 
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
-@Getter
 public class TorchBehavior implements PersistableBehavior {
 
-    private final InstantKillBehavior killLogic;
+    private final int reachTiles;
     private boolean lit = true;
 
     public TorchBehavior() {
-        this.killLogic = new InstantKillBehavior(1,true);
+        this(0);
+    }
+
+    public TorchBehavior(int reachTiles) {
+        this.reachTiles = reachTiles;
     }
 
     @Override
     public void onTick(Zombie zombie, GameState gs) {
-        if (!lit) return;
-        killLogic.onTick(zombie, gs);
+        if (!lit) {
+            return;
+        }
+        Plant target = gs.getBoard()
+            .findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), reachTiles);
+        if (target != null) {
+            target.takeDamage(target.getCurrentHP());
+        }
     }
 
     @Override
@@ -41,15 +47,26 @@ public class TorchBehavior implements PersistableBehavior {
         return rawDamage;
     }
 
-    @Override public String behaviorType() { return "TORCH"; }
+    public boolean isLit() {
+        return lit;
+    }
+
+    public int getReachTiles() {
+        return reachTiles;
+    }
 
     @Override
-    public void applyToStatement(PreparedStatement ps) throws SQLException {
+    public String behaviorType() {
+        return "TORCH";
+    }
 
+    @Override
+    public void applyToStatement(Map<String, Object> cols) {
+        cols.put("torch_reach", getReachTiles());
     }
 
     @Override
     public ZombieBehavior copy() {
-        return new TorchBehavior();
+        return new TorchBehavior(reachTiles);
     }
 }
