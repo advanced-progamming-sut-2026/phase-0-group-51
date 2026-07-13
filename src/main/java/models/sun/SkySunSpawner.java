@@ -45,8 +45,8 @@ public class SkySunSpawner {
             type = SunType.RADIOACTIVE;
         }
         Sun sun = new Sun(spawnX, 0f, lane, type, type.getAmount(), type.getLifeTicks());
-        gs.getBoard().addSun(sun);
-        System.out.printf("New %s sun is dropping at position (<%.1f>, <%.1f>)\n", type.name(), spawnX, targetY);
+        gs.getBoard().spawnSun(sun);
+        gs.logEvent("New "+type.name()+" sun is dropping at position ("+spawnX+", "+targetY+")\n");
         return sun;
     }
 }

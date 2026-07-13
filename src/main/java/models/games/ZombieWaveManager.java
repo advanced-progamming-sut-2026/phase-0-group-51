@@ -1,6 +1,8 @@
 package models.games;
 
 import Data.loader.ZombieRegistry;
+import lombok.Getter;
+import lombok.Setter;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.items.Wave;
@@ -10,7 +12,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.IntConsumer;
 
-
+@Getter
+@Setter
 public class ZombieWaveManager {
 
     private final GameState gs;
@@ -109,9 +112,9 @@ public class ZombieWaveManager {
         }
 
         if (finalWave) {
-            System.out.println("The final wave has come.");
+            gs.logEvent("The final wave has come.");
         } else {
-            System.out.println("Wave " + number + " started.");
+            gs.logEvent("Wave " + number + " started.");
         }
 
         currentWave = new Wave(number, currentDifficulty, finalWave);
@@ -145,7 +148,7 @@ public class ZombieWaveManager {
             wave.addZombie(zombie);
             remaining -= zombie.getWavePointCost();
 
-            System.out.println("Zombie " + zombie.getAlias()
+            gs.logEvent("Zombie " + zombie.getAlias()
                 + " spawned at wave " + wave.getWaveNumber()
                 + " in lane " + (lane + 1)
                 + " which costed " + zombie.getWavePointCost() + ".");

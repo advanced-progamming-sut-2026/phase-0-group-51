@@ -68,12 +68,12 @@ public enum SunProducer implements PlantType{
         }
         Sun plantSun = new Sun(tile.getX(), tile.getY(), tile.getLane(), SunType.ORDINARY, 25, Integer.MAX_VALUE);
         plantSun.setGrounded(true);
-        state.getBoard().addSun(plantSun);
-        System.out.printf("plant %s produced a sun at (%.0f, %.0f)\n", plant.getName(), plantSun.getX(), plantSun.getY());
+        state.getBoard().spawnSun(plantSun);
+        state.logEvent("plant "+plant.getName()+" produced a sun at ("+ plantSun.getX()+", "+ plantSun.getY()+")\n");
     }
 
     @Override
     public void onPlantFood(Plant plant, GameState state) {
-        state.addSun(150);
+        state.increaseSunBalance(150);
     }
 }

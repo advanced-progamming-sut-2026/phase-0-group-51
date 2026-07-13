@@ -10,6 +10,8 @@ import models.items.Mower;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
+
 @Setter
 @Getter
 public class GameState {
@@ -18,17 +20,25 @@ public class GameState {
     private Set<Zombie> zombiesInTheGame = new HashSet<>();
     private int sun;
     private boolean isFinished;
+    private boolean isWon;
     private final ChapterTheme chapterTheme;
     private Level currentLevel;
     private int tickCounter = 0;
     private ZombieWaveManager zombieWaveManager;
     private final Mower[] lawnMowers;
+    private Consumer<String> eventLogger;
+    public void logEvent(String message) {
+        if (eventLogger != null) {
+            eventLogger.accept(message);
+        }
+    }
     public GameState(Board board, ChapterTheme chapterTheme) {
         this.board = board;
+        this.board.setZombie(this.zombiesInTheGame);
         this.chapterTheme = chapterTheme;
         this.lawnMowers = new Mower[board.getLaneCount()];
         for (int i = 0; i < lawnMowers.length; i++) {
-            lawnMowers[i] = new Mower(i);
+            lawnMowers[i] = new Mower(i,this);
         }
     }
     public boolean checkLoseCondition() {
@@ -37,7 +47,7 @@ public class GameState {
                 int lane = zombie.getLane();
                 Mower mower = lawnMowers[lane];
                 if (mower.isActivated() || mower.isDestroyed()) {
-                    System.out.println("The zombie ate your brain; LOSER!!!\n");
+                    logEvent("The zombie ate your brain; LOSER!!!\n");
                     return true;
                 }
             }
@@ -56,8 +66,12 @@ public class GameState {
     }
     public void spawnWave(){}
     public void spawnBoss(){}
-    public void addSun(int amount){
+    public void increaseSunBalance(int amount) {
         this.sun += amount;
+    }
+
+    public void decreaseSunBalance(int amount) {
+        this.sun = Math.max(0, this.sun - amount);
     }
     public void plantPlant(Plant plant, Tile tile){}
     public void pluckPlant(Plant plant, Tile tile){}
@@ -68,9 +82,6 @@ public class GameState {
     }
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);
-    }
-    public void stealSun(int amount){
-        this.sun = Math.max(0, this.sun - amount);
     }
     public Zombie findNearestHypnotizedZombieInRange(Zombie self, int lane, float x, int range) {
         Zombie nearest = null;
