@@ -37,20 +37,12 @@ public class TransformBehavior implements PersistableBehavior {
         return true;
     }
 
-    @Override
-    public void onDeath(Zombie zombie, GameState gs) {
-
-    }
 
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         return PersistableBehavior.super.onHit(zombie, rawDamage, element, plant);
     }
 
-    @Override
-    public boolean suppressesDefaultEating(Zombie zombie) {
-        return PersistableBehavior.super.suppressesDefaultEating(zombie);
-    }
 
     @Override
     public boolean suppressesMovement(Zombie zombie) {
@@ -60,11 +52,6 @@ public class TransformBehavior implements PersistableBehavior {
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
         PersistableBehavior.super.onDeath(zombie, gs);
-    }
-
-    @Override
-    public ZombieBehavior copy() {
-        return null;
     }
 
 

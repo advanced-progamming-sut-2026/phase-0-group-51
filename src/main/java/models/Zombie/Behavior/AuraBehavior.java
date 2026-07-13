@@ -1,6 +1,7 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Plant.Plant;
 import models.Zombie.ArmorDefinition;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -79,19 +80,10 @@ public class AuraBehavior implements PersistableBehavior {
         return PersistableBehavior.super.suppressesDefaultEating(zombie);
     }
 
-    @Override
-    public boolean suppressesMovement(Zombie zombie) {
-        return PersistableBehavior.super.suppressesMovement(zombie);
-    }
 
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
         PersistableBehavior.super.onDeath(zombie, gs);
-    }
-
-    @Override
-    public ZombieBehavior copy() {
-        return null;
     }
 
     public enum AuraType {
