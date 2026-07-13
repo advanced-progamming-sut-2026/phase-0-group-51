@@ -2,6 +2,8 @@ package models.Plant;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import models.Board.Tile;
+import models.Zombie.Zombie;
 import models.games.GameState;
 
 import java.util.Arrays;
@@ -64,12 +66,20 @@ public enum Explosive implements PlantType{
 
     @Override
     public void onTick(Plant plant, GameState gameState) {
-
+        Zombie zombie = gameState.getBoard().getZombieInPosition(plant.getPosY(), plant.getPosX());
+        if(zombie != null){
+            zombie.takeDamage(plant.getDamage(),  gameState);
+        }
+        gameState.getBoard().removePlant(plant.getPosY(), plant.getPosX()); // it dies after the explosion
     }
 
     @Override
     public void onPlantFood(Plant plant, GameState gameState) {
-
+        for(Tile tile : gameState.getBoard().getTwoRandomTilesWithoutPlants()){
+            gameState.plantPlant(plant, tile);
+        }
+        //armed time = 0
+        //and then it does the onTick
     }
 
 }

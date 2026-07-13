@@ -5,18 +5,19 @@ import models.projectile.move.MovingStrategy;
 import models.Zombie.Zombie;
 import models.games.GameState;
 
+import java.util.List;
 import java.util.Set;
 
 public class Projectile {
     private final int damage;
     private final ElementType elementType;
-    private final Set<PlantTag> tags;
+    private final List<PlantTag> tags;
     private final double speed;
     private double posX;
     private final int lane;
     private final MovingStrategy movingStrategy;
 
-    public Projectile(int damage, ElementType elementType, Set<PlantTag> tags, double speed,
+    public Projectile(int damage, ElementType elementType, List<PlantTag> tags, double speed,
                       double posX, int lane, MovingStrategy movingStrategy) {
         this.damage      = damage;
         this.elementType = elementType;
@@ -27,6 +28,13 @@ public class Projectile {
         this.movingStrategy = movingStrategy;
     }
 
-    private void hit(Zombie zombie, GameState state) {}
-    private void move(){}
+    private void tick(GameState state) {
+        movingStrategy.move(this, speed);
+        Zombie target = state.getBoard().getZombieInPosition(lane, (int) posX); // for now it is cast into int
+//        if (target != null) {
+//            target.takeDamage(damage, state);
+//            elementType.onHit(); // each type has its own behavior
+//            state.getBoard().removeProjectile(this);
+//        }
+    }
 }

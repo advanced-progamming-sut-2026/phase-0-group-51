@@ -20,7 +20,13 @@ CREATE TABLE IF NOT EXISTS users (
      last_won_game     TEXT,
      created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+CREATE TABLE IF NOT EXISTS daily_offer (
+     user_id INTEGER PRIMARY KEY,
+     plant_id INTEGER,
+     offer_date TEXT,
+     purchased INTEGER DEFAULT 0,
+     FOREIGN KEY(user_id) REFERENCES users(id)
+);
 CREATE TABLE IF NOT EXISTS user_progress (
                                              user_id       INTEGER PRIMARY KEY REFERENCES users(id),
     chapter_index INTEGER DEFAULT 0,
@@ -28,12 +34,19 @@ CREATE TABLE IF NOT EXISTS user_progress (
     );
 
 CREATE TABLE IF NOT EXISTS user_plants (
-                                           user_id     INTEGER REFERENCES users(id),
+    user_id     INTEGER REFERENCES users(id),
     plant_id    INTEGER,
     plant_level INTEGER DEFAULT 1,
+    seed_packets INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, plant_id)
-    );
 
+    );
+CREATE TABLE IF NOT EXISTS plant_boosts (
+       user_id INTEGER NOT NULL,
+       plant_id INTEGER NOT NULL,
+       PRIMARY KEY(user_id, plant_id),
+       FOREIGN KEY (user_id) REFERENCES users(id)
+);
 CREATE TABLE IF NOT EXISTS user_unlocked_plants (
     user_id  INTEGER REFERENCES users(id),
     plant_id INTEGER,
@@ -91,7 +104,16 @@ CREATE TABLE IF NOT EXISTS user_news (
     PRIMARY KEY (user_id, news_id)
 );
 
-
+CREATE TABLE IF NOT EXISTS greenhouse_pots (
+    user_id INTEGER NOT NULL,
+    row INTEGER NOT NULL,
+    column INTEGER NOT NULL,
+    unlocked INTEGER NOT NULL,
+    plant_id INTEGER,
+    planted_at TEXT,
+    PRIMARY KEY (user_id, row, column),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 
 CREATE TABLE IF NOT EXISTS armor_definition (
     alias TEXT PRIMARY KEY,

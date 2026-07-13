@@ -1,5 +1,10 @@
 package models.Shop;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class ShopItem {
     private final ShopItemType type;
     private final String     name;
@@ -19,14 +24,4 @@ public class ShopItem {
         this.maxStack          = maxStack;
         this.requiresPlantType = requiresPlantType;
     }
-
-
-
-    public ShopItemType getType()              { return type; }
-    public String     getName()            { return name; }
-    public int        getBasePrice()       { return basePrice; }
-    public Currency   getCurrency()        { return currency; }
-    public int        getAmountPerPurchase(){ return amountPerPurchase; }
-    public Integer    getMaxStack()        { return maxStack; }
-    public boolean    requiresPlantType()  { return requiresPlantType; }
 }

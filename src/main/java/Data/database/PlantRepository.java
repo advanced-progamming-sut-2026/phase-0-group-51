@@ -60,4 +60,82 @@ public class PlantRepository {
             stmt.setInt(2, plantId);
             stmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
-    }}
+    }
+    public static int getSeedPackets(int userId,int plantId){
+
+        String sql =
+                "SELECT seed_packets FROM user_plants WHERE user_id=? AND plant_id=?";
+
+        try(Connection conn = DataBaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+
+            stmt.setInt(1,userId);
+            stmt.setInt(2,plantId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if(rs.next())
+                return rs.getInt("seed_packets");
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+    public static void addSeedPackets(int userId,
+                                      int plantId,
+                                      int amount){
+
+        String sql = """
+        INSERT INTO user_plants(user_id,plant_id,plant_level,seed_packets)
+        VALUES(?,?,1,?)
+        ON CONFLICT(user_id,plant_id)
+        DO UPDATE SET
+        seed_packets = seed_packets + excluded.seed_packets
+        """;
+
+        try(Connection conn = DataBaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+
+            stmt.setInt(1,userId);
+            stmt.setInt(2,plantId);
+            stmt.setInt(3,amount);
+
+            stmt.executeUpdate();
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+    }
+    public static Map<Integer,Integer> loadSeedPackets(int userId){
+
+        Map<Integer,Integer> map = new HashMap<>();
+
+        String sql =
+                "SELECT plant_id,seed_packets FROM user_plants WHERE user_id=?";
+
+        try(Connection conn = DataBaseManager.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+
+            stmt.setInt(1,userId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            while(rs.next()){
+
+                map.put(
+                        rs.getInt("plant_id"),
+                        rs.getInt("seed_packets")
+                );
+
+            }
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+
+        return map;
+    }
+}

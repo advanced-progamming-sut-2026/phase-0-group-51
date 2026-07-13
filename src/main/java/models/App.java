@@ -8,6 +8,7 @@ import lombok.Setter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.enums.Menu;
+import models.games.Game;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,12 +17,9 @@ import java.util.List;
 public class App {
     private static App instance;
     public Menu currentMenu;
+    private Game currentGame;
     public static User loggedInUser;
     public ArrayList<User> users = new ArrayList<>();
-    public List<Plant> allPlants = new ArrayList<>();
-    public List<Zombie> allZombies = new ArrayList<>();
-    public List<String> securityQuestions = new ArrayList<>();
-
     private App(){
         DataBaseManager.initializeDatabase();
         PlantLoader.load();
@@ -31,9 +29,9 @@ public class App {
 
         if (rememberedUser != null) {
             loggedInUser = rememberedUser;
-            currentMenu = Menu.MainMenu;
+            currentMenu = Menu.MAIN_MENU;
         } else {
-            currentMenu = Menu.SignUpMenu;
+            currentMenu = Menu.SIGN_UP_MENU;
         }
     }
     public static App getInstance(){

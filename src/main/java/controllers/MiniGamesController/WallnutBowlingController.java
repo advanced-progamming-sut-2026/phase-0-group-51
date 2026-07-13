@@ -8,7 +8,7 @@ import models.Zombie.Zombie;
 import java.util.Queue;
 
 public class WallnutBowlingController extends GamingController {
-    Queue<PlantType> conveyorBelt=new Queue<PlantType>() {
+    //Queue<PlantType> conveyorBelt=new Queue<PlantType>() {
         // این داخل  بعدا باید توابع اضافه کردن و برداشتن والنات به نوار رو هندل کنیم
     //};//  نوبت‌بندی والنات‌هایی که کاربر می‌تونه بیندازه مثل یک صف والنات ها میان
     int redLineColumn; //	ستون خط قرمز . زامبی‌ها از این ستون رد نشن، وگرنه میبازه

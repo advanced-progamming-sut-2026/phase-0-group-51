@@ -3,10 +3,13 @@ package models.Board;
 import lombok.Getter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
+import models.games.GameState;
 import models.projectile.Projectile;
 import models.sun.Sun;
+import models.sun.SunType;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -35,7 +38,7 @@ public class Board {
         return tiles[lane][column];
     }
     public Plant getPlant(int lane, float x) {
-        int column = (int) (x/Tile.tileWidth);
+        int column = (int) (x/Tile.TILEWIDTH);
         Tile tile = getTile(lane,column);
         return tile.getPlant();
     }
@@ -107,6 +110,59 @@ public class Board {
         }
         return result;
     }
+    public boolean collectSun(Sun sun, GameState game) {
+        if (!sun.isActive())
+            return false;
+        if (sun.getSunType() == SunType.RADIOACTIVE && !sun.isGrounded()) {
+            explodeRadioactiveSun(sun,game);
+        } else {
+            game.addSun(sun.getAmount());
+        }
+        sun.setCollected(true);
+        suns.remove(sun);
+        return true;
+    }
+
+    private void explodeRadioactiveSun(Sun sun,GameState gs) {
+        int sunLane = sun.getLane();
+        int sunColumn = (int) (sun.getX() / Tile.TILEWIDTH);
+
+        for (Zombie zombie : zombies) {
+            int zombieLane = zombie.getLane();
+            int zombieColumn = (int) (zombie.getX() / Tile.TILEWIDTH);
+            if (Math.abs(zombieLane-sunLane)<= 2 && Math.abs(zombieColumn - sunColumn)<= 2) {
+                zombie.takeDamage(150,gs,null);
+            }
+        }
+
+        int startLane = Math.max(0, sunLane - 1);
+        int endLane = Math.min(laneCount - 1, sunLane + 1);
+        int startCol = Math.max(0, sunColumn - 1);
+        int endCol = Math.min(columnCount - 1,sunColumn + 1);
+
+        for (int r = startLane; r <= endLane; r++) {
+            for (int c = startCol; c <= endCol; c++) {
+                Tile tile = tiles[r][c];
+                if (tile.hasPlant()) {
+                    Plant p = tile.getPlant();
+                    p.takeDamage(80);
+
+                    if (p.isDead()) {
+                        tile.removePlant();
+                    }
+                }
+            }
+        }
+    }
+    public void tickSuns(){
+        Iterator<Sun> iterator = suns.iterator();
+        while(iterator.hasNext()){
+            Sun sun = iterator.next();
+            sun.tick();
+            if(sun.isExpired())
+                iterator.remove();
+        }
+    }
     public Tile placeGraveOnRandomTile() {
         List<Tile> eligible = new ArrayList<>();
         for (int lane = 0; lane < laneCount; lane++) {
@@ -142,4 +198,49 @@ public class Board {
         }return result;
     }
 
+    public Zombie getZombieInPosition(int lane, int column) {
+        for (Zombie zombie : getZombiesInLane(lane)) {
+            if(zombie.getX() == column) {
+                return zombie;
+            }
+        }return null;
+    }
+
+    public List<Tile> getTwoRandomTilesWithoutPlants(){
+        List<Tile> eligible = new ArrayList<>();
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int col = 0; col < columnCount; col++) {
+                Tile tile = tiles[lane][col];
+                if (!tile.hasPlant() && !tile.isGrave() && tile.isOccupiable()) {
+                    eligible.add(tile);
+                }
+            }
+        }
+        if (eligible.isEmpty()) return null;
+        List<Tile> chosen = new ArrayList<>();
+        List<Tile> pool = new ArrayList<>(eligible);
+        for (int i = 0; i < 2; i++) {
+            int index = random.nextInt(pool.size());
+            chosen.add(pool.remove(index));
+        }
+        return chosen;
+    }
+    public Tile getTileForPlant(Plant plant) {
+        if (plant == null) return null;
+        for (int i = 0; i < laneCount; i++) {
+            for (int j = 0; j < columnCount; j++) {
+                if (tiles[i][j].hasPlant() && tiles[i][j].getPlant().equals(plant)) {
+                    return tiles[i][j];
+                }
+            }
+        }
+        return null;
+    }
+    public void removeProjectile(Projectile projectile) {
+        projectiles.remove(projectile);
+    }
+
+    public void addProjectile(Projectile projectile) {
+        projectiles.add(projectile);
+    }
 }

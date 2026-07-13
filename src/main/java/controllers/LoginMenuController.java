@@ -1,8 +1,10 @@
 package controllers;
 
+import Data.database.GreenHouseRepository;
 import Data.database.UserRepository;
 import lombok.Getter;
 import models.App;
+import models.GreenHouse.GreenHouse;
 import models.Result;
 import models.User;
 import models.enums.Menu;
@@ -25,9 +27,9 @@ public class LoginMenuController {
             if (!user.getPasswordHash().equals(passwordHash)) {
                 return new Result(false, "Password is incorrect.\n", null);
             }
-
+            GreenHouse greenHouse = GreenHouseRepository.load(user.getId());
+            user.setGreenHouse(greenHouse);
             App.getInstance().setLoggedInUser(user);
-
             repository.setStayLoggedIn(user.getId(), stayLoggedIn);
             return new Result(true, "Login successful.\n", user);
         }
@@ -64,7 +66,7 @@ public class LoginMenuController {
         return new Result(true, "Password changed successfully.", null);
     }
     public Result exitMenu(){
-        App.getInstance().setCurrentMenu(Menu.SignUpMenu);
+        App.getInstance().setCurrentMenu(Menu.SIGN_UP_MENU);
         return new Result(true,"",null);
     }
     public Result showCurrentMenu(){
@@ -74,7 +76,7 @@ public class LoginMenuController {
         if(!menuName.equalsIgnoreCase("main")){
             return new Result(false,"You can only enter the main menu from the login menu.\n",null);
         }
-        App.getInstance().currentMenu = Menu.MainMenu;
+        App.getInstance().currentMenu = Menu.MAIN_MENU;
         return new Result(true,"",null);
 
     }

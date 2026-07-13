@@ -49,6 +49,6 @@ public class NewsMenuController {
         return new Result(true,"You are now in the news menu.\n",null);
     }
     public void exitMenu(){
-        App.getInstance().setCurrentMenu(Menu.MainMenu);
+        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
     }
 }

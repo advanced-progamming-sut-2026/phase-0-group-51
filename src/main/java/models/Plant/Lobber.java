@@ -1,9 +1,15 @@
 package models.Plant;
 
+import models.Zombie.Zombie;
 import models.games.GameState;
+import models.projectile.ElementType;
+import models.projectile.Projectile;
+import models.projectile.move.ArcMove;
+import models.projectile.move.MovingStrategy;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 public enum Lobber implements PlantType{
     CABBAGE_PULT(25,
@@ -36,11 +42,24 @@ public enum Lobber implements PlantType{
 
     @Override
     public void onTick(Plant plant, GameState gameState) {
-
+        boolean canShoot = false;
+        List<Zombie> zombies = gameState.getBoard().getZombiesInLane(plant.getPosY());
+        for(Zombie zombie : zombies){
+            if(zombie.getX() >= plant.getPosX()){
+                canShoot = true;
+                break;
+            }
+        }
+        if(canShoot){
+            Projectile projectile = new Projectile(plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
+                    plant.getPlantStat().projectileSpeed(), plant.getPosX(), plant.getPosY(), new ArcMove());
+            gameState.getBoard().addProjectile(projectile);
+        }
     }
 
     @Override
     public void onPlantFood(Plant plant, GameState gameState) {
-
+        // i don't get the "به چند زامبی تصادفی" :)
+        // how many?
     }
 }

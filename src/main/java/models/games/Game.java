@@ -1,8 +1,10 @@
 package models.games;
 
 
+import Data.loader.PlantData;
 import lombok.Getter;
 
+import java.util.ArrayList;
 import java.util.List;
 @Getter
 public class Game{
@@ -14,6 +16,7 @@ public class Game{
     );
     private int currentChapterIndex = 0;
     private int currentLevelIndex   = 0;
+    private final List<PlantData> selectedPlantsForThisGame = new ArrayList<>();
     private GameState gameState;
     private int sunAmount;
     public void start(){}

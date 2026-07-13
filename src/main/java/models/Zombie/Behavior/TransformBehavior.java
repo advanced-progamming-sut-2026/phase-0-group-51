@@ -4,6 +4,7 @@ import lombok.Getter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.projectile.ElementType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,31 @@ public class TransformBehavior implements PersistableBehavior {
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
 
+    }
+
+    @Override
+    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
+        return PersistableBehavior.super.onHit(zombie, rawDamage, element, plant);
+    }
+
+    @Override
+    public boolean suppressesDefaultEating(Zombie zombie) {
+        return PersistableBehavior.super.suppressesDefaultEating(zombie);
+    }
+
+    @Override
+    public boolean suppressesMovement(Zombie zombie) {
+        return PersistableBehavior.super.suppressesMovement(zombie);
+    }
+
+    @Override
+    public void onDeath(Zombie zombie, GameState gs) {
+        PersistableBehavior.super.onDeath(zombie, gs);
+    }
+
+    @Override
+    public ZombieBehavior copy() {
+        return null;
     }
 
 

@@ -3,6 +3,7 @@ package models.Zombie.Behavior;
 import lombok.Getter;
 import models.Board.Board;
 import models.Board.Tile;
+import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import java.util.Map;

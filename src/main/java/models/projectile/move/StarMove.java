@@ -5,7 +5,7 @@ import models.projectile.Projectile;
 public class StarMove implements MovingStrategy{
 
     @Override
-    public void move(Projectile projectile) {
+    public void move(Projectile projectile, double speed) {
 
     }
 }

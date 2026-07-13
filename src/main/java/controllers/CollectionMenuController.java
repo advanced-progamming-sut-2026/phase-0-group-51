@@ -22,7 +22,7 @@ public class CollectionMenuController {
                 .append(zombie.getAlias())
                 .append("] ")
                 .append(" | HP: ")
-                .append(zombie.getMaxHitpoints())
+                //.append(zombie.getMaxHitpoints())
                 .append(" | Speed: ")
                 .append(zombie.getBaseSpeed())
                 .append(" | Eat DPS: ")
