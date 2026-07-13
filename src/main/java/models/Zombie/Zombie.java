@@ -17,13 +17,9 @@ import java.util.Map;
 @Getter
 @Setter
 public class Zombie {
-    private final String alias;
-  private final int    maxHitpoints; //from json
-    private int          hitpoints;   //current zombie's health
-    private final float  baseSpeed;
-    private final float  baseEatDPS;  //Damage per second  (while eating plant)
-    private final float    wavePointCost;
-    private final int    weight;
+    public static final String EFFECT_CHILLED = "chilled";
+    public static final String EFFECT_FROZEN = "frozen";
+    private static final float CHILL_SPEED_FACTOR = 0.5f;
 
     private final String alias;
     private final int maxHitpoints;
@@ -35,7 +31,7 @@ public class Zombie {
 
     private int lane;
     private float x;
-    private int direction = 1; // 1 = normal, -1 = reversed
+    private int direction = 1; // 1 = walking normal, -1 = reversed
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
@@ -250,13 +246,15 @@ public class Zombie {
     }
 
     public Zombie copy() {
-        float increaseMultiplier = App.getInstance().getLoggedInUser().getDifficultyLevel() / 3.0f;
-        float decreaseMultiplier = 3.0f / App.getInstance().getLoggedInUser().getDifficultyLevel();
-       float newMaxHitpoints = this.maxHitpoints * increaseMultiplier;
-        float newBaseEatDPS = this.baseEatDPS * increaseMultiplier;
-        float newBaseSpeed = this.baseSpeed * increaseMultiplier;
-        float newWavePointCost = this.wavePointCost * decreaseMultiplier;
-      Zombie z = new Zombie(alias, newMaxHitpoints, newBaseSpeed, newBaseEatDPS, newWavePointCost, weight);
+        int difficultyLevel = App.getInstance().getLoggedInUser().getDifficultyLevel();
+        float increaseMultiplier = difficultyLevel / 3.0f;
+        float decreaseMultiplier = 3.0f / difficultyLevel;
+        Zombie z = new Zombie(alias,
+            maxHitpoints * increaseMultiplier,
+            baseSpeed,
+            baseEatDps * increaseMultiplier,
+            wavePointCost * decreaseMultiplier,
+            weight);
         for (ZombieBehavior behavior : behaviors) {
             z.addBehavior(behavior.copy());
         }
@@ -264,6 +262,6 @@ public class Zombie {
     }
 
     public void reverseDirection() {
-        direction = -1;
+        direction = direction * -1;
     }
 }
