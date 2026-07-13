@@ -1,16 +1,48 @@
 package controllers;
 
+import Data.database.ProgressRepository;
 import Data.database.UserRepository;
 import models.App;
 import models.Result;
 import models.User;
 import models.enums.Menu;
+import models.games.ChapterTheme;
+import models.games.Game;
 
 public class GameMenuController {
     public Result handleEnterChapter(String chapter) {
         App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
-        //بعدا هندل کردن مراحل رو انجام میدیم
-        return null;
+        int requestedChapterIndex = -1;
+        ChapterTheme[] themes = ChapterTheme.values();
+        for (int i = 0; i < themes.length; i++) {
+            String themeString = themes[i].name().replace("_", " ");
+            if (themeString.equalsIgnoreCase(chapter)) {
+                requestedChapterIndex = i;
+                break;
+            }
+        }
+        if (requestedChapterIndex==-1) {
+            return new Result(false, "Chapter not found. " +
+                    "Valid chapters: Ancient Egypt, Frostbite Caves, Big Wave Beach, Dark Ages.\n", null);
+        }
+        ProgressRepository progress = new ProgressRepository();
+        int[] progressItem = progress.getCurrentProgress(App.loggedInUser.getId());
+        int unlockedChapterIndex = progressItem[0] - 1;
+        int unlockedLevelIndex = progressItem[1] - 1;
+        if (requestedChapterIndex > unlockedChapterIndex) {
+            return new Result(false, "This chapter is locked for you\n!", null);
+        }
+        int requestedLevelIndex = 0;
+        if (requestedChapterIndex == unlockedChapterIndex) {
+            requestedLevelIndex = unlockedLevelIndex;
+        }
+        Game newGame = new Game();
+        newGame.setCurrentChapterIndex(requestedChapterIndex);
+        newGame.setCurrentLevelIndex(requestedLevelIndex);
+        App.getInstance().setCurrentGame(newGame);
+        App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
+        return new Result(true, "Entered " + requestedChapterIndex
+                + " Level " + (requestedLevelIndex + 1) + ".\nYou are now in the Plant Selection Menu.", null);
     }
 
     public void handleGreenhouse() {

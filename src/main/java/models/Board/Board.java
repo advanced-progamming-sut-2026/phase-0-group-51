@@ -4,6 +4,7 @@ import lombok.Getter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.games.ancientEgypt.Grave;
 import models.projectile.Projectile;
 import models.sun.Sun;
 import models.sun.SunType;
@@ -165,17 +166,19 @@ public class Board {
     }
     public Tile placeGraveOnRandomTile() {
         List<Tile> eligible = new ArrayList<>();
+
         for (int lane = 0; lane < laneCount; lane++) {
-            for (int col = 0; col < columnCount; col++) {
+            for (int col = 4; col < columnCount; col++) {
                 Tile tile = tiles[lane][col];
-                if (!tile.hasPlant() && !tile.isGrave() && tile.isOccupiable()) {
+                if (tile.isOccupiable()) {
                     eligible.add(tile);
                 }
             }
         }
         if (eligible.isEmpty()) return null;
         Tile chosen = eligible.get(random.nextInt(eligible.size()));
-        chosen.setGrave(true);
+        Grave grave = new Grave(chosen.getLane(), chosen.getColumn());
+        chosen.setGrave(grave);
         return chosen;
     }
     public Zombie getFirstZombieInLane(int lane) {

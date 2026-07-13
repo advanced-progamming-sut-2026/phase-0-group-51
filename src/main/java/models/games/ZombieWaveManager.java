@@ -2,6 +2,7 @@ package models.games;
 
 import Data.loader.ZombieRegistry;
 import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
 import models.items.Wave;
 
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.function.IntConsumer;
 public class ZombieWaveManager {
 
     private final GameState gs;
-    private final List<String> allowedAliases; // this chapter zombies
+    private final List<ZombieType> allowedAliases; // this chapter zombies
     private final int totalWaves;
     private final float baseDifficulty;        // wave 1
     private final Random random;
@@ -27,12 +28,12 @@ public class ZombieWaveManager {
     private float currentDifficulty = 0f;
     private int firstWaveDelayTicks = 0;
 
-    public ZombieWaveManager(GameState gs, List<String> allowedAliases,
+    public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases,
                              int totalWaves, float baseDifficulty) {
         this(gs, allowedAliases, totalWaves, baseDifficulty, true, new Random());
     }
 
-    public ZombieWaveManager(GameState gs, List<String> allowedAliases,
+    public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases,
                              int totalWaves, float baseDifficulty,
                              boolean autoStart, Random random) {
         this.gs = gs;
@@ -154,8 +155,8 @@ public class ZombieWaveManager {
     private Zombie pickAffordableZombie(float remainingBudget) {
         List<Zombie> affordable = new ArrayList<>();
         long weightSum = 0;
-        for (String alias : allowedAliases) {
-            Zombie template = ZombieRegistry.getTemplate(alias);
+        for (ZombieType alias : allowedAliases) {
+            Zombie template = ZombieRegistry.getTemplate(alias.name());
             if (template == null) {
                 continue;
             }

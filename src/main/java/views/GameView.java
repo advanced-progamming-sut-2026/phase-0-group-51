@@ -29,7 +29,9 @@ public class GameView implements AppMenu{
         else if(GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)){
             handleCollectSun(line);
         }
-
+        else if(GameCommands.ADVANCE_TIME_REGEX.matches(line)){
+            handleAdvanceTime(line);
+        }
         else invalidCommand();
     }
     public void handleCheatAddSun(String input){
@@ -57,6 +59,17 @@ public class GameView implements AppMenu{
             invalidCommand();
         }
         Result result = controller.collectSun(gameState,x,y);
+        System.out.println(result.message());
+    }
+    public void handleAdvanceTime(String input){
+        Matcher matcher = GameCommands.ADVANCE_TIME_REGEX.getMatcher(input);
+        int count=0;
+        try {
+            count = Integer.parseInt(matcher.group("count"));
+        } catch (NumberFormatException e) {
+            invalidCommand();
+        }
+        Result result = controller.advanceTime(count);
         System.out.println(result.message());
     }
 }

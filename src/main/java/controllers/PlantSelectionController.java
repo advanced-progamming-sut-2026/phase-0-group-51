@@ -94,9 +94,10 @@ public Result startGame(){
         return new Result(false,
                 "Select some plants before start the game.", null);
     }
-    Game newGame = new Game();
-    App.getInstance().setCurrentGame(newGame);
-    //صفحه بازی باز بشه بعدا ..
+    Game currentGame = App.getInstance().getCurrentGame();
+     currentGame.loadLevel();
+     currentGame.start();
+    App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
     return new Result(true,
             "Game started successfully.", null);
 }
