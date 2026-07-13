@@ -8,11 +8,17 @@ import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.projectile.move.ArcMove;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public enum Shooter implements PlantType{
+/**
+ * Every Shooter constant overrides onTick (and onFoodTick if its boosted
+ * behaviour isn't "just fire faster"). Shared firing logic lives in the
+ * private static helpers below so new constants don't need to re-copy the
+ * lane-scan loop.
+ */
+public enum Shooter implements PlantType {
+
     PEASHOOTER(6,
             new PlantUpgrade() {
                 @Override
@@ -31,8 +37,32 @@ public enum Shooter implements PlantType{
                 public PlantStats apply(PlantStats current) {
                     return current.withCost(current.cost() - 25);
                 }
-            }),
+            }) {
+        @Override
+        public void onTick(Plant plant, GameState state) {
+            shootStraight(plant, state, 1, ElementType.NORMAL);
+        }
+
+        @Override
+        public void onFeed(Plant plant, GameState gameState) {
+
+        }
+
+        @Override
+        public void onFoodTick(Plant plant, GameState state) {
+            // rapid fire: just fire straight shots every tick of the boost
+            shootStraight(plant, state, 1, ElementType.NORMAL);
+        }
+    },
+
+    // REPEATER(7, ...) {
+    //     @Override
+    //     public void onTick(Plant plant, GameState state) {
+    //         shootStraight(plant, state, 2, ElementType.NORMAL);
+    //     }
+    // },
     ;
+
     private final int id;
     private final List<PlantUpgrade> upgrades;
 
@@ -48,6 +78,7 @@ public enum Shooter implements PlantType{
                 data.damage(),
                 data.cost(),
                 data.actionInterval(),
+                data.recharge(),
                 0
         );
         return new Plant(
@@ -58,25 +89,24 @@ public enum Shooter implements PlantType{
         );
     }
 
-    @Override
-    public void onTick(Plant plant, GameState state) {
-        boolean canShoot = false;
-        List<Zombie> zombies = state.getBoard().getZombiesInLane(plant.getPosY());
-        for(Zombie zombie : zombies){
-            if(zombie.getX() >= plant.getPosX()){
-                canShoot = true;
-                break;
-            }
-        }
-        if(canShoot){
-            Projectile projectile = new Projectile(plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
-                    plant.getPlantStat().projectileSpeed(), plant.getPosX(), plant.getPosY(), new ArcMove());
-            state.getBoard().addProjectile(projectile);
+    // helpers for shooters
+
+    /** Fires `shotCount` sequential straight shots down this plant's lane, if a zombie is in range. */
+    static void shootStraight(Plant plant, GameState state, int shotCount, ElementType element) {
+        if (!zombieInLane(plant, state)) return;
+        for (int i = 0; i < shotCount; i++) {
+            state.getBoard().addProjectile(new Projectile(
+                    plant.getDamage(), element, plant.getPlantTags(),
+                    plant.getPlantStat().projectileSpeed(),
+                    plant.getPosX(), plant.getPosY(), new ArcMove()));
         }
     }
 
-    @Override
-    public void onPlantFood(Plant plant, GameState state) {
-        //Action interval decrease
+    static boolean zombieInLane(Plant plant, GameState state) {
+        List<Zombie> zombies = state.getBoard().getZombiesInLane(plant.getPosY());
+        for (Zombie zombie : zombies) {
+            if (zombie.getX() >= plant.getPosX()) return true;
+        }
+        return false;
     }
 }
