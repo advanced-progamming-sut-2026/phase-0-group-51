@@ -91,13 +91,6 @@ public class Projectile {
                 movingStrategy, 1, 0, null, null, initialTarget);
     }
 
-    /**
-     * Kept for source-compatibility with the existing call sites in
-     * Shooter/Lobber/Homing (`new Projectile(dmg, type, tags, speed, x,
-     * lane, new ArcMove())`). Builds a plain single-target, non-piercing
-     * shot. Prefer the factory methods above for any new plant so pierce/
-     * AoE/targeting get set up correctly.
-     */
     public Projectile(int damage, ElementType elementType, List<PlantTag> tags, double speed,
                       double posX, int lane, MovingStrategy movingStrategy) {
         this(damage, elementType, tags, speed, posX, lane, 1, 0, movingStrategy, 1, 0, null, null, null);
