@@ -15,7 +15,6 @@ public class GameView implements AppMenu{
     private GameState gameState;
     public GameView(){
         this.controller = new GamingController();
-        this.gameState = new GameState(); //علی الحساب
     }
     @Override
     public void check(Scanner scanner) {
