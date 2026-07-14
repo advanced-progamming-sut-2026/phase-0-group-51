@@ -2,40 +2,38 @@ package models.sun;
 
 import models.App;
 import models.Board.Board;
-import models.Board.Tile;
+import models.User;
 import models.games.ChapterTheme;
 import models.games.GameState;
 
 import java.util.Random;
 
 public class SkySunSpawner {
-    private static final int AMOUNT = 50;
-    private final int ticksPerSecond = 10;
-    private float tickCounter = 0;
+    private float tickCounter;
     private final Random random = new Random();
 
-    public Sun onTick(GameState gs) {
-        if (gs.getChapterTheme() == ChapterTheme.DARK_AGES) {
+    public Sun onTick(GameState gameState) {
+        if (gameState.getChapterTheme() == ChapterTheme.DARK_AGES) {
             return null;
         }
 
-        float t = gs.getTickCounter() / (float) ticksPerSecond;
-        float baseSecondsPerDrop = Math.max(6.0f + 0.05f * t, 12.0f);
-        int difficultyLevel = App.getInstance().getLoggedInUser().getDifficultyLevel();
-        float delayMultiplier = difficultyLevel / 3.0f;
-        float secondsPerDrop = baseSecondsPerDrop * delayMultiplier;
-        tickCounter++;
-        float ticksNeeded = secondsPerDrop * ticksPerSecond;
+        float elapsedSeconds = gameState.getTickCounter() / (float) gameState.getTicksPerSecond();
+        float baseSecondsPerDrop = Math.max(6.0f + 0.05f * elapsedSeconds, 12.0f);
+        User user = App.getInstance().getLoggedInUser();
+        int difficultyLevel = user == null ? 3 : user.getDifficultyLevel();
+        float secondsPerDrop = baseSecondsPerDrop * (difficultyLevel / 3.0f);
 
-        if (tickCounter < ticksNeeded) return null;
+        tickCounter++;
+        if (tickCounter < secondsPerDrop * gameState.getTicksPerSecond()) {
+            return null;
+        }
         tickCounter = 0;
 
-        Board board = gs.getBoard();
+        Board board = gameState.getBoard();
         int lane = random.nextInt(board.getLaneCount());
         int column = random.nextInt(board.getColumnCount());
         int chance = random.nextInt(100);
-        float spawnX = column * Tile.TILEWIDTH;
-        float targetY = lane * Tile.TILEHEIGHT;
+
         SunType type;
         if (chance < 80) {
             type = SunType.ORDINARY;
@@ -44,9 +42,18 @@ public class SkySunSpawner {
         } else {
             type = SunType.RADIOACTIVE;
         }
-        Sun sun = new Sun(spawnX, 0f, lane, type, type.getAmount(), type.getLifeTicks());
-        gs.getBoard().spawnSun(sun);
-        gs.logEvent("New "+type.name()+" sun is dropping at position ("+spawnX+", "+targetY+")\n");
+
+        Sun sun = new Sun(
+                column,
+                lane,
+                lane,
+                type,
+                type.getAmount(),
+                type.getLifeTicks()
+        );
+        board.spawnSun(sun);
+        gameState.logEvent("New " + type.name().toLowerCase()
+                + " sun is dropping at position (" + (column + 1) + ", " + (lane + 1) + ")\n");
         return sun;
     }
 }
