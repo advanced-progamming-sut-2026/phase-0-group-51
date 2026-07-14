@@ -73,8 +73,21 @@ public class GameState {
     public void decreaseSunBalance(int amount) {
         this.sun = Math.max(0, this.sun - amount);
     }
-    public void plantPlant(Plant plant, Tile tile){}
-    public void pluckPlant(Plant plant, Tile tile){}
+    public void plantPlant(Plant plant, Tile tile){
+        if (plant == null || tile == null) throw new IllegalArgumentException("Plant and tile are required");
+        if (!tile.isOccupiable()) throw new IllegalStateException("Tile is not occupiable");
+        if (sun < plant.getPlantStat().cost()) throw new IllegalStateException("Not enough sun");
+        decreaseSunBalance(plant.getPlantStat().cost());
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        tile.setPlant(plant);
+        plant.getPlantType().onPlanted(plant, this);
+    }
+    public void pluckPlant(Plant plant, Tile tile){
+        if (plant == null || tile == null || tile.getPlant() != plant) throw new IllegalArgumentException("Plant is not on this tile");
+        tile.removePlant();
+        plant.setMarkedForRemoval(true);
+    }
 
 
     public void addZombie(Zombie zombie) {

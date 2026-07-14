@@ -109,13 +109,18 @@ public class Plant {
     public void takeDamage(int damage){
         this.currentHP -= damage;
     }
+    public void takeDamage(int damage, GameState gameState){
+        if (markedForRemoval || damage <= 0) return;
+        this.currentHP -= damage;
+        if (this.currentHP <= 0) die(gameState);
+    }
     public boolean isDead(){
         return currentHP <= 0;
     }
     public void addArmor(int hp){
         this.currentHP += hp;
     }
-    private void die(GameState gameState) {
+    public void die(GameState gameState) {
         if (markedForRemoval) return;
         markedForRemoval = true;
         plantType.onDeath(this, gameState);
