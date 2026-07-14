@@ -7,16 +7,25 @@ import models.Zombie.Behavior.ZombieBehavior;
 import models.Zombie.Behavior.ZombieBehaviorFactory;
 import models.Zombie.Zombie;
 
-import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 public class ZombieLoader {
 
     private final Map<String, ArmorDefinition> armorRegistry = new HashMap<>();
 
+    private static JsonNode readResourceTree(String classpathResource) throws IOException {
+        try (InputStream is = ZombieLoader.class.getResourceAsStream(classpathResource)) {
+            if (is == null) {
+                throw new IllegalStateException("Missing classpath resource " + classpathResource);
+            }
+            return new ObjectMapper().readTree(is);
+        }
+    }
+
     public void loadArmors(String jsonPath) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(new File(jsonPath));
+        JsonNode root = readResourceTree(jsonPath);
 
         for (JsonNode entry : root) {
             String alias   = entry.path("aliases").get(0).asText();
@@ -42,8 +51,7 @@ public class ZombieLoader {
     }
 
     public Map<String, Zombie> loadZombies(String jsonPath) throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(new File(jsonPath));
+        JsonNode root = readResourceTree(jsonPath);
 
         Map<String, Zombie> result = new LinkedHashMap<>();
 

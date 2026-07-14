@@ -61,7 +61,8 @@ public class Tile {
         if (state == null || state.getZombiesInTheGame() == null) {
             return zombies;
         }
-        float tileStartX = column;
+        // TEST
+        float tileStartX = column - 1;
         float tileEndX = tileStartX + 1f;
         for (Zombie zombie : state.getZombiesInTheGame()) {
             if (zombie.isDead()) {

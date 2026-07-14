@@ -30,6 +30,30 @@ public final class PlantFactory {
     }
 
     public static Plant create(PlantData data, int requestedLevel) {
+        Plant plant = createBasePlant(data);
+        int maximumLevel = plant.getUpgrades().size() + 1;
+        int safeLevel = Math.max(1, Math.min(requestedLevel, maximumLevel));
+        while (plant.getLevel() < safeLevel) {
+            plant.levelUp();
+        }
+        return plant;
+    }
+
+    private static Plant createBasePlant(PlantData data) {
+        return switch (data.id()) {
+            case 1 -> SunProducer.SUNFLOWER.create();
+            case 6 -> Shooter.PEASHOOTER.create();
+            case 7 -> Shooter.REPEATER.create();
+            case 9 -> Shooter.SNOW_PEA.create();
+            case 25 -> Lobber.CABBAGE_PULT.create();
+            case 30 -> Explosive.POTATO_MINE.create();
+            case 44 -> WallNut.WALL_NUT.create();
+            case 55 -> Homing.CAT_TAIL.create();
+            default -> createDataDrivenPlant(data);
+        };
+    }
+
+    private static Plant createDataDrivenPlant(PlantData data) {
         PlantStats stats = new PlantStats(
                 data.baseHp(),
                 data.damage(),
@@ -42,7 +66,7 @@ public final class PlantFactory {
                 .map(DataDrivenPlantUpgrade::new)
                 .map(upgrade -> (PlantUpgrade) upgrade)
                 .toList();
-        Plant plant = new Plant(
+        return new Plant(
                 data.id(),
                 data.name(),
                 new DataDrivenPlantType(data),
@@ -50,10 +74,5 @@ public final class PlantFactory {
                 upgrades,
                 data.tags()
         );
-        int safeLevel = Math.max(1, Math.min(requestedLevel, upgrades.size() + 1));
-        while (plant.getLevel() < safeLevel) {
-            plant.levelUp();
-        }
-        return plant;
     }
 }

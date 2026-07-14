@@ -1,5 +1,6 @@
 package controllers;
 
+import Data.database.PlantRepository;
 import Data.database.ProgressRepository;
 import Data.database.UserRepository;
 import models.App;
@@ -10,6 +11,10 @@ import models.games.ChapterTheme;
 import models.games.Game;
 
 public class GameMenuController {
+    private static final int[] CHAPTER_ONE_LEVEL_ONE_PLANTS = {
+            1, 6, 7, 9, 25, 30, 44, 55
+    };
+
     public Result handleEnterChapter(String chapter) {
         int requestedChapterIndex = -1;
         ChapterTheme[] themes = ChapterTheme.values();
@@ -35,6 +40,7 @@ public class GameMenuController {
         if (requestedChapterIndex == unlockedChapterIndex) {
             requestedLevelIndex = unlockedLevelIndex;
         }
+        unlockChapterOneLevelOnePlants(requestedChapterIndex, requestedLevelIndex);
         Game newGame = new Game();
         newGame.setCurrentChapterIndex(requestedChapterIndex);
         newGame.setCurrentLevelIndex(requestedLevelIndex);
@@ -84,5 +90,12 @@ public class GameMenuController {
         }else{
             return new Result(false, "You can only go to the Collection menu!",null);
         }
+    }
+    private void unlockChapterOneLevelOnePlants(int chapterIndex, int levelIndex) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null || chapterIndex != 0 || levelIndex != 0) {
+            return;
+        }
+        PlantRepository.unlockPlants(user.getId(), CHAPTER_ONE_LEVEL_ONE_PLANTS);
     }
 }

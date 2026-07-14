@@ -22,14 +22,14 @@ public enum ChapterTheme {
                             1,
                             LevelType.NORMAL,
                             2,
-                            100f,
+                            1000f,
                             50,
                             List.of(ZombieType.DEFAULT, ZombieType.ARMOR_1, ZombieType.ARMOR_2,
                                     ZombieType.RA, ZombieType.EXPLORER, ZombieType.TOMB_RAISER)
                     ),
-                    new Level(2, LevelType.NORMAL, 3,150f),
-                    new Level(3, LevelType.CONVEYOR_BELT,4,150f),
-                    new Level(4, LevelType.BOSS, 5,150f)
+                    new Level(2, LevelType.NORMAL, 3,1500f),
+                    new Level(3, LevelType.CONVEYOR_BELT,4,1500f),
+                    new Level(4, LevelType.BOSS, 5,2000f)
             ),
             TimeOfTheDay.DAY
     ),
@@ -37,30 +37,30 @@ public enum ChapterTheme {
             withDefaults(ZombieType.ICE_AGE_TROGLOBITE,ZombieType.ICE_AGE_DODO,ZombieType.ICE_AGE_HUNTER),
             List.of(ChapterFeature.ICE_WIND, ChapterFeature.ICE_FLOOR),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2,100f),
-                    new Level(2, LevelType.NORMAL, 3,150f),
-                    new Level(3, LevelType.SAVE_OUR_SEEDS, 4,200f),
-                    new Level(4, LevelType.BOSS, 5,200f)
+                    new Level(1, LevelType.NORMAL, 2,1000f),
+                    new Level(2, LevelType.NORMAL, 3,1500f),
+                    new Level(3, LevelType.SAVE_OUR_SEEDS, 4,2000f),
+                    new Level(4, LevelType.BOSS, 5,2000f)
             ),
             TimeOfTheDay.DAY),
     BIG_WAVE_BEACH("Big Wave Beach",
            withDefaults(ZombieType.BEACH_FISHERMAN,ZombieType.BEACH_OCTOPUS,ZombieType.BEACH_SNORKEL),
             List.of(ChapterFeature.WATER_LEVEL, ChapterFeature.BACKWATER),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2,100f),
-                    new Level(2, LevelType.NORMAL, 3,150f),
-                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4,200f),
-                    new Level(4, LevelType.BOSS, 5,200f)
+                    new Level(1, LevelType.NORMAL, 2,1000f),
+                    new Level(2, LevelType.NORMAL, 3,1500f),
+                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4,2000f),
+                    new Level(4, LevelType.BOSS, 5,2000f)
             ),
             TimeOfTheDay.DAY),
     DARK_AGES("Dark Ages",
            withDefaults(ZombieType.DARK_KING,ZombieType.DARK_JUGGLER,ZombieType.WIZARD),
             List.of(ChapterFeature.NIGHT, ChapterFeature.GRAVE, ChapterFeature.GRAVE_SPAWN, ChapterFeature.NECROMANCY),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2,100f),
-                    new Level(2, LevelType.NORMAL, 3,150f),
-                    new Level(3, LevelType.NIGHT_OPS, 4,200f),
-                    new Level(4, LevelType.BOSS, 5,200f)
+                    new Level(1, LevelType.NORMAL, 2,1000f),
+                    new Level(2, LevelType.NORMAL, 3,1500f),
+                    new Level(3, LevelType.NIGHT_OPS, 4,2000f),
+                    new Level(4, LevelType.BOSS, 5,2000f)
             ),
             TimeOfTheDay.NIGHT);
 

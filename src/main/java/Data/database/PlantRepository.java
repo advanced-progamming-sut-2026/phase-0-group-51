@@ -61,6 +61,12 @@ public class PlantRepository {
             stmt.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
+
+    public static void unlockPlants(int userId, int... plantIds) {
+        for (int plantId : plantIds) {
+            unlockPlant(userId, plantId);
+        }
+    }
     public static int getSeedPackets(int userId,int plantId){
 
         String sql =

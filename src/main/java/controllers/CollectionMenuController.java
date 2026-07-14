@@ -26,7 +26,7 @@ public class CollectionMenuController {
                 .append(" | Speed: ")
                 .append(zombie.getBaseSpeed())
                 .append(" | Eat DPS: ")
-                .append(zombie.getBaseEatDPS())
+                .append(zombie.getBaseEatDps())
                 .append(" | Wave Cost: ")
                 .append(zombie.getWavePointCost())
                 .append(" | Weight: ")
