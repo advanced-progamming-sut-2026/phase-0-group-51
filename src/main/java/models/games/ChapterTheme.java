@@ -18,7 +18,15 @@ public enum ChapterTheme {
             withDefaults(ZombieType.RA,ZombieType.EXPLORER,ZombieType.TOMB_RAISER),
             List.of(ChapterFeature.GRAVE, ChapterFeature.TORNADO),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2,100f),
+                    new Level(
+                            1,
+                            LevelType.NORMAL,
+                            2,
+                            100f,
+                            50,
+                            List.of(ZombieType.DEFAULT, ZombieType.ARMOR_1, ZombieType.ARMOR_2,
+                                    ZombieType.RA, ZombieType.EXPLORER, ZombieType.TOMB_RAISER)
+                    ),
                     new Level(2, LevelType.NORMAL, 3,150f),
                     new Level(3, LevelType.CONVEYOR_BELT,4,150f),
                     new Level(4, LevelType.BOSS, 5,150f)
@@ -78,8 +86,6 @@ public final TimeOfTheDay timeOfTheDay;
         combined.add(ZombieType.ARMOR_2);
         combined.add(ZombieType.ARMOR_4);
         combined.add(ZombieType.IMP);
-        combined.add(ZombieType.DARK_ARMOR_3);
-        combined.add(ZombieType.DARK_IMP_DRAGON);
         combined.addAll(Arrays.asList(specifics));
 
         return Collections.unmodifiableList(combined);

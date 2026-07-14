@@ -19,6 +19,7 @@ public class Plant {
     private PlantStats plantStat;
     private int level = 1;
     private int sunPer;
+    private boolean pendingSun;
     private float tickFromLastAct;
     private float ticksOfPlantFood;
     // "can't act right now" timer.
@@ -69,13 +70,14 @@ public class Plant {
             plantType.onFoodTick(this, gameState);
             ticksOfPlantFood--;
             if (markedForRemoval) return;
-        } else if (canAct()) {
+        } else if (canAct(gameState)) {
             plantType.onTick(this, gameState);
         }
     }
 
-    public boolean canAct() {
-        if (tickFromLastAct >= plantStat.actionInterval()) {
+    public boolean canAct(GameState gameState) {
+        double requiredTicks = plantStat.actionInterval() * gameState.getTicksPerSecond();
+        if (tickFromLastAct >= requiredTicks) {
             tickFromLastAct = 0;
             return true;
         }
@@ -107,11 +109,11 @@ public class Plant {
         level++;
     }
     public void takeDamage(int damage){
-        this.currentHP -= damage;
+        this.currentHP = Math.max(0, this.currentHP - Math.max(0, damage));
     }
     public void takeDamage(int damage, GameState gameState){
         if (markedForRemoval || damage <= 0) return;
-        this.currentHP -= damage;
+        this.currentHP = Math.max(0, this.currentHP - damage);
         if (this.currentHP <= 0) die(gameState);
     }
     public boolean isDead(){
@@ -124,6 +126,7 @@ public class Plant {
         if (markedForRemoval) return;
         markedForRemoval = true;
         plantType.onDeath(this, gameState);
+        gameState.logEvent("Plant " + name + " at (" + (posX + 1) + ", " + (posY + 1) + ") is destroyed.\n");
         gameState.getBoard().removePlant(posY, posX);
     }
     public int getDamage() {

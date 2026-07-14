@@ -38,12 +38,14 @@ public class Board {
         }
     }
     public Tile getTile(int lane, int column) {
+        if (lane < 0 || lane >= laneCount || column < 0 || column >= columnCount) {
+            return null;
+        }
         return tiles[lane][column];
     }
     public Plant getPlant(int lane, float x) {
-        int column = (int) (x/Tile.TILEWIDTH);
-        Tile tile = getTile(lane,column);
-        return tile.getPlant();
+        Tile tile = getTile(lane, (int) Math.floor(x));
+        return tile == null ? null : tile.getPlant();
     }
     public void removePlant(int lane, int column) {
         Tile tile = getTile(lane, column);
@@ -102,6 +104,9 @@ public class Board {
         return blocked;
     }
     public void removeSun(Sun sun) {
+        if (sun.getSourcePlant() != null) {
+            sun.getSourcePlant().setPendingSun(false);
+        }
         sun.setCollected(true);
         suns.remove(sun);
     }
@@ -120,6 +125,9 @@ public class Board {
         } else {
             game.increaseSunBalance(sun.getAmount());
         }
+        if (sun.getSourcePlant() != null) {
+            sun.getSourcePlant().setPendingSun(false);
+        }
         sun.setCollected(true);
         suns.remove(sun);
         return true;
@@ -127,11 +135,11 @@ public class Board {
 
     private void explodeRadioactiveSun(Sun sun,GameState gs) {
         int sunLane = sun.getLane();
-        int sunColumn = (int) (sun.getX() / Tile.TILEWIDTH);
+        int sunColumn = (int) Math.floor(sun.getX());
 
         for (Zombie zombie : gs.getZombiesInTheGame()) {
             int zombieLane = zombie.getLane();
-            int zombieColumn = (int) (zombie.getX() / Tile.TILEWIDTH);
+            int zombieColumn = (int) Math.floor(zombie.getX());
             if (Math.abs(zombieLane - sunLane) <= 2 && Math.abs(zombieColumn - sunColumn) <= 2) {
                 zombie.takeDamage(150, gs, null);
             }
@@ -170,6 +178,9 @@ public class Board {
                 gs.logEvent(result.getMessage());
             }
             if (sun.isExpired() || sun.isCollected()) {
+                if (sun.getSourcePlant() != null) {
+                    sun.getSourcePlant().setPendingSun(false);
+                }
                 iterator.remove();
             }
         }
@@ -216,10 +227,43 @@ public class Board {
 
     public Zombie getZombieInPosition(int lane, int column) {
         for (Zombie zombie : getZombiesInLane(lane)) {
-            if(zombie.getX() == column) {
+            if (Math.floor(zombie.getX()) == column) {
                 return zombie;
             }
-        }return null;
+        }
+        return null;
+    }
+
+    public Zombie getFirstZombieCrossed(int lane, double fromX, double toX, Set<Zombie> excluded) {
+        double min = Math.min(fromX, toX) - 0.15;
+        double max = Math.max(fromX, toX) + 0.15;
+        Zombie closest = null;
+        for (Zombie zombie : getZombiesInLane(lane)) {
+            if (excluded.contains(zombie) || zombie.getX() < min || zombie.getX() > max) {
+                continue;
+            }
+            if (closest == null || Math.abs(zombie.getX() - fromX) < Math.abs(closest.getX() - fromX)) {
+                closest = zombie;
+            }
+        }
+        return closest;
+    }
+
+    public Tile getFirstGraveCrossed(int lane, double fromX, double toX) {
+        int start = Math.max(0, (int) Math.floor(Math.min(fromX, toX)));
+        int end = Math.min(columnCount - 1, (int) Math.floor(Math.max(fromX, toX)));
+        if (toX >= fromX) {
+            for (int column = start; column <= end; column++) {
+                Tile tile = getTile(lane, column);
+                if (tile != null && tile.hasGrave()) return tile;
+            }
+        } else {
+            for (int column = end; column >= start; column--) {
+                Tile tile = getTile(lane, column);
+                if (tile != null && tile.hasGrave()) return tile;
+            }
+        }
+        return null;
     }
 
     public Zombie getClosestZombieAnywhere(int fromLane, int fromColumn) {

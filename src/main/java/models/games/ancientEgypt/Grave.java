@@ -23,4 +23,16 @@ public class Grave {
     public boolean isDestroyed() {
         return this.health <= 0;
     }
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int getLane() {
+        return lane;
+    }
+
+    public int getColumn() {
+        return column;
+    }
 }

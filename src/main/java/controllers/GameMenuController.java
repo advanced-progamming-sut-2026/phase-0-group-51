@@ -11,7 +11,6 @@ import models.games.Game;
 
 public class GameMenuController {
     public Result handleEnterChapter(String chapter) {
-        App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
         int requestedChapterIndex = -1;
         ChapterTheme[] themes = ChapterTheme.values();
         for (int i = 0; i < themes.length; i++) {
@@ -41,8 +40,9 @@ public class GameMenuController {
         newGame.setCurrentLevelIndex(requestedLevelIndex);
         App.getInstance().setCurrentGame(newGame);
         App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
-        return new Result(true, "Entered " + requestedChapterIndex
-                + " Level " + (requestedLevelIndex + 1) + ".\nYou are now in the Plant Selection Menu.", null);
+        return new Result(true, "Entered " + themes[requestedChapterIndex].getName()
+                + " Level " + (requestedLevelIndex + 1)
+                + ".\nYou are now in the Plant Selection Menu.", null);
     }
 
     public void handleGreenhouse() {

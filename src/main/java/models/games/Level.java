@@ -1,7 +1,6 @@
 package models.games;
 
-import models.games.LevelType;
-import models.items.Wave;
+import models.Zombie.ZombieType;
 
 import java.util.List;
 
@@ -9,5 +8,17 @@ public record Level(
         int levelNumber,
         LevelType type,
         int totalWaves,
-        float baseDifficulty
-) {}
+        float baseDifficulty,
+        int startingSun,
+        List<ZombieType> allowedZombies
+) {
+    public Level(int levelNumber, LevelType type, int totalWaves, float baseDifficulty) {
+        this(levelNumber, type, totalWaves, baseDifficulty, 50, List.of());
+    }
+
+    public List<ZombieType> resolveAllowedZombies(List<ZombieType> chapterDefaults) {
+        return allowedZombies == null || allowedZombies.isEmpty()
+                ? chapterDefaults
+                : allowedZombies;
+    }
+}

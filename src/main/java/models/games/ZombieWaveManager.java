@@ -112,9 +112,9 @@ public class ZombieWaveManager {
         }
 
         if (finalWave) {
-            gs.logEvent("The final wave has come.");
+            gs.logEvent("The final wave has come.\n");
         } else {
-            gs.logEvent("Wave " + number + " started.");
+            gs.logEvent("Wave " + number + " started.\n");
         }
 
         currentWave = new Wave(number, currentDifficulty, finalWave);
@@ -139,9 +139,13 @@ public class ZombieWaveManager {
             int lane = random.nextInt(lanes);
             float x = spawnColumn;
             if (wave.isFinalWave() && tornadoFinalWave && random.nextBoolean()) {
-                x -= 1 + random.nextInt(4); // tornado
+                int movedColumns = 1 + random.nextInt(4);
+                x -= movedColumns;
+                gs.logEvent("A tornado moved " + zombie.getAlias() + " "
+                        + movedColumns + " columns forward.\n");
             }
 
+            zombie.setGlowing(random.nextInt(100) < 5);
             zombie.setLane(lane);
             zombie.setX(Math.max(0f, x));
             gs.addZombie(zombie);
@@ -151,7 +155,7 @@ public class ZombieWaveManager {
             gs.logEvent("Zombie " + zombie.getAlias()
                 + " spawned at wave " + wave.getWaveNumber()
                 + " in lane " + (lane + 1)
-                + " which costed " + zombie.getWavePointCost() + ".");
+                + " which cost " + zombie.getWavePointCost() + ".\n");
         }
     }
 
@@ -159,7 +163,7 @@ public class ZombieWaveManager {
         List<Zombie> affordable = new ArrayList<>();
         long weightSum = 0;
         for (ZombieType alias : allowedAliases) {
-            Zombie template = ZombieRegistry.getTemplate(alias.name());
+            Zombie template = ZombieRegistry.getTemplate(alias.getAlias());
             if (template == null) {
                 continue;
             }
