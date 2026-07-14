@@ -139,7 +139,7 @@ public class GameState {
         return cooldownUntilTick.getOrDefault(plantId, 0);
     }
     public void startPlantCooldown(PlantData plant) {
-        int rechargeTicks = plant.recharge() * ticksPerSecond;
+        int rechargeTicks = (int) (plant.recharge() * ticksPerSecond);
         int availableAt = tickCounter + rechargeTicks;
         cooldownUntilTick.put(plant.id(), availableAt);
     }
