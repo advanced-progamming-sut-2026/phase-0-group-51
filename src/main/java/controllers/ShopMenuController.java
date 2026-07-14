@@ -1,11 +1,11 @@
 package controllers;
 
-import data.database.DailyOfferRepository;
-import data.database.GreenHouseRepository;
-import data.database.PlantRepository;
-import data.database.UserRepository;
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
+import Data.database.DailyOfferRepository;
+import Data.database.GreenHouseRepository;
+import Data.database.PlantRepository;
+import Data.database.UserRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import controllers.validation.ShopMenuValidation;
 import lombok.Getter;
 import lombok.Setter;

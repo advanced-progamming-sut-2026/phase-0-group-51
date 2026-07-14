@@ -1,7 +1,7 @@
 package models.greenHouse;
 
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import lombok.Getter;
 import lombok.Setter;
 

@@ -1,8 +1,8 @@
 package models.minigames.iZombie;
 import models.Board.Board;
 import models.minigames.vaseBreaker.Brain;
-import models.zombie.Zombie;
-import models.zombie.ZombieType;
+import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.GameState;
 

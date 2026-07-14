@@ -1,21 +1,20 @@
 package models.minigames.vaseBreaker;
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
-import data.loader.ZombieRegistry;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
+import Data.loader.ZombieRegistry;
 import lombok.Getter;
-import lombok.Setter;
 import models.Board.Board;
 import models.Board.Tile;
 import models.minigames.MinigameStage;
 import models.minigames.MinigameType;
-import models.plant.Plant;
-import models.plant.PlantFactory;
-import models.plant.PlantTag;
-import models.zombie.Zombie;
+import models.Plant.Plant;
+import models.Plant.PlantFactory;
+import models.Plant.PlantTag;
+import models.Zombie.Zombie;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
-import models.zombie.ZombieType;
+import models.Zombie.ZombieType;
 
 import java.util.*;
 

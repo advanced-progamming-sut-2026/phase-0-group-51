@@ -1,6 +1,6 @@
 package models.minigames.zombotany;
 
-import models.zombie.Behavior.ZombieBehavior;
+import models.Zombie.Behavior.ZombieBehavior;
 
 import java.util.List;
 

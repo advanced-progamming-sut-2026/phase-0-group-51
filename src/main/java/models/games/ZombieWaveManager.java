@@ -1,10 +1,10 @@
 package models.games;
 
-import data.loader.ZombieRegistry;
+import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
-import models.zombie.Zombie;
-import models.zombie.ZombieType;
+import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
 import models.items.Wave;
 
 import java.util.ArrayList;

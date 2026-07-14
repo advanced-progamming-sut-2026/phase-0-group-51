@@ -1,8 +1,8 @@
 package models;
 
-import data.database.DataBaseManager;
-import data.database.UserRepository;
-import data.loader.PlantLoader;
+import Data.database.DataBaseManager;
+import Data.database.UserRepository;
+import Data.loader.PlantLoader;
 import lombok.Getter;
 import lombok.Setter;
 import models.enums.Menu;

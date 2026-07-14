@@ -1,6 +1,6 @@
 package models.greenHouse;
 
-import data.loader.PlantData;
+import Data.loader.PlantData;
 
 import java.util.Set;
 

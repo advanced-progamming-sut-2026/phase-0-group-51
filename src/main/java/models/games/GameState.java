@@ -1,10 +1,10 @@
 package models.games;
 
-import data.loader.PlantData;
+import Data.loader.PlantData;
 import lombok.Getter;
 import lombok.Setter;
-import models.plant.Plant;
-import models.zombie.Zombie;
+import models.Plant.Plant;
+import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 import models.items.Mower;

@@ -2,9 +2,9 @@ package models.projectile;
 
 import lombok.Getter;
 import lombok.Setter;
-import models.plant.PlantTag;
+import models.Plant.PlantTag;
 import models.projectile.move.MovingStrategy;
-import models.zombie.Zombie;
+import models.Zombie.Zombie;
 import models.games.GameState;
 
 import java.util.HashSet;

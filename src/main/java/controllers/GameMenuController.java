@@ -1,7 +1,7 @@
 package controllers;
 
-import data.database.ProgressRepository;
-import data.database.UserRepository;
+import Data.database.ProgressRepository;
+import Data.database.UserRepository;
 import models.App;
 import models.Result;
 import models.User;

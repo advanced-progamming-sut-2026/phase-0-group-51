@@ -1,14 +1,14 @@
 package controllers;
 
-import data.database.PlantRepository;
-import data.database.UserRepository;
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
+import Data.database.PlantRepository;
+import Data.database.UserRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;
-import models.zombie.Behavior.ZombieBehavior;
-import models.zombie.Zombie;
+import models.Zombie.Behavior.ZombieBehavior;
+import models.Zombie.Zombie;
 
 import java.util.*;
 

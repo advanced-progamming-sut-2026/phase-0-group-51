@@ -2,7 +2,6 @@ package controllers.miniGamesController;
 
 import controllers.GamingController;
 import models.App;
-import models.Board.Board;
 import models.minigames.vaseBreaker.Brain;
 import models.minigames.vaseBreaker.Vase;
 import models.Result;
@@ -10,16 +9,12 @@ import models.enums.Menu;
 import models.games.Game;
 import models.minigames.vaseBreaker.DroppedSeedPacket;
 import models.minigames.vaseBreaker.VaseBreaker;
-import models.plant.Plant;
-import models.zombie.Zombie;
+import models.Plant.Plant;
+import models.Zombie.Zombie;
 
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
-
-import static models.minigames.vaseBreaker.VaseType.*;
 
 public class VaseBreakerController extends GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");

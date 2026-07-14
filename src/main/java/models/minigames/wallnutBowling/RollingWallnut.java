@@ -1,6 +1,6 @@
 package models.minigames.wallnutBowling;
 
-import models.zombie.Zombie;
+import models.Zombie.Zombie;
 
 public class RollingWallnut  { //extend plant
     private WallnutType wallnutType;

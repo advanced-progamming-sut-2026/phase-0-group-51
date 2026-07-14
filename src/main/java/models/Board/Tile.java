@@ -2,8 +2,8 @@ package models.Board;
 
 import lombok.Getter;
 import lombok.Setter;
-import models.plant.Plant;
-import models.zombie.Zombie;
+import models.Plant.Plant;
+import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
 

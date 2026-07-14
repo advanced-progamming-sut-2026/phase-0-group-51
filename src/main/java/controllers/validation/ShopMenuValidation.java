@@ -1,7 +1,7 @@
 package controllers.validation;
 
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import models.App;
 import models.greenHouse.FlowerPot;
 import models.greenHouse.GreenHouse;

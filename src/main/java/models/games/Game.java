@@ -1,14 +1,14 @@
 package models.games;
 
 
-import data.loader.PlantData;
+import Data.loader.PlantData;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Board.Board;
 import models.User;
-import models.zombie.Zombie;
-import models.zombie.ZombieType;
+import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
 import models.sun.SkySunSpawner;
 
 import java.util.ArrayList;
@@ -111,7 +111,7 @@ public class Game{
 
         User user = App.getInstance().getLoggedInUser();
         if (user != null) {
-            data.database.ProgressRepository progressRepo = new data.database.ProgressRepository();
+            Data.database.ProgressRepository progressRepo = new Data.database.ProgressRepository();
             int[] currentProgress = progressRepo.getCurrentProgress(user.getId());
             if (newChapter > currentProgress[0] || (newChapter == currentProgress[0] && newLevel > currentProgress[1])) {
                 progressRepo.saveProgress(user.getId(), newChapter, newLevel);

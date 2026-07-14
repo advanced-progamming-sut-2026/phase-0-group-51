@@ -1,24 +1,24 @@
 package controllers;
 
-import data.database.PlantBoostRepository;
-import data.database.PlantRepository;
-import data.loader.PlantData;
-import data.loader.PlantRegistry;
-import data.loader.ZombieRegistry;
+import Data.database.PlantBoostRepository;
+import Data.database.PlantRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
+import Data.loader.ZombieRegistry;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.User;
-import models.plant.Plant;
+import models.Plant.Plant;
 import models.Result;
-import models.plant.PlantFactory;
-import models.zombie.Behavior.ArmorBehavior;
-import models.zombie.Zombie;
+import models.Plant.PlantFactory;
+import models.Zombie.Behavior.ArmorBehavior;
+import models.Zombie.Zombie;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;
 import models.sun.Sun;
-import models.zombie.ZombieType;
+import models.Zombie.ZombieType;
 
 import java.text.DecimalFormat;
 import java.util.*;

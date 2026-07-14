@@ -1,6 +1,6 @@
 package models.quests;
 
-import data.database.UserRepository;
+import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
 import models.User;

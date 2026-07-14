@@ -1,8 +1,8 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
-import models.plant.WallNut;
-import models.zombie.Zombie;
+import models.Plant.WallNut;
+import models.Zombie.Zombie;
 
 public class WallnutBowlingController extends GamingController {
     //Queue<PlantType> conveyorBelt=new Queue<PlantType>() {

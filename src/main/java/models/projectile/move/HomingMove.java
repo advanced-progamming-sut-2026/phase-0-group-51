@@ -1,6 +1,6 @@
 package models.projectile.move;
 
-import models.zombie.Zombie;
+import models.Zombie.Zombie;
 import models.projectile.Projectile;
 
  //Used by Cat-tail, Magnet-shroom, Electric Blueberry, Caulipower.

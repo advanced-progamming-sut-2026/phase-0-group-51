@@ -1,7 +1,7 @@
 package controllers;
 
-import data.database.GreenHouseRepository;
-import data.database.UserRepository;
+import Data.database.GreenHouseRepository;
+import Data.database.UserRepository;
 import lombok.Getter;
 import models.App;
 import models.greenHouse.GreenHouse;

@@ -1,6 +1,6 @@
 package models.minigames.zombotany;
 
-import models.zombie.Zombie;
+import models.Zombie.Zombie;
 
 public class Bullet {
     Zombie shooterZombie;
