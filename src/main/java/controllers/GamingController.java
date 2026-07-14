@@ -54,48 +54,56 @@ public class GamingController {
         }
             return new Result(true, sb.toString(), null);
     }
-    public Result plantPlant(String plantType,int x, int y){ public Result plantPlant(String plantType, int x, int y) {
-//        Game game = App.getInstance().getCurrentGame();
-//        if (game == null) return failure("No active game found.\n");
-//        GameState state = game.getGameState();
-//        Tile tile = game.getGameState().getBoard().getTileAtUserCoordinates(x,y);
-//        if (tile == null) return failure("Coordinates are outside the map.\n");
-//        PlantData selected = PlantRegistry.getByName(plantType);
-//        if (selected == null) {return failure("This plant is not selected for the current level.\n");}
-//        if (!tile.isOccupiable()) {
-//            if (tile.hasPlant()) return failure("This tile already contains a plant.\n");
-//            if (tile.hasGrave()) return failure("A grave blocks this tile.\n");
-//            if (tile.isIceBlocked()) return failure("This tile is blocked by ice.\n");
-//            return failure("This tile cannot be occupied.\n");
-//        }
-//
-//        int availableAt = cooldownUntilTick.getOrDefault(selected.id(), 0);
-//        if (state.getTickCounter() < availableAt) {
-//            int ticksLeft = availableAt - state.getTickCounter();
-//            return failure("Plant is recharging for " + ticksLeft + " more ticks.\n");
-//        }
-//        if (state.getSun() < selected.cost()) {
-//            return failure("Not enough sun. " + selected.name() + " costs " + selected.cost() + " suns.\n");
-//        }
-//
-//        Plant plant = createPlant(selected);
-//        if (plant == null) {
-//            return failure("The behavior for plant '" + selected.name() + "' is not implemented yet.\n");
-//        }
-//
-//        int column = x - 1;
-//        int lane = y - 1;
-//        plant.setPosX(column);
-//        plant.setPosY(lane);
-//        tile.setPlant(plant);
-//        state.decreaseSunBalance(selected.cost());
-//        plant.getPlantType().onPlanted(plant, state);
-//
-//        int rechargeTicks = Math.max(0, selected.recharge()) * state.getTicksPerSecond();
-//        cooldownUntilTick.put(selected.id(), state.getTickCounter() + rechargeTicks);
-//
-//        return success(selected.name() + " planted at (" + x + ", " + y + ").\n");
-    }}
+    public Result plantPlant(String plantType,int x, int y){
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null) return failure("No active game found.\n");
+        GameState state = game.getGameState();
+        if (state == null) return failure("No active level found.\n");
+        Tile tile = state.getBoard().getTileAtUserCoordinates(x - 1, y - 1);
+        if (tile == null) return failure("Coordinates are outside the map.\n");
+        PlantData selected = PlantRegistry.getByName(plantType);
+        if (selected == null) return failure("Unknown plant.\n");
+        if (!game.getSelectedPlantsForThisGame().contains(selected)) {
+            return failure("This plant is not selected for this level.\n");
+        }
+        if (!tile.isOccupiable()) {
+            return tileOccupationFailure(tile);
+        }
+        int availableAt = state.getPlantCooldownEnd(selected.id());
+        if (state.getTickCounter() < availableAt) {
+            int ticksLeft = availableAt - state.getTickCounter();
+            return failure("Plant is recharging for " + ticksLeft + " more ticks.\n");
+        }
+        if (state.getSun() < selected.cost()) {
+            return failure("Not enough sun." + selected.name()
+                    + " costs "
+                    + selected.cost()
+                    + " suns.\n");
+        }
+//        state.plantPlant(, tile);
+        state.startPlantCooldown(selected);
+        state.setSun(state.getSun()-selected.cost());
+        return success(
+                selected.name()
+                        + " planted at ("
+                        + x
+                        + ", "
+                        + y
+                        + ").\n"
+        );
+    }
+    private Result tileOccupationFailure(Tile tile) {
+        if (tile.hasPlant())
+            return failure("This tile already contains a plant.\n");
+
+        if (tile.hasGrave())
+            return failure("A grave blocks this tile.\n");
+
+        if (tile.isIceBlocked())
+            return failure("This tile is blocked by ice.\n");
+
+        return failure("This tile cannot be occupied.\n");
+    }
     public Result pluckPlants(int x, int y){
         Game game = App.getInstance().getCurrentGame();
         if (game == null) return failure("No active game found.\n");
@@ -105,7 +113,7 @@ public class GamingController {
 
         String name = tile.getPlant().getName();
         tile.removePlant();
-        return success(name + " was plucked from (" + x + ", " + y + ").\n")
+        return success(name + " was plucked from (" + x + ", " + y + ").\n");
     }
     public Result feedPlants(){}
     public Result zombiesInfo(){
