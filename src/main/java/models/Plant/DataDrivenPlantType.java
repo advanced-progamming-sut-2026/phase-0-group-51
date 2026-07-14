@@ -115,12 +115,12 @@ public final class DataDrivenPlantType implements PlantType {
 
     private void melee(Plant plant, GameState state) {
         for (Zombie zombie : state.getBoard().getZombiesInRadius(plant.getPosY(), plant.getPosX()+0.5, data.tags().contains(PlantTag.AOE) ? 1.5 : 1.0))
-            zombie.takeDamage(plant.getDamage(), state);
+            zombie.takeDamage(plant.getDamage(), state, plant);
     }
 
     private void explode(Plant plant, GameState state, double radius) {
         List<Zombie> targets = radius > 10 ? state.getBoard().getZombiesInLane(plant.getPosY()) : state.getBoard().getZombiesInRadius(plant.getPosY(), plant.getPosX(), radius);
-        for (Zombie zombie : targets) { zombie.takeDamage(plant.getDamage(), state); element().onHit(zombie, state); }
+        for (Zombie zombie : targets) { zombie.takeDamage(plant.getDamage(), state, plant); element().onHit(zombie, state); }
     }
 
     private void produceSun(Plant plant, GameState state, int amount) {
