@@ -6,6 +6,7 @@ public enum VaseBreakerCommands implements Commands{
     PLANT_PACKET("^\\s*plant\\s+packet\\s+-t\\s+" + "(?<plantType>.+?)\\s+-l\\s*" +
             "\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
     ADVANCE_TIME("^\\s*advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks\\s*$"),
+    SHOW_STATUS("^\\s*show\\s+vasebreaker\\s+status\\s*$"),
     CURRENT_MENU(Commands.CURRENT_MENU_REGEX),
     EXIT_MENU(Commands.EXIT_MENU_REGEX);
     private final String regex;
