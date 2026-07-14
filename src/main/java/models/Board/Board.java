@@ -147,11 +147,7 @@ public class Board {
                 Tile tile = tiles[r][c];
                 if (tile.hasPlant()) {
                     Plant p = tile.getPlant();
-                    p.takeDamage(80);
-
-                    if (p.isDead()) {
-                        tile.removePlant();
-                    }
+                    p.takeDamage(80, gs);
                 }
             }
         }
@@ -292,4 +288,39 @@ public class Board {
     public void addProjectile(Projectile projectile) {
         projectiles.add(projectile);
     }
+    public List<Plant> getAllPlants() {
+        List<Plant> result = new ArrayList<>();
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int col = 0; col < columnCount; col++) {
+                if (tiles[lane][col].hasPlant()) result.add(tiles[lane][col].getPlant());
+            }
+        }
+        return result;
+    }
+
+    public Zombie getFirstZombieAheadInLane(int lane, double column) {
+        Zombie first = null;
+        for (Zombie zombie : getZombiesInLane(lane)) {
+            if (zombie.getX() < column) continue;
+            if (first == null || zombie.getX() < first.getX()) first = zombie;
+        }
+        return first;
+    }
+
+    public Zombie getZombieNear(int lane, double column, double radius) {
+        for (Zombie zombie : getZombiesInRadius(lane, column, radius)) return zombie;
+        return null;
+    }
+
+    public void tickPlants(GameState state) {
+        for (Plant plant : new ArrayList<>(getAllPlants())) {
+            plant.tick(state);
+            if (plant.isMarkedForRemoval()) removePlant(plant.getPosY(), plant.getPosX());
+        }
+    }
+
+    public void tickProjectiles(GameState state) {
+        for (Projectile projectile : new ArrayList<>(projectiles)) projectile.tick(state);
+    }
+
 }

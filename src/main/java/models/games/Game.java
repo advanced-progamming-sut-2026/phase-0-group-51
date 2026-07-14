@@ -66,6 +66,8 @@ public class Game{
             skySunSpawner.onTick(gameState);
         }
         gameState.getZombieWaveManager().onTick();
+        gameState.getBoard().tickPlants(gameState);
+        gameState.getBoard().tickProjectiles(gameState);
         List<Zombie> zombies = new ArrayList<>(gameState.getZombiesInTheGame());
         for (Zombie zombie : zombies) {
             zombie.onTick(gameState);
