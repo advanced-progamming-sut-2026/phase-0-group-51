@@ -1,6 +1,6 @@
 package models.projectile;
 
-import models.Zombie.Zombie;
+import models.zombie.Zombie;
 import models.games.GameState;
 
 public enum ElementType {

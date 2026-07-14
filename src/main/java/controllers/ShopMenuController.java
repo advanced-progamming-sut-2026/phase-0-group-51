@@ -1,19 +1,19 @@
 package controllers;
 
-import Data.database.DailyOfferRepository;
-import Data.database.GreenHouseRepository;
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import data.database.DailyOfferRepository;
+import data.database.GreenHouseRepository;
+import data.database.PlantRepository;
+import data.database.UserRepository;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import controllers.validation.ShopMenuValidation;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
-import models.GreenHouse.FlowerPot;
-import models.GreenHouse.GreenHouse;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
 import models.Result;
-import models.Shop.*;
+import models.shop.*;
 import models.User;
 import models.enums.Menu;
 

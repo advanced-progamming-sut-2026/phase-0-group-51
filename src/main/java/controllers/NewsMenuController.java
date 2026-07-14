@@ -1,6 +1,6 @@
 package controllers;
 
-import Data.database.NewsRepository;
+import data.database.NewsRepository;
 import models.App;
 import models.Result;
 import models.User;

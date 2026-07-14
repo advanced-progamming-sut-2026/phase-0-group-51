@@ -1,0 +1,85 @@
+menu enter <menu_name>
+menu show current
+menu exit
+
+register -u <username> -p <password> <password_confirm> -n <nickname> -e <email> -g <gender>
+pick question -q <question_number> -a <answer> -c <answer_confirm>
+login -u <username> -p <password> -stay-logged-in
+login -u <username> -p <password> 
+forget password -u <username> -e <email>
+answer -a <answer>
+menu logout
+
+menu enter chapter -c <chaptername>
+menu greenhouse
+menu travel-log
+menu leaderboard
+menu coin-wallet
+menu gem-wallet
+menu cheat add <n> <coin/diamond>
+
+menu settings change-difficulty -l <difficulty_level>
+
+menu news show-unread
+menu news show-all
+
+menu profile change-username -u <username>
+menu profile change-nickname -u <nickname>
+menu profile change-email -e <email>
+menu profile change-password -p <new_password> -o <old_password>
+menu profile show-info
+
+menu collection show-plants
+menu collection show-all-plants
+menu collection show-zombies
+menu collection show-all-zombies
+menu collection show-plant -p <plant_name>
+menu collection show-zombie -z <zombie_name>
+menu collection upgrade-plant -p <plant_name>
+menu collection purchase-plant -p <plant_name>
+
+show all plants
+show available plants
+add plant -t <type>
+remove plant -t <type>
+boost plant -t <type>
+start game
+
+advance time -t <count> ticks
+collect sun -l (<x>, <y>)
+show sun amount
+cheat add -n <count> suns
+release the nuke
+plant plant -t <type> -l (<x>, <y>)
+cheat remove-cooldown
+pluck plant -l (<x>, <y>)
+feed plant -l (<x>, <y>)
+cheat add-plant-food
+show map
+show plants status
+show tile status -l (<x>, <y>)
+zombies info
+cheat spawn-zombie -t <zombie-type> -l <x, y>
+
+show greenhouse
+plant pot at (<x>, <y>)
+collect (<x>, <y>)
+grow (<x>, <y>)
+
+enter shop
+shop list
+shop daily
+shop buy -i <item_id> -n <count> [-t <plant_type>]
+shop buy daily
+
+travel log page <page_name>
+start vasebreaker -s <level number>
+--------
+Vasebreaker minigame:
+break vase -l (<x>, <y>)
+pick seed packet -l (<x>, <y>)
+plant packet -t <plantType> -l (<x>, <y>)
+advance time -t <count> ticks
+show vasebreaker status
+menu show current
+menu exit

@@ -1,10 +1,10 @@
 package controllers;
 
-import Data.database.GreenHouseRepository;
-import Data.database.UserRepository;
+import data.database.GreenHouseRepository;
+import data.database.UserRepository;
 import lombok.Getter;
 import models.App;
-import models.GreenHouse.GreenHouse;
+import models.greenHouse.GreenHouse;
 import models.Result;
 import models.User;
 import models.enums.Menu;

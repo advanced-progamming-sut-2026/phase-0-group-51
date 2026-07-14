@@ -1,7 +1,7 @@
 package controllers;
 
-import Data.database.GreenHouseRepository;
-import Data.database.UserRepository;
+import data.database.GreenHouseRepository;
+import data.database.UserRepository;
 import controllers.validation.SignUpValidation;
 import models.App;
 import models.Result;

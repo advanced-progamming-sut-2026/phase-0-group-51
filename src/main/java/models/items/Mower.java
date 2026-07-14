@@ -2,7 +2,7 @@ package models.items;
 
 import lombok.Getter;
 import models.Board.Board;
-import models.Zombie.Zombie;
+import models.zombie.Zombie;
 import models.games.GameState;
 
 @Getter

@@ -1,14 +1,14 @@
 package controllers;
 
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
-import models.Plant.Plant;
+import models.plant.Plant;
 import models.Result;
-import models.Zombie.Behavior.ArmorBehavior;
-import models.Zombie.Zombie;
+import models.zombie.Behavior.ArmorBehavior;
+import models.zombie.Zombie;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;

@@ -1,10 +1,10 @@
 package models.games;
 
-import Data.loader.PlantData;
+import data.loader.PlantData;
 import lombok.Getter;
 import lombok.Setter;
-import models.Plant.Plant;
-import models.Zombie.Zombie;
+import models.plant.Plant;
+import models.zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 import models.items.Mower;
@@ -31,21 +31,27 @@ public class GameState {
     private ZombieWaveManager zombieWaveManager;
     private final Mower[] lawnMowers;
     private Consumer<String> eventLogger;
+    boolean mowerEnabled =true;
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
         }
     }
-    public GameState(Board board, ChapterTheme chapterTheme) {
+    public GameState(Board board, ChapterTheme chapterTheme,boolean mowerEnabled) {
         this.board = board;
         this.board.setZombie(this.zombiesInTheGame);
         this.chapterTheme = chapterTheme;
+        this.mowerEnabled = mowerEnabled;
         this.lawnMowers = new Mower[board.getLaneCount()];
         for (int i = 0; i < lawnMowers.length; i++) {
             lawnMowers[i] = new Mower(i,this);
         }
     }
     public boolean checkLoseCondition() {
+        if (!mowerEnabled) {
+            return false;
+        }
+
         for (Zombie zombie : zombiesInTheGame) {
             if (!zombie.isDead() && zombie.getX() < 0) {
                 int lane = zombie.getLane();

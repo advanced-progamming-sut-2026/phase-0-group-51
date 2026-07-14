@@ -1,10 +1,7 @@
 package models.games;
 
 import lombok.Getter;
-import lombok.Setter;
-import models.Zombie.Zombie;
-import models.Zombie.ZombieType;
-import models.games.ancientEgypt.Grave;
+import models.zombie.ZombieType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,8 +51,14 @@ public enum ChapterTheme {
                     new Level(3, LevelType.NIGHT_OPS, 4,200f),
                     new Level(4, LevelType.BOSS, 5,200f)
             ),
-            TimeOfTheDay.NIGHT);
-
+            TimeOfTheDay.NIGHT),
+    MINIGAME(
+            "Minigame",
+            allZombies(),
+            List.of(),
+            List.of(),
+    TimeOfTheDay.DAY
+    );
 
    public final String name;
     public final List<ZombieType> allowedZombies;
@@ -83,5 +86,10 @@ public final TimeOfTheDay timeOfTheDay;
         combined.addAll(Arrays.asList(specifics));
 
         return Collections.unmodifiableList(combined);
+    }
+    private static List<ZombieType> allZombies() {
+        return Collections.unmodifiableList(
+                Arrays.asList(ZombieType.values())
+        );
     }
 }

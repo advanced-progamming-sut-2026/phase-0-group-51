@@ -1,10 +1,10 @@
 package controllers;
 
-import Data.database.PlantBoostRepository;
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import data.database.PlantBoostRepository;
+import data.database.PlantRepository;
+import data.database.UserRepository;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;

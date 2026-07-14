@@ -1,6 +1,6 @@
 package controllers;
 
-import Data.database.UserRepository;
+import data.database.UserRepository;
 import controllers.validation.ProfileMenuValidation;
 import models.App;
 import models.Result;

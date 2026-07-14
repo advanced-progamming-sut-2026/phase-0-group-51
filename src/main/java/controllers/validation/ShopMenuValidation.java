@@ -1,16 +1,11 @@
 package controllers.validation;
 
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import models.App;
-import models.GreenHouse.FlowerPot;
-import models.GreenHouse.GreenHouse;
-import models.Plant.PlantType;
-import models.Shop.Shop;
-import models.Shop.ShopItem;
-
-import static models.Shop.ShopItemType.PLANT_FOOD;
-import static models.Shop.ShopItemType.POT;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
+import models.shop.ShopItem;
 
 public class ShopMenuValidation {
     public int count, id, totalGemsNeeded, totalCoinsNeeded;

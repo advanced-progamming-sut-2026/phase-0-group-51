@@ -1,18 +1,16 @@
 package controllers;
 
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
-import Data.loader.ZombieRegistry;
+import data.database.PlantRepository;
+import data.database.UserRepository;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;
-import models.Zombie.Behavior.ZombieBehavior;
-import models.Zombie.Zombie;
+import models.zombie.Behavior.ZombieBehavior;
+import models.zombie.Zombie;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class CollectionMenuController {
 

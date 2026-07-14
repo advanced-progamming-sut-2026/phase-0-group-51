@@ -1,16 +1,16 @@
 package controllers;
 
-import Data.database.GreenHouseRepository;
-import Data.database.PlantBoostRepository;
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import data.database.GreenHouseRepository;
+import data.database.PlantBoostRepository;
+import data.database.PlantRepository;
+import data.database.UserRepository;
+import data.loader.PlantData;
+import data.loader.PlantRegistry;
 import controllers.validation.GreenHouseMenuValidation;
 import models.App;
-import models.GreenHouse.FlowerPot;
-import models.GreenHouse.GreenHouse;
-import models.GreenHouse.GreenHousePlantHelper;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
+import models.greenHouse.GreenHousePlantHelper;
 import models.Result;
 import models.User;
 import models.enums.Menu;

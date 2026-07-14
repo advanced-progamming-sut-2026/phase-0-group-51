@@ -1,17 +1,15 @@
 package models;
 
-import Data.database.DataBaseManager;
-import Data.database.UserRepository;
-import Data.loader.PlantLoader;
+import data.database.DataBaseManager;
+import data.database.UserRepository;
+import data.loader.PlantLoader;
 import lombok.Getter;
 import lombok.Setter;
-import models.Plant.Plant;
-import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 
 import java.util.ArrayList;
-import java.util.List;
+
 @Getter
 @Setter
 public class App {

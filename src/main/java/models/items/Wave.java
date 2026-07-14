@@ -1,7 +1,7 @@
 package models.items;
 
 import lombok.Getter;
-import models.Zombie.Zombie;
+import models.zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.Collections;
