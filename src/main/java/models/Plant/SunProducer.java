@@ -85,7 +85,7 @@ public enum SunProducer implements PlantType {
                 data.cost(),
                 data.actionInterval(),
                 data.recharge(),
-                0
+                data.projectileSpeed()
         );
         return new Plant(
                 data.id(), data.name(), this,

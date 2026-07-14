@@ -11,9 +11,14 @@ public record PlantData(
         int cost,
         int baseHp,
         int damage,
+        String damageExpression,
+        String baseAbility,
+        String plantFoodEffect,
         double actionInterval,
-        int recharge,
+        double recharge,
+        double projectileSpeed,
         String lvl2,
         String lvl3,
-        String lvl4
+        String lvl4,
+        List<UpgradeData> upgrades
 ) {}
