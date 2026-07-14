@@ -18,7 +18,7 @@ public enum PlantTag {
     WATER{},
     AOE{},
     TRAP{},
-    MOVE_ZOMBIES{},
+    MOVEZOMBIES{},
     SUN{},
     EXPLOSIVE{};
     public void onTakeDamage(Plant plant, GameState state){}

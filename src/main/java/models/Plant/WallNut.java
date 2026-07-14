@@ -10,36 +10,19 @@ import java.util.List;
 public enum WallNut implements PlantType {
 
     WALL_NUT(44,
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 1000);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withRecharge(current.recharge() - 5);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 1500);
-                }
-            }) {
+            current -> current.withMaxHp(current.maxHp() + 1000),
+            current -> current.withRecharge(current.recharge() - 5),
+            current -> current.withMaxHp(current.maxHp() + 1500)) {
         @Override
-        public void onTick(Plant plant, GameState gameState) {}
-
-        @Override
-        public void onFeed(Plant plant, GameState gameState) {
-            plant.addArmor(4000);
+        public void onTick(Plant plant, GameState state) {
+            return;
         }
 
         @Override
-        public void onFoodTick(Plant plant, GameState gameState) {}
-    },
-    ;
+        public void onFeed(Plant plant, GameState state) {
+            plant.addArmor(plant.getPlantStat().maxHp());
+        }
+    };
 
     private final int id;
     private final List<PlantUpgrade> upgrades;
@@ -60,7 +43,9 @@ public enum WallNut implements PlantType {
                 data.projectileSpeed()
         );
         return new Plant(
-                data.id(), data.name(), this,
+                data.id(),
+                data.name(),
+                this,
                 baseStats,
                 upgrades,
                 data.tags()

@@ -15,10 +15,8 @@ import java.util.List;
 import java.util.Set;
 
 public class PlantSelectionController {
-    private final User user;
     private final UserRepository userRepository;
     public PlantSelectionController() {
-        this.user = App.getInstance().getLoggedInUser();
         this.userRepository = new UserRepository();
     }
     public Result showAllPlants(){
@@ -28,7 +26,7 @@ public class PlantSelectionController {
         return new Result(true,sb.toString(), null);
     }
     public Result showAvailablePlants(){
-        Set<Integer> unlockedPlantsId = PlantRepository.loadUnlockedPlants(user.getId());
+        Set<Integer> unlockedPlantsId = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
         StringBuilder sb = new StringBuilder();
         for(Integer id: unlockedPlantsId){
             PlantData data = PlantRegistry.getById(id);
@@ -43,7 +41,7 @@ public class PlantSelectionController {
         if (plant == null) {
             return new Result(false, "Plant does not exist.", null);
         }
-        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
         if (!unlocked.contains(plant.id())) {
             return new Result(false, "Plant is locked.", null);
         }
@@ -74,19 +72,19 @@ public Result boostPlant(String plantType){
     if (plant == null) {
         return new Result(false, "Plant does not exist.", null);
     }
-    Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+    Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
     if (!unlocked.contains(plant.id())) {
         return new Result(false, "Plant is locked.", null);
     }
-    if (user.getGems()<2) {
+    if (App.getInstance().getLoggedInUser().getGems()<2) {
         return new Result(false, "Not enough gems.", null);
     }
-    if (PlantBoostRepository.hasBoost(user.getId(), plant.id())) {
+    if (PlantBoostRepository.hasBoost(App.getInstance().getLoggedInUser().getId(), plant.id())) {
         return new Result(false, "This plant already has a stored boost.", null);
     }
-    user.setGems(user.getGems() - 2);
-    userRepository.updateStats(user);
-    PlantBoostRepository.addBoost(user.getId(), plant.id());
+    App.getInstance().getLoggedInUser().setGems(App.getInstance().getLoggedInUser().getGems() - 2);
+    userRepository.updateStats(App.getInstance().getLoggedInUser());
+    PlantBoostRepository.addBoost(App.getInstance().getLoggedInUser().getId(), plant.id());
     return new Result(true, "Plant boosted successfully.", null);
 }
 public Result startGame(){

@@ -42,7 +42,7 @@ public class SunStealBehavior implements PersistableBehavior {
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
         if (totalStolen > 0) {
-            gs.addSun(totalStolen);
+            gs.setSun(gs.getSun() + totalStolen);
             totalStolen = 0;
         }
     }

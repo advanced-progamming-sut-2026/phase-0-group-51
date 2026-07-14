@@ -6,7 +6,7 @@ import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
-import models.projectile.move.ArcMove;
+import models.projectile.move.HomingMove;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,46 +14,19 @@ import java.util.List;
 public enum Homing implements PlantType {
 
     CAT_TAIL(55,
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withDamage(current.damage() + 10);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 200);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withCost(current.cost() - 25);
-                }
-            }) {
+            current -> current.withDamage(current.damage() + 10),
+            current -> current.withMaxHp(current.maxHp() + 200),
+            current -> current.withCost(current.cost() - 25)) {
         @Override
-        public void onTick(Plant plant, GameState gameState) {
-            Zombie target = gameState.getBoard().getClosestZombieAnywhere(plant.getPosX(), plant.getPosY());
-            if (target != null) {
-                gameState.getBoard().addProjectile(new Projectile(
-                        plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
-                        plant.getPlantStat().projectileSpeed(),
-                        plant.getPosX(), plant.getPosY(), new ArcMove()));
-            }
+        public void onTick(Plant plant, GameState state) {
+            shootAtClosestZombie(plant, state);
         }
 
         @Override
-        public void onFeed(Plant plant, GameState gameState) {
-
+        public void onFoodTick(Plant plant, GameState state) {
+            shootAtClosestZombie(plant, state);
         }
-
-        @Override
-        public void onFoodTick(Plant plant, GameState gameState) {
-            onTick(plant, gameState); // rapid-fire homing shots during boost
-        }
-    },
-    ;
+    };
 
     private final int id;
     private final List<PlantUpgrade> upgrades;
@@ -74,10 +47,37 @@ public enum Homing implements PlantType {
                 data.projectileSpeed()
         );
         return new Plant(
-                data.id(), data.name(), this,
+                data.id(),
+                data.name(),
+                this,
                 baseStats,
                 upgrades,
                 data.tags()
         );
+    }
+
+    private static void shootAtClosestZombie(Plant plant, GameState state) {
+        Zombie target = state.getBoard().getClosestZombieAnywhere(
+                plant.getPosY(),
+                plant.getPosX()
+        );
+        if (target == null) {
+            return;
+        }
+        state.getBoard().addProjectile(Projectile.homing(
+                plant.getDamage(),
+                ElementType.NORMAL,
+                plant.getPlantTags(),
+                projectileSpeed(plant),
+                plant.getPosX(),
+                plant.getPosY(),
+                target,
+                new HomingMove()
+        ));
+    }
+
+    private static double projectileSpeed(Plant plant) {
+        double configuredSpeed = plant.getPlantStat().projectileSpeed();
+        return configuredSpeed > 0 ? configuredSpeed : 0.45;
     }
 }
