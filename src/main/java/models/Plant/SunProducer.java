@@ -56,16 +56,16 @@ public enum SunProducer implements PlantType {
 
             Sun plantSun = new Sun(spawnX, spawnY, plant.getPosY(), SunType.ORDINARY, amount, Integer.MAX_VALUE);
             plantSun.setGrounded(true);
-            state.getBoard().addSun(plantSun);
+            state.getBoard().spawnSun(plantSun);
         }
 
         @Override
         public void onFeed(Plant plant, GameState state) {
-            state.addSun(150);
+            state.increaseSunBalance(150);
         }
 
         @Override
-        public void onFoodTick(Plant plant, GameState state) {}
+        public void onFoodTick(Plant plant, GameState state) {  state.increaseSunBalance(150);}
     },
     ;
 
@@ -110,9 +110,6 @@ public enum SunProducer implements PlantType {
         state.logEvent("plant "+plant.getName()+" produced a sun at ("+ plantSun.getX()+", "+ plantSun.getY()+")\n");
     }
 
-    @Override
-    public void onPlantFood(Plant plant, GameState state) {
-        state.increaseSunBalance(150);
-    }
+
 }
-}
+

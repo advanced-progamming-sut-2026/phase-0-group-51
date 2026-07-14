@@ -24,14 +24,35 @@ public class GameView implements AppMenu{
             System.out.println(result.message());
         } else if(GameCommands.CHEAT_ADD_SUN_REGEX.matches(line)) {
            handleCheatAddSun(line);
-        }
-        else if(GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)){
+        } else if(GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)){
             handleCollectSun(line);
-        }
-        else if(GameCommands.ADVANCE_TIME_REGEX.matches(line)){
+        } else if(GameCommands.ADVANCE_TIME_REGEX.matches(line)){
             handleAdvanceTime(line);
-        }
-        else invalidCommand();
+        }  else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
+        handlePlant(line);
+        } else if (GameCommands.PLUCK_PLANT_REGEX.matches(line)) {
+        handlePluck(line);
+        } else if (GameCommands.SHOW_MAP_REGEX.matches(line)) {
+            Result result = controller.showMap();
+            System.out.println(result.message());
+        } else if (GameCommands.SHOW_TILE_STATUS_REGEX.matches(line)) {
+        handleShowTileStatus(line);
+        } else if (GameCommands.SHOW_PLANTS_STATUS_REGEX.matches(line)) {
+            Result result = controller.showPlantsStatus();
+            System.out.println(result.message());
+        } else if (GameCommands.ZOMBIES_INFO_REGEX.matches(line)) {
+            Result result = controller.zombiesInfo();
+            System.out.println(result.message());
+        } else if (GameCommands.CHEAT_REMOVE_COOLDOWN_REGEX.matches(line)) {
+            Result result = controller.removeCooldowns();
+            System.out.println(result.message());
+        } else if (GameCommands.RELEASE_NUKE_REGEX.matches(line)) {
+            Result result = controller.releaseNuke();
+            System.out.println(result.message());
+        } else
+        invalidCommand();
+
+
     }
     public void handleCheatAddSun(String input){
         Matcher matcher = GameCommands.CHEAT_ADD_SUN_REGEX.getMatcher(input);
@@ -71,4 +92,51 @@ public class GameView implements AppMenu{
         Result result = controller.advanceTime(count);
         System.out.println(result.message());
     }
-}
+    private void handlePlant(String input) {
+        Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(input);
+        int[] coordinates = parseCoordinates(matcher);
+        if (matcher != null && coordinates != null) {
+            Result result = controller.plantPlant(matcher.group("type").trim(), coordinates[0], coordinates[1]);
+            System.out.println(result.message());
+        }
+    }
+
+    private void handlePluck(String input) {
+        Matcher matcher = GameCommands.PLUCK_PLANT_REGEX.getMatcher(input);
+        int[] coordinates = parseCoordinates(matcher);
+        if (coordinates != null) {
+            Result result = controller.pluckPlants( coordinates[0], coordinates[1]);
+            System.out.println(result.message());}
+    }
+
+    private void handleShowTileStatus(String input) {
+        Matcher matcher = GameCommands.SHOW_TILE_STATUS_REGEX.getMatcher(input);
+        int[] coordinates = parseCoordinates(matcher);
+        if (coordinates != null){
+            Result result = controller.showTileStatus(coordinates[0], coordinates[1]);
+            System.out.println(result.message());}
+    }
+
+    private int[] parseCoordinates(Matcher matcher) {
+        if (matcher == null) {
+            invalidCommand();
+            return null;
+        }
+        Integer x = parseInteger(matcher, "x");
+        Integer y = parseInteger(matcher, "y");
+        if (x == null || y == null) return null;
+        return new int[]{x, y};
+    }
+
+    private Integer parseInteger(Matcher matcher, String group) {
+        if (matcher == null) {
+            invalidCommand();
+            return null;
+        }
+        try {
+            return Integer.parseInt(matcher.group(group));
+        } catch (IllegalArgumentException e) {
+            invalidCommand();
+            return null;
+        }
+}}

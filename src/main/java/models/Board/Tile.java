@@ -3,7 +3,12 @@ package models.Board;
 import lombok.Getter;
 import lombok.Setter;
 import models.Plant.Plant;
+import models.Zombie.Zombie;
+import models.games.GameState;
 import models.games.ancientEgypt.Grave;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -51,5 +56,29 @@ public class Tile {
     public void removeGrave() {
         this.grave = null;
     }
+    public List<Zombie> getZombies(GameState state) {
+        List<Zombie> zombies = new ArrayList<>();
+        if (state == null || state.getZombiesInTheGame() == null) {
+            return zombies;
+        }
+        float tileStartX = column * TILEWIDTH;
+        float tileEndX = tileStartX + TILEWIDTH;
+        for (Zombie zombie : state.getZombiesInTheGame()) {
+            if (zombie.isDead()) {
+                continue;
+            }
+            if (zombie.getLane() != lane) {
+                continue;
+            }
+            float zombieX = zombie.getX();
 
+            if (zombieX >= tileStartX && zombieX < tileEndX) {
+                zombies.add(zombie);
+            }
+        }
+        return zombies;
+    }
+    public boolean hasZombie(GameState state) {
+        return !getZombies(state).isEmpty();
+    }
 }

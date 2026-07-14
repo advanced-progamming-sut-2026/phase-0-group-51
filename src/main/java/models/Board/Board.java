@@ -156,6 +156,15 @@ public class Board {
             }
         }
     }
+    public Tile getTileAtUserCoordinates(int x, int y) {
+        if (y < 0 || y >= laneCount) {
+            return null;
+        }
+        if (x < 0 || x >= columnCount) {
+            return null;
+        }
+        return tiles[y][x];
+    }
     public void tickSuns(GameState gs){
         Iterator<Sun> iterator = suns.iterator();
         while(iterator.hasNext()){
