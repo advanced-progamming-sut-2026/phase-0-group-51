@@ -1,5 +1,6 @@
 package models.games;
 
+import Data.loader.PlantData;
 import lombok.Getter;
 import lombok.Setter;
 import models.Plant.Plant;
@@ -8,7 +9,9 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.items.Mower;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -18,6 +21,7 @@ public class GameState {
     private final int ticksPerSecond = 10;
     private final Board board;
     private Set<Zombie> zombiesInTheGame = new HashSet<>();
+    private final Map<Integer, Integer> cooldownUntilTick = new HashMap<>();
     private int sun;
     private boolean isFinished;
     private boolean isWon;
@@ -131,6 +135,12 @@ public class GameState {
         if (lane == 4) return 3;
         return Math.random() < 0.5 ? lane - 1 : lane + 1;
     }
-
-
+    public int getPlantCooldownEnd(int plantId) {
+        return cooldownUntilTick.getOrDefault(plantId, 0);
+    }
+    public void startPlantCooldown(PlantData plant) {
+        int rechargeTicks = plant.recharge() * ticksPerSecond;
+        int availableAt = tickCounter + rechargeTicks;
+        cooldownUntilTick.put(plant.id(), availableAt);
+    }
 }

@@ -9,7 +9,7 @@ public enum GameCommands implements Commands {
     SHOW_MAP_REGEX("^\\s*show\\s+map\\s*$"),
     CHEAT_ADD_PLANT_FOOD_REGEX("^\\s*cheat\\s+add-plant-food\\s*$"),
     FEED_PLANT_REGEX("^\\s*feed\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
-    PLUNK_PLANT_REGEX("^\\s*pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
+    PLUCK_PLANT_REGEX("^\\s*pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     CHEAT_REMOVE_COOLDOWN_REGEX("^\\s*cheat\\s+remove-cooldown\\s*$"),
     PLANT_PLANT_REGEX("^\\s*plant\\s+plant\\s+-t\\s+(?<type>.+?)\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     RELEASE_NUKE_REGEX("^\\s*release\\s+the\\s+nuke\\s*$"),
