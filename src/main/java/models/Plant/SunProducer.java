@@ -65,7 +65,7 @@ public enum SunProducer implements PlantType {
         }
 
         @Override
-        public void onFoodTick(Plant plant, GameState state) {}
+        public void onFoodTick(Plant plant, GameState state) {  state.increaseSunBalance(150);}
     },
     ;
 
@@ -110,4 +110,6 @@ public enum SunProducer implements PlantType {
         state.logEvent("plant "+plant.getName()+" produced a sun at ("+ plantSun.getX()+", "+ plantSun.getY()+")\n");
     }
 
+
 }
+
