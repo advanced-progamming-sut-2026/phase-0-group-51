@@ -3,118 +3,77 @@ package views;
 import controllers.GamingController;
 import models.Result;
 import models.enums.commands.GameCommands;
-import models.enums.commands.GreenHouseMenuCommands;
-import models.enums.commands.MainMenuCommands;
-import models.games.GameState;
 
 import java.util.Scanner;
 import java.util.regex.Matcher;
 
-public class GameView implements AppMenu{
-    private final GamingController controller;
-    private GameState gameState;
-    public GameView(){
-        this.controller = new GamingController();
-    }
+public class GameView implements AppMenu {
+    private final GamingController controller = new GamingController();
+
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
-        if(GameCommands.SHOW_SUN_AMOUNT_REGEX.matches(line)){
-            Result result = controller.showSunAmount(gameState);
-            System.out.println(result.message());
-        } else if(GameCommands.CHEAT_ADD_SUN_REGEX.matches(line)) {
-           handleCheatAddSun(line);
-        } else if(GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)){
-            handleCollectSun(line);
-        } else if(GameCommands.ADVANCE_TIME_REGEX.matches(line)){
-            handleAdvanceTime(line);
-        }  else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
-        handlePlant(line);
+
+        if (GameCommands.SHOW_SUN_AMOUNT_REGEX.matches(line)) {
+            print(controller.showSunAmount());
+        } else if (GameCommands.CHEAT_ADD_SUN_REGEX.matches(line)) {
+            Matcher matcher = GameCommands.CHEAT_ADD_SUN_REGEX.getMatcher(line);
+            print(controller.cheatAddSun(parseInteger(matcher, "count")));
+        } else if (GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)) {
+            handleCoordinates(GameCommands.PLANT_COLLECT_SUN_REGEX.getMatcher(line), controller::collectSun);
+        } else if (GameCommands.ADVANCE_TIME_REGEX.matches(line)) {
+            Matcher matcher = GameCommands.ADVANCE_TIME_REGEX.getMatcher(line);
+            print(controller.advanceTime(parseInteger(matcher, "count")));
+        } else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
+            Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(line);
+            int[] coordinates = parseCoordinates(matcher);
+            if (coordinates != null) {
+                print(controller.plantPlant(
+                        matcher.group("type").trim(),
+                        coordinates[0],
+                        coordinates[1]
+                ));
+            }
         } else if (GameCommands.PLUCK_PLANT_REGEX.matches(line)) {
-        handlePluck(line);
-        } else if (GameCommands.SHOW_MAP_REGEX.matches(line)) {
-            Result result = controller.showMap();
-            System.out.println(result.message());
+            handleCoordinates(GameCommands.PLUCK_PLANT_REGEX.getMatcher(line), controller::pluckPlant);
+        } else if (GameCommands.FEED_PLANT_REGEX.matches(line)) {
+            handleCoordinates(GameCommands.FEED_PLANT_REGEX.getMatcher(line), controller::feedPlant);
+        } else if (GameCommands.CHEAT_ADD_PLANT_FOOD_REGEX.matches(line)) {
+            print(controller.cheatAddPlantFood());
         } else if (GameCommands.SHOW_TILE_STATUS_REGEX.matches(line)) {
-        handleShowTileStatus(line);
-        } else if (GameCommands.SHOW_PLANTS_STATUS_REGEX.matches(line)) {
-            Result result = controller.showPlantsStatus();
-            System.out.println(result.message());
+            handleCoordinates(GameCommands.SHOW_TILE_STATUS_REGEX.getMatcher(line), controller::showTileStatus);
+        } else if (GameCommands.SHOW_PLANT_STATUS_REGEX.matches(line)) {
+            print(controller.showPlantStatus());
         } else if (GameCommands.ZOMBIES_INFO_REGEX.matches(line)) {
-            Result result = controller.zombiesInfo();
-            System.out.println(result.message());
+            print(controller.zombiesInfo());
         } else if (GameCommands.CHEAT_REMOVE_COOLDOWN_REGEX.matches(line)) {
-            Result result = controller.removeCooldowns();
-            System.out.println(result.message());
+            print(controller.removeCooldowns());
         } else if (GameCommands.RELEASE_NUKE_REGEX.matches(line)) {
-            Result result = controller.releaseNuke();
-            System.out.println(result.message());
-        } else
-        invalidCommand();
-
-
-    }
-    public void handleCheatAddSun(String input){
-        Matcher matcher = GameCommands.CHEAT_ADD_SUN_REGEX.getMatcher(input);
-        int n=0;
-        try {
-            n = Integer.parseInt(matcher.group("count"));
-        } catch (NumberFormatException e) {
+            print(controller.releaseNuke());
+        } else if (GameCommands.CHEAT_SPAWN_ZOMBIE.matches(line)) {
+            Matcher matcher = GameCommands.CHEAT_SPAWN_ZOMBIE.getMatcher(line);
+            int[] coordinates = parseCoordinates(matcher);
+            if (coordinates != null) {
+                print(controller.spawnZombie(
+                        matcher.group("zombieType").trim(),
+                        coordinates[0],
+                        coordinates[1]
+                ));
+            }
+        } else if (GameCommands.SHOW_MAP_REGEX.matches(line)) {
+            print(controller.showMap());
+        } else if (GameCommands.CURRENT_MENU_REGEX.matches(line)) {
+            System.out.println("You are now in the game menu.");
+        } else {
             invalidCommand();
-        }
-        Result result = controller.cheatAddSun(gameState,n);
-        System.out.println(result.message());
-    }
-    public void handleCollectSun(String input){
-        Matcher matcher = GameCommands.PLANT_COLLECT_SUN_REGEX.getMatcher(input);
-        int x=0,y=0;
-        try {
-            x = Integer.parseInt(matcher.group("x"));
-        } catch (NumberFormatException e) {
-            invalidCommand();
-        }
-        try {
-            y = Integer.parseInt(matcher.group("y"));
-        } catch (NumberFormatException e) {
-            invalidCommand();
-        }
-        Result result = controller.collectSun(gameState,x,y);
-        System.out.println(result.message());
-    }
-    public void handleAdvanceTime(String input){
-        Matcher matcher = GameCommands.ADVANCE_TIME_REGEX.getMatcher(input);
-        int count=0;
-        try {
-            count = Integer.parseInt(matcher.group("count"));
-        } catch (NumberFormatException e) {
-            invalidCommand();
-        }
-        Result result = controller.advanceTime(count);
-        System.out.println(result.message());
-    }
-    private void handlePlant(String input) {
-        Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(input);
-        int[] coordinates = parseCoordinates(matcher);
-        if (matcher != null && coordinates != null) {
-            Result result = controller.plantPlant(matcher.group("type").trim(), coordinates[0], coordinates[1]);
-            System.out.println(result.message());
         }
     }
 
-    private void handlePluck(String input) {
-        Matcher matcher = GameCommands.PLUCK_PLANT_REGEX.getMatcher(input);
+    private void handleCoordinates(Matcher matcher, CoordinateAction action) {
         int[] coordinates = parseCoordinates(matcher);
         if (coordinates != null) {
-            Result result = controller.pluckPlants( coordinates[0], coordinates[1]);
-            System.out.println(result.message());}
-    }
-
-    private void handleShowTileStatus(String input) {
-        Matcher matcher = GameCommands.SHOW_TILE_STATUS_REGEX.getMatcher(input);
-        int[] coordinates = parseCoordinates(matcher);
-        if (coordinates != null){
-            Result result = controller.showTileStatus(coordinates[0], coordinates[1]);
-            System.out.println(result.message());}
+            print(action.apply(coordinates[0], coordinates[1]));
+        }
     }
 
     private int[] parseCoordinates(Matcher matcher) {
@@ -122,21 +81,36 @@ public class GameView implements AppMenu{
             invalidCommand();
             return null;
         }
-        Integer x = parseInteger(matcher, "x");
-        Integer y = parseInteger(matcher, "y");
-        if (x == null || y == null) return null;
-        return new int[]{x, y};
-    }
-
-    private Integer parseInteger(Matcher matcher, String group) {
-        if (matcher == null) {
+        try {
+            return new int[]{
+                    Integer.parseInt(matcher.group("x")),
+                    Integer.parseInt(matcher.group("y"))
+            };
+        } catch (IllegalArgumentException exception) {
             invalidCommand();
             return null;
+        }
+    }
+
+    private int parseInteger(Matcher matcher, String group) {
+        if (matcher == null) {
+            invalidCommand();
+            return 0;
         }
         try {
             return Integer.parseInt(matcher.group(group));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
             invalidCommand();
-            return null;
+            return 0;
         }
-}}
+    }
+
+    private void print(Result result) {
+        System.out.println(result.message());
+    }
+
+    @FunctionalInterface
+    private interface CoordinateAction {
+        Result apply(int x, int y);
+    }
+}

@@ -135,7 +135,16 @@ public class Projectile {
             return;
         }
 
-        Zombie contact = state.getBoard().getZombieInPosition((int) Math.round(posY), (int) posX);
+        Zombie contact;
+        if (movingStrategy instanceof StraightMove && Math.abs(posY - previousY) < 0.001) {
+            contact = state.getBoard().getFirstZombieCrossed(
+                    (int) Math.round(posY), previousX, posX, alreadyHit
+            );
+        } else {
+            contact = state.getBoard().getZombieNear(
+                    (int) Math.round(posY), posX, 0.35
+            );
+        }
         if (contact != null && !alreadyHit.contains(contact)) {
             impact(state, contact);
         }
@@ -155,8 +164,8 @@ public class Projectile {
             // Targeted, single-target, no splash: whatever's at the
             // landing tile (if anything — a lobbed shot can also land on
             // empty ground and just disappear, matching the original game).
-            Zombie landed = state.getBoard().getZombieInPosition(
-                    (int) Math.round(targetY), (int) Math.round((double) targetX));
+            Zombie landed = state.getBoard().getZombieNear(
+                    (int) Math.round(targetY), targetX, 0.75);
             if (landed != null) hit(landed, state);
             destroy(state);
         } else {
@@ -165,7 +174,7 @@ public class Projectile {
     }
 
     private void hit(Zombie zombie, GameState state) {
-        zombie.takeDamage(damage, state);
+        zombie.takeDamage(damage, elementType, state, null);
         elementType.onHit(zombie, state);
         alreadyHit.add(zombie);
         pierceRemaining--;

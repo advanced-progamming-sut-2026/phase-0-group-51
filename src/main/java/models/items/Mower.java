@@ -5,44 +5,50 @@ import models.Board.Board;
 import models.zombie.Zombie;
 import models.games.GameState;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 public class Mower {
-    private int rowNumber;
+    private final int rowNumber;
     private boolean activated;
     private boolean destroyed;
-    private float posX;
-    private GameState gs;
-    private final float speed = 4f;
-    private final float maxBoundary = 9 * 80f;
+    private final GameState gameState;
 
-    public Mower(int rowNumber, GameState gs) {
+    public Mower(int rowNumber, GameState gameState) {
         this.rowNumber = rowNumber;
-        this.activated = false;
-        this.destroyed = false;
-        this.posX = 0f;
-        this.gs = gs;
+        this.gameState = gameState;
     }
 
     public void update(Board board) {
-        if(destroyed) {
+        if (destroyed) {
             return;
         }
+
         Zombie firstZombie = board.getFirstZombieInLane(rowNumber);
-        if (!activated && firstZombie != null && firstZombie.getX() <= this.posX) {
-            this.activated = true;
-            gs.logEvent("The lawn mower in the row " + rowNumber + " is triggered!");
+        if (!activated && firstZombie != null && firstZombie.getX() <= 0) {
+            activate(board);
         }
-        if(activated) {
-            posX += speed;
-            for(Zombie zombie : board.getZombiesInLane(rowNumber)) {
-                if (!zombie.isDead() && zombie.getX() <= this.posX) {
-                    zombie.setDead(true);
-                    gs.logEvent("The lawn mower in the row " + rowNumber + " killed zombie: " + zombie.getAlias());
-                }
-            }
-            if (posX >= maxBoundary) {
-                this.destroyed = true;
+    }
+
+    private void activate(Board board) {
+        activated = true;
+        List<String> killed = new ArrayList<>();
+        for (Zombie zombie : new ArrayList<>(board.getZombiesInLane(rowNumber))) {
+            if (!zombie.isDead()) {
+                killed.add(zombie.getAlias());
+                zombie.killInstantly(gameState);
             }
         }
+
+        StringBuilder message = new StringBuilder()
+                .append("The lawn mower in the row ")
+                .append(rowNumber + 1)
+                .append(" is triggered and killed these zombies:\n");
+        for (String alias : killed) {
+            message.append(alias).append('\n');
+        }
+        gameState.logEvent(message.toString());
+        destroyed = true;
     }
 }

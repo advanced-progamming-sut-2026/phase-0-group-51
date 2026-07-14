@@ -18,11 +18,13 @@ import java.util.function.Consumer;
 @Setter
 @Getter
 public class GameState {
+    private static final int MAX_PLANT_FOOD = 3;
     private final int ticksPerSecond = 10;
     private final Board board;
     private Set<Zombie> zombiesInTheGame = new HashSet<>();
     private final Map<Integer, Integer> cooldownUntilTick = new HashMap<>();
     private int sun;
+    private int plantFoodCount;
     private boolean isFinished;
     private boolean isWon;
     private final ChapterTheme chapterTheme;
@@ -82,6 +84,26 @@ public class GameState {
 
     public void decreaseSunBalance(int amount) {
         this.sun = Math.max(0, this.sun - amount);
+    }
+
+    public boolean addPlantFood() {
+        if (plantFoodCount >= MAX_PLANT_FOOD) {
+            return false;
+        }
+        plantFoodCount++;
+        return true;
+    }
+
+    public boolean consumePlantFood() {
+        if (plantFoodCount <= 0) {
+            return false;
+        }
+        plantFoodCount--;
+        return true;
+    }
+
+    public void clearPlantCooldowns() {
+        cooldownUntilTick.clear();
     }
     public void plantPlant(Plant plant, Tile tile){
         if (plant == null || tile == null) throw new IllegalArgumentException("Plant and tile are required");
@@ -145,8 +167,12 @@ public class GameState {
         return cooldownUntilTick.getOrDefault(plantId, 0);
     }
     public void startPlantCooldown(PlantData plant) {
-        int rechargeTicks = (int) (plant.recharge() * ticksPerSecond);
-        int availableAt = tickCounter + rechargeTicks;
-        cooldownUntilTick.put(plant.id(), availableAt);
+        int rechargeTicks = (int) Math.ceil(plant.recharge() * ticksPerSecond);
+        cooldownUntilTick.put(plant.id(), tickCounter + rechargeTicks);
+    }
+
+    public void startPlantCooldown(Plant plant) {
+        int rechargeTicks = (int) Math.ceil(plant.getPlantStat().recharge() * ticksPerSecond);
+        cooldownUntilTick.put(plant.getId(), tickCounter + rechargeTicks);
     }
 }

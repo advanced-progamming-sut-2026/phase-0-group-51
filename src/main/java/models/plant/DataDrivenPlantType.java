@@ -30,6 +30,9 @@ public final class DataDrivenPlantType implements PlantType {
         else if (n.equals("cherry bomb") || n.equals("jalapeno") || n.equals("doom-shroom") || n.equals("ice-shroom")) {
             explode(plant, state, n.equals("jalapeno") ? 99 : 1.5);
             plant.setMarkedForRemoval(true);
+        } else if (n.equals("potato mine")) {
+            double armSeconds = plant.getLevel() >= 2 ? 12.0 : 15.0;
+            plant.disableFor((float) (armSeconds * state.getTicksPerSecond()));
         } else if (data.tags().contains(PlantTag.CHARGE)) {
             plant.disableFor((float) Math.max(1, data.actionInterval() * state.getTicksPerSecond()));
         }
@@ -54,7 +57,7 @@ public final class DataDrivenPlantType implements PlantType {
         switch (category) {
             case "sunproducer" -> produceSun(plant, state, Math.max(150, sunAmount() * 3));
             case "explosive" -> explode(plant, state, 2.0);
-            case "wallnut" -> plant.addArmor(Math.max(1000, plant.getPlantStat().maxHp() / 2));
+            case "wallnut", "wall-nut" -> plant.addArmor(plant.getPlantStat().maxHp());
             default -> { for (int i = 0; i < 5; i++) onTick(plant, state); }
         }
     }
@@ -115,17 +118,33 @@ public final class DataDrivenPlantType implements PlantType {
 
     private void melee(Plant plant, GameState state) {
         for (Zombie zombie : state.getBoard().getZombiesInRadius(plant.getPosY(), plant.getPosX()+0.5, data.tags().contains(PlantTag.AOE) ? 1.5 : 1.0))
-            zombie.takeDamage(plant.getDamage(), state);
+            zombie.takeDamage(plant.getDamage(), state, plant);
     }
 
     private void explode(Plant plant, GameState state, double radius) {
         List<Zombie> targets = radius > 10 ? state.getBoard().getZombiesInLane(plant.getPosY()) : state.getBoard().getZombiesInRadius(plant.getPosY(), plant.getPosX(), radius);
-        for (Zombie zombie : targets) { zombie.takeDamage(plant.getDamage(), state); element().onHit(zombie, state); }
+        for (Zombie zombie : targets) { zombie.takeDamage(plant.getDamage(), state, plant); element().onHit(zombie, state); }
     }
 
     private void produceSun(Plant plant, GameState state, int amount) {
-        state.getBoard().spawnSun(new Sun(plant.getPosX(), plant.getPosY(), plant.getPosY(), SunType.ORDINARY, amount, Integer.MAX_VALUE));
-        state.logEvent("plant " + plant.getName() + " produced a sun at (" + plant.getPosX() + ", " + plant.getPosY() + ")\n");
+        if (plant.isPendingSun()) {
+            return;
+        }
+        int producedAmount = plant.getPlantStat().doubleSunChance() && Math.random() < 0.5
+                ? amount * 2
+                : amount;
+        plant.setPendingSun(true);
+        state.getBoard().spawnSun(new Sun(
+                plant.getPosX(),
+                plant.getPosY(),
+                plant.getPosY(),
+                SunType.ORDINARY,
+                producedAmount,
+                Integer.MAX_VALUE,
+                plant
+        ));
+        state.logEvent("plant " + plant.getName() + " produced a sun at ("
+                + (plant.getPosX() + 1) + ", " + (plant.getPosY() + 1) + ")\n");
     }
 
     private int sunAmount() { if (normalizedName().contains("twin")) return 100; if (normalizedName().contains("primal")) return 75; return 50; }

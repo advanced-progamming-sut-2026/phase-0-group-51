@@ -40,6 +40,7 @@ public class Zombie {
     private boolean eating = false;
     private boolean dead = false;
     private boolean hypnotized = false;
+    private boolean glowing = false;
 
     // effect name -> remaining ticks
     private final Map<String, Integer> effects = new LinkedHashMap<>();
@@ -170,7 +171,7 @@ public class Zombie {
         }
         tickEffects();
         tickPoison(gs);
-        if (isFrozen() || isChilled()) {
+        if (isFrozen() || isButtered()) {
             return;
         }
         for (ZombieBehavior behavior : new ArrayList<>(behaviors)) {
@@ -188,7 +189,7 @@ public class Zombie {
             int wholeDamage = (int) eatDamageAccumulator;
             if (wholeDamage > 0) {
                 eatDamageAccumulator -= wholeDamage;
-                target.takeDamage(wholeDamage);
+                target.takeDamage(wholeDamage, gs);
             }
         } else {
             eating = false;
@@ -228,6 +229,13 @@ public class Zombie {
             return;
         }
         dead = true;
+        gs.logEvent("Zombie of type " + alias + " is dead at ("
+                + String.format(java.util.Locale.US, "%.2f", x + 1)
+                + ", " + (lane + 1) + ")\n");
+        if (glowing && gs.addPlantFood()) {
+            gs.logEvent("The glowing zombie dropped a plant food; you have "
+                    + gs.getPlantFoodCount() + " plant foods now.\n");
+        }
         for (ZombieBehavior behavior : behaviors) {
             behavior.onDeath(this, gs);
         }

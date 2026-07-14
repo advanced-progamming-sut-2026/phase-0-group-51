@@ -26,7 +26,6 @@ public class Game{
     private int currentLevelIndex   = 0;
     private final List<PlantData> selectedPlantsForThisGame = new ArrayList<>();
     private GameState gameState;
-    private int sunAmount=50;
     private SkySunSpawner skySunSpawner;
     public void start(){if (this.gameState != null && this.gameState.getZombieWaveManager() != null) {
         this.gameState.getZombieWaveManager().start();
@@ -38,8 +37,9 @@ public class Game{
         Board board = new Board();
         this.gameState = new GameState(board, theme);
         this.gameState.setCurrentLevel(level);
+        this.gameState.setSun(level.startingSun());
         this.skySunSpawner = new SkySunSpawner();
-        List<ZombieType> allowedZombies = theme.getAllowedZombies();
+        List<ZombieType> allowedZombies = level.resolveAllowedZombies(theme.getAllowedZombies());
         int totalWaves = level.totalWaves();
         float baseDifficulty = level.baseDifficulty();
         ZombieWaveManager waveManager = new ZombieWaveManager(
