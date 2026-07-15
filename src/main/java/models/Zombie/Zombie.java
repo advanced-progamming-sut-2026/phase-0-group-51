@@ -9,6 +9,7 @@ import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.games.GameState;
 import models.projectile.ElementType;
+import models.quests.QuestKillSourceType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,6 +45,7 @@ public class Zombie {
     private boolean dead = false;
     private boolean hypnotized = false;
     private boolean glowing = false;
+    private boolean questEligible = true;
     private int iceShellHealth;
 
     // effect name -> remaining ticks
@@ -52,6 +54,7 @@ public class Zombie {
     private float poisonDPS = 0f;
     private float poisonTicksRemaining = 0f;
     private float poisonDamageAccumulator = 0f;
+    private Plant poisonSource;
 
     private final List<ZombieBehavior> behaviors = new ArrayList<>();
     private float eatDamageAccumulator = 0f;
@@ -149,7 +152,7 @@ public class Zombie {
         hitpoints -= damage;
         if (hitpoints <= 0) {
             hitpoints = 0;
-            die(gs);
+            die(gs, plant == null ? QuestKillSourceType.OTHER : QuestKillSourceType.PLANT, plant);
         }
     }
 
@@ -158,17 +161,27 @@ public class Zombie {
     }
 
     public void killInstantly(GameState gs) {
+        killInstantly(gs, QuestKillSourceType.OTHER);
+    }
+
+    public void killInstantly(GameState gs, QuestKillSourceType sourceType) {
         if (dead) {
             return;
         }
         hitpoints = 0;
-        die(gs);
+        die(gs, sourceType, null);
     }
 
-
     public void applyPoison(GameState gs, float damagePerSecond, float durationSeconds) {
+        applyPoison(gs, damagePerSecond, durationSeconds, null);
+    }
+
+    public void applyPoison(
+            GameState gs, float damagePerSecond, float durationSeconds, Plant sourcePlant
+    ) {
         this.poisonDPS = damagePerSecond;
         this.poisonTicksRemaining = durationSeconds * gs.getTicksPerSecond();
+        this.poisonSource = sourcePlant;
     }
 
 
@@ -226,18 +239,23 @@ public class Zombie {
             hitpoints -= whole;
             if (hitpoints <= 0) {
                 hitpoints = 0;
-                die(gs);
+                die(gs, poisonSource == null ? QuestKillSourceType.OTHER
+                        : QuestKillSourceType.PLANT, poisonSource);
             }
         }
     }
 
 
 
-    private void die(GameState gs) {
+    private void die(GameState gs, QuestKillSourceType sourceType, Plant sourcePlant) {
         if (dead) {
             return;
         }
         dead = true;
+        models.items.Mower mower = lane >= 0 && lane < gs.getLawnMowers().length
+                ? gs.getLawnMowers()[lane] : null;
+        gs.getQuestTracker().recordZombieKill(
+                this, sourceType, sourcePlant, gs.getTickCounter(), mower);
         gs.logEvent("Zombie of type " + alias + " is dead at ("
                 + String.format(java.util.Locale.US, "%.2f", x + 1)
                 + ", " + (lane + 1) + ")\n");

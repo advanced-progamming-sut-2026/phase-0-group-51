@@ -19,6 +19,7 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;
+import models.quests.QuestService;
 import models.sun.Sun;
 
 import java.text.DecimalFormat;
@@ -509,9 +510,13 @@ public class GamingController {
         if (target == null) {
             return failure("No sun found at given coordinates.\n");
         }
+        int sunBeforeCollection = state.getSun();
         if (!state.getBoard().collectSun(target, state)) {
             return failure("Sun has expired or was already collected.\n");
         }
+        int collectedAmount = Math.max(0, state.getSun() - sunBeforeCollection);
+        QuestService.getInstance().recordSunCollected(
+                App.getInstance().getLoggedInUser(), collectedAmount);
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
     }
 
@@ -554,6 +559,7 @@ public class GamingController {
         }
         zombie.setX(x - 1);
         zombie.setLane(y - 1);
+        zombie.setQuestEligible(false);
         state.addZombie(zombie);
         return success("Zombie " + zombie.getAlias() + " spawned at (" + x + ", " + y + ").\n");
     }

@@ -52,16 +52,12 @@ public class UserRepository {
     }
     public User getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
-
         try (Connection conn = DataBaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, username);
-
             ResultSet rs = pstmt.executeQuery();
-
             if (rs.next()) {
-                return new User(
+                User user = new User(
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("email"),
@@ -80,6 +76,9 @@ public class UserRepository {
                         rs.getString("last_won_game"),
                         rs.getInt("difficulty_level")
                 );
+                user.setQuestDailyNum(rs.getInt("quest_daily_num"));
+                user.setQuestNonDailyNum(rs.getInt("quest_non_daily_num"));
+                return user;
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -105,16 +104,12 @@ public class UserRepository {
         }
     }
     public User getRememberedUser() {
-        String sql =
-                "SELECT * FROM users WHERE stay_logged_in = 1 LIMIT 1";
-
+        String sql = "SELECT * FROM users WHERE stay_logged_in = 1 LIMIT 1";
         try (Connection conn = DataBaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             ResultSet rs = pstmt.executeQuery();
-
             if (rs.next()) {
-                return new User(
+                User user = new User(
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("email"),
@@ -133,8 +128,10 @@ public class UserRepository {
                         rs.getString("last_won_game"),
                         rs.getInt("difficulty_level")
                 );
+                user.setQuestDailyNum(rs.getInt("quest_daily_num"));
+                user.setQuestNonDailyNum(rs.getInt("quest_non_daily_num"));
+                return user;
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }

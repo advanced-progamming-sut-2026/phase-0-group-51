@@ -6,6 +6,7 @@ import lombok.Setter;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.items.Wave;
+import models.quests.QuestKillSourceType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public class ZombieWaveManager {
 
     public void releaseTheNuke() {
         for (Zombie zombie : new ArrayList<>(gs.getZombiesInTheGame())) {
-            zombie.killInstantly(gs);
+            zombie.killInstantly(gs, QuestKillSourceType.CHEAT);
         }
     }
 
@@ -105,6 +106,7 @@ public class ZombieWaveManager {
 
         if (number == 1) {
             currentDifficulty = baseDifficulty;
+            gs.getQuestTracker().recordFirstWaveStart(gs.getTickCounter());
         } else if (finalWave) {
             currentDifficulty *= 2f;    //super-wave
         } else {

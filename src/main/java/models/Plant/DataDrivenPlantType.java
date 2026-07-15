@@ -152,7 +152,7 @@ public final class DataDrivenPlantType implements PlantType {
                     direction[0],
                     direction[1],
                     new StarMove()
-            ));
+            ).withSource(plant));
         }
     }
 
@@ -178,7 +178,7 @@ public final class DataDrivenPlantType implements PlantType {
                 lane,
                 new StraightMove(),
                 pierce
-        ));
+        ).withSource(plant));
     }
 
     private void lob(Plant plant, GameState state) {
@@ -204,7 +204,7 @@ public final class DataDrivenPlantType implements PlantType {
                 target.getLane(),
                 new ArcMove(),
                 aoe
-        ));
+        ).withSource(plant));
     }
 
     private void home(Plant plant, GameState state) {
@@ -224,7 +224,7 @@ public final class DataDrivenPlantType implements PlantType {
                 plant.getPosY(),
                 target,
                 new HomingMove()
-        ));
+        ).withSource(plant));
     }
 
     private void trapOrExplode(Plant plant, GameState state) {
@@ -267,7 +267,7 @@ public final class DataDrivenPlantType implements PlantType {
         }
         for (Zombie zombie : targets) {
             zombie.takeDamage(plant.getDamage(), state, plant);
-            element().onHit(zombie, state);
+            element().onHit(zombie, state, 0, plant);
         }
     }
 

@@ -8,6 +8,8 @@ import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 import models.items.Mower;
+import models.quests.QuestKillSourceType;
+import models.quests.QuestRunTracker;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,6 +34,7 @@ public class GameState {
     private int tickCounter = 0;
     private ZombieWaveManager zombieWaveManager;
     private final Mower[] lawnMowers;
+    private final QuestRunTracker questTracker = new QuestRunTracker();
     private Consumer<String> eventLogger;
     boolean mowerEnabled =true;
     public void logEvent(String message) {
@@ -72,7 +75,7 @@ public class GameState {
     private void killAllZombiesInLane(int lane) {
         for (Zombie z : zombiesInTheGame) {
             if (z.getLane() == lane) {
-                z.killInstantly(this);
+                z.killInstantly(this, QuestKillSourceType.MOWER);
             }
         }
     }
@@ -116,6 +119,7 @@ public class GameState {
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
     public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
@@ -138,10 +142,13 @@ public class GameState {
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
     public void pluckPlant(Plant plant, Tile tile){
-        if (plant == null || tile == null || tile.getPlant() != plant) throw new IllegalArgumentException("Plant is not on this tile");
+        if (plant == null || tile == null || tile.getPlant() != plant) {
+            throw new IllegalArgumentException("Plant is not on this tile");
+        }
         tile.removePlant();
         plant.setMarkedForRemoval(true);
     }
