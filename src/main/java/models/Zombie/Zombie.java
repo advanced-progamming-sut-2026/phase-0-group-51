@@ -9,6 +9,8 @@ import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.games.GameState;
 import models.projectile.ElementType;
+import models.quests.QuestEventType;
+import models.quests.QuestService;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -237,6 +239,8 @@ public class Zombie {
             return;
         }
         dead = true;
+        QuestService.getInstance().recordEvent(
+                App.getInstance().getLoggedInUser(), QuestEventType.ZOMBIE_KILLED, 1);
         gs.logEvent("Zombie of type " + alias + " is dead at ("
                 + String.format(java.util.Locale.US, "%.2f", x + 1)
                 + ", " + (lane + 1) + ")\n");

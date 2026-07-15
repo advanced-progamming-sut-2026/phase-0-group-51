@@ -13,6 +13,8 @@ import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ancientEgypt.ConveyorBeltLevel;
 import models.games.frostbite.FrostbiteCavesFeature;
+import models.quests.QuestEventType;
+import models.quests.QuestService;
 import models.sun.SkySunSpawner;
 
 import java.util.ArrayList;
@@ -167,6 +169,8 @@ public class Game{
             gameState.setFinished(true);
             gameState.setWon(true);
             gameState.logEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.\n");
+            QuestService.getInstance().
+                    recordEvent(App.getInstance().getLoggedInUser(), QuestEventType.ADVENTURE_WON, 1);
             saveProgressInDatabase();
         }
         else if (gameState.checkLoseCondition()) {

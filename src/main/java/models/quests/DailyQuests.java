@@ -1,11 +1,12 @@
 package models.quests;
 
 public class DailyQuests extends Quest{
-
-    public DailyQuests(String name,String condition,QuestPriority priority,String unlockableId, int targetAmount,
-                       int rewardAmount, QuestRewardType rewardType) {
-        super(name,condition,priority,targetAmount, rewardAmount, rewardType,QuestType.DAILY);
-        this.unlockableId = unlockableId;
+    public DailyQuests(
+            String name, String condition, QuestPriority priority,
+            QuestEventType eventType, int targetAmount, int rewardAmount,
+            QuestRewardType rewardType, String unlockableId
+    ) {
+        super(name, condition, priority, eventType, targetAmount,
+                rewardAmount, rewardType, QuestType.DAILY, unlockableId);
     }
-
 }

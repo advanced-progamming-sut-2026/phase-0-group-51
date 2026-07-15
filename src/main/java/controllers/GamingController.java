@@ -19,6 +19,8 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;
+import models.quests.QuestEventType;
+import models.quests.QuestService;
 import models.sun.Sun;
 
 import java.text.DecimalFormat;
@@ -124,6 +126,7 @@ public class GamingController {
             state.pluckPlant(plant, tile);
             return failure("The conveyor plant was no longer available.\n");
         }
+        recordQuestEvent(QuestEventType.PLANT_PLANTED, 1);
         String message = selected.name() + " was planted from the conveyor at ("
                 + x + ", " + y + ") for 0 sun.\n";
         return success(message + activateStoredBoost(selected, plant, state));
@@ -172,6 +175,7 @@ public class GamingController {
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
+        recordQuestEvent(QuestEventType.PLANT_PLANTED, 1);
         String message = selected.name() + " planted at (" + x + ", " + y + ").\n";
         if (user != null
                 && PlantBoostRepository.hasBoost(
@@ -187,6 +191,10 @@ public class GamingController {
         return success(message);
     }
 
+    private void recordQuestEvent(QuestEventType eventType, int amount) {
+        QuestService.getInstance().recordEvent(
+                App.getInstance().getLoggedInUser(), eventType, amount);
+    }
     private Result tileOccupationFailure(Tile tile) {
         if (tile.hasPlant()) {
             return failure("This tile already contains a plant.\n");

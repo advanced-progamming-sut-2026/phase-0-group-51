@@ -11,6 +11,8 @@ import models.minigames.vaseBreaker.DroppedSeedPacket;
 import models.minigames.vaseBreaker.VaseBreaker;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
+import models.quests.QuestEventType;
+import models.quests.QuestService;
 
 import java.text.DecimalFormat;
 import java.util.Comparator;
@@ -360,6 +362,8 @@ public class VaseBreakerController extends GamingController {
 
         String ending;
         if (won) {
+            QuestService.getInstance().recordEvent(
+                    App.getInstance().getLoggedInUser(), QuestEventType.MINIGAME_WON, 1);
             ending =
                     "You completed Vasebreaker stage " + stageNumber + " and returned to the Travel Log.\n";
         } else {

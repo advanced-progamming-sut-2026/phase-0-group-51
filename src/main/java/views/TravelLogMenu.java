@@ -1,5 +1,6 @@
 package views;
 
+import controllers.TravelLogController;
 import controllers.miniGamesController.VaseBreakerController;
 import controllers.miniGamesController.WallnutBowlingController;
 import models.Result;
@@ -11,15 +12,29 @@ import java.util.regex.Matcher;
 public class TravelLogMenu implements AppMenu{
     private final VaseBreakerController vaseBreakerController = new VaseBreakerController();
     private final WallnutBowlingController wallnutBowlingController = new WallnutBowlingController();
-
+    private final TravelLogController controller = new TravelLogController();
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
-        if (TravelLogMenuCommands.START_VASEBREAKER.matches(line)) {
+        if (TravelLogMenuCommands.CHANGE_PAGE.matches(line)) {
+            Matcher matcher = TravelLogMenuCommands.CHANGE_PAGE.getMatcher(line);
+            print(controller.changePage(matcher.group("page")));
+        }  else if (TravelLogMenuCommands.SHOW_QUESTS.matches(line)) {
+            print(controller.showCurrentPage());
+        }  else if (TravelLogMenuCommands.CLAIM_QUEST.matches(line)) {
+            Matcher matcher = TravelLogMenuCommands.CLAIM_QUEST.getMatcher(line);
+            Integer id = parseInteger(matcher, "id");
+            if (id != null) print(controller.claimQuest(id));
+        }  else if (TravelLogMenuCommands.START_VASEBREAKER.matches(line)) {
             startVasebreaker(line);
-        } else if (TravelLogMenuCommands.START_WALLNUT_BOWLING.matches(line)) {
+        }  else if (TravelLogMenuCommands.START_WALLNUT_BOWLING.matches(line)) {
             startWallnutBowling(line);
-        }  else {
+        }  else if (TravelLogMenuCommands.CURRENT_MENU_REGEX.matches(line)) {
+            print(controller.showCurrentMenu());
+        }  else if (TravelLogMenuCommands.EXIT_MENU_REGEX.matches(line)) {
+            print(controller.exitMenu());
+        }
+        else {
             invalidCommand();
         }
     }
@@ -53,7 +68,16 @@ public class TravelLogMenu implements AppMenu{
         System.out.print(result.message());
     }
 
-    public void handleChangePage(String input) {
-
+    private Integer parseInteger(Matcher matcher, String group) {
+        if (matcher == null) {
+            invalidCommand();
+            return null;
+        }
+        try {return Integer.parseInt(matcher.group(group));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            invalidCommand();
+            return null;
+        }
     }
+
 }

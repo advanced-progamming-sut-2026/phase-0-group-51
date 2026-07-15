@@ -1,5 +1,6 @@
 package models.quests;
 
+import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,47 +9,41 @@ import models.User;
 @Setter
 @Getter
 public abstract class Quest {
-    protected int id;
-    protected String name;
-    protected String condition;
-    protected QuestRewardType rewardType;
-    protected int rewardAmount;
-    protected int targetAmount;
-    protected  String unlockableId;
-     protected QuestPriority priority;
-     protected QuestType type;
-    protected void giveReward(){}
-    public void checkComplete(){}
-    public Quest(String name,String condition
-            ,QuestPriority priority,int targetAmount
-            , int rewardAmount, QuestRewardType rewardType
-            ,QuestType type) {
-        this.name=name;
-        this.condition=condition;
+    private int id;
+    private final String name;
+    private final String condition;
+    private final QuestPriority priority;
+    private final QuestEventType eventType;
+    private final int targetAmount;
+    private final int rewardAmount;
+    private final QuestRewardType rewardType;
+    private final QuestType type;
+    private final String unlockableId;
+
+    protected Quest(
+            String name,
+            String condition,
+            QuestPriority priority,
+            QuestEventType eventType,
+            int targetAmount,
+            int rewardAmount,
+            QuestRewardType rewardType,
+            QuestType type,
+            String unlockableId
+    ) {
+        this.name = name;
+        this.condition = condition;
         this.priority = priority;
+        this.eventType = eventType;
         this.targetAmount = targetAmount;
         this.rewardAmount = rewardAmount;
         this.rewardType = rewardType;
-        this.type=type;
+        this.type = type;
+        this.unlockableId = unlockableId;
     }
-    public void giveReward(User user, UserRepository userRepository) {
-        if (this.rewardType == null) return;
 
-        switch (this.rewardType.toString()) {
-            case "CURRENCY_COINS":
-                user.setCoins(user.getCoins() + this.rewardAmount);
-                break;
-            case "CURRENCY_GEMS":
-                user.setGems(user.getGems() + this.rewardAmount);
-                break;
-            case "INVENTORY":
-             //  user.setSeedPacket(user.getSeedPacket() + this.rewardAmount);
-                break;
-            case "UNLOCKABLE":
-                //  باید منطق باز شدن گیاه جدید توی جدول user_unlocked_plants پیاده بشه
-                break;
-        }
-        userRepository.updateStats(user);
+    public boolean isComplete(int progress) {
+        return progress >= targetAmount;
     }
 
 }
