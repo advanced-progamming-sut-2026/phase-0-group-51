@@ -5,6 +5,7 @@ import models.Board.Board;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
+
 import java.util.Map;
 
 @Getter
@@ -15,6 +16,8 @@ public class RangedAttackBehavior implements PersistableBehavior {
     private final int range;
     private final int extraParam;
     private int cooldown;
+    private int snowballsRemaining;
+    private int snowballDelayTicks;
 
     public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
         this(type, intervalTicks, range, 0);
@@ -29,43 +32,70 @@ public class RangedAttackBehavior implements PersistableBehavior {
     }
 
     @Override
-    public void onTick(Zombie zombie, GameState gs) {
+    public void onTick(Zombie zombie, GameState state) {
+        if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
+            tickSnowballBarrage(zombie, state);
+            return;
+        }
         if (--cooldown > 0) {
             return;
         }
         cooldown = intervalTicks;
-
-        Board board = gs.getBoard();
+        Board board = state.getBoard();
         int lane = zombie.getLane();
-        int col = (int) zombie.getX();
+        int column = (int) zombie.getX();
         switch (type) {
-            case SNOWBALL -> {
-                // IceAge hunter
-
-            }
+            case SNOWBALL -> startSnowballBarrage(zombie, state);
             case OCTOPUS_NET -> {
-                // Octopus
+                // TODO: Implement the Chapter 3 octopus covering mechanic.
+                return;
             }
             case JUGGLE_BALL -> {
+                // TODO: Implement the Chapter 4 reflected-projectile mechanic.
+                return;
             }
-            case HOOK_PULL -> hookPull(board, lane, col);
-            case LASER_BEAM -> {
-                // Crystal skull
-                for (Plant plant : board.getPlantsInLane(lane)) {
-                    int dist = col - plant.getPosX();
-                    if (dist >= 0 && dist <= range) {
-                        plant.takeDamage(extraParam);
-                    }
-                }
-            }
-            default -> {
+            case HOOK_PULL -> hookPull(board, lane, column);
+            case LASER_BEAM -> fireLaser(board, lane, column);
+        }
+    }
+
+    private void startSnowballBarrage(Zombie zombie, GameState state) {
+        snowballsRemaining = Math.max(1, extraParam);
+        snowballDelayTicks = 0;
+        tickSnowballBarrage(zombie, state);
+    }
+
+    private void tickSnowballBarrage(Zombie zombie, GameState state) {
+        if (snowballDelayTicks > 0) {
+            snowballDelayTicks--;
+            return;
+        }
+        Plant target = state.getBoard().findNearestPlantInRange(
+                zombie.getLane(),
+                (int) zombie.getX(),
+                range
+        );
+        if (target == null) {
+            snowballsRemaining = 0;
+            return;
+        }
+        target.addFrostLevel(state, zombie.getAlias() + " snowball");
+        snowballsRemaining--;
+        snowballDelayTicks = 2;
+    }
+
+    private void fireLaser(Board board, int lane, int column) {
+        for (Plant plant : board.getPlantsInLane(lane)) {
+            int distance = column - plant.getPosX();
+            if (distance >= 0 && distance <= range) {
+                plant.takeDamage(extraParam);
             }
         }
     }
 
-    private void hookPull(Board board, int lane, int col) {
-
-
+    private void hookPull(Board board, int lane, int column) {
+        // TODO: Implement the Chapter 3 Fisherman hook-pull mechanic.
+        return;
     }
 
     @Override
@@ -73,13 +103,12 @@ public class RangedAttackBehavior implements PersistableBehavior {
         return type == RangedAttackType.HOOK_PULL;
     }
 
-
     public enum RangedAttackType {
-        SNOWBALL,     // IceAge Hunter
-        HOOK_PULL,    // Fisherman
-        OCTOPUS_NET,  // Octopus
-        JUGGLE_BALL,  // Juggler
-        LASER_BEAM    // Crystal Skull
+        SNOWBALL,
+        HOOK_PULL,
+        OCTOPUS_NET,
+        JUGGLE_BALL,
+        LASER_BEAM
     }
 
     @Override

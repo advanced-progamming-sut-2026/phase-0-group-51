@@ -22,7 +22,10 @@ public enum LevelType {
 
     SAVE_OUR_SEEDS{
         @Override
-        public void initialize(GameState state) { }
+        public void initialize(GameState state) {
+            // TODO: Add protected starting plants and fail the level when one is destroyed.
+            return;
+        }
         @Override
         public boolean isFinished(GameState state) {
             return state.getZombieWaveManager().isLevelCleared();
@@ -49,7 +52,10 @@ public enum LevelType {
     },
     BOSS{
         @Override
-        public void initialize(GameState state) { }
+        public void initialize(GameState state) {
+            // TODO: Spawn the chapter boss and add the boss-specific win condition.
+            return;
+        }
         @Override
         public boolean isFinished(GameState state) {
             return state.getZombieWaveManager().isLevelCleared();

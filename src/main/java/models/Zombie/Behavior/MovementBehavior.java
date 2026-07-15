@@ -43,7 +43,8 @@ public class MovementBehavior implements PersistableBehavior {
 
         switch (type) {
             case FLY_OVER -> {
-                // Dodo rider
+                // TODO: Implement Dodo obstacle jumping; ice-floor immunity is already handled.
+                return;
             }
             case UNDERGROUND -> {
                 // Snorkel

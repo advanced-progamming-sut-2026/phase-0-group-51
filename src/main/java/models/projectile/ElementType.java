@@ -1,6 +1,7 @@
 package models.projectile;
 
 import models.Zombie.Zombie;
+import models.games.ChapterTheme;
 import models.games.GameState;
 
 public enum ElementType {
@@ -24,7 +25,9 @@ public enum ElementType {
 
         @Override
         public void onHit(Zombie target, GameState state) {
-            target.applyChill(DEFAULT_CHILL_TICKS);
+            if (state.getChapterTheme() != ChapterTheme.FROSTBITE_CAVES) {
+                target.applyChill(DEFAULT_CHILL_TICKS);
+            }
         }
 
         @Override
@@ -32,7 +35,9 @@ public enum ElementType {
             int appliedDuration = durationTicks > 0
                     ? durationTicks
                     : DEFAULT_CHILL_TICKS;
-            target.applyChill(appliedDuration);
+            if (state.getChapterTheme() != ChapterTheme.FROSTBITE_CAVES) {
+                target.applyChill(appliedDuration);
+            }
         }
     },
 

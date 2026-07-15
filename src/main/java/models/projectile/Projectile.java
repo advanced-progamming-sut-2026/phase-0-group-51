@@ -3,6 +3,7 @@ package models.projectile;
 import lombok.Getter;
 import lombok.Setter;
 import models.Board.Tile;
+import models.Plant.Plant;
 import models.Plant.PlantTag;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -263,6 +264,9 @@ public class Projectile {
             destroy(state);
             return;
         }
+        if (hitFrozenPlantIfCrossed(state, previousX, previousY)) {
+            return;
+        }
         if (hitGraveIfCrossed(state, previousX, previousY)) {
             return;
         }
@@ -274,6 +278,30 @@ public class Projectile {
         if (contact != null && !alreadyHit.contains(contact)) {
             impact(state, contact);
         }
+    }
+
+    private boolean hitFrozenPlantIfCrossed(
+            GameState state,
+            double previousX,
+            double previousY
+    ) {
+        if (!(movingStrategy instanceof StraightMove)
+                || Math.abs(posY - previousY) >= 0.001) {
+            return false;
+        }
+        Plant frozenPlant = state.getBoard().getFirstFrozenPlantCrossed(
+                (int) Math.round(posY),
+                previousX,
+                posX
+        );
+        if (frozenPlant == null) {
+            return false;
+        }
+        frozenPlant.damageIce(damage, elementType, state);
+        state.logEvent("Ice around " + frozenPlant.getName() + " has "
+                + frozenPlant.getIceHealth() + " health left.\n");
+        destroy(state);
+        return true;
     }
 
     private boolean hitGraveIfCrossed(
@@ -376,8 +404,11 @@ public class Projectile {
     }
 
     private void hit(Zombie zombie, GameState state) {
+        boolean protectedByIce = zombie.hasIceShell();
         zombie.takeDamage(damage, elementType, state, null);
-        elementType.onHit(zombie, state, effectDurationTicks);
+        if (!protectedByIce) {
+            elementType.onHit(zombie, state, effectDurationTicks);
+        }
         alreadyHit.add(zombie);
         pierceRemaining--;
     }

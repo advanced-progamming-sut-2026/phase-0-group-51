@@ -5,6 +5,7 @@ import lombok.Setter;
 import models.App;
 import models.Plant.Plant;
 import models.Zombie.Behavior.ArmorBehavior;
+import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.games.GameState;
 import models.projectile.ElementType;
@@ -21,6 +22,7 @@ public class Zombie {
     public static final String EFFECT_FROZEN = "frozen";
     public static final String EFFECT_BUTTERED = "buttered";
     private static final float CHILL_SPEED_FACTOR = 0.5f;
+    public static final int ICE_SHELL_MAX_HEALTH = 600;
 
     private final String alias;
     private final int maxHitpoints;
@@ -41,6 +43,7 @@ public class Zombie {
     private boolean dead = false;
     private boolean hypnotized = false;
     private boolean glowing = false;
+    private int iceShellHealth;
 
     // effect name -> remaining ticks
     private final Map<String, Integer> effects = new LinkedHashMap<>();
@@ -135,6 +138,9 @@ public class Zombie {
         if (dead) {
             return;
         }
+        if (damageIceShell(rawDamage, element, gs)) {
+            return;
+        }
         int damage = rawDamage;
         for (ZombieBehavior behavior : behaviors) {
             damage = behavior.onHit(this, damage, element, plant);
@@ -166,7 +172,7 @@ public class Zombie {
 
 
     public void onTick(GameState gs) {
-        if (dead) {
+        if (dead || hasIceShell()) {
             return;
         }
         tickEffects();
@@ -196,7 +202,9 @@ public class Zombie {
             boolean movementSuppressed = behaviors.stream().anyMatch(b -> b.suppressesMovement(this));
             if (!movementSuppressed) {
                 float chillFactor = isChilled() ? CHILL_SPEED_FACTOR : 1.0f;
+                float previousX = x;
                 x -= direction * (baseSpeed * speedMultiplier * chillFactor) / gs.getTicksPerSecond();
+                gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
             }
         }
     }
@@ -256,6 +264,34 @@ public class Zombie {
             z.addBehavior(behavior.copy());
         }
         return z;
+    }
+
+    public void freezeInIce() {
+        iceShellHealth = ICE_SHELL_MAX_HEALTH;
+    }
+
+    public boolean hasIceShell() {
+        return iceShellHealth > 0;
+    }
+
+    public boolean ignoresIceFloors() {
+        MovementBehavior movement = getBehavior(MovementBehavior.class);
+        return movement != null && movement.getType() == MovementBehavior.MovementType.FLY_OVER;
+    }
+
+    private boolean damageIceShell(int damage, ElementType element, GameState state) {
+        if (!hasIceShell()) {
+            return false;
+        }
+        if (element == ElementType.FIRE) {
+            iceShellHealth = 0;
+        } else {
+            iceShellHealth = Math.max(0, iceShellHealth - Math.max(0, damage));
+        }
+        if (iceShellHealth == 0) {
+            state.logEvent("The ice around " + alias + " was destroyed.\n");
+        }
+        return true;
     }
 
     public void reverseDirection() {
