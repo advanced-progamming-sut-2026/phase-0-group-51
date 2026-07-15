@@ -1,7 +1,6 @@
 package models.Zombie.Behavior;
 
 import models.Plant.Plant;
-import models.Plant.PlantType;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;

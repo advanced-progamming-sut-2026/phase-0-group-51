@@ -1,6 +1,6 @@
 package Data.database;
 
-import models.Shop.DailyOffer;
+import models.shop.DailyOffer;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

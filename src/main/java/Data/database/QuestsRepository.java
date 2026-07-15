@@ -1,5 +1,5 @@
 package Data.database;
-import models.Quests.*;
+import models.quests.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
