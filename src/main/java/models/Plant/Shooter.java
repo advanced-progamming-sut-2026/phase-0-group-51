@@ -130,6 +130,22 @@ public enum Shooter implements PlantType {
         ));
     }
 
+    static void shootStraight(Plant plant, GameState state, int shotCount, ElementType element) {
+        if (!zombieInLane(plant, state)) {
+            return;
+        }
+        for (int i = 0; i < shotCount; i++) {
+            state.getBoard().addProjectile(Projectile.straight(
+                    plant.getDamage(),
+                    element,
+                    plant.getPlantTags(),
+                    projectileSpeed(plant),
+                    plant.getPosX(),
+                    plant.getPosY(),
+                    new StraightMove(),
+                    1,
+                    effectDurationTicks(plant, state, element)
+            ).withSource(plant));
     private boolean hasStarfruitTarget(Plant plant, GameState state) {
         for (double[] direction : StarMove.STARFRUIT_DIRECTIONS) {
             if (hasZombieInDirection(plant, state, direction)

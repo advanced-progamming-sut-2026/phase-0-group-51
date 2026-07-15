@@ -292,11 +292,6 @@ public class Projectile {
         this.homingTarget = homingTarget;
     }
 
-    public Projectile withSource(Plant plant) {
-        this.sourcePlant = plant;
-        return this;
-    }
-
     public void tick(GameState state) {
         if (markedForRemoval) {
             return;
@@ -468,9 +463,9 @@ public class Projectile {
 
     private void hit(Zombie zombie, GameState state, int appliedDamage) {
         boolean protectedByIce = zombie.hasIceShell();
-        zombie.takeDamage(appliedDamage, elementType, state, sourcePlant);
+        zombie.takeDamage(appliedDamage, elementType, state, null);
         if (!protectedByIce) {
-            elementType.onHit(zombie, state, effectDurationTicks, sourcePlant);
+            elementType.onHit(zombie, state, effectDurationTicks);
         }
         alreadyHit.add(zombie);
         pierceRemaining--;
