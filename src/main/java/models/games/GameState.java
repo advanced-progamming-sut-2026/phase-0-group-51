@@ -118,6 +118,28 @@ public class GameState {
         tile.setPlant(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
+    public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
+        validatePlantPlacement(plant, tile);
+        placePlantOnTile(plant, tile);
+    }
+    private void validatePlantPlacement(Plant plant, Tile tile) {
+
+       if (plant == null || tile == null) {
+                throw new IllegalArgumentException("Plant and tile are required");
+       }
+
+       if (!tile.isOccupiable()) {
+                throw new IllegalStateException("Tile is not occupiable");
+       }
+
+    }
+
+    private void placePlantOnTile(Plant plant, Tile tile) {
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        tile.setPlant(plant);
+        plant.getPlantType().onPlanted(plant, this);
+    }
     public void pluckPlant(Plant plant, Tile tile){
         if (plant == null || tile == null || tile.getPlant() != plant) throw new IllegalArgumentException("Plant is not on this tile");
         tile.removePlant();

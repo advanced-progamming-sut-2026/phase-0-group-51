@@ -44,7 +44,9 @@ public class GameView implements AppMenu {
             handleCoordinates(GameCommands.SHOW_TILE_STATUS_REGEX.getMatcher(line), controller::showTileStatus);
         } else if (GameCommands.SHOW_PLANT_STATUS_REGEX.matches(line)) {
             print(controller.showPlantStatus());
-        } else if (GameCommands.ZOMBIES_INFO_REGEX.matches(line)) {
+        }  else if (GameCommands.SHOW_CONVEYOR_REGEX.matches(line)) {
+            print(controller.showConveyor());
+        }else if (GameCommands.ZOMBIES_INFO_REGEX.matches(line)) {
             print(controller.zombiesInfo());
         } else if (GameCommands.CHEAT_REMOVE_COOLDOWN_REGEX.matches(line)) {
             print(controller.removeCooldowns());
