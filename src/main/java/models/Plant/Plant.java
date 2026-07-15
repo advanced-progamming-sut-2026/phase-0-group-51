@@ -41,6 +41,13 @@ public class Plant {
     private int frostLevel;
     private int iceHealth;
 
+    // Octopus Zombie binding
+    private static final int OCTOPUS_HP = 400;
+    private int octopusHP = 0;
+
+    // Wizard sheep transform
+    private boolean transformed = false;
+
     private int damage;
 
     public Plant(int id, String name, PlantType plantType, PlantStats plantStat,
@@ -57,7 +64,7 @@ public class Plant {
 
 
     public void tick(GameState gameState) {
-        if (isFrozenByIce()) {
+        if (isFrozenByIce() || hasOctopus() || isTransformed()) {
             return;
         }
         if (disabledTicksRemaining > 0) {
@@ -170,6 +177,13 @@ public class Plant {
     }
     public void takeDamage(int damage, GameState gameState){
         if (markedForRemoval || damage <= 0) return;
+        if (damageIce(damage, ElementType.NORMAL, gameState)) {
+            return;
+        }
+        if (hasOctopus()) {
+            octopusHP = Math.max(0, octopusHP - damage);
+            return;
+        }
         this.currentHP = Math.max(0, this.currentHP - damage);
         if (this.currentHP <= 0) die(gameState);
     }
@@ -193,4 +207,13 @@ public class Plant {
     public void shoot(){}
     public void produceSun(){}
     public void usePlantFood(){}
+
+
+    public boolean hasOctopus() {
+        return octopusHP > 0;
+    }
+
+    public void attachOctopus() {
+        this.octopusHP = OCTOPUS_HP;
+    }
 }

@@ -579,4 +579,39 @@ public class Board {
         for (Projectile projectile : new ArrayList<>(projectiles)) projectile.tick(state);
     }
 
+    public boolean isWaterTile(int lane, int col) {
+        Tile tile = getTile(lane, col);
+        return tile != null && tile.isWater();
+    }
+
+    public void setWaterLevel(int leftmostWaterColumn) {
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int col = 0; col < columnCount; col++) {
+                getTile(lane, col).setWater(col >= leftmostWaterColumn);
+            }
+        }
+    }
+
+    public boolean isTileFree(int lane, int col) {
+        Tile tile = getTile(lane, col);
+        return tile != null && tile.isOccupiable();
+    }
+
+    public void movePlant(Plant target, int lane, int col) {
+        if (lane < 0 || lane >= laneCount || col < 0 || col >= columnCount) {
+            return;
+        }
+
+        Tile to = getTile(lane, col);
+        if (to == null || to.hasPlant() || !to.isOccupiable()) {
+            return;
+        }
+        Tile from = getTile(target.getPosY(), target.getPosX());
+        if (from != null && from.getPlant() == target) {
+            from.setPlant(null);
+        }
+        target.setPosY(lane);
+        target.setPosX(col);
+        to.setPlant(target);
+    }
 }

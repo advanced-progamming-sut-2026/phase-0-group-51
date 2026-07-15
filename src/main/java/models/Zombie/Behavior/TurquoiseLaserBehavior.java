@@ -84,7 +84,7 @@ public class TurquoiseLaserBehavior implements PersistableBehavior {
             })
             .toList();
         for (Plant target : targets) {
-            target.takeDamage(target.getCurrentHP());
+            target.takeDamage(target.getCurrentHP(),gs);
         }
     }
 
