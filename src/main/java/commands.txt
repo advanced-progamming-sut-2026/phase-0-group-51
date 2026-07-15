@@ -61,6 +61,9 @@ show tile status -l (<x>, <y>)
 zombies info
 cheat spawn-zombie -t <zombie-type> -l <x, y>
 
+level 3 season 1:
+show conveyor
+
 show greenhouse
 plant pot at (<x>, <y>)
 collect (<x>, <y>)
@@ -74,6 +77,7 @@ shop buy daily
 
 travel log page <page_name>
 start vasebreaker -s <level number>
+start wallnut bowling -s <level number>
 --------
 Vasebreaker minigame:
 break vase -l (<x>, <y>)
@@ -81,5 +85,13 @@ pick seed packet -l (<x>, <y>)
 plant packet -t <plantType> -l (<x>, <y>)
 advance time -t <count> ticks
 show vasebreaker status
+menu show current
+menu exit
+--------
+Wall-nut Bowling minigame:
+roll wallnut -l (<x>, <y>)
+advance time -t <count> ticks
+show conveyor
+show walnut bowling status
 menu show current
 menu exit

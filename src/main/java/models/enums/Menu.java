@@ -2,6 +2,7 @@ package models.enums;
 
 import views.*;
 import views.miniGames.VaseBreakerMenu;
+import views.miniGames.WallnutBowllingMenu;
 
 import java.util.Scanner;
 
@@ -22,6 +23,7 @@ public enum Menu {
     LEADERBOARD_MENU(new LeaderboardMenu()),
     PlantSelection_Menu(new PlantSelectionMenu()),
     VASE_BREAKER(new VaseBreakerMenu()),
+    WALLNUT_BOWLING(new WallnutBowllingMenu()),
     EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){

@@ -5,6 +5,7 @@ public enum GameCommands implements Commands {
     ZOMBIES_INFO_REGEX("^\\s*zombies\\s+info\\s*$"),
     SHOW_TILE_STATUS_REGEX("^\\s*show\\s+tile\\s+status\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     SHOW_PLANT_STATUS_REGEX("^\\s*show\\s+plants?\\s+status\\s*$"),
+    SHOW_CONVEYOR_REGEX("^\\s*show\\s+conveyor\\s*$"),
     SHOW_MAP_REGEX("^\\s*show\\s+map\\s*$"),
     CHEAT_ADD_PLANT_FOOD_REGEX("^\\s*cheat\\s+add-plant-food\\s*$"),
     FEED_PLANT_REGEX("^\\s*feed\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),

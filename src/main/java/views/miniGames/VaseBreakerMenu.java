@@ -2,8 +2,7 @@ package views.miniGames;
 
 import controllers.miniGamesController.VaseBreakerController;
 import models.Result;
-import models.enums.commands.TravelLogMenuCommands;
-import models.enums.commands.VaseBreakerCommands;
+import models.enums.commands.minigames.VaseBreakerCommands;
 import views.AppMenu;
 
 import java.util.Scanner;

@@ -94,6 +94,15 @@ public class GamingController {
         if (selected == null) {
             return failure("Unknown plant.\n");
         }
+        if (game.isConveyorBeltLevel()) {
+            if (!game.hasConveyorPlant(selected)) {
+                return failure(selected.name() + " is not currently on the conveyor belt.\n");
+            }
+            if (!tile.isOccupiable()) {
+                return tileOccupationFailure(tile);
+            }
+            return createAndPlaceConveyorPlant(game, state, tile, selected, x, y);
+        }
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
         }
@@ -101,6 +110,39 @@ public class GamingController {
             return tileOccupationFailure(tile);
         }
         return createAndPlacePlant(state, tile, selected, x, y);
+    }
+    private Result createAndPlaceConveyorPlant(Game game, GameState state, Tile tile, PlantData selected, int x, int y
+    ) {
+        Plant plant = createPlantForCurrentUser(selected);
+        try {
+            state.plantPlantWithoutSunCost(plant, tile);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        if (!game.consumeConveyorPlant(selected)) {
+            //محض اطمینانه وگرنه این اتفاق نمیوفته احتمالا هیچوقت
+            state.pluckPlant(plant, tile);
+            return failure("The conveyor plant was no longer available.\n");
+        }
+        String message = selected.name() + " was planted from the conveyor at ("
+                + x + ", " + y + ") for 0 sun.\n";
+        return success(message + activateStoredBoost(selected, plant, state));
+    }
+    private String activateStoredBoost(PlantData selected, Plant plant, GameState state) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null || !PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
+            return "";
+        }
+        plant.feed(state);
+        PlantBoostRepository.consumeBoost(user.getId(), selected.id());
+        return "The stored boost for " + selected.name() + " was activated.\n";
+    }
+
+    private Plant createPlantForCurrentUser(PlantData selected) {
+        User user = App.getInstance().getLoggedInUser();
+        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(selected.id(), 1);
+        return PlantFactory.create(selected, level);
     }
 
     private Result createAndPlacePlant(GameState state, Tile tile, PlantData selected, int x, int y) {
@@ -283,10 +325,44 @@ public class GamingController {
                 .append("s\n"));
     }
 
+    public Result showConveyor() {
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null || game.getGameState() == null) {
+            return failure("No active game found.\n");
+        }
+        if (!game.isConveyorBeltLevel()) {
+            return failure("The current level does not use a conveyor belt.\n");
+        }
+        List<PlantData> belt = game.getConveyorBeltPlants();
+        StringBuilder output = new StringBuilder("===== CONVEYOR BELT =====\n");
+        if (belt.isEmpty()) {
+            output.append("empty\n");
+        } else {
+            for (int i = 0; i < belt.size(); i++) {
+                output.append(i + 1)
+                        .append(". ")
+                        .append(belt.get(i).name())
+                        .append('\n');
+            }
+        }
+        int ticksRemaining = game.getTicksUntilNextConveyorDelivery();
+        output.append("Next delivery in ")
+                .append(ticksRemaining)
+                .append(" ticks (")
+                .append(formatSeconds(
+                        ticksRemaining,
+                        game.getGameState().getTicksPerSecond()
+                ))
+                .append(" seconds).\n");
+        return success(output.toString());
+    }
     public Result showPlantStatus() {
         Game game = App.getInstance().getCurrentGame();
         if (game == null || game.getGameState() == null) {
             return failure("No active game found.\n");
+        }
+        if (game.isConveyorBeltLevel()) {
+            return showConveyor();
         }
         GameState state = game.getGameState();
         User user = App.getInstance().getLoggedInUser();
@@ -497,6 +573,7 @@ public class GamingController {
     }
 
     public Result showMap() {
+        Game game = App.getInstance().getCurrentGame();
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -509,8 +586,26 @@ public class GamingController {
                 .append("Wave: ").append(wave).append('\n')
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
-                .append("Tick: ").append(state.getTickCounter()).append("\n\n")
-                .append("===== LAWN MOWERS =====\n");
+                .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (game.isConveyorBeltLevel()) {
+            output.append("Conveyor: ");
+            List<PlantData> belt = game.getConveyorBeltPlants();
+            if (belt.isEmpty()) {
+                output.append("empty");
+            } else {
+                for (int i = 0; i < belt.size(); i++) {
+                    if (i > 0) {
+                        output.append(" -> ");
+                    }
+                    output.append(belt.get(i).name());
+                }
+            }
+            output.append("\nNext conveyor delivery: ")
+                    .append(game.getTicksUntilNextConveyorDelivery())
+                    .append(" ticks\n");
+        }
+
+                output.append("\n===== LAWN MOWERS =====\n");
 
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
             Mower mower = state.getLawnMowers()[lane];
