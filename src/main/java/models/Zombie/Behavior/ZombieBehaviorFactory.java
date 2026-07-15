@@ -146,12 +146,14 @@ public class ZombieBehaviorFactory {
 
             case "ZombiePropertySheet" -> {
                 if (alias.equals("ZombieDarkArmor3")) {
+                    // Knight: crown + shoulder armor
                     addArmorByAlias("CrownDefault@ArmorTypes", armorRegistry, behaviors);
                     addArmorByAlias("ShoulderArmorDefault@ArmorTypes", armorRegistry, behaviors);
                 } else {
                     resolveArmorProps(d, armorRegistry, behaviors);
                 }
                 if (alias.equals("ZombieDarkImpDragon")) {
+                    // Imp dragon: immune to fire projectiles
                     behaviors.add(new DamageReactionBehavior(
                         DamageReactionBehavior.DamageReactionType.FIRE_IMMUNE));
                 }
@@ -173,8 +175,10 @@ public class ZombieBehaviorFactory {
                 if (layers.isArray() && !layers.isEmpty())
                     throwPercent = (float) layers.get(0).path("HealthPercentThrowImp").asDouble(0.5);
 
+                // Throws its imp to the 3rd column when it drops to half health.
                 behaviors.add(new ImpThrowBehavior(
                     ImpThrowBehavior.SummonType.IMP_THROW, "ZombieImp", 1, (int) (hp * throwPercent)));
+                // Smashes every plant in one hit instead of eating.
                 behaviors.add(new InstantKillBehavior(1.0f, true, 0f, true));
             }
 
@@ -194,12 +198,12 @@ public class ZombieBehaviorFactory {
                     interval, d.path("NumberOfTombsToSpawn").asInt(2)));
             }
 
-            case "ZombieIceAgeDodoProps" -> {
-                List<String> flyOver = new ArrayList<>();
-                for (JsonNode p : d.path("PlantsToFlyOver").path("List"))
-                    flyOver.add(p.asText());
-                behaviors.add(new MovementBehavior(MovementBehavior.MovementType.FLY_OVER, flyOver));
-            }
+            case "ZombieIceAgeDodoProps" ->
+                // Curated list of obstacles that exist in plants.csv (walls,
+                // row-movers, traps). See MovementBehavior.DODO_FLY_OVER_PLANTS.
+                behaviors.add(new MovementBehavior(
+                    MovementBehavior.MovementType.FLY_OVER,
+                    MovementBehavior.DODO_FLY_OVER_PLANTS));
 
             case "ZombieIceAgeHunterProps" ->
                 behaviors.add(new RangedAttackBehavior(
@@ -210,6 +214,7 @@ public class ZombieBehaviorFactory {
                 ));
 
             case "ZombieIceAgeTroglobiteProps" ->
+                // Pushes ice blocks (600 HP each, like frozen tiles) that crush plants.
                 behaviors.add(new PushObjectBehavior(
                     PushObjectBehavior.PushType.ICE_BLOCK,
                     600,
@@ -236,7 +241,8 @@ public class ZombieBehaviorFactory {
                 behaviors.add(new RangedAttackBehavior(
                     RangedAttackBehavior.RangedAttackType.JUGGLE_BALL, 35, 5, 20));
                 behaviors.add(new DamageReactionBehavior(
-                    DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE, 0.75f));
+                    DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE,
+                    1.5f));  // spin speed scale (moves faster while spinning)
             }
 
             case "ZombieDarkWizardProps" ->
@@ -265,6 +271,7 @@ public class ZombieBehaviorFactory {
 
             case "ZombieProspectorProps" -> {
                 behaviors.add(new MovementBehavior(MovementBehavior.MovementType.PROSPECTOR_JUMP));
+                // The dynamite was never attached before -> the jump never happened.
                 behaviors.add(new DynamiteBehavior(
                     (int) (d.path("LaunchCountdown").asDouble(10) * TICKS_PER_SECOND)));
             }
@@ -273,17 +280,19 @@ public class ZombieBehaviorFactory {
                 behaviors.add(new MovementBehavior(
                     MovementBehavior.MovementType.PIANO_CRUSH,
                     (float) d.path("FastMoveSpeed").asDouble(0.4)));
+                // Its music makes zombies switch lanes.
                 behaviors.add(new WorldEffectBehavior(
                     WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 30, 1));
             }
 
             case "ZombieModernAllStarProps" ->
+                // Runs fast, tackles the first plant, then walks very slowly.
                 behaviors.add(new InstantKillBehavior(
                     0.3f, true,
                     (float) d.path("RunningSpeedScale").asDouble(2.5)));
 
             case "ZombieLostCityJaneProps" ->
-                // Parasol
+                // Parasol: blocks lobbed projectiles.
                 behaviors.add(new DamageReactionBehavior(
                     DamageReactionBehavior.DamageReactionType.DEFLECT_LOBBER));
 
@@ -292,10 +301,12 @@ public class ZombieBehaviorFactory {
                     PushObjectBehavior.PushType.ARCADE_MACHINE, 1100, 1));
 
             case "ZombieBarrelRollerProps" ->
+                // Pushes a barrel; when it breaks, two imps jump out.
                 behaviors.add(new PushObjectBehavior(
                     PushObjectBehavior.PushType.BARREL, 1100, 1, "ZombieImp", 2));
 
             case "ZombieTurquoiseProps" ->
+                // Steals 25 sun/s for 5s from 4 tiles away, then fires its laser.
                 behaviors.add(new TurquoiseLaserBehavior(4, 5, 25));
 
             default ->

@@ -19,6 +19,7 @@ public class Tile {
     private final float y;
     private Plant plant;
     private boolean iceBlocked = false;
+    private boolean water = false;
     private boolean frosted = false;
     private Grave grave;
 

@@ -32,6 +32,7 @@ public class Zombie {
 
     private int lane;
     private float x;
+    final float TILE_WIDTH = 80f;
     private int direction = 1; // 1 = walking normal, -1 = reversed
 
     private float speedMultiplier = 1.0f;
@@ -260,5 +261,8 @@ public class Zombie {
 
     public void reverseDirection() {
         direction = direction * -1;
+    }
+    public int getColumn() {
+        return (int) (x/TILE_WIDTH);
     }
 }

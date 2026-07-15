@@ -9,6 +9,7 @@ import java.util.Map;
 
 @Getter
 public class RangedAttackBehavior implements PersistableBehavior {
+    private static final int DEFAULT_JUGGLE_DAMAGE = 20;
 
     private final RangedAttackType type;
     private final int intervalTicks;
@@ -37,24 +38,35 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
         Board board = gs.getBoard();
         int lane = zombie.getLane();
-        int col = (int) zombie.getX();
+        int col = zombie.getColumn();
         switch (type) {
             case SNOWBALL -> {
                 // IceAge hunter
-
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.addFrostLevel(gs, "Hunter snowball");
+                }
             }
             case OCTOPUS_NET -> {
                 // Octopus
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.attachOctopus();
+                }
             }
             case JUGGLE_BALL -> {
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.takeDamage(extraParam > 0 ? extraParam : DEFAULT_JUGGLE_DAMAGE, gs);
+                }
             }
-            case HOOK_PULL -> hookPull(board, lane, col);
+            case HOOK_PULL -> hookPull(board, lane, col, gs);
             case LASER_BEAM -> {
-                // Crystal skull
+                // Crystal skull: hits every plant ahead of it in the lane.
                 for (Plant plant : board.getPlantsInLane(lane)) {
                     int dist = col - plant.getPosX();
                     if (dist >= 0 && dist <= range) {
-                        plant.takeDamage(extraParam);
+                        plant.takeDamage(extraParam, gs);
                     }
                 }
             }
@@ -63,9 +75,17 @@ public class RangedAttackBehavior implements PersistableBehavior {
         }
     }
 
-    private void hookPull(Board board, int lane, int col) {
-
-
+    private void hookPull(Board board, int lane, int col, GameState gs) {
+        // Fisherman
+        Plant target = board.findNearestPlantInRange(lane, col, range);
+        if (target == null) {
+            return;
+        }
+        if (col - target.getPosX() <= 1) {
+            target.takeDamage(target.getCurrentHP(), gs);
+        } else if (board.isTileFree(lane, target.getPosX() + 1)) {
+            board.movePlant(target, lane, target.getPosX() + 1);
+        }
     }
 
     @Override

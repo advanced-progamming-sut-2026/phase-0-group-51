@@ -28,7 +28,7 @@ public class TorchBehavior implements PersistableBehavior {
         Plant target = gs.getBoard()
             .findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), reachTiles);
         if (target != null) {
-            target.takeDamage(target.getCurrentHP());
+            target.takeDamage(target.getCurrentHP(),gs);
         }
     }
 

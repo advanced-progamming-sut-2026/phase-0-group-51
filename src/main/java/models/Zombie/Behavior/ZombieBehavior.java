@@ -7,6 +7,7 @@ import models.games.GameState;
 import models.projectile.ElementType;
 
 public interface ZombieBehavior {
+    final float TILE_WIDTH = 80f;
     default void onTick(Zombie zombie, GameState gs) {};
     default int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         return rawDamage;

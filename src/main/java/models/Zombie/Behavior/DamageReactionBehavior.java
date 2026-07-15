@@ -6,15 +6,17 @@ import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
+import models.projectile.Projectile;
 import java.util.Map;
 
 @Getter
 public class DamageReactionBehavior implements PersistableBehavior {
 
     private final DamageReactionType type;
-    private final float param1;  // rage speed scale / reflect chance
+    private final float param1;  // rage speed scale / juggler spin speed scale
     private final float param2;  // rage damage scale
     private boolean raged = false;
+
     private boolean spinning = false;
 
     public DamageReactionBehavior(DamageReactionType type) {
@@ -42,18 +44,25 @@ public class DamageReactionBehavior implements PersistableBehavior {
                 zombie.applyDamageScale(param2);
             }
         }
+
     }
 
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         switch (type) {
             case REFLECT_PROJECTILE -> {
+                //TODO
             }
             case SUBMERGE_DODGE -> {
+                // Snorkel
+                MovementBehavior movement = zombie.getBehavior(MovementBehavior.class);
+                if (movement != null && movement.isSubmerged() && !(plant.getPlantType() instanceof Lobber)) {
+                    return 0;
+                }
             }
             case DEFLECT_LOBBER -> {
                 // Parasol
-                if (plant.getPlantType().equals(Lobber.class)) {
+                if (plant.getPlantType() instanceof Lobber) {
                     return 0;
                 }
             }
@@ -68,6 +77,21 @@ public class DamageReactionBehavior implements PersistableBehavior {
         }
         return rawDamage;
     }
+
+    private void startSpin(Zombie zombie) {
+        if (!spinning) {
+            spinning = true;
+            zombie.applySpeedScale(param1);
+        }
+    }
+
+    private void stopSpin(Zombie zombie) {
+        if (spinning) {
+            spinning = false;
+            zombie.applySpeedScale(1.0f / param1);
+        }
+    }
+
 
     public enum DamageReactionType {
         NEWSPAPER_RAGE,
