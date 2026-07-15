@@ -4,12 +4,10 @@ import lombok.Getter;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
-import models.projectile.ElementType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 @Getter
 public class TransformBehavior implements PersistableBehavior {
 
@@ -29,7 +27,19 @@ public class TransformBehavior implements PersistableBehavior {
 
     @Override
     public void onTick(Zombie zombie, GameState gs) {
-
+        if (--cooldown > 0) {
+            return;
+        }
+        cooldown = intervalTicks;
+        if (type != TransformType.SHEEP_TRANSFORM) {
+            return;
+        }
+        Plant target = gs.getBoard()
+            .findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), range);
+        if (target != null && !target.isTransformed()) {
+            target.setTransformed(true);
+            transformedPlants.add(target);
+        }
     }
 
     @Override
@@ -37,21 +47,12 @@ public class TransformBehavior implements PersistableBehavior {
         return true;
     }
 
-
-    @Override
-    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
-        return PersistableBehavior.super.onHit(zombie, rawDamage, element, plant);
-    }
-
-
-    @Override
-    public boolean suppressesMovement(Zombie zombie) {
-        return PersistableBehavior.super.suppressesMovement(zombie);
-    }
-
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
-        PersistableBehavior.super.onDeath(zombie, gs);
+        for (Plant plant : transformedPlants) {
+            plant.setTransformed(false);
+        }
+        transformedPlants.clear();
     }
 
 

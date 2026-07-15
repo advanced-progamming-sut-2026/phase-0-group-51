@@ -49,7 +49,7 @@ public class InstantKillBehavior implements PersistableBehavior {
         Board board = gs.getBoard();
         Plant target = board.findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), 0);
         if (target != null) {
-            target.takeDamage(target.getCurrentHP(), gs);
+            target.takeDamage(target.getCurrentHP(),gs);
             afterKill(zombie);
             return;
         }

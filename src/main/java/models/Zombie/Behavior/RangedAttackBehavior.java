@@ -10,6 +10,7 @@ import java.util.Map;
 
 @Getter
 public class RangedAttackBehavior implements PersistableBehavior {
+    private static final int DEFAULT_JUGGLE_DAMAGE = 20;
 
     private final RangedAttackType type;
     private final int intervalTicks;
@@ -43,59 +44,54 @@ public class RangedAttackBehavior implements PersistableBehavior {
         cooldown = intervalTicks;
         Board board = state.getBoard();
         int lane = zombie.getLane();
-        int column = (int) zombie.getX();
+        int col = zombie.getColumn();
         switch (type) {
-            case SNOWBALL -> startSnowballBarrage(zombie, state);
+            case SNOWBALL -> {
+                // IceAge hunter
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.addFrostLevel(gs, "Hunter snowball");
+                }
+            }
             case OCTOPUS_NET -> {
-                // TODO: Implement the Chapter 3 octopus covering mechanic.
-                return;
+                // Octopus
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.attachOctopus();
+                }
             }
             case JUGGLE_BALL -> {
-                // TODO: Implement the Chapter 4 reflected-projectile mechanic.
-                return;
+                Plant target = board.findNearestPlantInRange(lane, col, range);
+                if (target != null) {
+                    target.takeDamage(extraParam > 0 ? extraParam : DEFAULT_JUGGLE_DAMAGE, gs);
+                }
             }
-            case HOOK_PULL -> hookPull(board, lane, column);
-            case LASER_BEAM -> fireLaser(board, lane, column);
+            case HOOK_PULL -> hookPull(board, lane, col, gs);
+            case LASER_BEAM -> {
+                // Crystal skull: hits every plant ahead of it in the lane.
+                for (Plant plant : board.getPlantsInLane(lane)) {
+                    int dist = col - plant.getPosX();
+                    if (dist >= 0 && dist <= range) {
+                        plant.takeDamage(extraParam, gs);
+                    }
+                }
+            }
+            default -> {
+            }
         }
     }
 
-    private void startSnowballBarrage(Zombie zombie, GameState state) {
-        snowballsRemaining = Math.max(1, extraParam);
-        snowballDelayTicks = 0;
-        tickSnowballBarrage(zombie, state);
-    }
-
-    private void tickSnowballBarrage(Zombie zombie, GameState state) {
-        if (snowballDelayTicks > 0) {
-            snowballDelayTicks--;
-            return;
-        }
-        Plant target = state.getBoard().findNearestPlantInRange(
-                zombie.getLane(),
-                (int) zombie.getX(),
-                range
-        );
+    private void hookPull(Board board, int lane, int col, GameState gs) {
+        // Fisherman
+        Plant target = board.findNearestPlantInRange(lane, col, range);
         if (target == null) {
-            snowballsRemaining = 0;
             return;
         }
-        target.addFrostLevel(state, zombie.getAlias() + " snowball");
-        snowballsRemaining--;
-        snowballDelayTicks = 2;
-    }
-
-    private void fireLaser(Board board, int lane, int column) {
-        for (Plant plant : board.getPlantsInLane(lane)) {
-            int distance = column - plant.getPosX();
-            if (distance >= 0 && distance <= range) {
-                plant.takeDamage(extraParam);
-            }
+        if (col - target.getPosX() <= 1) {
+            target.takeDamage(target.getCurrentHP(), gs);
+        } else if (board.isTileFree(lane, target.getPosX() + 1)) {
+            board.movePlant(target, lane, target.getPosX() + 1);
         }
-    }
-
-    private void hookPull(Board board, int lane, int column) {
-        // TODO: Implement the Chapter 3 Fisherman hook-pull mechanic.
-        return;
     }
 
     @Override

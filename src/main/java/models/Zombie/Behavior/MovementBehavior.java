@@ -9,13 +9,32 @@ import models.games.GameState;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 @Getter
 public class MovementBehavior implements PersistableBehavior {
+    private static final Random RANDOM = new Random();
+    private static final float TILE_WIDTH = 80f;
+
+    public static final List<String> DODO_FLY_OVER_PLANTS = List.of(
+        "iceburg",
+        "wallnut",
+        "potatomine",
+        "primalpotatomine",
+        "endurian",
+        "cactus",
+        "garlic",
+        "sweetpotato",
+        "explodeonut",
+        "pumpkin"
+    );
+
     private final MovementType type;
     private final float extraParam;
     private final List<String> flyOverTargets;
 
-    private boolean pianoSpeedApplied = false;
+    private boolean submerged = false;          // UNDERGROUND (snorkel)
+    private boolean skipEatingThisTick = false; // FLY_OVER (dodo)
+    private boolean pianoSpeedApplied = false;  // PIANO_CRUSH
 
     public MovementBehavior(MovementType type) {
         this(type, 0, Collections.emptyList());
@@ -39,15 +58,22 @@ public class MovementBehavior implements PersistableBehavior {
     public void onTick(Zombie zombie, GameState gs) {
         Board board = gs.getBoard();
         int lane = zombie.getLane();
-        int col = (int) zombie.getX();
+        int col = (int) (zombie.getX() / TILE_WIDTH);
+        skipEatingThisTick = false;
 
         switch (type) {
             case FLY_OVER -> {
-                // TODO: Implement Dodo obstacle jumping; ice-floor immunity is already handled.
-                return;
+                // Dodo rider
+                Plant ahead = board.findNearestPlantInRange(lane, col, 1);
+                if (ahead != null && isFlyOverTarget(ahead)) {
+                    skipEatingThisTick = true;
+                    zombie.setX(Math.max(0f, ahead.getPosX() - 1) * TILE_WIDTH);
+                }
             }
             case UNDERGROUND -> {
                 // Snorkel
+                Plant near = board.findNearestPlantInRange(lane, col, 1);
+                submerged = board.isWaterTile(lane, col) && near == null;
             }
             case PIANO_CRUSH -> {
                 if (!pianoSpeedApplied && extraParam > 0) {
@@ -56,13 +82,38 @@ public class MovementBehavior implements PersistableBehavior {
                 }
                 Plant crushed = board.findNearestPlantInRange(lane, col, 0);
                 if (crushed != null) {
-                    crushed.takeDamage(crushed.getCurrentHP(), gs);
+                    crushed.takeDamage(crushed.getCurrentHP(),gs);
                 }
             }
             default -> {
-                // NORMAL_WALK / PROSPECTOR_JUMP
+                // NORMAL_WALK / PROSPECTOR_JUMP need no per-tick handling here.
             }
         }
+    }
+
+    private boolean isFlyOverTarget(Plant plant) {
+        String name = normalize(plant.getName());
+        if (name.isEmpty()) {
+            return false;
+        }
+        for (String target : flyOverTargets) {
+            String t = normalize(target);
+            if (name.equals(t) || name.startsWith(t) || t.startsWith(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalize(String s) {
+        if (s == null) {
+            return "";
+        }
+        String n = s.toLowerCase().replaceAll("[^a-z0-9]", "");
+        if (n.equals("iceburg")) {
+            n = "iceberglettuce";
+        }
+        return n;
     }
 
     public void jumpToBackRow(Zombie zombie) {
@@ -77,8 +128,9 @@ public class MovementBehavior implements PersistableBehavior {
 
     @Override
     public boolean suppressesDefaultEating(Zombie zombie) {
-        return type == MovementType.PIANO_CRUSH;
+        return type == MovementType.PIANO_CRUSH || skipEatingThisTick;
     }
+
 
     public enum MovementType {
         NORMAL_WALK, FLY_OVER, UNDERGROUND, PROSPECTOR_JUMP, PIANO_CRUSH

@@ -8,6 +8,7 @@ import models.Plant.PlantTag;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.move.MovingStrategy;
+import models.projectile.move.StarMove;
 import models.projectile.move.StraightMove;
 
 import java.util.HashSet;
@@ -17,6 +18,8 @@ import java.util.Set;
 public class Projectile {
     @Getter
     private final int damage;
+    @Getter
+    private final int splashDamage;
     @Getter
     private final ElementType elementType;
     @Getter
@@ -85,6 +88,7 @@ public class Projectile {
     ) {
         return new Projectile(
                 damage,
+                damage,
                 elementType,
                 tags,
                 speed,
@@ -115,6 +119,7 @@ public class Projectile {
     ) {
         return new Projectile(
                 damage,
+                damage,
                 elementType,
                 tags,
                 speed,
@@ -144,8 +149,37 @@ public class Projectile {
             MovingStrategy movingStrategy,
             double aoeRadius
     ) {
+        return targeted(
+                damage,
+                damage,
+                elementType,
+                tags,
+                speed,
+                posX,
+                lane,
+                targetX,
+                targetLane,
+                movingStrategy,
+                aoeRadius
+        );
+    }
+
+    public static Projectile targeted(
+            int damage,
+            int splashDamage,
+            ElementType elementType,
+            List<PlantTag> tags,
+            double speed,
+            double posX,
+            int lane,
+            double targetX,
+            double targetLane,
+            MovingStrategy movingStrategy,
+            double aoeRadius
+    ) {
         return new Projectile(
                 damage,
+                splashDamage,
                 elementType,
                 tags,
                 speed,
@@ -175,6 +209,7 @@ public class Projectile {
     ) {
         return new Projectile(
                 damage,
+                damage,
                 elementType,
                 tags,
                 speed,
@@ -203,6 +238,7 @@ public class Projectile {
     ) {
         this(
                 damage,
+                damage,
                 elementType,
                 tags,
                 speed,
@@ -222,6 +258,7 @@ public class Projectile {
 
     private Projectile(
             int damage,
+            int splashDamage,
             ElementType elementType,
             List<PlantTag> tags,
             double speed,
@@ -238,6 +275,7 @@ public class Projectile {
             Zombie homingTarget
     ) {
         this.damage = damage;
+        this.splashDamage = splashDamage;
         this.elementType = elementType;
         this.tags = tags;
         this.speed = speed;
@@ -315,15 +353,24 @@ public class Projectile {
             double previousX,
             double previousY
     ) {
-        if (!(movingStrategy instanceof StraightMove)
-                || Math.abs(posY - previousY) >= 0.001) {
+        Tile graveTile;
+        if (movingStrategy instanceof StraightMove
+                && Math.abs(posY - previousY) < 0.001) {
+            graveTile = state.getBoard().getFirstGraveCrossed(
+                    (int) Math.round(posY),
+                    previousX,
+                    posX
+            );
+        } else if (movingStrategy instanceof StarMove) {
+            graveTile = state.getBoard().getFirstGraveCrossed(
+                    previousX,
+                    previousY,
+                    posX,
+                    posY
+            );
+        } else {
             return false;
         }
-        Tile graveTile = state.getBoard().getFirstGraveCrossed(
-                (int) Math.round(posY),
-                previousX,
-                posX
-        );
         if (graveTile == null) {
             return false;
         }
@@ -387,12 +434,18 @@ public class Projectile {
     }
 
     private void hitArea(GameState state) {
+        Zombie primary = state.getBoard().getZombieNear(
+                (int) Math.round(targetY == null ? posY : targetY),
+                targetX == null ? posX : targetX,
+                0.75
+        );
         for (Zombie zombie : state.getBoard().getZombiesInRadius(
                 posY,
                 posX,
                 aoeRadius
         )) {
-            hit(zombie, state);
+            int appliedDamage = zombie == primary ? damage : splashDamage;
+            hit(zombie, state, appliedDamage);
         }
         destroy(state);
     }
@@ -410,6 +463,10 @@ public class Projectile {
     }
 
     private void hit(Zombie zombie, GameState state) {
+        hit(zombie, state, damage);
+    }
+
+    private void hit(Zombie zombie, GameState state, int appliedDamage) {
         boolean protectedByIce = zombie.hasIceShell();
         zombie.takeDamage(damage, elementType, state, sourcePlant);
         if (!protectedByIce) {

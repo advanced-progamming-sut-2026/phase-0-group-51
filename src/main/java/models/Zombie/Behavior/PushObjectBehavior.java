@@ -53,7 +53,7 @@ public class PushObjectBehavior implements PersistableBehavior {
 
         Plant crushed = board.findNearestPlantInRange(lane, col, 0);
         if (crushed != null) {
-            crushed.takeDamage(crushed.getCurrentHP(), gs);
+            crushed.takeDamage(crushed.getCurrentHP(),gs);
         }
         Zombie hypnotized = gs.findNearestHypnotizedZombieInRange(zombie, lane, col, 0);
         if (hypnotized != null) {
