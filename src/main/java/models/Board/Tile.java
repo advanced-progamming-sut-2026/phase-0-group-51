@@ -6,6 +6,7 @@ import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
+import models.games.frostbite.IceFloorDirection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,7 @@ public class Tile {
     private Plant plant;
     private boolean iceBlocked = false;
     private boolean frosted = false;
+    private IceFloorDirection iceFloorDirection;
     private Grave grave;
 
     public static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
@@ -50,7 +52,7 @@ public class Tile {
         return (int) Math.ceil(worldUnits / TILEWIDTH);
     }
     public boolean isOccupiable() {
-        return !iceBlocked && !hasGrave() && !hasPlant();
+        return !iceBlocked && iceFloorDirection == null && !hasGrave() && !hasPlant();
     }
 
     public void removeGrave() {

@@ -3,6 +3,7 @@ package models.Plant;
 import lombok.Getter;
 import lombok.Setter;
 import models.games.GameState;
+import models.projectile.ElementType;
 
 import java.util.List;
 @Getter
@@ -13,6 +14,8 @@ public class Plant {
     private final PlantType plantType;
     private int currentHP;
     private static final float PLANT_FOOD_DURATION_TICKS = 10;
+    public static final int MAX_FROST_LEVEL = 3;
+    public static final int ICE_MAX_HEALTH = 600;
     private final List<PlantUpgrade> upgrades;
     private final List<PlantTag> plantTags;
     private PlantStats plantStat;
@@ -35,6 +38,8 @@ public class Plant {
     private boolean markedForRemoval = false;
     private int posX;
     private int posY;
+    private int frostLevel;
+    private int iceHealth;
 
     private int damage;
 
@@ -52,6 +57,9 @@ public class Plant {
 
 
     public void tick(GameState gameState) {
+        if (isFrozenByIce()) {
+            return;
+        }
         if (disabledTicksRemaining > 0) {
             disabledTicksRemaining--;
             return;
@@ -99,6 +107,56 @@ public class Plant {
         return disabledTicksRemaining > 0;
     }
     public void activatePlantFood(){}
+
+    public boolean hasTag(PlantTag tag) {
+        return plantTags.contains(tag);
+    }
+
+    public boolean isFrozenByIce() {
+        return frostLevel >= MAX_FROST_LEVEL && iceHealth > 0;
+    }
+
+    public void addFrostLevel(GameState state, String source) {
+        if (markedForRemoval || hasTag(PlantTag.FIRE) || frostLevel >= MAX_FROST_LEVEL) {
+            return;
+        }
+        frostLevel++;
+        state.logEvent(name + " frost level increased to " + frostLevel + " from " + source + ".\n");
+        if (frostLevel == MAX_FROST_LEVEL) {
+            iceHealth = ICE_MAX_HEALTH;
+            state.logEvent(name + " at (" + (posX + 1) + ", " + (posY + 1) + ") is completely frozen now.\n");
+        }
+    }
+
+    public boolean damageIce(int damage, ElementType element, GameState state) {
+        if (!isFrozenByIce()) {
+            return false;
+        }
+        if (element == ElementType.FIRE) {
+            iceHealth = 0;
+        } else {
+            iceHealth = Math.max(0, iceHealth - Math.max(0, damage));
+        }
+        if (iceHealth == 0) {
+            melting(state);
+        }
+        return true;
+    }
+
+    public void meltIce(int damage, GameState state) {
+        if (!isFrozenByIce()) {
+            return;
+        }
+        iceHealth = Math.max(0, iceHealth - Math.max(0, damage));
+        if (iceHealth == 0) {
+            melting(state);
+        }
+    }
+
+    private void melting(GameState state) {
+        frostLevel = 0;
+        state.logEvent(name + " at (" + (posX + 1) + ", " + (posY + 1) + ") has melted.\n");
+    }
     public void levelUp() {
         if (level >= upgrades.size() + 1) return;
         int oldMaxHp = plantStat.maxHp();

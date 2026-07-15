@@ -115,7 +115,7 @@ public class PushObjectBehavior implements PersistableBehavior {
     public enum PushType {
         ARCADE_MACHINE, // Arcade zombie
         BARREL,         // Barrel roller zombie
-        ICE_BLOCK       // Troglobite
+        ICE_BLOCK       // TODO: Replace the carried HP model with movable board ice-block entities.
     }
 
     @Override

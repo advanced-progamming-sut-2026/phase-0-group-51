@@ -3,9 +3,11 @@ package models.Board;
 import lombok.Getter;
 import lombok.Setter;
 import models.Plant.Plant;
+import models.Plant.PlantTag;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
+import models.games.frostbite.IceFloorDirection;
 import models.projectile.Projectile;
 import models.sun.Sun;
 import models.sun.SunType;
@@ -362,6 +364,98 @@ public class Board {
 
     public Zombie getZombieNear(int lane, double column, double radius) {
         for (Zombie zombie : getZombiesInRadius(lane, column, radius)) return zombie;
+        return null;
+    }
+
+    public void placeIceFloor(int lane, int column, IceFloorDirection direction) {
+        Tile tile = getTile(lane, column);
+        if (tile == null || direction == null) {
+            throw new IllegalArgumentException("Invalid ice floor placement");
+        }
+        tile.setIceFloorDirection(direction);
+    }
+
+    public void addFrostToLane(int lane, GameState state, String source) {
+        for (Plant plant : getPlantsInLane(lane)) {
+            plant.addFrostLevel(state, source);
+        }
+    }
+
+    public void tickFrozenPlants(GameState state) {
+        int meltPerTick = Math.max(1, Math.round(60f / state.getTicksPerSecond()));
+        for (Plant plant : getAllPlants()) {
+            if (plant.isFrozenByIce() && hasAdjacentFirePlant(plant)) {
+                plant.meltIce(meltPerTick, state);
+            }
+        }
+    }
+
+    private boolean hasAdjacentFirePlant(Plant frozenPlant) {
+        for (int laneOffset = -1; laneOffset <= 1; laneOffset++) {
+            for (int columnOffset = -1; columnOffset <= 1; columnOffset++) {
+                if (laneOffset == 0 && columnOffset == 0) {
+                    continue;
+                }
+                Tile tile = getTile(
+                        frozenPlant.getPosY() + laneOffset,
+                        frozenPlant.getPosX() + columnOffset
+                );
+                if (tile != null && tile.hasPlant() && tile.getPlant().hasTag(PlantTag.FIRE)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public Plant getFirstFrozenPlantCrossed(int lane, double fromX, double toX) {
+        int step = toX >= fromX ? 1 : -1;
+        int column = (int) Math.floor(fromX) + step;
+        int end = (int) Math.floor(toX);
+        while ((step > 0 && column <= end) || (step < 0 && column >= end)) {
+            Tile tile = getTile(lane, column);
+            if (tile != null && tile.hasPlant() && tile.getPlant().isFrozenByIce()) {
+                return tile.getPlant();
+            }
+            column += step;
+        }
+        return null;
+    }
+
+    public void applyIceFloorIfCrossed(
+            Zombie zombie,
+            double previousX,
+            double currentX,
+            GameState state
+    ) {
+        if (zombie.ignoresIceFloors()) {
+            return;
+        }
+        Tile floor = getFirstIceFloorCrossed(zombie.getLane(), previousX, currentX);
+        if (floor == null) {
+            return;
+        }
+        int oldLane = zombie.getLane();
+        int targetLane = floor.getIceFloorDirection().targetLane(oldLane, laneCount);
+        if (targetLane == oldLane) {
+            return;
+        }
+        zombie.setLane(targetLane);
+        state.logEvent(zombie.getAlias() + " slipped from row " + (oldLane + 1)
+                + " to row " + (targetLane + 1) + ".\n");
+    }
+
+    private Tile getFirstIceFloorCrossed(int lane, double fromX, double toX) {
+        int step = toX >= fromX ? 1 : -1;
+        int column = (int) Math.floor(fromX) + step;
+        int end = (int) Math.floor(toX);
+        while ((step > 0 && column <= end) || (step < 0 && column >= end)) {
+            Tile tile = getTile(lane, column);
+            if (tile != null && tile.getIceFloorDirection() != null) {
+                return tile;
+            }
+            column += step;
+        }
         return null;
     }
 

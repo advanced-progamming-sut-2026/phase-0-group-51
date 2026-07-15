@@ -9,6 +9,7 @@ import models.Board.Board;
 import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.games.frostbite.FrostbiteCavesFeature;
 import models.sun.SkySunSpawner;
 
 import java.util.ArrayList;
@@ -46,10 +47,24 @@ public class Game{
                 this.gameState, allowedZombies, totalWaves, baseDifficulty
         );
         this.gameState.setZombieWaveManager(waveManager);
-        applyChapterFeatures(theme, board, waveManager);
+        applyChapterFeatures(theme, level, board, waveManager);
         level.type().initialize(this.gameState);
     }
-    private void applyChapterFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
+    private void applyChapterFeatures(
+            ChapterTheme theme,
+            Level level,
+            Board board,
+            ZombieWaveManager waveManager
+    ) {
+        applyAncientEgyptFeatures(theme, board, waveManager);
+        applyFrostbiteFeatures(theme, level, waveManager);
+    }
+
+    private void applyAncientEgyptFeatures(
+            ChapterTheme theme,
+            Board board,
+            ZombieWaveManager waveManager
+    ) {
         if (theme.getChapterFeatures().contains(ChapterFeature.GRAVE)) {
             for (int i = 0; i < 5; i++) {
                 board.placeGraveOnRandomTile();
@@ -59,6 +74,22 @@ public class Game{
             waveManager.setTornadoFinalWave(true);
         }
     }
+
+    private void applyFrostbiteFeatures(
+            ChapterTheme theme,
+            Level level,
+            ZombieWaveManager waveManager
+    ) {
+        if (theme != ChapterTheme.FROSTBITE_CAVES) {
+            return;
+        }
+        FrostbiteCavesFeature feature = new FrostbiteCavesFeature(
+                gameState,
+                level.frostbiteConfig()
+        );
+        feature.initialize();
+        waveManager.setOnWaveStart(feature::onWaveStart);
+    }
     public void onTick(){
         if (gameState == null || gameState.isFinished()) return;
         gameState.addTick(1);
@@ -66,6 +97,7 @@ public class Game{
             skySunSpawner.onTick(gameState);
         }
         gameState.getZombieWaveManager().onTick();
+        gameState.getBoard().tickFrozenPlants(gameState);
         gameState.getBoard().tickPlants(gameState);
         gameState.getBoard().tickProjectiles(gameState);
         List<Zombie> zombies = new ArrayList<>(gameState.getZombiesInTheGame());
@@ -113,7 +145,10 @@ public class Game{
         if (user != null) {
             Data.database.ProgressRepository progressRepo = new Data.database.ProgressRepository();
             int[] currentProgress = progressRepo.getCurrentProgress(user.getId());
-            if (newChapter > currentProgress[0] || (newChapter == currentProgress[0] && newLevel > currentProgress[1])) {
+            boolean chapterAdvanced = newChapter > currentProgress[0];
+            boolean levelAdvanced = newChapter == currentProgress[0]
+                    && newLevel > currentProgress[1];
+            if (chapterAdvanced || levelAdvanced) {
                 progressRepo.saveProgress(user.getId(), newChapter, newLevel);
             }
         }
