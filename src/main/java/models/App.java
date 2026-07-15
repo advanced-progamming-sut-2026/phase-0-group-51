@@ -3,15 +3,14 @@ package models;
 import Data.database.DataBaseManager;
 import Data.database.UserRepository;
 import Data.loader.PlantLoader;
+import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
-import models.Plant.Plant;
-import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 
 import java.util.ArrayList;
-import java.util.List;
+
 @Getter
 @Setter
 public class App {
@@ -23,6 +22,7 @@ public class App {
     private App(){
         DataBaseManager.initializeDatabase();
         PlantLoader.load();
+        ZombieRegistry.load();
 
         UserRepository repository = new UserRepository();
         User rememberedUser = repository.getRememberedUser();

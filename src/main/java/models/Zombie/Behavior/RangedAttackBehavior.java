@@ -5,6 +5,7 @@ import models.Board.Board;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
+
 import java.util.Map;
 
 @Getter
@@ -16,6 +17,8 @@ public class RangedAttackBehavior implements PersistableBehavior {
     private final int range;
     private final int extraParam;
     private int cooldown;
+    private int snowballsRemaining;
+    private int snowballDelayTicks;
 
     public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
         this(type, intervalTicks, range, 0);
@@ -30,13 +33,16 @@ public class RangedAttackBehavior implements PersistableBehavior {
     }
 
     @Override
-    public void onTick(Zombie zombie, GameState gs) {
+    public void onTick(Zombie zombie, GameState state) {
+        if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
+            tickSnowballBarrage(zombie, state);
+            return;
+        }
         if (--cooldown > 0) {
             return;
         }
         cooldown = intervalTicks;
-
-        Board board = gs.getBoard();
+        Board board = state.getBoard();
         int lane = zombie.getLane();
         int col = zombie.getColumn();
         switch (type) {
@@ -93,13 +99,12 @@ public class RangedAttackBehavior implements PersistableBehavior {
         return type == RangedAttackType.HOOK_PULL;
     }
 
-
     public enum RangedAttackType {
-        SNOWBALL,     // IceAge Hunter
-        HOOK_PULL,    // Fisherman
-        OCTOPUS_NET,  // Octopus
-        JUGGLE_BALL,  // Juggler
-        LASER_BEAM    // Crystal Skull
+        SNOWBALL,
+        HOOK_PULL,
+        OCTOPUS_NET,
+        JUGGLE_BALL,
+        LASER_BEAM
     }
 
     @Override

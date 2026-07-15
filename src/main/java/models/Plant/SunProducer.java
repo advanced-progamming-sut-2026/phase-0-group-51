@@ -1,115 +1,90 @@
 package models.Plant;
 
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
-import models.Board.Tile;
 import models.games.GameState;
 import models.sun.Sun;
 import models.sun.SunType;
 
-import java.util.Arrays;
-import java.util.List;
-
 public enum SunProducer implements PlantType {
+    SUNFLOWER(1, 50, false),
+    TWIN_SUNFLOWER(2, 100, false),
+    PRIMAL_SUNFLOWER(4, 75, false),
+    GOLD_BLOOM(5, 375, true);
 
-    SUNFLOWER(1,
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats s) {
-                    return s.withInterval(s.actionInterval() - 2);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats s) {
-                    return s.withMaxHp(s.maxHp() + 150);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats s) {
-                    // Double Sun Chance: just flips a flag on PlantStats,
-                    // checked in onTick below. No new class, no change to
-                    // any other plant.
-                    return s.withDoubleSunChance(true);
-                }
-            }) {
-        private static final int BASE_SUN = 50;
-        private static final int DOUBLE_SUN_CHANCE_PERCENT = 25;
-
-        @Override
-        public void onTick(Plant plant, GameState state) {
-            if (state.getBoard().getTile(plant.getPosY(), plant.getPosX()) == null) return;
-
-            float spawnX = plant.getPosX() * Tile.TILEWIDTH;
-            float spawnY = plant.getPosY() * Tile.TILEHEIGHT;
-
-            boolean hasUncollectedSun = state.getBoard().getActiveSuns().stream()
-                    .anyMatch(s -> s.getX() == spawnX && s.getLane() == plant.getPosY() && s.isGrounded());
-            if (hasUncollectedSun) return;
-
-            int amount = BASE_SUN;
-            if (plant.getPlantStat().doubleSunChance()
-                    && state.getBoard().getRandom().nextInt(100) < 25) {
-                amount *= 2;
-            }
-
-            Sun plantSun = new Sun(spawnX, spawnY, plant.getPosY(), SunType.ORDINARY, amount, Integer.MAX_VALUE);
-            plantSun.setGrounded(true);
-            state.getBoard().spawnSun(plantSun);
-        }
-
-        @Override
-        public void onFeed(Plant plant, GameState state) {
-            state.increaseSunBalance(150);
-        }
-
-        @Override
-        public void onFoodTick(Plant plant, GameState state) {  state.increaseSunBalance(150);}
-    },
-    ;
-
+    private static final int DOUBLE_SUN_CHANCE_PERCENT = 25;
     private final int id;
-    private final List<PlantUpgrade> upgrades;
+    private final int baseSunAmount;
+    private final boolean immediate;
 
-    SunProducer(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
+    SunProducer(int id, int baseSunAmount, boolean immediate) {
         this.id = id;
-        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
+        this.baseSunAmount = baseSunAmount;
+        this.immediate = immediate;
     }
 
     public Plant create() {
-        PlantData data = PlantRegistry.get(id);
-        PlantStats baseStats = new PlantStats(
-                data.baseHp(),
-                data.damage(),
-                data.cost(),
-                data.actionInterval(),
-                data.recharge(),
-                data.projectileSpeed()
-        );
-        return new Plant(
-                data.id(), data.name(), this,
-                baseStats,
-                upgrades,
-                data.tags()
-        );
+        return PlantEnumSupport.create(id, this);
+    }
+
+    @Override
+    public void onPlanted(Plant plant, GameState state) {
+        if (!immediate) {
+            return;
+        }
+        int amount = baseSunAmount + Math.max(0, plant.getPlantStat().sunAmount() - 50);
+        state.increaseSunBalance(amount);
+        state.logEvent(plant.getName() + " immediately produced " + amount + " suns.\n");
+        removeAfterActing(plant, state);
     }
 
     @Override
     public void onTick(Plant plant, GameState state) {
-        Tile tile = state.getBoard().getTileForPlant(plant);
-        if (tile == null) return;
-        boolean hasUncollectedSun = state.getBoard().getActiveSuns().stream()
-                .anyMatch(s -> s.getX() == tile.getX() && s.getLane() == tile.getLane() && s.isGrounded());
-        if (hasUncollectedSun) {
-            return;
+        if (!immediate) {
+            produceCollectableSun(plant, state, baseSunAmount);
         }
-        Sun plantSun = new Sun(tile.getX(), tile.getY(), tile.getLane(), SunType.ORDINARY, 25, Integer.MAX_VALUE);
-        plantSun.setGrounded(true);
-        state.getBoard().spawnSun(plantSun);
-        state.logEvent("plant "+plant.getName()+" produced a sun at ("+ plantSun.getX()+", "+ plantSun.getY()+")\n");
     }
 
+    @Override
+    public void onFeed(Plant plant, GameState state) {
+        if (immediate) {
+            return;
+        }
+        state.increaseSunBalance(Math.max(150, baseSunAmount * 3));
+        state.logEvent(plant.getName() + " plant food produced bonus suns.\n");
+    }
 
+    private static void produceCollectableSun(
+            Plant plant,
+            GameState state,
+            int baseAmount
+    ) {
+        if (plant.isPendingSun()) {
+            return;
+        }
+        int amount = baseAmount;
+        if (shouldProduceDoubleSun(plant, state)) {
+            amount *= 2;
+        }
+        plant.setPendingSun(true);
+        state.getBoard().spawnSun(new Sun(
+                plant.getPosX(),
+                plant.getPosY(),
+                plant.getPosY(),
+                SunType.ORDINARY,
+                amount,
+                Integer.MAX_VALUE,
+                plant
+        ));
+        state.logEvent(plant.getName() + " produced a sun at ("
+                + (plant.getPosX() + 1) + ", " + (plant.getPosY() + 1) + ")\n");
+    }
+
+    private static boolean shouldProduceDoubleSun(Plant plant, GameState state) {
+        return plant.getPlantStat().doubleSunChance()
+                && state.getBoard().getRandom().nextInt(100) < DOUBLE_SUN_CHANCE_PERCENT;
+    }
+
+    private static void removeAfterActing(Plant plant, GameState state) {
+        plant.setMarkedForRemoval(true);
+        state.getBoard().removePlant(plant.getPosY(), plant.getPosX());
+    }
 }
-

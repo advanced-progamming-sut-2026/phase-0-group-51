@@ -1,6 +1,5 @@
 package models.Plant;
 
-import models.Zombie.Zombie;
 import models.games.GameState;
 
 public enum PlantTag {
@@ -18,7 +17,7 @@ public enum PlantTag {
     WATER{},
     AOE{},
     TRAP{},
-    MOVE_ZOMBIES{},
+    MOVEZOMBIES{},
     SUN{},
     EXPLOSIVE{};
     public void onTakeDamage(Plant plant, GameState state){}

@@ -33,21 +33,30 @@ public class GameState {
     private ZombieWaveManager zombieWaveManager;
     private final Mower[] lawnMowers;
     private Consumer<String> eventLogger;
+    boolean mowerEnabled =true;
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
         }
     }
     public GameState(Board board, ChapterTheme chapterTheme) {
+        this(board, chapterTheme, true);
+    }
+    public GameState(Board board, ChapterTheme chapterTheme,boolean mowerEnabled) {
         this.board = board;
         this.board.setZombie(this.zombiesInTheGame);
         this.chapterTheme = chapterTheme;
+        this.mowerEnabled = mowerEnabled;
         this.lawnMowers = new Mower[board.getLaneCount()];
         for (int i = 0; i < lawnMowers.length; i++) {
             lawnMowers[i] = new Mower(i,this);
         }
     }
     public boolean checkLoseCondition() {
+        if (!mowerEnabled) {
+            return false;
+        }
+
         for (Zombie zombie : zombiesInTheGame) {
             if (!zombie.isDead() && zombie.getX() < 0) {
                 int lane = zombie.getLane();
@@ -104,6 +113,28 @@ public class GameState {
         if (!tile.isOccupiable()) throw new IllegalStateException("Tile is not occupiable");
         if (sun < plant.getPlantStat().cost()) throw new IllegalStateException("Not enough sun");
         decreaseSunBalance(plant.getPlantStat().cost());
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        tile.setPlant(plant);
+        plant.getPlantType().onPlanted(plant, this);
+    }
+    public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
+        validatePlantPlacement(plant, tile);
+        placePlantOnTile(plant, tile);
+    }
+    private void validatePlantPlacement(Plant plant, Tile tile) {
+
+       if (plant == null || tile == null) {
+                throw new IllegalArgumentException("Plant and tile are required");
+       }
+
+       if (!tile.isOccupiable()) {
+                throw new IllegalStateException("Tile is not occupiable");
+       }
+
+    }
+
+    private void placePlantOnTile(Plant plant, Tile tile) {
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);

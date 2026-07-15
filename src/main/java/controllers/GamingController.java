@@ -94,6 +94,15 @@ public class GamingController {
         if (selected == null) {
             return failure("Unknown plant.\n");
         }
+        if (game.isConveyorBeltLevel()) {
+            if (!game.hasConveyorPlant(selected)) {
+                return failure(selected.name() + " is not currently on the conveyor belt.\n");
+            }
+            if (!tile.isOccupiable()) {
+                return tileOccupationFailure(tile);
+            }
+            return createAndPlaceConveyorPlant(game, state, tile, selected, x, y);
+        }
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
         }
@@ -101,6 +110,39 @@ public class GamingController {
             return tileOccupationFailure(tile);
         }
         return createAndPlacePlant(state, tile, selected, x, y);
+    }
+    private Result createAndPlaceConveyorPlant(Game game, GameState state, Tile tile, PlantData selected, int x, int y
+    ) {
+        Plant plant = createPlantForCurrentUser(selected);
+        try {
+            state.plantPlantWithoutSunCost(plant, tile);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        if (!game.consumeConveyorPlant(selected)) {
+            //محض اطمینانه وگرنه این اتفاق نمیوفته احتمالا هیچوقت
+            state.pluckPlant(plant, tile);
+            return failure("The conveyor plant was no longer available.\n");
+        }
+        String message = selected.name() + " was planted from the conveyor at ("
+                + x + ", " + y + ") for 0 sun.\n";
+        return success(message + activateStoredBoost(selected, plant, state));
+    }
+    private String activateStoredBoost(PlantData selected, Plant plant, GameState state) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null || !PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
+            return "";
+        }
+        plant.feed(state);
+        PlantBoostRepository.consumeBoost(user.getId(), selected.id());
+        return "The stored boost for " + selected.name() + " was activated.\n";
+    }
+
+    private Plant createPlantForCurrentUser(PlantData selected) {
+        User user = App.getInstance().getLoggedInUser();
+        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(selected.id(), 1);
+        return PlantFactory.create(selected, level);
     }
 
     private Result createAndPlacePlant(GameState state, Tile tile, PlantData selected, int x, int y) {
@@ -136,11 +178,19 @@ public class GamingController {
                 user.getId(),
                 selected.id()
         )) {
-            plant.feed(state);
-            PlantBoostRepository.consumeBoost(user.getId(), selected.id());
-            message += "The stored boost for "
-                    + selected.name()
-                    + " was activated.\n";
+            boolean plantStillExists = tile.getPlant() == plant
+                    && !plant.isMarkedForRemoval();
+            if (plantStillExists) {
+                plant.feed(state);
+                PlantBoostRepository.consumeBoost(user.getId(), selected.id());
+                message += "The stored boost for "
+                        + selected.name()
+                        + " was activated.\n";
+            } else {
+                message += "The stored boost was kept because "
+                        + selected.name()
+                        + " is an instant-use plant.\n";
+            }
         }
         return success(message);
     }
@@ -154,6 +204,9 @@ public class GamingController {
         }
         if (tile.isIceBlocked()) {
             return failure("This tile is blocked by ice.\n");
+        }
+        if (tile.getIceFloorDirection() != null) {
+            return failure("An ice floor cannot be planted on.\n");
         }
         return failure("This tile cannot be occupied.\n");
     }
@@ -219,49 +272,97 @@ public class GamingController {
         if (zombies.isEmpty()) {
             return success("There are no active zombies on the map.\n");
         }
-
         StringBuilder output = new StringBuilder();
         for (Zombie zombie : zombies) {
-            output.append(zombie.getAlias()).append(":\n")
-                    .append("position: ")
-                    .append(formatCoordinate(zombie.getX() + 1)).append(", ")
-                    .append(zombie.getLane() + 1).append('\n')
-                    .append("health: ").append(zombie.getHitpoints())
-                    .append('/').append(zombie.getMaxHitpoints()).append('\n')
-                    .append("armor:\n");
-
-            boolean hasArmor = false;
-            for (ArmorBehavior armor : zombie.getBehaviors().stream()
-                    .filter(ArmorBehavior.class::isInstance)
-                    .map(ArmorBehavior.class::cast)
-                    .toList()) {
-                if (!armor.isGone()) {
-                    hasArmor = true;
-                    output.append("  ").append(armor.getDefinition().getAlias())
-                            .append(": ").append(armor.getCurrentHP()).append('\n');
-                }
-            }
-            if (!hasArmor) {
-                output.append("  none\n");
-            }
-            output.append("effects:\n");
-            if (zombie.getEffects().isEmpty()) {
-                output.append("  none\n");
-            } else {
-                zombie.getEffects().forEach((effect, effectTicks) -> output
-                        .append("  ").append(effect).append(": ")
-                        .append(formatSeconds(effectTicks, state.getTicksPerSecond()))
-                        .append("s\n"));
-            }
-            output.append('\n');
+            appendZombieInfo(output, zombie, state);
         }
         return success(output.toString());
     }
 
+    private void appendZombieInfo(StringBuilder output, Zombie zombie, GameState state) {
+        output.append(zombie.getAlias()).append(":\n")
+                .append("position: ")
+                .append(formatCoordinate(zombie.getX() + 1)).append(", ")
+                .append(zombie.getLane() + 1).append('\n')
+                .append("health: ").append(zombie.getHitpoints())
+                .append('/').append(zombie.getMaxHitpoints()).append('\n');
+        if (zombie.hasIceShell()) {
+            output.append("ice shell: ").append(zombie.getIceShellHealth())
+                    .append('/').append(Zombie.ICE_SHELL_MAX_HEALTH).append('\n');
+        }
+        appendArmorInfo(output, zombie);
+        appendEffectInfo(output, zombie, state);
+        output.append('\n');
+    }
+
+    private void appendArmorInfo(StringBuilder output, Zombie zombie) {
+        output.append("armor:\n");
+        boolean hasArmor = false;
+        for (ArmorBehavior armor : zombie.getBehaviors().stream()
+                .filter(ArmorBehavior.class::isInstance)
+                .map(ArmorBehavior.class::cast)
+                .toList()) {
+            if (!armor.isGone()) {
+                hasArmor = true;
+                output.append("  ").append(armor.getDefinition().getAlias())
+                        .append(": ").append(armor.getCurrentHP()).append('\n');
+            }
+        }
+        if (!hasArmor) {
+            output.append("  none\n");
+        }
+    }
+
+    private void appendEffectInfo(StringBuilder output, Zombie zombie, GameState state) {
+        output.append("effects:\n");
+        if (zombie.getEffects().isEmpty()) {
+            output.append("  none\n");
+            return;
+        }
+        zombie.getEffects().forEach((effect, effectTicks) -> output
+                .append("  ").append(effect).append(": ")
+                .append(formatSeconds(effectTicks, state.getTicksPerSecond()))
+                .append("s\n"));
+    }
+
+    public Result showConveyor() {
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null || game.getGameState() == null) {
+            return failure("No active game found.\n");
+        }
+        if (!game.isConveyorBeltLevel()) {
+            return failure("The current level does not use a conveyor belt.\n");
+        }
+        List<PlantData> belt = game.getConveyorBeltPlants();
+        StringBuilder output = new StringBuilder("===== CONVEYOR BELT =====\n");
+        if (belt.isEmpty()) {
+            output.append("empty\n");
+        } else {
+            for (int i = 0; i < belt.size(); i++) {
+                output.append(i + 1)
+                        .append(". ")
+                        .append(belt.get(i).name())
+                        .append('\n');
+            }
+        }
+        int ticksRemaining = game.getTicksUntilNextConveyorDelivery();
+        output.append("Next delivery in ")
+                .append(ticksRemaining)
+                .append(" ticks (")
+                .append(formatSeconds(
+                        ticksRemaining,
+                        game.getGameState().getTicksPerSecond()
+                ))
+                .append(" seconds).\n");
+        return success(output.toString());
+    }
     public Result showPlantStatus() {
         Game game = App.getInstance().getCurrentGame();
         if (game == null || game.getGameState() == null) {
             return failure("No active game found.\n");
+        }
+        if (game.isConveyorBeltLevel()) {
+            return showConveyor();
         }
         GameState state = game.getGameState();
         User user = App.getInstance().getLoggedInUser();
@@ -303,45 +404,68 @@ public class GamingController {
         if (tile == null) {
             return failure("Coordinates are outside the map.\n");
         }
-
         StringBuilder output = new StringBuilder()
-                .append("Tile (").append(x).append(", ").append(y).append("):\n")
-                .append("terrain: ");
+                .append("Tile (").append(x).append(", ").append(y).append("):\n");
+        appendTileTerrain(output, tile);
+        appendTilePlant(output, tile);
+        appendTileZombies(output, tile, state);
+        return success(output.toString());
+    }
+
+    private void appendTileTerrain(StringBuilder output, Tile tile) {
+        output.append("terrain: ");
         if (tile.hasGrave()) {
             output.append("grave\n")
                     .append("grave health: ").append(tile.getGrave().getHealth()).append("/700\n");
         } else if (tile.isIceBlocked()) {
             output.append("ice-blocked\n");
+        } else if (tile.getIceFloorDirection() != null) {
+            output.append("ice-floor-")
+                    .append(tile.getIceFloorDirection().name().toLowerCase(Locale.ROOT))
+                    .append('\n');
         } else if (tile.isFrosted()) {
             output.append("frosted\n");
         } else {
             output.append("normal\n");
         }
+    }
 
-        if (tile.hasPlant()) {
-            Plant plant = tile.getPlant();
-            output.append("plant: ").append(plant.getName()).append('\n')
-                    .append("plant health: ").append(plant.getCurrentHP())
-                    .append('/').append(plant.getPlantStat().maxHp()).append('\n')
-                    .append("plant level: ").append(plant.getLevel()).append('\n')
-                    .append("plant food active: ")
-                    .append(plant.isOnPlantFood() ? "yes" : "no").append('\n');
-        } else {
+    private void appendTilePlant(StringBuilder output, Tile tile) {
+        if (!tile.hasPlant()) {
             output.append("plant: none\n");
+            return;
         }
+        Plant plant = tile.getPlant();
+        output.append("plant: ").append(plant.getName()).append('\n')
+                .append("plant health: ").append(plant.getCurrentHP())
+                .append('/').append(plant.getPlantStat().maxHp()).append('\n')
+                .append("plant level: ").append(plant.getLevel()).append('\n')
+                .append("frost level: ").append(plant.getFrostLevel()).append("/3\n")
+                .append("plant food active: ")
+                .append(plant.isOnPlantFood() ? "yes" : "no").append('\n');
+        if (plant.isFrozenByIce()) {
+            output.append("plant ice: ").append(plant.getIceHealth())
+                    .append('/').append(Plant.ICE_MAX_HEALTH).append('\n');
+        }
+    }
 
+    private void appendTileZombies(StringBuilder output, Tile tile, GameState state) {
         List<Zombie> zombies = tile.getZombies(state);
         if (zombies.isEmpty()) {
             output.append("zombies: none\n");
-        } else {
-            output.append("zombies:\n");
-            for (Zombie zombie : zombies) {
-                output.append("  ").append(zombie.getAlias())
-                        .append(" - health ").append(zombie.getHitpoints())
-                        .append('/').append(zombie.getMaxHitpoints()).append('\n');
-            }
+            return;
         }
-        return success(output.toString());
+        output.append("zombies:\n");
+        for (Zombie zombie : zombies) {
+            output.append("  ").append(zombie.getAlias())
+                    .append(" - health ").append(zombie.getHitpoints())
+                    .append('/').append(zombie.getMaxHitpoints());
+            if (zombie.hasIceShell()) {
+                output.append(" - ice ").append(zombie.getIceShellHealth())
+                        .append('/').append(Zombie.ICE_SHELL_MAX_HEALTH);
+            }
+            output.append('\n');
+        }
     }
 
     public Result showSunAmount() {
@@ -449,6 +573,7 @@ public class GamingController {
     }
 
     public Result showMap() {
+        Game game = App.getInstance().getCurrentGame();
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -461,8 +586,26 @@ public class GamingController {
                 .append("Wave: ").append(wave).append('\n')
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
-                .append("Tick: ").append(state.getTickCounter()).append("\n\n")
-                .append("===== LAWN MOWERS =====\n");
+                .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (game.isConveyorBeltLevel()) {
+            output.append("Conveyor: ");
+            List<PlantData> belt = game.getConveyorBeltPlants();
+            if (belt.isEmpty()) {
+                output.append("empty");
+            } else {
+                for (int i = 0; i < belt.size(); i++) {
+                    if (i > 0) {
+                        output.append(" -> ");
+                    }
+                    output.append(belt.get(i).name());
+                }
+            }
+            output.append("\nNext conveyor delivery: ")
+                    .append(game.getTicksUntilNextConveyorDelivery())
+                    .append(" ticks\n");
+        }
+
+                output.append("\n===== LAWN MOWERS =====\n");
 
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
             Mower mower = state.getLawnMowers()[lane];
@@ -480,14 +623,20 @@ public class GamingController {
                 char symbol = '.';
                 boolean hasZombie = tile.hasZombie(state);
                 if (tile.hasPlant() && hasZombie) symbol = 'B';
+                else if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) symbol = 'F';
                 else if (tile.hasPlant()) symbol = 'P';
                 else if (hasZombie) symbol = 'Z';
                 else if (tile.hasGrave()) symbol = 'G';
                 else if (tile.isIceBlocked()) symbol = 'I';
+                else if (tile.getIceFloorDirection() != null) {
+                    symbol = tile.getIceFloorDirection().name().equals("UP") ? '^' : 'v';
+                }
                 output.append('[').append(symbol).append("] ");
             }
             output.append('\n');
         }
+        output.append("Legend: P=plant, F=frozen plant, Z=zombie, G=grave, ")
+                .append("I=ice block, ^=slide up, v=slide down\n");
         return success(output.toString());
     }
 

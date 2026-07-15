@@ -1,69 +1,44 @@
 package models.Plant;
 
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
+import models.Zombie.Zombie;
 import models.games.GameState;
 
-import java.util.Arrays;
-import java.util.List;
-
 public enum WallNut implements PlantType {
-
-    WALL_NUT(44,
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 1000);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withRecharge(current.recharge() - 5);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 1500);
-                }
-            }) {
+    WALL_NUT(44),
+    EXPLODE_O_NUT(49) {
         @Override
-        public void onTick(Plant plant, GameState gameState) {}
-
-        @Override
-        public void onFeed(Plant plant, GameState gameState) {
-            plant.addArmor(4000);
+        public void onDeath(Plant plant, GameState state) {
+            int damage = plant.getDamage();
+            if (plant.getLevel() >= 3) {
+                damage += 200;
+            }
+            for (Zombie zombie : state.getBoard().getZombiesInRadius(
+                    plant.getPosY(),
+                    plant.getPosX(),
+                    1.5
+            )) {
+                zombie.takeDamage(damage, state, plant);
+            }
         }
-
-        @Override
-        public void onFoodTick(Plant plant, GameState gameState) {}
-    },
-    ;
+    };
 
     private final int id;
-    private final List<PlantUpgrade> upgrades;
 
-    WallNut(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
+    WallNut(int id) {
         this.id = id;
-        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
     }
 
     public Plant create() {
-        PlantData data = PlantRegistry.get(id);
-        PlantStats baseStats = new PlantStats(
-                data.baseHp(),
-                data.damage(),
-                data.cost(),
-                data.actionInterval(),
-                data.recharge(),
-                data.projectileSpeed()
-        );
-        return new Plant(
-                data.id(), data.name(), this,
-                baseStats,
-                upgrades,
-                data.tags()
-        );
+        return PlantEnumSupport.create(id, this);
+    }
+
+    @Override
+    public void onTick(Plant plant, GameState state) {
+        return;
+    }
+
+    @Override
+    public void onFeed(Plant plant, GameState state) {
+        plant.addArmor(plant.getPlantStat().maxHp());
     }
 }

@@ -2,10 +2,9 @@ package views;
 
 import controllers.ShopMenuController;
 import models.Result;
-import models.Shop.Shop;
+import models.shop.Shop;
 import models.enums.commands.ShopMenuCommands;
 
-import java.awt.*;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 

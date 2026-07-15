@@ -2,28 +2,25 @@ package models.Plant;
 
 import models.games.GameState;
 
-import java.util.Arrays;
-import java.util.List;
+public enum Modifier implements PlantType {
+    TORCHWOOD(52),
+    HYPNO_SHROOM(54),
+    IMITATER(56),
+    LILY_PAD(58),
+    ENCHANT_MINT(67);
 
-public enum Modifier implements PlantType{
-    ;
     private final int id;
-    private final List<PlantUpgrade> upgrades;
 
-
-    Modifier(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
+    Modifier(int id) {
         this.id = id;
-        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
+    }
 
+    public Plant create() {
+        return PlantEnumSupport.create(id, this);
     }
 
     @Override
     public void onTick(Plant plant, GameState gameState) {
-
-    }
-
-    @Override
-    public void onFeed(Plant plant, GameState gameState) {
-
+        // Modifier mechanics are implemented as their board interactions are added.
     }
 }

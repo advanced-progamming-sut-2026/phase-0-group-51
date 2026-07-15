@@ -1,7 +1,6 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
-import models.Plant.Lobber;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;

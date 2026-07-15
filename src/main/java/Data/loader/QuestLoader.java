@@ -1,6 +1,6 @@
 package Data.loader;
 import Data.database.DataBaseManager;
-import models.Quests.*;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.sql.Connection;

@@ -1,89 +1,92 @@
 package models.Plant;
 
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.projectile.move.ArcMove;
 
-import java.util.Arrays;
-import java.util.List;
-
 public enum Lobber implements PlantType {
+    CABBAGE_PULT(25, ElementType.NORMAL, 0, false),
+    KERNEL_PULT(26, ElementType.NORMAL, 0, true),
+    MELON_PULT(27, ElementType.NORMAL, 1.5, false),
+    WINTER_MELON(28, ElementType.ICE, 1.5, false),
+    PEPPER_PULT(29, ElementType.FIRE, 1.5, false);
 
-    CABBAGE_PULT(25,
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withDamage(current.damage() + 10);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withInterval(current.actionInterval() * 0.85);
-                }
-            },
-            new PlantUpgrade() {
-                @Override
-                public PlantStats apply(PlantStats current) {
-                    return current.withMaxHp(current.maxHp() + 150);
-                }
-            }) {
-        @Override
-        public void onTick(Plant plant, GameState gameState) {
-            if (!Shooter.zombieInLane(plant, gameState)) return;
-            gameState.getBoard().addProjectile(new Projectile(
-                    plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
-                    plant.getPlantStat().projectileSpeed(),
-                    plant.getPosX(), plant.getPosY(), new ArcMove()));
-        }
-
-        @Override
-        public void onFeed(Plant plant, GameState gameState) {
-
-        }
-
-        @Override
-        public void onFoodTick(Plant plant, GameState gameState) {
-            int targets = 3;
-            for (Zombie zombie : gameState.getBoard().getRandomZombies(targets)) {
-                gameState.getBoard().addProjectile(Projectile.targeted(
-                        plant.getDamage(), ElementType.NORMAL, plant.getPlantTags(),
-                        plant.getPlantStat().projectileSpeed(),
-                        plant.getPosX(), plant.getPosY(),
-                        zombie.getX(), zombie.getLane(),
-                        new ArcMove(), 0));
-            }
-        }
-    },
-    ;
-
+    private static final int BASE_BUTTER_CHANCE_PERCENT = 25;
     private final int id;
-    private final List<PlantUpgrade> upgrades;
+    private final ElementType element;
+    private final double areaRadius;
+    private final boolean kernelPult;
 
-    Lobber(int id, PlantUpgrade upgrade2, PlantUpgrade upgrade3, PlantUpgrade upgrade4) {
+    Lobber(
+            int id,
+            ElementType element,
+            double areaRadius,
+            boolean kernelPult
+    ) {
         this.id = id;
-        this.upgrades = Arrays.asList(upgrade2, upgrade3, upgrade4);
+        this.element = element;
+        this.areaRadius = areaRadius;
+        this.kernelPult = kernelPult;
     }
 
     public Plant create() {
-        PlantData data = PlantRegistry.get(id);
-        PlantStats baseStats = new PlantStats(
-                data.baseHp(),
-                data.damage(),
-                data.cost(),
-                data.actionInterval(),
-                data.recharge(),
-                data.projectileSpeed()
+        return PlantEnumSupport.create(id, this);
+    }
+
+    @Override
+    public void onTick(Plant plant, GameState state) {
+        Zombie target = state.getBoard().getFirstZombieAheadInLane(
+                plant.getPosY(),
+                plant.getPosX()
         );
-        return new Plant(
-                data.id(), data.name(), this,
-                baseStats,
-                upgrades,
-                data.tags()
-        );
+        if (target != null) {
+            launchAt(plant, state, target);
+        }
+    }
+
+    @Override
+    public void onFoodTick(Plant plant, GameState state) {
+        for (Zombie zombie : state.getBoard().getRandomZombies(3)) {
+            launchAt(plant, state, zombie);
+        }
+    }
+
+    @Override
+    public boolean isLobber() {
+        return true;
+    }
+
+    private void launchAt(Plant plant, GameState state, Zombie target) {
+        ElementType shotElement = element;
+        int damage = plant.getDamage();
+        if (kernelPult && shouldLaunchButter(plant, state)) {
+            shotElement = ElementType.BUTTER;
+            damage = Math.max(40, damage);
+        }
+        double splashRadius = plant.hasTag(PlantTag.AOE) ? areaRadius : 0;
+        int splashDamage = damage + (int) Math.round(plant.getPlantStat().aoeDamage());
+        state.getBoard().addProjectile(Projectile.targeted(
+                damage,
+                splashDamage,
+                shotElement,
+                plant.getPlantTags(),
+                PlantEnumSupport.projectileSpeed(plant, 0.35),
+                plant.getPosX(),
+                plant.getPosY(),
+                target.getX(),
+                target.getLane(),
+                new ArcMove(),
+                splashRadius
+        ));
+    }
+
+    private boolean shouldLaunchButter(Plant plant, GameState state) {
+        int chance = BASE_BUTTER_CHANCE_PERCENT;
+        if (plant.getLevel() >= 2) {
+            chance += 5;
+        }
+        return state.getBoard().getRandom().nextInt(100) < chance;
     }
 }

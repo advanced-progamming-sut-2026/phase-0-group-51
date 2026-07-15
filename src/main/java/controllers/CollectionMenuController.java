@@ -4,7 +4,6 @@ import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
-import Data.loader.ZombieRegistry;
 import models.App;
 import models.Result;
 import models.User;
@@ -12,7 +11,6 @@ import models.Zombie.Behavior.ZombieBehavior;
 import models.Zombie.Zombie;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class CollectionMenuController {
 
@@ -26,7 +24,7 @@ public class CollectionMenuController {
                 .append(" | Speed: ")
                 .append(zombie.getBaseSpeed())
                 .append(" | Eat DPS: ")
-                .append(zombie.getBaseEatDPS())
+                .append(zombie.getBaseEatDps())
                 .append(" | Wave Cost: ")
                 .append(zombie.getWavePointCost())
                 .append(" | Weight: ")
