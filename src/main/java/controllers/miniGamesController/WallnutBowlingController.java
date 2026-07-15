@@ -1,5 +1,6 @@
 package controllers.miniGamesController;
 
+import Data.database.UserRepository;
 import controllers.GamingController;
 import models.App;
 import models.Plant.WallNut;
@@ -8,9 +9,12 @@ import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.ZombieWaveManager;
+import models.minigames.MinigameType;
 import models.minigames.wallnutBowling.RollingWallnut;
 import models.minigames.wallnutBowling.WallnutBowling;
 import models.minigames.wallnutBowling.WallnutType;
+import models.quests.QuestEventType;
+import models.quests.QuestService;
 
 import java.text.DecimalFormat;
 import java.util.Comparator;
@@ -197,6 +201,18 @@ public class WallnutBowlingController extends GamingController {
 
         boolean won = game.getGameState().isWon();
         int stageNumber = game.getStage().getStageNumber();
+        if (won) {
+            new UserRepository().recordMinigameWin(
+                    App.getInstance().getLoggedInUser(),
+                    MinigameType.WALLNUT_BOWLING,
+                    stageNumber
+            );
+            QuestService.getInstance().recordEvent(
+                    App.getInstance().getLoggedInUser(),
+                    QuestEventType.MINIGAME_WON,
+                    1
+            );
+        }
         App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(Menu.TRAVELLOG_MENU);
 

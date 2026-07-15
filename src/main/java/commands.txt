@@ -38,6 +38,9 @@ menu collection show-zombie -z <zombie_name>
 menu collection upgrade-plant -p <plant_name>
 menu collection purchase-plant -p <plant_name>
 
+show leaderboard
+sort leaderboard -b (username|progress|minigames|daily-quests|non-daily-quests|score) -o (asc|desc)
+
 show all plants
 show available plants
 add plant -t <type>

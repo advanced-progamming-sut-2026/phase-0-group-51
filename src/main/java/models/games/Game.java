@@ -2,6 +2,7 @@ package models.games;
 
 
 import Data.database.PlantRepository;
+import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
@@ -217,6 +218,10 @@ public class Game{
 
         User user = App.getInstance().getLoggedInUser();
         if (user != null) {
+            user.setLastWonGame(
+                    "Level " + (currentLevelIndex + 1) + ", Chapter " + (currentChapterIndex + 1)
+            );
+            new UserRepository().updateStats(user);
             Data.database.ProgressRepository progressRepo = new Data.database.ProgressRepository();
             int[] currentProgress = progressRepo.getCurrentProgress(user.getId());
             boolean chapterAdvanced = newChapter > currentProgress[0];

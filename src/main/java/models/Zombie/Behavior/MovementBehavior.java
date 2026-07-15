@@ -56,7 +56,7 @@ public class MovementBehavior implements PersistableBehavior {
                 }
                 Plant crushed = board.findNearestPlantInRange(lane, col, 0);
                 if (crushed != null) {
-                    crushed.takeDamage(crushed.getCurrentHP(), gs);
+                    crushed.takeDamage(crushed.getCurrentHP());
                 }
             }
             default -> {
