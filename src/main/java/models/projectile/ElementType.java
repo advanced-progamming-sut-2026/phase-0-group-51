@@ -1,6 +1,7 @@
 package models.projectile;
 
 import models.Zombie.Zombie;
+import models.Plant.Plant;
 import models.games.ChapterTheme;
 import models.games.GameState;
 
@@ -59,5 +60,15 @@ public enum ElementType {
 
     public void onHit(Zombie target, GameState state, int durationTicks) {
         onHit(target, state);
+    }
+
+    public void onHit(
+            Zombie target, GameState state, int durationTicks, Plant sourcePlant
+    ) {
+        if (this == POISON) {
+            target.applyPoison(state, 5f, 6f, sourcePlant);
+            return;
+        }
+        onHit(target, state, durationTicks);
     }
 }

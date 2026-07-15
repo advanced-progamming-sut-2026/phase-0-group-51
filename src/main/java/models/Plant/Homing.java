@@ -73,7 +73,7 @@ public enum Homing implements PlantType {
                 plant.getPosY(),
                 target,
                 new HomingMove()
-        ));
+        ).withSource(plant));
     }
 
     private static double projectileSpeed(Plant plant) {

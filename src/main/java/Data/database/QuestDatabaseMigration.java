@@ -5,25 +5,30 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class QuestDatabaseMigration {
+public final class QuestDatabaseMigration {
     private QuestDatabaseMigration() {
     }
 
     public static void migrate() {
         try (Connection connection = DataBaseManager.getConnection()) {
-            addColumnIfMissing(connection, "quests", "event_type", "TEXT");
-            addColumnIfMissing(
-                    connection, "user_quests", "claimed",
-                    "INTEGER NOT NULL DEFAULT 0");
-            addColumnIfMissing(
-                    connection, "users", "quest_daily_num",
-                    "INTEGER NOT NULL DEFAULT 0");
-            addColumnIfMissing(
-                    connection, "users", "quest_non_daily_num",
-                    "INTEGER NOT NULL DEFAULT 0");
+            migrate(connection);
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not migrate quest tables.", exception);
         }
+    }
+
+    public static void migrate(Connection connection) throws SQLException {
+        addColumnIfMissing(connection, "quests", "event_type", "TEXT");
+        addColumnIfMissing(connection, "quests", "parameter_options", "TEXT");
+        addColumnIfMissing(connection, "quests", "active", "INTEGER NOT NULL DEFAULT 1");
+        addColumnIfMissing(connection, "user_quests", "claimed", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(connection, "user_quests", "parameter", "TEXT");
+        addColumnIfMissing(connection, "user_quests", "target_amount", "INTEGER");
+        addColumnIfMissing(connection, "user_quests", "reward_amount", "INTEGER");
+        addColumnIfMissing(connection, "users", "quest_daily_num", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing(
+                connection, "users", "quest_non_daily_num",
+                "INTEGER NOT NULL DEFAULT 0");
     }
 
     private static void addColumnIfMissing(
@@ -33,8 +38,7 @@ public class QuestDatabaseMigration {
             return;
         }
         try (Statement statement = connection.createStatement()) {
-            statement.execute(
-                    "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+            statement.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
         }
     }
 
@@ -42,8 +46,7 @@ public class QuestDatabaseMigration {
             Connection connection, String table, String column
     ) throws SQLException {
         try (Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(
-                     "PRAGMA table_info(" + table + ")")) {
+             ResultSet resultSet = statement.executeQuery("PRAGMA table_info(" + table + ")")) {
             while (resultSet.next()) {
                 if (column.equalsIgnoreCase(resultSet.getString("name"))) {
                     return true;

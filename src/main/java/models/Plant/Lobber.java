@@ -82,7 +82,7 @@ public enum Lobber implements PlantType {
                 target.getLane(),
                 new ArcMove(),
                 0
-        ));
+        ).withSource(plant));
     }
 
     private static double projectileSpeed(Plant plant) {

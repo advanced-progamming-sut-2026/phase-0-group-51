@@ -1,13 +1,5 @@
 package models.quests;
 
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
-import lombok.Getter;
-import lombok.Setter;
-import models.User;
-
-@Setter
-@Getter
 public abstract class Quest {
     private int id;
     private final String name;
@@ -19,6 +11,7 @@ public abstract class Quest {
     private final QuestRewardType rewardType;
     private final QuestType type;
     private final String unlockableId;
+    private final String parameterOptions;
 
     protected Quest(
             String name,
@@ -29,7 +22,8 @@ public abstract class Quest {
             int rewardAmount,
             QuestRewardType rewardType,
             QuestType type,
-            String unlockableId
+            String unlockableId,
+            String parameterOptions
     ) {
         this.name = name;
         this.condition = condition;
@@ -40,10 +34,23 @@ public abstract class Quest {
         this.rewardType = rewardType;
         this.type = type;
         this.unlockableId = unlockableId;
+        this.parameterOptions = parameterOptions;
     }
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getName() { return name; }
+    public String getCondition() { return condition; }
+    public QuestPriority getPriority() { return priority; }
+    public QuestEventType getEventType() { return eventType; }
+    public int getTargetAmount() { return targetAmount; }
+    public int getRewardAmount() { return rewardAmount; }
+    public QuestRewardType getRewardType() { return rewardType; }
+    public QuestType getType() { return type; }
+    public String getUnlockableId() { return unlockableId; }
+    public String getParameterOptions() { return parameterOptions; }
 
     public boolean isComplete(int progress) {
         return progress >= targetAmount;
     }
-
 }

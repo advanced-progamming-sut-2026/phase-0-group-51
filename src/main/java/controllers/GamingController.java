@@ -19,7 +19,6 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;
-import models.quests.QuestEventType;
 import models.quests.QuestService;
 import models.sun.Sun;
 
@@ -126,7 +125,6 @@ public class GamingController {
             state.pluckPlant(plant, tile);
             return failure("The conveyor plant was no longer available.\n");
         }
-        recordQuestEvent(QuestEventType.PLANT_PLANTED, 1);
         String message = selected.name() + " was planted from the conveyor at ("
                 + x + ", " + y + ") for 0 sun.\n";
         return success(message + activateStoredBoost(selected, plant, state));
@@ -175,7 +173,6 @@ public class GamingController {
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
-        recordQuestEvent(QuestEventType.PLANT_PLANTED, 1);
         String message = selected.name() + " planted at (" + x + ", " + y + ").\n";
         if (user != null
                 && PlantBoostRepository.hasBoost(
@@ -191,10 +188,6 @@ public class GamingController {
         return success(message);
     }
 
-    private void recordQuestEvent(QuestEventType eventType, int amount) {
-        QuestService.getInstance().recordEvent(
-                App.getInstance().getLoggedInUser(), eventType, amount);
-    }
     private Result tileOccupationFailure(Tile tile) {
         if (tile.hasPlant()) {
             return failure("This tile already contains a plant.\n");
@@ -509,9 +502,13 @@ public class GamingController {
         if (target == null) {
             return failure("No sun found at given coordinates.\n");
         }
+        int sunBeforeCollection = state.getSun();
         if (!state.getBoard().collectSun(target, state)) {
             return failure("Sun has expired or was already collected.\n");
         }
+        int collectedAmount = Math.max(0, state.getSun() - sunBeforeCollection);
+        QuestService.getInstance().recordSunCollected(
+                App.getInstance().getLoggedInUser(), collectedAmount);
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
     }
 
@@ -554,6 +551,7 @@ public class GamingController {
         }
         zombie.setX(x - 1);
         zombie.setLane(y - 1);
+        zombie.setQuestEligible(false);
         state.addZombie(zombie);
         return success("Zombie " + zombie.getAlias() + " spawned at (" + x + ", " + y + ").\n");
     }

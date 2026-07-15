@@ -101,7 +101,7 @@ public enum Shooter implements PlantType {
                     new StraightMove(),
                     1,
                     effectDurationTicks(plant, state, element)
-            ));
+            ).withSource(plant));
         }
     }
 

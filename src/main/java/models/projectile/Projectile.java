@@ -47,6 +47,7 @@ public class Projectile {
     private final Set<Zombie> alreadyHit = new HashSet<>();
     @Getter
     private boolean markedForRemoval;
+    private Plant sourcePlant;
 
     public static Projectile straight(
             int damage,
@@ -253,6 +254,11 @@ public class Projectile {
         this.homingTarget = homingTarget;
     }
 
+    public Projectile withSource(Plant plant) {
+        this.sourcePlant = plant;
+        return this;
+    }
+
     public void tick(GameState state) {
         if (markedForRemoval) {
             return;
@@ -405,9 +411,9 @@ public class Projectile {
 
     private void hit(Zombie zombie, GameState state) {
         boolean protectedByIce = zombie.hasIceShell();
-        zombie.takeDamage(damage, elementType, state, null);
+        zombie.takeDamage(damage, elementType, state, sourcePlant);
         if (!protectedByIce) {
-            elementType.onHit(zombie, state, effectDurationTicks);
+            elementType.onHit(zombie, state, effectDurationTicks, sourcePlant);
         }
         alreadyHit.add(zombie);
         pierceRemaining--;

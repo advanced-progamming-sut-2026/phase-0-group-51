@@ -1,8 +1,6 @@
 package controllers;
 
 import Data.database.QuestsRepository;
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;
@@ -80,26 +78,26 @@ public class TravelLogController {
         output.append('[').append(quest.getId()).append("] ")
                 .append(quest.getName()).append(" [")
                 .append(quest.getPriority()).append("]\n")
-                .append("  ").append(quest.getCondition()).append('\n')
+                .append("  ").append(questService.resolvedCondition(quest, userQuest)).append('\n')
                 .append("  Progress: ").append(userQuest.getProgress())
-                .append('/').append(quest.getTargetAmount()).append('\n')
-                .append("  Reward: ").append(rewardText(quest)).append('\n')
+                .append('/').append(userQuest.getTargetAmount()).append('\n')
+                .append("  Reward: ").append(rewardText(quest, userQuest)).append('\n')
                 .append("  Status: ").append(statusText(userQuest)).append("\n\n");
     }
 
-    private String rewardText(Quest quest) {
+    private String rewardText(Quest quest, UserQuest userQuest) {
         if (quest.getRewardType() == QuestRewardType.CURRENCY_COINS) {
-            return quest.getRewardAmount() + " coins";
+            return userQuest.getRewardAmount() + " coins";
         }
         if (quest.getRewardType() == QuestRewardType.CURRENCY_GEMS) {
-            return quest.getRewardAmount() + " gems";
+            return userQuest.getRewardAmount() + " gems";
         }
-        int plantId = Integer.parseInt(quest.getUnlockableId());
-        PlantData plant = PlantRegistry.getById(plantId);
-        String plantName = plant == null ? "plant #" + plantId : plant.name();
-        return quest.getRewardType() == QuestRewardType.UNLOCKABLE
-                ? "unlock " + plantName
-                : quest.getRewardAmount() + " seed packets for " + plantName;
+        String target = quest.getUnlockableId();
+        if (quest.getRewardType() == QuestRewardType.UNLOCKABLE) {
+            return target == null || target.equalsIgnoreCase("any_plant")
+                    ? "unlock one random locked plant" : "unlock " + target;
+        }
+        return userQuest.getRewardAmount() + " seed packets for a random unlocked plant";
     }
 
     private String statusText(UserQuest userQuest) {

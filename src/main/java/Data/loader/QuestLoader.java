@@ -1,26 +1,26 @@
 package Data.loader;
+
 import Data.database.DataBaseManager;
 import Data.database.QuestDatabaseMigration;
-import models.quests.QuestPriority;
-import models.quests.QuestRewardType;
-import models.quests.QuestType;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 
-import java.io.*;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
-import java.util.*;
+import java.util.Objects;
 
-public class QuestLoader {
-    private static final String INSERT_SQL = """
+public final class QuestLoader {
+    private static final String UPSERT_SQL = """
             INSERT INTO quests
                 (name, condition, priority, event_type, target_amount,
-                 reward_amount, reward_type, quest_type, unlockable_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 reward_amount, reward_type, quest_type, unlockable_id,
+                 parameter_options, active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             ON CONFLICT(name) DO UPDATE SET
                 condition = excluded.condition,
                 priority = excluded.priority,
@@ -29,22 +29,32 @@ public class QuestLoader {
                 reward_amount = excluded.reward_amount,
                 reward_type = excluded.reward_type,
                 quest_type = excluded.quest_type,
-                unlockable_id = excluded.unlockable_id
+                unlockable_id = excluded.unlockable_id,
+                parameter_options = excluded.parameter_options,
+                active = 1
             """;
 
     private QuestLoader() {
     }
 
     public static void loadQuestsToDatabase() {
-        QuestDatabaseMigration.migrate();
-        try (Reader reader = openCsv();
-             Connection connection = DataBaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(INSERT_SQL)) {
-            for (CSVRecord record : readRecords(reader)) {
-                bind(statement, record);
-                statement.addBatch();
+        try (Connection connection = DataBaseManager.getConnection()) {
+            QuestDatabaseMigration.migrate(connection);
+            connection.setAutoCommit(false);
+            try (Statement deactivate = connection.createStatement();
+                 Reader reader = openCsv();
+                 PreparedStatement statement = connection.prepareStatement(UPSERT_SQL)) {
+                deactivate.executeUpdate("UPDATE quests SET active = 0");
+                for (CSVRecord record : readRecords(reader)) {
+                    bind(statement, record);
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
             }
-            statement.executeBatch();
         } catch (Exception exception) {
             throw new IllegalStateException("Could not load quests.", exception);
         }
@@ -76,12 +86,16 @@ public class QuestLoader {
         statement.setInt(6, Integer.parseInt(record.get("reward_amount")));
         statement.setString(7, record.get("reward_type"));
         statement.setString(8, record.get("quest_type"));
-        String target = record.get("unlockable_id");
-        if (target == null || target.isBlank() || target.equalsIgnoreCase("NONE")) {
-            statement.setNull(9, Types.VARCHAR);
-        } else {
-            statement.setString(9, target);
-        }
-    }
+        nullable(statement, 9, record.get("unlockable_id"));
+        nullable(statement, 10, record.get("parameter_options"));
     }
 
+    private static void nullable(PreparedStatement statement, int index, String value)
+            throws Exception {
+        if (value == null || value.isBlank() || value.equalsIgnoreCase("NONE")) {
+            statement.setNull(index, Types.VARCHAR);
+        } else {
+            statement.setString(index, value);
+        }
+    }
+}

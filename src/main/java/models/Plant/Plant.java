@@ -182,6 +182,7 @@ public class Plant {
     public void die(GameState gameState) {
         if (markedForRemoval) return;
         markedForRemoval = true;
+        gameState.getQuestTracker().recordPlantLost(this);
         plantType.onDeath(this, gameState);
         gameState.logEvent("Plant " + name + " at (" + (posX + 1) + ", " + (posY + 1) + ") is destroyed.\n");
         gameState.getBoard().removePlant(posY, posX);
