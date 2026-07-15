@@ -136,11 +136,19 @@ public class GamingController {
                 user.getId(),
                 selected.id()
         )) {
-            plant.feed(state);
-            PlantBoostRepository.consumeBoost(user.getId(), selected.id());
-            message += "The stored boost for "
-                    + selected.name()
-                    + " was activated.\n";
+            boolean plantStillExists = tile.getPlant() == plant
+                    && !plant.isMarkedForRemoval();
+            if (plantStillExists) {
+                plant.feed(state);
+                PlantBoostRepository.consumeBoost(user.getId(), selected.id());
+                message += "The stored boost for "
+                        + selected.name()
+                        + " was activated.\n";
+            } else {
+                message += "The stored boost was kept because "
+                        + selected.name()
+                        + " is an instant-use plant.\n";
+            }
         }
         return success(message);
     }

@@ -279,17 +279,25 @@ public class Zombie {
         return movement != null && movement.getType() == MovementBehavior.MovementType.FLY_OVER;
     }
 
+    public void meltIceShell(GameState state) {
+        if (!hasIceShell()) {
+            return;
+        }
+        iceShellHealth = 0;
+        state.logEvent("The ice around " + alias + " was destroyed.\n");
+    }
+
     private boolean damageIceShell(int damage, ElementType element, GameState state) {
         if (!hasIceShell()) {
             return false;
         }
         if (element == ElementType.FIRE) {
-            iceShellHealth = 0;
+            meltIceShell(state);
         } else {
             iceShellHealth = Math.max(0, iceShellHealth - Math.max(0, damage));
-        }
-        if (iceShellHealth == 0) {
-            state.logEvent("The ice around " + alias + " was destroyed.\n");
+            if (iceShellHealth == 0) {
+                state.logEvent("The ice around " + alias + " was destroyed.\n");
+            }
         }
         return true;
     }

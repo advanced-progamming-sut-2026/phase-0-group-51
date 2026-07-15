@@ -190,8 +190,11 @@ public final class DataDrivenPlantType implements PlantType {
             return;
         }
         double aoe = data.tags().contains(PlantTag.AOE) ? 1.5 : 0;
+        int splashDamage = plant.getDamage()
+                + (int) Math.round(plant.getPlantStat().aoeDamage());
         state.getBoard().addProjectile(Projectile.targeted(
                 plant.getDamage(),
+                splashDamage,
                 element(),
                 plant.getPlantTags(),
                 speed(plant),

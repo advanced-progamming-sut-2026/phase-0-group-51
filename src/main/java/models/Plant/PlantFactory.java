@@ -42,12 +42,33 @@ public final class PlantFactory {
     private static Plant createBasePlant(PlantData data) {
         return switch (data.id()) {
             case 1 -> SunProducer.SUNFLOWER.create();
+            case 2 -> SunProducer.TWIN_SUNFLOWER.create();
+            case 4 -> SunProducer.PRIMAL_SUNFLOWER.create();
+            case 5 -> SunProducer.GOLD_BLOOM.create();
             case 6 -> Shooter.PEASHOOTER.create();
             case 7 -> Shooter.REPEATER.create();
+            case 8 -> Shooter.THREEPEATER.create();
             case 9 -> Shooter.SNOW_PEA.create();
+            case 10 -> Shooter.ROTOBAGA.create();
+            case 17 -> StrikeThrough.CACTUS.create();
+            case 18 -> Shooter.FIRE_PEASHOOTER.create();
+            case 19 -> Shooter.STARFRUIT.create();
+            case 21 -> Shooter.MEGA_GATLING_PEA.create();
+            case 24 -> StrikeThrough.FUME_SHROOM.create();
             case 25 -> Lobber.CABBAGE_PULT.create();
+            case 26 -> Lobber.KERNEL_PULT.create();
+            case 27 -> Lobber.MELON_PULT.create();
+            case 28 -> Lobber.WINTER_MELON.create();
+            case 29 -> Lobber.PEPPER_PULT.create();
             case 30 -> Explosive.POTATO_MINE.create();
+            case 31 -> Explosive.PRIMAL_POTATO_MINE.create();
+            case 32 -> Explosive.CHERRY_BOMB.create();
+            case 35 -> Explosive.JALAPENO.create();
+            case 39 -> Melee.BONK_CHOY.create();
+            case 40 -> Melee.PHAT_BEET.create();
+            case 42 -> Melee.WASABI_WHIP.create();
             case 44 -> WallNut.WALL_NUT.create();
+            case 49 -> WallNut.EXPLODE_O_NUT.create();
             case 55 -> Homing.CAT_TAIL.create();
             default -> createDataDrivenPlant(data);
         };

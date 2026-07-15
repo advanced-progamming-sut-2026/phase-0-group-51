@@ -8,6 +8,7 @@ import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
 import models.games.frostbite.IceFloorDirection;
+import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.sun.Sun;
 import models.sun.SunType;
@@ -272,6 +273,9 @@ public class Board {
         Zombie closest = null;
         double closestDistSq = Double.MAX_VALUE;
         for (Zombie zombie : zombies) {
+            if (zombie.isDead()) {
+                continue;
+            }
             double dLane = zombie.getLane() - fromLane;
             double dCol = zombie.getX() - fromColumn;
             double distSq = dLane * dLane + dCol * dCol;
@@ -286,9 +290,35 @@ public class Board {
     public List<Zombie> getZombiesInRadius(double lane, double column, double radius) {
         List<Zombie> result = new ArrayList<>();
         for (Zombie zombie : zombies) {
+            if (zombie.isDead()) {
+                continue;
+            }
             double dLane = zombie.getLane() - lane;
             double dCol = zombie.getX() - column;
             if (Math.sqrt(dLane * dLane + dCol * dCol) <= radius) {
+                result.add(zombie);
+            }
+        }
+        return result;
+    }
+
+    public List<Zombie> getZombiesInSquare(
+            double centerLane,
+            double centerColumn,
+            int laneRadius,
+            int columnRadius
+    ) {
+        List<Zombie> result = new ArrayList<>();
+        for (Zombie zombie : zombies) {
+            if (zombie.isDead()) {
+                continue;
+            }
+            boolean insideRows = Math.abs(zombie.getLane() - centerLane) <= laneRadius;
+            int zombieColumn = (int) Math.floor(zombie.getX());
+            int squareCenterColumn = (int) Math.floor(centerColumn);
+            boolean insideColumns = Math.abs(zombieColumn - squareCenterColumn)
+                    <= columnRadius;
+            if (insideRows && insideColumns) {
                 result.add(zombie);
             }
         }
@@ -306,24 +336,30 @@ public class Board {
         return chosen;
     }
 
-    public List<Tile> getTwoRandomTilesWithoutPlants(){
-        List<Tile> eligible = new ArrayList<>();
+    public List<Tile> getRandomEmptyTiles(int requestedCount) {
+        if (requestedCount <= 0) {
+            return List.of();
+        }
+        List<Tile> pool = new ArrayList<>();
         for (int lane = 0; lane < laneCount; lane++) {
             for (int col = 0; col < columnCount; col++) {
                 Tile tile = tiles[lane][col];
-                if (!tile.hasPlant() && !tile.hasGrave() && tile.isOccupiable()) {
-                    eligible.add(tile);
+                if (tile.isOccupiable()) {
+                    pool.add(tile);
                 }
             }
         }
-        if (eligible.isEmpty()) return null;
         List<Tile> chosen = new ArrayList<>();
-        List<Tile> pool = new ArrayList<>(eligible);
-        for (int i = 0; i < 2; i++) {
+        int count = Math.min(requestedCount, pool.size());
+        for (int i = 0; i < count; i++) {
             int index = random.nextInt(pool.size());
             chosen.add(pool.remove(index));
         }
         return chosen;
+    }
+
+    public List<Tile> getTwoRandomTilesWithoutPlants() {
+        return getRandomEmptyTiles(2);
     }
     public Tile getTileForPlant(Plant plant) {
         if (plant == null) return null;
@@ -363,8 +399,19 @@ public class Board {
     }
 
     public Zombie getZombieNear(int lane, double column, double radius) {
-        for (Zombie zombie : getZombiesInRadius(lane, column, radius)) return zombie;
-        return null;
+        Zombie closest = null;
+        double closestDistance = Double.MAX_VALUE;
+        for (Zombie zombie : getZombiesInRadius(lane, column, radius)) {
+            double distance = Math.hypot(
+                    zombie.getLane() - lane,
+                    zombie.getX() - column
+            );
+            if (distance < closestDistance) {
+                closest = zombie;
+                closestDistance = distance;
+            }
+        }
+        return closest;
     }
 
     public void placeIceFloor(int lane, int column, IceFloorDirection direction) {
@@ -373,6 +420,28 @@ public class Board {
             throw new IllegalArgumentException("Invalid ice floor placement");
         }
         tile.setIceFloorDirection(direction);
+    }
+
+
+    public void meltIceInLane(int lane, GameState state) {
+        for (int column = 0; column < columnCount; column++) {
+            Tile tile = getTile(lane, column);
+            if (tile == null) {
+                continue;
+            }
+            if (tile.isIceBlocked()) {
+                tile.setIceBlocked(false);
+                state.logEvent("Ice block at (" + (column + 1) + ", "
+                        + (lane + 1) + ") melted.\n");
+            }
+            if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) {
+                tile.getPlant().damageIce(0, ElementType.FIRE, state);
+            }
+        }
+        for (Zombie zombie : getZombiesInLane(lane)) {
+            zombie.meltIceShell(state);
+            zombie.clearColdEffects();
+        }
     }
 
     public void addFrostToLane(int lane, GameState state, String source) {
@@ -420,6 +489,46 @@ public class Board {
             column += step;
         }
         return null;
+    }
+
+
+    public Tile getFirstGraveCrossed(
+            double fromX,
+            double fromY,
+            double toX,
+            double toY
+    ) {
+        Tile closest = null;
+        double closestProgress = Double.MAX_VALUE;
+        double segmentX = toX - fromX;
+        double segmentY = toY - fromY;
+        double lengthSquared = segmentX * segmentX + segmentY * segmentY;
+        if (lengthSquared == 0) {
+            return null;
+        }
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int column = 0; column < columnCount; column++) {
+                Tile tile = getTile(lane, column);
+                if (tile == null || !tile.hasGrave()) {
+                    continue;
+                }
+                double relativeX = column - fromX;
+                double relativeY = lane - fromY;
+                double progress = (relativeX * segmentX + relativeY * segmentY)
+                        / lengthSquared;
+                if (progress < 0 || progress > 1) {
+                    continue;
+                }
+                double nearestX = fromX + progress * segmentX;
+                double nearestY = fromY + progress * segmentY;
+                double distance = Math.hypot(column - nearestX, lane - nearestY);
+                if (distance <= 0.45 && progress < closestProgress) {
+                    closest = tile;
+                    closestProgress = progress;
+                }
+            }
+        }
+        return closest;
     }
 
     public void applyIceFloorIfCrossed(
