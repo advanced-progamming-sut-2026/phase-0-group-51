@@ -3,6 +3,7 @@ package models;
 import Data.database.DataBaseManager;
 import Data.database.UserRepository;
 import Data.loader.PlantLoader;
+import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
 import models.enums.Menu;
@@ -21,6 +22,7 @@ public class App {
     private App(){
         DataBaseManager.initializeDatabase();
         PlantLoader.load();
+        ZombieRegistry.load();
 
         UserRepository repository = new UserRepository();
         User rememberedUser = repository.getRememberedUser();

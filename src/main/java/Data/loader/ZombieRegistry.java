@@ -16,6 +16,24 @@ public class ZombieRegistry {
         init(repository.loadAllZombies());
     }
 
+    /**
+     * Populates the registry straight from the bundled JSON resources.
+     * Must be called once at startup (see App's constructor) - nothing else
+     * currently seeds this registry, so without this call every lookup in
+     * getTemplate()/spawn() silently returns null / throws, and
+     * ZombieWaveManager never spawns any zombies.
+     */
+    public static void load() {
+        try {
+            ZombieLoader loader = new ZombieLoader();
+            loader.loadArmors("/ArmorTypeData.json");
+            Map<String, Zombie> loaded = loader.loadZombies("/zombies.json");
+            init(loaded);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load zombies.json", e);
+        }
+    }
+
     public static void init(Map<String, Zombie> loaded) {
         templates.clear();
         templates.putAll(loaded);

@@ -39,6 +39,9 @@ public class GameState {
             eventLogger.accept(message);
         }
     }
+    public GameState(Board board, ChapterTheme chapterTheme) {
+        this(board, chapterTheme, true);
+    }
     public GameState(Board board, ChapterTheme chapterTheme,boolean mowerEnabled) {
         this.board = board;
         this.board.setZombie(this.zombiesInTheGame);

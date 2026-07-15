@@ -8,20 +8,25 @@ import Data.loader.ZombieRegistry;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
-import models.User;
 import models.Plant.Plant;
-import models.Result;
 import models.Plant.PlantFactory;
+import models.Result;
+import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Zombie;
+import models.Zombie.ZombieType;
+import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.items.Mower;
 import models.sun.Sun;
-import models.Zombie.ZombieType;
 
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
@@ -46,24 +51,30 @@ public class GamingController {
     private String formatSeconds(int ticks, int ticksPerSecond) {
         return COORDINATE_FORMAT.format((double) ticks / ticksPerSecond);
     }
-    public Result advanceTime(int tick){
-        StringBuilder sb = new StringBuilder();
+
+    public Result advanceTime(int ticks) {
+        if (ticks <= 0) {
+            return failure("Tick count must be positive.\n");
+        }
         Game game = App.getInstance().getCurrentGame();
-        StringBuilder output = new StringBuilder();
         if (game == null || game.getGameState() == null) {
             return failure("No active game found.\n");
         }
-        sb.append("Game Advanced By ").append(tick).append(" ticks.\n");
-        game.getGameState().setEventLogger(message -> sb.append(message));
-            game.forward(tick);
-        if (game.getGameState().isFinished()) {
-            models.App.getInstance().setCurrentMenu(models.enums.Menu.GAME_MENU);
-            models.App.getInstance().setCurrentGame(null);
-            if (game.getGameState().isWon()) {
-                sb.append("Game ended! You returned to the Main Menu.\n");
-            } else {
-                sb.append("Game Over! You returned to the Main Menu.\n");
-            }
+
+        GameState state = game.getGameState();
+        StringBuilder output = new StringBuilder()
+                .append("Game advanced by ")
+                .append(ticks)
+                .append(" ticks.\n");
+        state.setEventLogger(output::append);
+        game.forward(ticks);
+
+        if (state.isFinished()) {
+            App.getInstance().setCurrentMenu(Menu.GAME_MENU);
+            App.getInstance().setCurrentGame(null);
+            output.append(state.isWon()
+                    ? "Game ended! You returned to the Game Menu.\n"
+                    : "Game over! You returned to the Game Menu.\n");
         }
         return success(output.toString());
     }
