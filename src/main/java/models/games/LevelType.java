@@ -12,11 +12,15 @@ public enum LevelType {
     CONVEYOR_BELT{
         @Override
         public void initialize(GameState state) {
-            // توقف  خورشید و تنظیم اولیه نوار گیاه
+            state.setSun(0);
         }
         @Override
         public boolean isFinished(GameState state) {
             return state.getZombieWaveManager().isLevelCleared();
+        }
+        @Override
+        public boolean usesPlantSelection() {
+            return false;
         }
     },
 
@@ -61,7 +65,7 @@ public enum LevelType {
             return state.getZombieWaveManager().isLevelCleared();
         }
     };
-
+    public boolean usesPlantSelection() {return true;}
     public abstract void initialize(GameState state);
     public abstract boolean isFinished(GameState state);
 }
