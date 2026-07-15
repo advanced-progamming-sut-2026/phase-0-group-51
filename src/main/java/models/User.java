@@ -2,7 +2,7 @@ package models;
 
 import lombok.Getter;
 import lombok.Setter;
-import models.GreenHouse.GreenHouse;
+import models.greenHouse.GreenHouse;
 import models.games.Level;
 
 import java.util.HashMap;

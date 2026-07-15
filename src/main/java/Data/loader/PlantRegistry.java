@@ -1,11 +1,8 @@
 package Data.loader;
 
-import models.Plant.PlantType;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class PlantRegistry {
     private static final Map<Integer, PlantData> ALL = new HashMap<>();

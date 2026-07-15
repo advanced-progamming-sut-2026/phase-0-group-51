@@ -1,7 +1,7 @@
 package Data.database;
 
-import models.GreenHouse.FlowerPot;
-import models.GreenHouse.GreenHouse;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
 
 import java.sql.*;
 import java.time.LocalDateTime;

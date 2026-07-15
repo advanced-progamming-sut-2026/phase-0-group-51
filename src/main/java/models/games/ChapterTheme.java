@@ -86,6 +86,13 @@ public enum ChapterTheme {
                     new Level(4, LevelType.BOSS, 5, 2000f)
             ),
             TimeOfTheDay.NIGHT
+    ),
+    MINIGAME(
+            "Minigame",
+            allZombies(),
+            List.of(),
+            List.of(),
+            TimeOfTheDay.DAY
     );
 
     public final String name;
@@ -117,6 +124,10 @@ public enum ChapterTheme {
         combined.add(ZombieType.IMP);
         combined.addAll(Arrays.asList(specifics));
         return Collections.unmodifiableList(combined);
+    }
+
+    private static List<ZombieType> allZombies() {
+        return Collections.unmodifiableList(Arrays.asList(ZombieType.values()));
     }
 
     private static FrostbiteLevelConfig frostbiteLevelOne() {

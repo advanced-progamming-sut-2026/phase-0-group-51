@@ -6,13 +6,11 @@ import Data.loader.PlantLoader;
 import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
-import models.Plant.Plant;
-import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 
 import java.util.ArrayList;
-import java.util.List;
+
 @Getter
 @Setter
 public class App {

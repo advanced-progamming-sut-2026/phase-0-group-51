@@ -10,10 +10,10 @@ import controllers.validation.ShopMenuValidation;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
-import models.GreenHouse.FlowerPot;
-import models.GreenHouse.GreenHouse;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
 import models.Result;
-import models.Shop.*;
+import models.shop.*;
 import models.User;
 import models.enums.Menu;
 

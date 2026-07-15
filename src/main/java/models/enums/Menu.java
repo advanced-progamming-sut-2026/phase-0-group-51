@@ -1,6 +1,7 @@
 package models.enums;
 
 import views.*;
+import views.miniGames.VaseBreakerMenu;
 
 import java.util.Scanner;
 
@@ -20,6 +21,7 @@ public enum Menu {
     TRAVELLOG_MENU(new TravelLogMenu()),
     LEADERBOARD_MENU(new LeaderboardMenu()),
     PlantSelection_Menu(new PlantSelectionMenu()),
+    VASE_BREAKER(new VaseBreakerMenu()),
     EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){
