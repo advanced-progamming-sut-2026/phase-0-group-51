@@ -1,9 +1,12 @@
 package controllers;
 
+import Data.database.NewsRepository;
 import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import Data.loader.UpgradeData;
+import Data.loader.ZombieRegistry;
 import models.App;
 import models.Result;
 import models.User;
@@ -13,155 +16,364 @@ import models.Zombie.Zombie;
 import java.util.*;
 
 public class CollectionMenuController {
-
-    private String printZombie(Zombie zombie) {
-        StringBuilder output = new StringBuilder();
-        output.append("[")
-                .append(zombie.getAlias())
-                .append("] ")
-                .append(" | HP: ")
-                //.append(zombie.getMaxHitpoints())
-                .append(" | Speed: ")
-                .append(zombie.getBaseSpeed())
-                .append(" | Eat DPS: ")
-                .append(zombie.getBaseEatDps())
-                .append(" | Wave Cost: ")
-                .append(zombie.getWavePointCost())
-                .append(" | Weight: ")
-                .append(zombie.getWeight())
-                .append(" | Behaviors: ")
-                .append(formatBehaviors(zombie.getBehaviors()));
-
-        return output.toString();
-    }
-
-    private String formatBehaviors(List<ZombieBehavior> behaviors) {
-        if (behaviors.isEmpty()) {
-            return "none";
-        }
-        StringBuilder result = new StringBuilder();
-        for (ZombieBehavior behavior : behaviors) {
-            if (!result.isEmpty()) {
-                result.append(", ");
-            }
-            result.append(behavior.getClass().getSimpleName());
-        }
-        return result.toString();
-    }
-
+    private final NewsRepository newsRepository = new NewsRepository();
     public Result showAllPlants() {
-        StringBuilder output = new StringBuilder();
-        output.append("======All Plants======\n");
-        for (PlantData plant : PlantRegistry.getAll()) {
-            // i didn't implement the level's printing just yet :)
-            output.append(printPlant(plant));
-            output.append("\n");
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before viewing the collection.\n");
         }
-        return new Result(true, output.toString(), null);
+
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
+        Map<Integer, Integer> seedPackets = PlantRepository.loadSeedPackets(user.getId());
+        List<PlantData> plants = sortedPlants();
+
+        StringBuilder output = new StringBuilder("====== ALL PLANTS ======\n");
+        for (PlantData plant : plants) {
+            boolean isUnlocked = unlocked.contains(plant.id());
+            output.append(printPlant(
+                    plant,
+                    levels.getOrDefault(plant.id(), 1),
+                    seedPackets.getOrDefault(plant.id(), 0),
+                    isUnlocked
+            )).append('\n');
+        }
+
+        return success(output.toString());
     }
 
     public Result showPlants() {
-        User user = App.loggedInUser;
-        Set<Integer> plantIds = PlantRepository.loadUnlockedPlants(user.getId());
-        //Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
-        List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
-        plants.sort(Comparator.comparingInt(PlantData::id));
-
-        StringBuilder output = new StringBuilder();
-        output.append("======Your Plants======\n");
-        for (PlantData data : plants) {
-            if (plantIds.contains(data.id())) {
-                output.append(printPlant(data));
-                output.append("\n");
-            }
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before viewing the collection.\n");
         }
-        return new Result(true, output.toString(), null);
+
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        if (unlocked.isEmpty()) {
+            return success("You have not unlocked any plants yet.\n");
+            }
+
+        Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
+        Map<Integer, Integer> seedPackets = PlantRepository.loadSeedPackets(user.getId());
+        StringBuilder output = new StringBuilder("====== YOUR PLANTS ======\n");
+
+        for (PlantData plant : sortedPlants()) {
+            if (!unlocked.contains(plant.id())) {
+                continue;
+        }
+            output.append(printPlant(
+                    plant,
+                    levels.getOrDefault(plant.id(), 1),
+                    seedPackets.getOrDefault(plant.id(), 0),
+                    true
+            )).append('\n');
     }
 
-    private String printPlant(PlantData data) {
-        StringBuilder output = new StringBuilder();
-        output.append("[")
-                .append(String.format("%02d", data.id()))
-                .append("] ")
-                .append(data.name())
-//                .append(" | Lv.")
-//                .append(orDefault)
-                .append(" | Cost: ")
-                .append(data.cost())
-                .append(" | Dmg: ")
-                .append(data.damage())
-                .append(" | HP: ")
-                .append(data.baseHp())
-                .append(" | Tags: ")
-                .append(data.tags());
-
-        return output.toString();
+        return success(output.toString());
     }
 
     public Result showZombies() {
-        return null;
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before viewing the collection.\n");
+        }
+
+        Set<String> discovered = newsRepository.getDiscoveredZombieAliases(user.getId());
+        if (discovered.isEmpty()) {
+            return success("You have not observed any zombies yet.\n");
+        }
+
+        StringBuilder output = new StringBuilder("====== OBSERVED ZOMBIES ======\n");
+        int shown = 0;
+        for (Zombie zombie : sortedZombieTemplates()) {
+            if (containsIgnoreCase(discovered, zombie.getAlias())) {
+                output.append(printZombie(zombie)).append('\n');
+                shown++;
+            }
+        }
+
+        if (shown == 0) {
+            return success("You have not observed any currently registered zombies yet.\n");
+        }
+        return success(output.toString());
     }
 
     public Result showAllZombies() {
-        return null;
+        List<Zombie> zombies = sortedZombieTemplates();
+        if (zombies.isEmpty()) {
+            return failure("No zombie definitions are currently loaded.\n");
+        }
+
+        StringBuilder output = new StringBuilder("====== ALL ZOMBIES ======\n");
+        for (Zombie zombie : zombies) {
+            output.append(printZombie(zombie)).append('\n');
+        }
+        return success(output.toString());
     }
 
     public Result purchase(String plantName) {
-        User user = App.loggedInUser;
-        Set<Integer> plantIds = PlantRepository.loadUnlockedPlants(user.getId());
-        PlantData plant = PlantRegistry.getByName(plantName);
-        if (plant == null) {
-            return new Result(false, "No such plant. try writing the name again:)", null);
-        } else if (plantIds.contains(plant.id())) {
-            return new Result(false, "You already have this plant.", null);
-        } else if(2000 > user.getCoins()){
-            return new Result(false, "You don't have enough coins.", null);
-        } else{
-            user.setCoins(user.getCoins() - 2000);
-            UserRepository userRepository = new UserRepository();
-            userRepository.updateStats(user);
-            PlantRepository.unlockPlant(user.getId(), plant.id());
-            return new Result(true, plant.name() + " is added to your plants collection.", null);
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before purchasing a plant.\n");
         }
+
+        PlantData plant = PlantRegistry.getByName(cleanName(plantName));
+        if (plant == null) {
+            return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
+        }
+
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        if (unlocked.contains(plant.id())) {
+            return failure("You already own " + plant.name() + ".\n");
+        }
+
+        int purchaseCost = 2000;
+        if (user.getCoins() < purchaseCost) {
+            return failure(
+                    "You need " + purchaseCost + " coins to purchase " + plant.name()
+                            + ", but you only have " + user.getCoins() + ".\n"
+            );
+        }
+
+        user.setCoins(user.getCoins() - purchaseCost);
+        if (!new UserRepository().updateStats(user)) {
+            user.setCoins(user.getCoins() + purchaseCost);
+            return failure("The purchase could not be saved in the database.\n");
+        }
+
+            PlantRepository.unlockPlant(user.getId(), plant.id());
+        newsRepository.createNewsForUser(
+                user.getId(),
+                "New plant unlocked: " + plant.name() + "."
+        );
+
+        return success(
+                plant.name() + " was added to your collection. "
+                        + "You now have " + user.getCoins() + " coins.\n"
+        );
     }
 
     public Result upgrade(String plantName) {
-        User user = App.loggedInUser;
-        PlantData plant = PlantRegistry.getByName(plantName);
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before upgrading a plant.\n");
+        }
+        PlantData plant = PlantRegistry.getByName(cleanName(plantName));
         if (plant == null) {
-            return new Result(false, "No such plant. try writing the name again:)", null);
-        } else if (!PlantRepository.loadUnlockedPlants(user.getId()).contains(plant.id())) {
-            return new Result(false, "You don't have "+ plant.name() + " yet.", null);
+            return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
         }
-        Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
-        int currentLevel = levels.getOrDefault(plant.id(), 1);
+        if (!PlantRepository.loadUnlockedPlants(user.getId()).contains(plant.id())) {
+            return failure("You have not unlocked " + plant.name() + " yet.\n");
+        }
+        int currentLevel = PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(plant.id(), 1);
+        int maximumLevel = maximumLevel(plant);
+        if (currentLevel >= maximumLevel) {
+            return failure(plant.name() + " is already at maximum level "
+                    + maximumLevel + ".\n");
+        }
+        int targetLevel = currentLevel + 1;
+        int coinCost = coinCostForLevel(targetLevel);
+        int packetCost = seedPacketCostForLevel(targetLevel);
 
-        if (currentLevel >= 4) {
-            return new Result(false, plant.name() + " is already at max level.", null);
-        }
-//        else if () {
-//        for validating the needed seed packet or coins
-        else{
-            // az user kam mikonim meghdar khaste ro
-            int newLevel = currentLevel + 1;
-            PlantRepository.savePlantLevel(user.getId(), plant.id(), newLevel);
-            return new Result(true, plant.name() + " is now upgraded.", null);
-        }
+        PlantRepository.UpgradeResult result = PlantRepository.tryUpgradePlant(
+                user.getId(), plant.id(), maximumLevel, coinCost, packetCost
+        );
+        return switch (result.status()) {
+            case SUCCESS -> {
+                user.setCoins(result.remainingCoins());
+                String description = upgradeDescription(plant, result.newLevel());
+                yield success(
+                        plant.name() + " upgraded from level " + result.oldLevel()
+                                + " to level " + result.newLevel() + ".\n"
+                                + "Cost: " + coinCost + " coins and " + packetCost
+                                + " seed packets.\n"
+                                + "Upgrade effect: " + description + "\n"
+                                + "Remaining: " + result.remainingCoins() + " coins and "
+                                + result.remainingSeedPackets() + " seed packets.\n"
+                );
+            }
+            case NOT_ENOUGH_COINS -> failure(
+                    "Not enough coins to upgrade " + plant.name() + " to level "
+                            + targetLevel + ". Required: " + coinCost + ", available: "
+                            + result.remainingCoins() + ".\n"
+            );
+            case NOT_ENOUGH_SEED_PACKETS -> failure(
+                    "Not enough seed packets to upgrade " + plant.name() + " to level "
+                            + targetLevel + ". Required: " + packetCost + ", available: "
+                            + result.remainingSeedPackets() + ".\n"
+            );
+            case MAX_LEVEL -> failure(
+                    plant.name() + " is already at its maximum level.\n"
+            );
+            case PLANT_NOT_UNLOCKED -> failure(
+                    "You have not unlocked " + plant.name() + " yet.\n"
+            );
+            case USER_NOT_FOUND -> failure("The logged-in user no longer exists.\n");
+            case DATABASE_ERROR -> failure(
+                    "The plant upgrade could not be saved in the database.\n"
+            );
+        };
     }
-
     public Result showAZombie(String zombieName) {
-        return null;
+        Zombie zombie = findZombieTemplate(cleanName(zombieName));
+        if (zombie == null) {
+            return failure("No zombie named '" + cleanName(zombieName) + "' was found.\n");
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        boolean observed = user != null
+                && newsRepository.hasDiscoveredZombie(user.getId(), zombie.getAlias());
+
+        StringBuilder output = new StringBuilder("====== ZOMBIE DETAILS ======\n")
+                .append("Collection status: ")
+                .append(observed ? "OBSERVED" : "NOT OBSERVED")
+                .append('\n')
+                .append(printZombie(zombie))
+                .append('\n');
+        return success(output.toString());
     }
 
     public Result showAPlant(String plantName) {
-        List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
-
-        StringBuilder output = new StringBuilder();
-        for(PlantData plant : plants) {
-            if(plant.name().equalsIgnoreCase(plantName)) {
-                output.append(printPlant(plant));
-            }
+        PlantData plant = PlantRegistry.getByName(cleanName(plantName));
+        if (plant == null) {
+            return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
         }
-        return new Result(true, output.toString(), null);
+
+        User user = App.getInstance().getLoggedInUser();
+        boolean unlocked = user != null
+                && PlantRepository.loadUnlockedPlants(user.getId()).contains(plant.id());
+        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(plant.id(), 1);
+        int packets = user == null ? 0
+                : PlantRepository.getSeedPackets(user.getId(), plant.id());
+
+        StringBuilder output = new StringBuilder("====== PLANT DETAILS ======\n")
+                .append(printPlant(plant, level, packets, unlocked))
+                .append('\n')
+                .append("Base ability: ").append(plant.baseAbility()).append('\n')
+                .append("Plant Food: ").append(plant.plantFoodEffect()).append('\n');
+
+        if (level < maximumLevel(plant)) {
+            int targetLevel = level + 1;
+            output.append("Next upgrade: Level ").append(targetLevel)
+                    .append(" - ").append(upgradeDescription(plant, targetLevel)).append('\n')
+                    .append("Required: ").append(coinCostForLevel(targetLevel))
+                    .append(" coins and ").append(seedPacketCostForLevel(targetLevel))
+                    .append(" seed packets.\n");
+        } else {
+            output.append("This plant is at maximum level.\n");
+        }
+
+        return success(output.toString());
+    }
+
+    private List<PlantData> sortedPlants() {
+        List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
+        plants.sort(Comparator.comparingInt(PlantData::id));
+        return plants;
+    }
+
+    private String printPlant(
+            PlantData plant,
+            int level,
+            int seedPackets,
+            boolean unlocked
+    ) {
+        return "[" + String.format("%02d", plant.id()) + "] "
+                + plant.name()
+                + " | " + (unlocked ? "UNLOCKED" : "LOCKED")
+                + " | Lv." + level + "/" + maximumLevel(plant)
+                + " | Seed Packets: " + seedPackets
+                + " | Cost: " + plant.cost()
+                + " | Dmg: " + plant.damage()
+                + " | HP: " + plant.baseHp()
+                + " | Tags: " + plant.tags();
+    }
+
+    private List<Zombie> sortedZombieTemplates() {
+        return ZombieRegistry.getTemplates().values().stream()
+                .sorted(Comparator.comparing(Zombie::getAlias, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    private Zombie findZombieTemplate(String requestedName) {
+        return ZombieRegistry.getTemplates().values().stream()
+                .filter(zombie -> zombie.getAlias().equalsIgnoreCase(requestedName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String printZombie(Zombie zombie) {
+        return "[" + zombie.getAlias() + "]"
+                + " | HP: " + zombie.getMaxHitpoints()
+                + " | Speed: " + zombie.getBaseSpeed()
+                + " | Eat DPS: " + zombie.getBaseEatDps()
+                + " | Wave Cost: " + zombie.getWavePointCost()
+                + " | Weight: " + zombie.getWeight()
+                + " | Behaviors: " + formatBehaviors(zombie.getBehaviors());
+    }
+
+    private String formatBehaviors(List<ZombieBehavior> behaviors) {
+        if (behaviors == null || behaviors.isEmpty()) {
+            return "none";
+        }
+        return behaviors.stream()
+                .map(behavior -> behavior.getClass().getSimpleName())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .reduce((first, second) -> first + ", " + second)
+                .orElse("none");
+            }
+
+    private boolean containsIgnoreCase(Set<String> values, String candidate) {
+        return values.stream().anyMatch(value -> value.equalsIgnoreCase(candidate));
+    }
+
+    private int maximumLevel(PlantData plant) {
+        return plant.upgrades() == null ? 1 : plant.upgrades().size() + 1;
+    }
+
+    private int seedPacketCostForLevel(int targetLevel) {
+        return switch (targetLevel) {
+            case 2 -> 5;
+            case 3 -> 10;
+            case 4 -> 20;
+            default -> 20 * Math.max(1, targetLevel - 3);
+        };
+    }
+
+    private int coinCostForLevel(int targetLevel) {
+        return switch (targetLevel) {
+            case 2 -> 1000;
+            case 3 -> 2000;
+            case 4 -> 4000;
+            default -> 4000 * Math.max(1, targetLevel - 3);
+        };
+    }
+
+    private String upgradeDescription(PlantData plant, int targetLevel) {
+        if (plant.upgrades() == null) {
+            return "No additional upgrade data";
+        }
+        return plant.upgrades().stream()
+                .filter(upgrade -> upgrade.level() == targetLevel)
+                .map(UpgradeData::description)
+                .findFirst()
+                .orElse("Plant statistics improved");
+    }
+
+    private String cleanName(String name) {
+        return name == null ? "" : name.trim();
+    }
+
+    private Result success(String message) {
+        return new Result(true, message, null);
+        }
+
+    private Result failure(String message) {
+        return new Result(false, message, null);
     }
 }
+
+

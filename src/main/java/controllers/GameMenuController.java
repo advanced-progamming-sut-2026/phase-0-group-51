@@ -1,8 +1,11 @@
 package controllers;
 
+import Data.database.NewsRepository;
 import Data.database.PlantRepository;
 import Data.database.ProgressRepository;
 import Data.database.UserRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;
@@ -11,50 +14,125 @@ import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
 
+import java.util.Set;
+
 public class GameMenuController {
+    private static final ChapterTheme[] ADVENTURE_CHAPTERS = {
+            ChapterTheme.ANCIENT_EGYPT,
+            ChapterTheme.FROSTBITE_CAVES,
+            ChapterTheme.BIG_WAVE_BEACH,
+            ChapterTheme.DARK_AGES
+    };
+    private int selectedChapterIndex = -1;
     private static final int[] CHAPTER_ONE_LEVEL_ONE_PLANTS = {
             1, 6, 7, 9, 25, 30, 44, 55
     };
-
-    public Result handleEnterChapter(String chapter) {
-        int requestedChapterIndex = -1;
-        ChapterTheme[] themes = ChapterTheme.values();
-        for (int i = 0; i < themes.length; i++) {
-            String themeString = themes[i].name().replace("_", " ");
-            if (themeString.equalsIgnoreCase(chapter)) {
-                requestedChapterIndex = i;
-                break;
+    private int findChapterIndex(String chapterName) {
+        if (chapterName == null || chapterName.isBlank()) {
+            return -1;
+        }
+        String requestedName = chapterName.trim();
+        for (int i = 0; i < ADVENTURE_CHAPTERS.length; i++) {
+            ChapterTheme theme = ADVENTURE_CHAPTERS[i];
+            String enumName = theme.name().replace('_', ' ');
+            if (theme.getName().equalsIgnoreCase(requestedName)
+                    || enumName.equalsIgnoreCase(requestedName)) {
+                return i;
             }
         }
-        if (requestedChapterIndex==-1) {
-            return new Result(false, "Chapter not found. " +
-                    "Valid chapters: Ancient Egypt, Frostbite Caves, Big Wave Beach, Dark Ages.\n", null);
+        return -1;
+    }
+    public Result handleEnterChapter(String chapter) {
+        if (App.loggedInUser == null) {
+            return new Result(false, "You must log in before entering a chapter.\n", null
+            );
         }
-        ProgressRepository progress = new ProgressRepository();
-        int[] progressItem = progress.getCurrentProgress(App.loggedInUser.getId());
-        int unlockedChapterIndex = progressItem[0] - 1;
-        int unlockedLevelIndex = progressItem[1] - 1;
+        int requestedChapterIndex = findChapterIndex(chapter);
+        if (requestedChapterIndex == -1) {
+            return new Result(
+                    false,
+                    "Chapter not found.\n" + "Valid chapters:\n"
+                            + "- Ancient Egypt\n" + "- Frostbite Caves\n" + "- Big Wave Beach\n" + "- Dark Ages\n",
+                    null
+            );
+        }
+        ProgressRepository progressRepository = new ProgressRepository();
+        int[] currentProgress = progressRepository.getCurrentProgress(App.loggedInUser.getId());
+        int unlockedChapterIndex = currentProgress[0] - 1;
         if (requestedChapterIndex > unlockedChapterIndex) {
-            return new Result(false, "This chapter is locked for you\n!", null);
+            ChapterTheme highestUnlockedChapter = ADVENTURE_CHAPTERS[unlockedChapterIndex];
+            return new Result(
+                    false, "This chapter is locked for you.\n" + "Your highest unlocked chapter is "
+                            + highestUnlockedChapter.getName() + ".\n",
+                    null
+            );
         }
-        int requestedLevelIndex = 0;
-        if (requestedChapterIndex == unlockedChapterIndex) {
-            requestedLevelIndex = unlockedLevelIndex;
+        selectedChapterIndex = requestedChapterIndex;
+        ChapterTheme selectedChapter = ADVENTURE_CHAPTERS[selectedChapterIndex];
+        int highestUnlockedLevel;
+
+        if (selectedChapterIndex < unlockedChapterIndex) {
+            highestUnlockedLevel = selectedChapter.getLevels().size();
+        } else {
+            highestUnlockedLevel = Math.min(currentProgress[1], selectedChapter.getLevels().size());
         }
-        unlockChapterOneLevelOnePlants(requestedChapterIndex, requestedLevelIndex);
-        ChapterTheme requestedTheme = themes[requestedChapterIndex];
-        Level requestedLevel = requestedTheme.getLevels().get(requestedLevelIndex);
+        return new Result(
+                true,
+                selectedChapter.getName()
+                        + " selected.\n" + "Unlocked levels: 1 to "
+                        + highestUnlockedLevel
+                        + ".\n",
+                null
+        );
+    }
+    public Result enterLevel(int levelNumber) {
+        if (App.loggedInUser == null) {
+            return new Result(false, "You must log in before entering a level.\n", null);}
+        if (selectedChapterIndex == -1) {
+            return new Result(false, "You must select a chapter first.\n", null);
+        }
+        ChapterTheme selectedChapter = ADVENTURE_CHAPTERS[selectedChapterIndex];
+        int numberOfLevels = selectedChapter.getLevels().size();
+        if (levelNumber < 1 || levelNumber > numberOfLevels) {
+            return new Result(
+                    false,
+                    "Invalid level number.\n" + selectedChapter.getName()
+                            + " has levels 1 to " + numberOfLevels
+                            + ".\n",
+                    null
+            );
+        }
+        ProgressRepository progressRepository = new ProgressRepository();
+        int[] currentProgress = progressRepository.getCurrentProgress(App.loggedInUser.getId());
+        int unlockedChapterIndex = currentProgress[0] - 1;
+        int unlockedLevelIndex = currentProgress[1] - 1;
+        if (selectedChapterIndex > unlockedChapterIndex) {
+            return new Result(
+                    false, "This chapter is locked for you.\n", null
+            );
+        }
+        int requestedLevelIndex = levelNumber - 1;
+        if (selectedChapterIndex == unlockedChapterIndex && requestedLevelIndex > unlockedLevelIndex) {
+            return new Result(
+                    false,
+                    "Level " + levelNumber + " is locked.\n"
+                            + "Your highest unlocked level in "
+                            + selectedChapter.getName() + " is Level " + (unlockedLevelIndex + 1) + ".\n",
+                    null
+            );
+        }
+        Level selectedLevel = selectedChapter.getLevels().get(requestedLevelIndex);
+        unlockChapterOneLevelOnePlants(selectedChapterIndex, requestedLevelIndex);
         Game newGame = new Game();
-        newGame.setCurrentChapterIndex(requestedChapterIndex);
+        newGame.setCurrentChapterIndex(selectedChapterIndex);
         newGame.setCurrentLevelIndex(requestedLevelIndex);
         App.getInstance().setCurrentGame(newGame);
-        if (!requestedLevel.type().usesPlantSelection()) {
-            return startLevelDirectly(newGame, requestedTheme, requestedLevel);
-        }
+        if (!selectedLevel.type().usesPlantSelection()) {
+            return startLevelDirectly(newGame, selectedChapter, selectedLevel);}
         App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
-        return new Result(true, "Entered " + themes[requestedChapterIndex].getName()
-                + " Level " + (requestedLevelIndex + 1)
-                + ".\nYou are now in the Plant Selection Menu.", null);
+        return new Result(
+                true, "Entered " + selectedChapter.getName() + " Level "
+                        + levelNumber + ".\n" + "You are now in the Plant Selection Menu.\n", null);
     }
     private Result startLevelDirectly(Game game, ChapterTheme theme, Level level) {
         try {
@@ -62,7 +140,7 @@ public class GameMenuController {
             game.start();
             App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
             String firstPlant = game.getConveyorBeltPlants().isEmpty() ? "none" :
-                    game.getConveyorBeltPlants().get(0).name();
+                    game.getConveyorBeltPlants().getFirst().name();
             return new Result(
                     true,
                     "Entered " + theme.getName() + " Level " + level.levelNumber() + ".\n"
@@ -77,8 +155,7 @@ public class GameMenuController {
             App.getInstance().setCurrentMenu(Menu.GAME_MENU);
             String message = exception.getMessage();
             if (message == null || message.isBlank()) {
-                message = "The level could not be initialized.";
-            }
+                message = "The level could not be initialized.";}
             return new Result(false, "Could not start the Conveyor Belt level: " + message + "\n", null);
         }
     }
@@ -127,6 +204,18 @@ public class GameMenuController {
         if (user == null || chapterIndex != 0 || levelIndex != 0) {
             return;
         }
-        PlantRepository.unlockPlants(user.getId(), CHAPTER_ONE_LEVEL_ONE_PLANTS);
+        Set<Integer> previouslyUnlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        NewsRepository newsRepository = new NewsRepository();
+        for (int plantId : CHAPTER_ONE_LEVEL_ONE_PLANTS) {
+            if (previouslyUnlocked.contains(plantId)) {
+                continue;
+            }
+            PlantRepository.unlockPlant(user.getId(), plantId);
+            PlantData plant = PlantRegistry.getById(plantId);
+            String plantName = plant == null ? "Plant #" + plantId : plant.name();
+            newsRepository.createNewsForUser(user.getId(),
+                    "New plant unlocked: " + plantName + "."
+            );
+        }
     }
 }

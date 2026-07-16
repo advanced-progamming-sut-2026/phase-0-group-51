@@ -62,6 +62,10 @@ public class GameView implements AppMenu {
                         coordinates[1]
                 ));
             }
+        } else if (GameCommands.SHOW_SCORE_REGEX.matches(line)) {
+            print(controller.showScore());
+        } else if (GameCommands.SHOW_SCORING_RULES_REGEX.matches(line)) {
+            print(controller.showScoringRules());
         } else if (GameCommands.SHOW_MAP_REGEX.matches(line)) {
             print(controller.showMap());
         } else if (GameCommands.CURRENT_MENU_REGEX.matches(line)) {

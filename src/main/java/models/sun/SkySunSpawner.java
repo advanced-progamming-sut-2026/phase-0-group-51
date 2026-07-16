@@ -6,12 +6,19 @@ import models.User;
 import models.games.ChapterTheme;
 import models.games.GameState;
 
+import java.util.Objects;
 import java.util.Random;
 
 public class SkySunSpawner {
     private float tickCounter;
-    private final Random random = new Random();
+    private final Random random;
+    public SkySunSpawner() {
+        this(new Random());
+    }
 
+    public SkySunSpawner(Random random) {
+        this.random = Objects.requireNonNull(random);
+    }
     public Sun onTick(GameState gameState) {
         if (gameState.getChapterTheme() == ChapterTheme.DARK_AGES) {
             return null;

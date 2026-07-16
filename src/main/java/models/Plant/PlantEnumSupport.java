@@ -44,6 +44,14 @@ final class PlantEnumSupport {
         return configured > 0 ? configured : fallback;
     }
 
+    static double upgradedRange(Plant plant, double baseRange) {
+        return baseRange + Math.max(0, plant.getPlantStat().range() - 9);
+    }
+
+    static double upgradedLifespan(Plant plant, double baseSeconds) {
+        return baseSeconds + Math.max(0, plant.getPlantStat().lifespan());
+    }
+
     static ElementType elementFromTags(Plant plant) {
         if (plant.hasTag(PlantTag.FIRE)) {
             return ElementType.FIRE;

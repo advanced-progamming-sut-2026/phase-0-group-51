@@ -21,6 +21,7 @@ public class Tile {
     private Plant plant;
     private boolean iceBlocked = false;
     private boolean water = false;
+    private boolean crater = false;
     private boolean frosted = false;
     private IceFloorDirection iceFloorDirection;
     private Grave grave;
@@ -53,7 +54,7 @@ public class Tile {
         return (int) Math.ceil(worldUnits / TILEWIDTH);
     }
     public boolean isOccupiable() {
-        return !iceBlocked && iceFloorDirection == null && !hasGrave() && !hasPlant();
+        return !iceBlocked && !crater && (iceFloorDirection == null) && !hasGrave() && !hasPlant();
     }
 
     public void removeGrave() {

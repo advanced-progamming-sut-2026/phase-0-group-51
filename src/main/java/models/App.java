@@ -1,6 +1,7 @@
 package models;
 
 import Data.database.DataBaseManager;
+import Data.database.GreenHouseRepository;
 import Data.database.UserRepository;
 import Data.loader.PlantLoader;
 import Data.loader.QuestLoader;
@@ -25,16 +26,16 @@ public class App {
         QuestLoader.loadQuestsToDatabase();
         PlantLoader.load();
         ZombieRegistry.load();
-
         UserRepository repository = new UserRepository();
         User rememberedUser = repository.getRememberedUser();
-
-        if (rememberedUser != null) {
-            loggedInUser = rememberedUser;
-            currentMenu = Menu.MAIN_MENU;
-        } else {
+        if (rememberedUser == null) {
+            loggedInUser = null;
             currentMenu = Menu.SIGN_UP_MENU;
+            return;
         }
+        rememberedUser.setGreenHouse(GreenHouseRepository.load(rememberedUser.getId()));
+        loggedInUser = rememberedUser;
+        currentMenu = Menu.MAIN_MENU;
     }
     public static App getInstance(){
         if(instance==null){instance = new App ();}

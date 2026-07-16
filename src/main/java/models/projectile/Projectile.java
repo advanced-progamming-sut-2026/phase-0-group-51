@@ -468,7 +468,7 @@ public class Projectile {
 
     private void hit(Zombie zombie, GameState state, int appliedDamage) {
         boolean protectedByIce = zombie.hasIceShell();
-        zombie.takeDamage(damage, elementType, state, sourcePlant);
+        zombie.takeDamage(appliedDamage, elementType, state, sourcePlant);
         if (!protectedByIce) {
             elementType.onHit(zombie, state, effectDurationTicks, sourcePlant);
         }

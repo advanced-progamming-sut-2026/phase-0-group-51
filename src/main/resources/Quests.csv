@@ -1,12 +1,12 @@
 name,condition,priority,event_type,target_amount,reward_amount,reward_type,quest_type,unlockable_id,parameter_options
 Daily Sun Collector,Collect {parameter} units of sun during one day,MEDIUM,SUN_COLLECTED,3000,30,CURRENCY_COINS,DAILY,NONE,3000|4000|5000
 Chapter Hunter,Defeat 50 zombies from {chapter},HIGH,CHAPTER_ZOMBIE_KILLS,50,10,INVENTORY,MAIN,NONE,@CHAPTER
-Professional Plant Killer,Kill 10 zombies using only plants,HIGH,PLANT_ONLY_KILLS,10,0,UNLOCKABLE,DAILY,any_plant,NONE
+Professional Plant Killer,Kill 10 zombies using only {plant},HIGH,SPECIFIC_PLANT_KILLS,10,0,UNLOCKABLE,DAILY,any_plant,@KILLING_PLANT
 Only Cactus,Kill 10 zombies using only {plant},HIGH,SPECIFIC_PLANT_KILLS,10,20,CURRENCY_GEMS,DAILY,NONE,Cactus
 Economical Plant Eater,Win a level without losing more than {parameter} plants,HIGH,WIN_MAX_PLANTS_LOST,1,20,INVENTORY,MAIN,NONE,0|1|2|3|4|5
 Defense Master,Finish a level with exactly {parameter} sun remaining,CRITICAL,WIN_EXACT_SUN,1,200,CURRENCY_GEMS,EPIC,NONE,0
 Quick Action,Kill 10 zombies in less than {parameter} seconds after the first wave starts,MEDIUM,FAST_KILLS,10,500,CURRENCY_COINS,MAIN,NONE,30
-Professional Destroyer,Use exactly 3 explosive plants in one level,LOW,EXPLOSIVE_PLANTS_USED,3,100,CURRENCY_COINS,DAILY,NONE,NONE
+Professional Destroyer,Use at least 3 explosive plants in one level,LOW,EXPLOSIVE_PLANTS_USED,3,100,CURRENCY_COINS,DAILY,NONE,NONE
 Symmetry,Finish a level with a garden symmetrical across the middle row,HIGH,FINISH_SYMMETRIC,1,500,CURRENCY_COINS,DAILY,NONE,NONE
 Family Massacre,Use only plants from the {family} family to kill zombies,MEDIUM,ONLY_FAMILY_KILLS,1,1000,CURRENCY_COINS,DAILY,NONE,@FAMILY
 Blooming Under Restrictions,Win without using a plant from the {family} family,HIGH,WIN_WITHOUT_FAMILY,1,100,CURRENCY_GEMS,DAILY,NONE,@FAMILY
