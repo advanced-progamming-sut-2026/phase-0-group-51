@@ -19,6 +19,7 @@ import models.Zombie.ZombieType;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
+import models.games.ScoringGame;
 import models.items.Mower;
 import models.quests.QuestService;
 import models.sun.Sun;
@@ -72,11 +73,14 @@ public class GamingController {
         game.forward(ticks);
 
         if (state.isFinished()) {
-            App.getInstance().setCurrentMenu(Menu.GAME_MENU);
+            Menu destination = game instanceof ScoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU;
+            App.getInstance().setCurrentMenu(destination);
             App.getInstance().setCurrentGame(null);
-            output.append(state.isWon()
-                    ? "Game ended! You returned to the Game Menu.\n"
-                    : "Game over! You returned to the Game Menu.\n");
+            String destinationName = game instanceof ScoringGame ? "Main Menu" : "Game Menu";
+            output.append(state.isWon() ? "Game ended! " : "Game over! ")
+                    .append("You returned to the ")
+                    .append(destinationName)
+                    .append(".\n");
         }
         return success(output.toString());
     }
@@ -302,6 +306,10 @@ public class GamingController {
     }
 
     public Result cheatAddPlantFood() {
+        if (scoringGameIsActive()) {
+            return failure("Cheats are disabled in the Scoring Game.\n");
+        }
+
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -529,6 +537,10 @@ public class GamingController {
     }
 
     public Result cheatAddSun(int amount) {
+        if (scoringGameIsActive()) {
+            return failure("Cheats are disabled in the Scoring Game.\n");
+        }
+
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -572,6 +584,10 @@ public class GamingController {
     }
 
     public Result removeCooldowns() {
+        if (scoringGameIsActive()) {
+            return failure("Cheats are disabled in the Scoring Game.\n");
+        }
+
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -581,6 +597,10 @@ public class GamingController {
     }
 
     public Result releaseNuke() {
+        if (scoringGameIsActive()) {
+            return failure("Cheats are disabled in the Scoring Game.\n");
+        }
+
         GameState state = activeState();
         if (state == null || state.getZombieWaveManager() == null) {
             return failure("No active game found.\n");
@@ -590,6 +610,10 @@ public class GamingController {
     }
 
     public Result spawnZombie(String requestedType, int x, int y) {
+        if (scoringGameIsActive()) {
+            return failure("Cheats are disabled in the Scoring Game.\n");
+        }
+
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -632,18 +656,15 @@ public class GamingController {
     public Result showMap() {
         Game game = App.getInstance().getCurrentGame();
         GameState state = activeState();
-        if (state == null) {
-            return failure("No active game found.\n");
-        }
+        if (state == null) {return failure("No active game found.\n");}
         StringBuilder output = new StringBuilder();
-        int wave = state.getZombieWaveManager() == null
-                ? 0
-                : state.getZombieWaveManager().getCurrentWaveNumber();
-        output.append("===== GAME STATUS =====\n")
-                .append("Wave: ").append(wave).append('\n')
+        int wave = state.getZombieWaveManager() == null ? 0 : state.getZombieWaveManager().getCurrentWaveNumber();
+        output.append("===== GAME STATUS =====\n").append("Wave: ").append(wave).append('\n')
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (game instanceof ScoringGame scoringGame) {
+            output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}
         if (state.hasDeadline()) {
             output.append("Dead Line: before column ")
                     .append(state.getDeadlineColumn())
@@ -652,30 +673,20 @@ public class GamingController {
         if (game.isConveyorBeltLevel()) {
             output.append("Conveyor: ");
             List<PlantData> belt = game.getConveyorBeltPlants();
-            if (belt.isEmpty()) {
-                output.append("empty");
+            if (belt.isEmpty()) {output.append("empty");
             } else {
                 for (int i = 0; i < belt.size(); i++) {
-                    if (i > 0) {
-                        output.append(" -> ");
-                    }
-                    output.append(belt.get(i).name());
-                }
-            }
+                    if (i > 0) {output.append(" -> ");}
+                    output.append(belt.get(i).name());}}
             output.append("\nNext conveyor delivery: ")
-                    .append(game.getTicksUntilNextConveyorDelivery())
-                    .append(" ticks\n");
+                    .append(game.getTicksUntilNextConveyorDelivery()).append(" ticks\n");
         }
-
                 output.append("\n===== LAWN MOWERS =====\n");
-
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
             Mower mower = state.getLawnMowers()[lane];
             output.append("Row ").append(lane + 1).append(": ")
-                    .append(mower.isDestroyed() ? "USED" : "AVAILABLE")
-                    .append('\n');
+                    .append(mower.isDestroyed() ? "USED" : "AVAILABLE").append('\n');
         }
-
         output.append("\n===== BOARD =====\n");
         Board board = state.getBoard();
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
@@ -691,20 +702,35 @@ public class GamingController {
                 if (tile.hasPlant() && hasZombie) symbol = 'B';
                 else if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) symbol = 'F';
                 else if (tile.hasPlant()) symbol = 'P';
-                else if (hasZombie) symbol = 'Z';
-                else if (tile.hasGrave()) symbol = 'G';
+                else if (hasZombie) symbol = 'Z';else if (tile.hasGrave()) symbol = 'G';
                 else if (tile.isIceBlocked()) symbol = 'I';
                 else if (tile.isCrater()) symbol = 'C';
                 else if (tile.getIceFloorDirection() != null) {
-                    symbol = tile.getIceFloorDirection().name().equals("UP") ? '^' : 'v';
-                }
-                output.append('[').append(symbol).append("] ");
-            }
-            output.append('\n');
-        }
+                    symbol = tile.getIceFloorDirection().name().equals("UP") ? '^' : 'v';}
+                output.append('[').append(symbol).append("] ");}
+            output.append('\n');}
         output.append("Legend: P=plant, F=frozen plant, Z=zombie, G=grave, ")
                 .append("I=ice block, ^=slide up, v=slide down, ||=Dead Line\n");
         return success(output.toString());
     }
+    private boolean scoringGameIsActive() {
+        return App.getInstance().getCurrentGame() instanceof ScoringGame;
+    }
+    public Result showScore() {
+        Game game = App.getInstance().getCurrentGame();
+        if (!(game instanceof ScoringGame scoringGame)) {
+            return failure(
+                    "This command is only available in the Scoring Game.\n"
+            );
+        }
+        return success(scoringGame.getScoreTracker().liveSummary());
+    }
 
+    public Result showScoringRules() {
+        Game game = App.getInstance().getCurrentGame();
+        if (!(game instanceof ScoringGame scoringGame)) {
+            return failure("This command is only available in the Scoring Game.\n");
+        }
+        return success(scoringGame.showScoringRules());
+    }
 }
