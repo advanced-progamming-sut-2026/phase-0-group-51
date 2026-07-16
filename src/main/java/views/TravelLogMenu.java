@@ -1,8 +1,7 @@
 package views;
 
 import controllers.TravelLogController;
-import controllers.miniGamesController.VaseBreakerController;
-import controllers.miniGamesController.WallnutBowlingController;
+import controllers.miniGamesController.*;
 import models.Result;
 import models.enums.commands.TravelLogMenuCommands;
 
@@ -12,6 +11,9 @@ import java.util.regex.Matcher;
 public class TravelLogMenu implements AppMenu{
     private final VaseBreakerController vaseBreakerController = new VaseBreakerController();
     private final WallnutBowlingController wallnutBowlingController = new WallnutBowlingController();
+    private final IZombieController iZombieController = new IZombieController();
+    private final BeghouledController beghouledController = new BeghouledController();
+    private final ZombotanyController zombotanyController = new ZombotanyController();
     private final TravelLogController controller = new TravelLogController();
     @Override
     public void check(Scanner scanner) {
@@ -29,6 +31,12 @@ public class TravelLogMenu implements AppMenu{
             startVasebreaker(line);
         }  else if (TravelLogMenuCommands.START_WALLNUT_BOWLING.matches(line)) {
             startWallnutBowling(line);
+        }  else if (TravelLogMenuCommands.START_I_ZOMBIE.matches(line)) {
+            startIZombie(line);
+        }  else if (TravelLogMenuCommands.START_BEGHOULDED.matches(line)) {
+            startBeghouled(line);
+        }  else if (TravelLogMenuCommands.START_ZOMBOTANY.matches(line)) {
+            startZombotany(line);
         }  else if (TravelLogMenuCommands.CURRENT_MENU_REGEX.matches(line)) {
             print(controller.showCurrentMenu());
         }  else if (TravelLogMenuCommands.EXIT_MENU_REGEX.matches(line)) {
@@ -52,6 +60,24 @@ public class TravelLogMenu implements AppMenu{
         print(wallnutBowlingController.startStage(stage));
     }
 
+
+    private void startIZombie(String line) {
+        Matcher matcher = TravelLogMenuCommands.START_I_ZOMBIE.getMatcher(line);
+        Integer stage = parseStage(matcher);
+       // if (stage != null) print(iZombieController.startStage(stage));
+    }
+
+    private void startBeghouled(String line) {
+        Matcher matcher = TravelLogMenuCommands.START_BEGHOULDED.getMatcher(line);
+        Integer stage = parseStage(matcher);
+       // if (stage != null) print(beghouledController.startStage(stage));
+    }
+
+    private void startZombotany(String line) {
+        Matcher matcher = TravelLogMenuCommands.START_ZOMBOTANY.getMatcher(line);
+        Integer stage = parseStage(matcher);
+        //if (stage != null) print(zombotanyController.startStage(stage));
+    }
     private Integer parseStage(Matcher matcher) {
         if (matcher == null) {
             invalidCommand();

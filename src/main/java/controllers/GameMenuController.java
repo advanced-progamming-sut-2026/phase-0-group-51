@@ -1,8 +1,11 @@
 package controllers;
 
+import Data.database.NewsRepository;
 import Data.database.PlantRepository;
 import Data.database.ProgressRepository;
 import Data.database.UserRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import models.App;
 import models.Result;
 import models.User;
@@ -10,6 +13,8 @@ import models.enums.Menu;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+
+import java.util.Set;
 
 public class GameMenuController {
     private static final ChapterTheme[] ADVENTURE_CHAPTERS = {
@@ -199,6 +204,18 @@ public class GameMenuController {
         if (user == null || chapterIndex != 0 || levelIndex != 0) {
             return;
         }
-        PlantRepository.unlockPlants(user.getId(), CHAPTER_ONE_LEVEL_ONE_PLANTS);
+        Set<Integer> previouslyUnlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        NewsRepository newsRepository = new NewsRepository();
+        for (int plantId : CHAPTER_ONE_LEVEL_ONE_PLANTS) {
+            if (previouslyUnlocked.contains(plantId)) {
+                continue;
+            }
+            PlantRepository.unlockPlant(user.getId(), plantId);
+            PlantData plant = PlantRegistry.getById(plantId);
+            String plantName = plant == null ? "Plant #" + plantId : plant.name();
+            newsRepository.createNewsForUser(user.getId(),
+                    "New plant unlocked: " + plantName + "."
+            );
+        }
     }
 }

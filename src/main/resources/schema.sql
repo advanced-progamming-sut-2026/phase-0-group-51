@@ -90,6 +90,14 @@ CREATE TABLE IF NOT EXISTS user_minigames (
     times_played INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, minigame_id)
     );
+CREATE TABLE IF NOT EXISTS user_minigame_progress (
+    user_id INTEGER NOT NULL,
+    minigame_type TEXT NOT NULL,
+    highest_unlocked_stage INTEGER NOT NULL DEFAULT 1,
+    highest_completed_stage INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, minigame_type),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS news (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -132,7 +140,14 @@ CREATE TABLE IF NOT EXISTS zombie_template (
      wave_point_cost REAL NOT NULL DEFAULT 100,
      weight INTEGER NOT NULL DEFAULT 1000
 );
-
+CREATE TABLE IF NOT EXISTS user_unlocked_zombies (
+      user_id INTEGER NOT NULL,
+      zombie_alias TEXT NOT NULL,
+      PRIMARY KEY (user_id, zombie_alias),
+      FOREIGN KEY (user_id)
+      REFERENCES users(id)
+      ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS zombie_behavior_template (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -185,7 +200,7 @@ CREATE TABLE IF NOT EXISTS zombie_behavior_template (
     -- TransformBehavior
        transform_type TEXT,
        transform_interval INTEGER,
-       transform_range INTEGER
+       transform_range INTEGER,
     -- Sun steal
        sun_steal_max_amount INTEGER
 );

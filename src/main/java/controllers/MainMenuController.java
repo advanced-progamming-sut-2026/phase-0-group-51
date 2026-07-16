@@ -1,16 +1,51 @@
 package controllers;
 
+import Data.database.NewsRepository;
+import Data.database.UserRepository;
 import models.App;
 import models.Result;
+import models.User;
 import models.enums.Menu;
 import models.games.ScoringGame;
 
 public class MainMenuController {
-    public void logout(){
-        App.getInstance().setCurrentMenu(Menu.SIGN_UP_MENU);
+    private final UserRepository repository;
+    private final NewsRepository newsRepository;
+    public MainMenuController() {
+        this.repository = new UserRepository();
+        this.newsRepository = new NewsRepository();
+    }
+    public Result logout(){
+        App app = App.getInstance();
+        if (app.getLoggedInUser() == null) {
+            return new Result(false, "No user is currently logged in.\n", null);
+        }
+        boolean cleared = repository.clearStayLoggedIn();
+        if (!cleared) {
+            return new Result(false,
+                    "Logout failed because the saved session " + "could not be cleared.\n",
+                    null
+            );
+        }
+        app.setLoggedInUser(null);
+        app.setCurrentGame(null);
+        app.setCurrentMenu(Menu.SIGN_UP_MENU);
+        return new Result(
+                true, "Logout successful.\n", null
+        );
     }
     public Result showCurrentMenu(){
-        return new Result(true,"You are now in the main menu.\n",null);
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return new Result(false, "You must log in first.\n", null);
+        }
+        int unreadCount = newsRepository.countUnreadNews(user.getId());
+        String newsOption = unreadCount > 0
+                ? "news [NEW: " + unreadCount + "]"
+                : "news";
+        String message =
+                "You are now in the main menu.\n" +  "- " + newsOption + "\n";
+        return new Result(true, message, null);
     }
     public Result enterMenu(String menuName){
         switch (menuName.toLowerCase()){

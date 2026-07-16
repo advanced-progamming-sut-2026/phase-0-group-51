@@ -1,10 +1,12 @@
 package controllers;
 
 import Data.database.QuestsRepository;
+import controllers.miniGamesController.MinigameProgressService;
 import models.App;
 import models.Result;
 import models.User;
 import models.enums.Menu;
+import models.minigames.MinigameType;
 import models.quests.*;
 
 import java.util.List;
@@ -12,6 +14,7 @@ import java.util.Locale;
 
 public class TravelLogController {
     private final QuestService questService = QuestService.getInstance();
+    private final MinigameProgressService minigameProgressService = new MinigameProgressService();
     private String currentPage = "main";
     public Result changePage(String pageName) {
         String normalized = normalize(pageName);
@@ -28,12 +31,12 @@ public class TravelLogController {
     }
 
     public Result showCurrentPage() {
-        if (currentPage.equals("minigame")) {
-            return success(minigamePage());
-        }
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
-            return failure("You must log in before viewing quests.\n");
+            return failure("You must log in before viewing the Travel Log.\n");
+        }
+        if (currentPage.equals("minigame")) {
+            return success(minigamePage(user));
         }
         QuestType type = QuestType.fromPageName(currentPage);
         List<QuestsRepository.QuestEntry> entries = questService.getPage(user, type);
@@ -107,20 +110,40 @@ public class TravelLogController {
         return userQuest.isCompleted() ? "READY TO CLAIM" : "IN PROGRESS";
     }
 
-    private String minigamePage() {
-        return """
-                MINIGAMES
-                Vasebreaker: stages 1-3
-                start vasebreaker -s <stage>
-                Wall-nut Bowling: stages 1-3
-               start wallnut bowling -s <stage>
-                I, Zombie: stages 1-3
-                start IZombie -s <stage>
-                Beghouled: stages 1-3
-                start Beghouled -s <stage>
-                Zombotany: stages 1-3
-                start Zombotany -s <stage>
-                """;
+    private String minigamePage(User user) {
+        StringBuilder output = new StringBuilder("MINIGAMES\n");
+        appendMinigame(
+                output, user, MinigameType.VASEBREAKER,
+                "start vasebreaker -s <stage>"
+        );
+        appendMinigame(
+                output, user, MinigameType.WALLNUT_BOWLING,
+                "start wallnut bowling -s <stage>"
+        );
+        appendMinigame(
+                output, user, MinigameType.I_ZOMBIE,
+                "start IZombie -s <stage>"
+        );
+        appendMinigame(
+                output, user, MinigameType.BEGHOULDED,
+                "start Beghouled -s <stage>"
+        );
+        appendMinigame(
+                output, user, MinigameType.ZOMBOTANY,
+                "start Zombotany -s <stage>"
+        );
+        return output.toString();
+    }
+
+    private void appendMinigame(
+            StringBuilder output,
+            User user,
+            MinigameType type,
+            String command
+    ) {
+        output.append(type.getDisplayName()).append(":\n")
+                .append(minigameProgressService.formatStages(user.getId(), type))
+                .append("  Use: ").append(command).append("\n\n");
     }
 
     private boolean isValidPage(String page) {

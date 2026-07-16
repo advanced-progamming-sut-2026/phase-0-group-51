@@ -1,7 +1,9 @@
 package models.games;
 
 
+import Data.database.NewsRepository;
 import Data.database.PlantRepository;
+import Data.database.ProgressRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
@@ -214,27 +216,51 @@ public class Game{
         ChapterTheme currentTheme = chapters.get(currentChapterIndex);
         int nextLevelIndex = currentLevelIndex;
         int nextChapterIndex = currentChapterIndex;
-
         if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
             nextLevelIndex++;
-        } else if (currentChapterIndex + 1 < chapters.size()) {
+        } else if (currentChapterIndex + 1
+                < chapters.size()) {
             nextChapterIndex++;
             nextLevelIndex = 0;
         }
-
         int newChapter = nextChapterIndex + 1;
         int newLevel = nextLevelIndex + 1;
-
         User user = App.getInstance().getLoggedInUser();
-        if (user != null) {
-            Data.database.ProgressRepository progressRepo = new Data.database.ProgressRepository();
-            int[] currentProgress = progressRepo.getCurrentProgress(user.getId());
-            boolean chapterAdvanced = newChapter > currentProgress[0];
-            boolean levelAdvanced = newChapter == currentProgress[0]
-                    && newLevel > currentProgress[1];
-            if (chapterAdvanced || levelAdvanced) {
-                progressRepo.saveProgress(user.getId(), newChapter, newLevel);
-            }
+        if (user == null) {
+            return;
+        }
+        ProgressRepository progressRepository = new ProgressRepository();
+        int[] oldProgress = progressRepository.getCurrentProgress(user.getId());
+        boolean chapterAdvanced = newChapter > oldProgress[0];
+        boolean levelAdvanced = newChapter == oldProgress[0] && newLevel > oldProgress[1];
+        if (!chapterAdvanced && !levelAdvanced) {
+            return;
+        }
+        boolean saved = progressRepository.saveProgress(user.getId(), newChapter, newLevel);
+        if (!saved) {
+            gameState.logEvent(
+                    "Progress could not be saved.\n"
+            );
+            return;
+        }
+        NewsRepository newsRepository = new NewsRepository();
+        ChapterTheme unlockedTheme = chapters.get(nextChapterIndex);
+        if (chapterAdvanced) {
+            newsRepository.createNewsForUser(
+                    user.getId(),
+                    "New chapter unlocked: "
+                            + unlockedTheme.getName()
+                            + ". Level 1 is now available."
+            );
+        } else {
+            newsRepository.createNewsForUser(
+                    user.getId(),
+                    "New level unlocked: "
+                            + unlockedTheme.getName()
+                            + " Level "
+                            + newLevel
+                            + "."
+            );
         }
     }
 }

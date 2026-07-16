@@ -617,8 +617,7 @@ public class GamingController {
         if (state.hasDeadline()) {
             output.append("Dead Line: before column ")
                     .append(state.getDeadlineColumn())
-                    .append("; don't you dare miss the dead line .\n");
-        }
+                    .append("; don't you dare miss the dead line .\n");}
         if (game.isConveyorBeltLevel()) {
             output.append("Conveyor: ");
             List<PlantData> belt = game.getConveyorBeltPlants();

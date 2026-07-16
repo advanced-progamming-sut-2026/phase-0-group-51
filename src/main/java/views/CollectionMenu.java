@@ -33,6 +33,11 @@ public class CollectionMenu implements AppMenu{
             handleUpgrade(line);
         } else if (CollectionMenuCommands.PURCHASE_PLANT_REGEX.matches(line)) {
             handlePurchase(line);
+        } else if (CollectionMenuCommands.EXIT_MENU_REGEX.matches(line)) {
+            models.App.getInstance().setCurrentMenu(models.enums.Menu.GAME_MENU);
+            System.out.println("You returned to the Game Menu.");
+        } else {
+            invalidCommand();
         }
     }
 
