@@ -78,7 +78,7 @@ public enum Lobber implements PlantType {
                 target.getX(),
                 target.getLane(),
                 new ArcMove(),
-                0
+                splashRadius
         ).withSource(plant));
     }
 

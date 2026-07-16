@@ -614,6 +614,11 @@ public class GamingController {
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
         if (game instanceof ScoringGame scoringGame) {
             output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}
+        if (state.hasDeadline()) {
+            output.append("Dead Line: before column ")
+                    .append(state.getDeadlineColumn())
+                    .append("; don't you dare miss the dead line .\n");
+        }
         if (game.isConveyorBeltLevel()) {
             output.append("Conveyor: ");
             List<PlantData> belt = game.getConveyorBeltPlants();
@@ -636,6 +641,10 @@ public class GamingController {
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             output.append("Row ").append(lane + 1).append(": ");
             for (int column = 0; column < board.getColumnCount(); column++) {
+                if (state.hasDeadline()
+                        && column == state.getDeadlineColumn() - 1) {
+                    output.append("|| ");
+                }
                 Tile tile = board.getTile(lane, column);
                 char symbol = '.';
                 boolean hasZombie = tile.hasZombie(state);
@@ -649,7 +658,7 @@ public class GamingController {
                 output.append('[').append(symbol).append("] ");}
             output.append('\n');}
         output.append("Legend: P=plant, F=frozen plant, Z=zombie, G=grave, ")
-                .append("I=ice block, ^=slide up, v=slide down\n");
+                .append("I=ice block, ^=slide up, v=slide down, ||=Dead Line\n");
         return success(output.toString());
     }
     private boolean scoringGameIsActive() {

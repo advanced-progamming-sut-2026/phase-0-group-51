@@ -10,6 +10,18 @@ public enum ZombieType {
     IMP("ZombieImp"),
     DARK_IMP_DRAGON("ZombieDarkImpDragon"),
 
+    MODERN_ALL_STAR("ZombieModernAllStar"),
+    LOST_CITY_JANE("ZombieLostCityJane"),
+    CRYSTAL_SKULL("ZombieCrystalSkull"),
+    PROSPECTOR("ZombieProspector"),
+    PIANO("ZombiePiano"),
+    NEWSPAPER("ZombieNewspaper"),
+    ARCADE("ZombieArcade"),
+
+    // Extra zombies from the project document
+    BARREL_ROLLER("ZombieBarrelRoller"),
+    TURQUOISE("ZombieTurquoise"),
+
     // Gargantuar
     GARGANTUAR("ZombieGargantuar"),
 
@@ -31,20 +43,8 @@ public enum ZombieType {
     // Dark Ages
     DARK_JUGGLER("ZombieDarkJuggler"),
     WIZARD("ZombieWizard"),
-    DARK_KING("ZombieDarkKing"),
+    DARK_KING("ZombieDarkKing");
 
-    // Modern Day
-    MODERN_ALL_STAR("ZombieModernAllStar"),
-    LOST_CITY_JANE("ZombieLostCityJane"),
-    CRYSTAL_SKULL("ZombieCrystalSkull"),
-    PROSPECTOR("ZombieProspector"),
-    PIANO("ZombiePiano"),
-    NEWSPAPER("ZombieNewspaper"),
-    ARCADE("ZombieArcade"),
-
-    // Extra zombies from the project document
-    BARREL_ROLLER("ZombieBarrelRoller"),
-    TURQUOISE("ZombieTurquoise");
 
     private final String alias;
 
