@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Plant.Plant;
+import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
@@ -247,6 +248,7 @@ public class Zombie {
 
 
 
+    private static final double LOOT_DROP_CHANCE = 0.10;
     private void die(GameState gs, QuestKillSourceType sourceType, Plant sourcePlant) {
         if (dead) {
             return;
@@ -257,16 +259,47 @@ public class Zombie {
         gs.getQuestTracker().recordZombieKill(
                 this, sourceType, sourcePlant, gs.getTickCounter(), mower);
         gs.logEvent("Zombie of type " + alias + " is dead at ("
-                + String.format(java.util.Locale.US, "%.2f", x + 1)
-                + ", " + (lane + 1) + ")\n");
+            + String.format(java.util.Locale.US, "%.2f", x + 1)
+            + ", " + (lane + 1) + ")\n");
         if (glowing && gs.addPlantFood()) {
             gs.logEvent("The glowing zombie dropped a plant food; you have "
-                    + gs.getPlantFoodCount() + " plant foods now.\n");
+                + gs.getPlantFoodCount() + " plant foods now.\n");
+        }
+        if (Math.random() < LOOT_DROP_CHANCE) {
+            dropLoot(gs);
         }
         for (ZombieBehavior behavior : behaviors) {
             behavior.onDeath(this, gs);
         }
         gs.removeZombie(this);
+    }
+
+    private void dropLoot(GameState gs) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return;
+        }
+        String[] options = {"coin", "diamond", "pot"};
+        String item = options[(int) (Math.random() * options.length)];
+        int count;
+        switch (item) {
+            case "coin" -> {
+                user.setCoins(user.getCoins() + 1);
+                count = user.getCoins();
+            }
+            case "diamond" -> {
+                user.setGems(user.getGems() + 1);
+                count = user.getGems();
+            }
+            default -> {
+                if (!user.getGreenHouse().unlockNextPot()) {
+                    return;
+                }
+                count = user.getGreenHouse().countUnlockedPots();
+            }
+        }
+        gs.logEvent("A zombie dropped a " + item + "; you have "
+            + count + " " + item + "s now.\n");
     }
 
     public Zombie copy() {

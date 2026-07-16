@@ -34,10 +34,10 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
     @Override
     public void onTick(Zombie zombie, GameState state) {
-        if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
-            tickSnowballBarrage(zombie, state);
-            return;
-        }
+       // if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
+           // tickSnowballBarrage(zombie, state);
+           // return;
+        //}
         if (--cooldown > 0) {
             return;
         }
@@ -50,7 +50,7 @@ public class RangedAttackBehavior implements PersistableBehavior {
                 // IceAge hunter
                 Plant target = board.findNearestPlantInRange(lane, col, range);
                 if (target != null) {
-                    target.addFrostLevel(gs, "Hunter snowball");
+                    target.addFrostLevel(state, "Hunter snowball");
                 }
             }
             case OCTOPUS_NET -> {
@@ -63,16 +63,16 @@ public class RangedAttackBehavior implements PersistableBehavior {
             case JUGGLE_BALL -> {
                 Plant target = board.findNearestPlantInRange(lane, col, range);
                 if (target != null) {
-                    target.takeDamage(extraParam > 0 ? extraParam : DEFAULT_JUGGLE_DAMAGE, gs);
+                    target.takeDamage(extraParam > 0 ? extraParam : DEFAULT_JUGGLE_DAMAGE, state);
                 }
             }
-            case HOOK_PULL -> hookPull(board, lane, col, gs);
+            case HOOK_PULL -> hookPull(board, lane, col, state);
             case LASER_BEAM -> {
                 // Crystal skull: hits every plant ahead of it in the lane.
                 for (Plant plant : board.getPlantsInLane(lane)) {
                     int dist = col - plant.getPosX();
                     if (dist >= 0 && dist <= range) {
-                        plant.takeDamage(extraParam, gs);
+                        plant.takeDamage(extraParam, state);
                     }
                 }
             }

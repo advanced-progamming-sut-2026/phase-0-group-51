@@ -1,6 +1,7 @@
 package models.Zombie.Behavior;
 
 import lombok.Getter;
+import models.Plant.Lobber;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -61,7 +62,7 @@ public class DamageReactionBehavior implements PersistableBehavior {
             }
             case DEFLECT_LOBBER -> {
                 // Parasol
-                if (plant.getPlantType() instanceof Lobber) {
+                if (plant.getPlantType().equals(Lobber.class)) {
                     return 0;
                 }
             }

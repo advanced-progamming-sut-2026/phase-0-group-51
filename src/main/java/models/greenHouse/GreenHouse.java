@@ -24,4 +24,28 @@ public class GreenHouse {
     public FlowerPot[][] getPots() {
         return pots;
     }
+
+    public boolean unlockNextPot() {
+        for (int row = 1; row <= ROWS; row++) {
+            for (int col = 1; col <= COLUMNS; col++) {
+                FlowerPot pot = getPot(row, col);
+                if (!pot.isUnlocked()) {
+                    pot.setUnlocked(true);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    public int countUnlockedPots() {
+        int count = 0;
+        for (int row = 1; row <= ROWS; row++) {
+            for (int col = 1; col <= COLUMNS; col++) {
+                if (getPot(row, col).isUnlocked()) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
 }
