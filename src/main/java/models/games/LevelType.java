@@ -45,6 +45,18 @@ public enum LevelType {
         }
     },
 
+    DEAD_LINE {
+        @Override
+        public void initialize(GameState state) {
+            state.configureDeadline(state.getCurrentLevel().deadlineColumn());
+        }
+
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager().isLevelCleared();
+        }
+    },
+
     PLANT_WHAT_YOU_GET{
         @Override
         // دادن خورشید اولیه  و توقف  خورشید و کاشت هرچی گیاه که میخوایم

@@ -162,21 +162,31 @@ public class Game{
         for (Zombie zombie : zombies) {
             zombie.onTick(gameState);
         }
+        if (gameState.checkDeadlineLoseCondition()) {
+            finishAsLoss();
+            return;
+        }
         gameState.tickMowers();
         gameState.getBoard().tickSuns(gameState);
-        if (gameState.getZombieWaveManager().isLevelCleared()) {
+        if (gameState.getCurrentLevel().type().isFinished(gameState)) {
             gameState.setFinished(true);
             gameState.setWon(true);
-            gameState.logEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.\n");
+            gameState.logEvent(
+                    "Dear humanz, zis is not done yet; "
+                            + "we will come back to eat your brainz, humanz.\n"
+            );
             evaluateQuestRun(true);
             saveProgressInDatabase();
-        }
-        else if (gameState.checkLoseCondition()) {
-            gameState.setFinished(true);
-            gameState.setWon(false);
-            evaluateQuestRun(false);
+        } else if (gameState.checkLoseCondition()) {
+            finishAsLoss();
         }
 
+    }
+
+    private void finishAsLoss() {
+        gameState.setFinished(true);
+        gameState.setWon(false);
+        evaluateQuestRun(false);
     }
 
     private void evaluateQuestRun(boolean won) {
