@@ -46,6 +46,6 @@ public enum Homing implements PlantType {
                 plant.getPosY(),
                 target,
                 new HomingMove()
-        ));
+        ).withSource(plant));
     }
 }

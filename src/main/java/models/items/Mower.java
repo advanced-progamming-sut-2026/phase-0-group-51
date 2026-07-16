@@ -4,6 +4,7 @@ import lombok.Getter;
 import models.Board.Board;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.quests.QuestKillSourceType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +38,7 @@ public class Mower {
         for (Zombie zombie : new ArrayList<>(board.getZombiesInLane(rowNumber))) {
             if (!zombie.isDead()) {
                 killed.add(zombie.getAlias());
-                zombie.killInstantly(gameState);
+                zombie.killInstantly(gameState, QuestKillSourceType.MOWER);
             }
         }
 

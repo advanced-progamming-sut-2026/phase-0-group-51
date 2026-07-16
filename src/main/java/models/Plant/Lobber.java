@@ -79,7 +79,7 @@ public enum Lobber implements PlantType {
                 target.getLane(),
                 new ArcMove(),
                 splashRadius
-        ));
+        ).withSource(plant));
     }
 
     private boolean shouldLaunchButter(Plant plant, GameState state) {

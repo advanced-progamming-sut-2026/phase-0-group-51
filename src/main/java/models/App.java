@@ -3,6 +3,7 @@ package models;
 import Data.database.DataBaseManager;
 import Data.database.UserRepository;
 import Data.loader.PlantLoader;
+import Data.loader.QuestLoader;
 import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +22,7 @@ public class App {
     public ArrayList<User> users = new ArrayList<>();
     private App(){
         DataBaseManager.initializeDatabase();
+        QuestLoader.loadQuestsToDatabase();
         PlantLoader.load();
         ZombieRegistry.load();
 

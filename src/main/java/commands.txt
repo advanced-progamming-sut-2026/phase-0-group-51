@@ -75,9 +75,19 @@ shop daily
 shop buy -i <item_id> -n <count> [-t <plant_type>]
 shop buy daily
 
-travel log page <page_name>
+
+travel log page daily
+travel log page main
+travel log page epic
+travel log page minigame
+
+show quests
+claim quest -i <quest_id>
 start vasebreaker -s <level number>
 start wallnut bowling -s <level number>
+start Zombotany -s <level number>
+start IZombie -s <level number>
+start Beghouled -s <level number>
 --------
 Vasebreaker minigame:
 break vase -l (<x>, <y>)

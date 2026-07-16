@@ -10,6 +10,8 @@ import models.projectile.move.StraightMove;
 
 import java.util.List;
 
+import static models.Plant.PlantEnumSupport.projectileSpeed;
+
 public enum Shooter implements PlantType {
     PEASHOOTER(6, ShotPattern.FORWARD, 1, ElementType.NORMAL),
     REPEATER(7, ShotPattern.FORWARD, 2, ElementType.NORMAL),
@@ -21,6 +23,7 @@ public enum Shooter implements PlantType {
     MEGA_GATLING_PEA(21, ShotPattern.FORWARD, 4, ElementType.NORMAL);
 
     private static final double RAY_TOLERANCE = 0.45;
+
     private final int id;
     private final ShotPattern pattern;
     private final int shotCount;
@@ -51,6 +54,7 @@ public enum Shooter implements PlantType {
         if (!hasTarget(plant, state)) {
             return;
         }
+
         switch (pattern) {
             case FORWARD -> shootForward(plant, state);
             case THREE_LANES -> shootThreeLanes(plant, state);
@@ -65,7 +69,11 @@ public enum Shooter implements PlantType {
 
     private boolean hasTarget(Plant plant, GameState state) {
         return switch (pattern) {
-            case FORWARD -> zombieAheadInLane(plant, state, plant.getPosY());
+            case FORWARD -> zombieAheadInLane(
+                    plant,
+                    state,
+                    plant.getPosY()
+            );
             case THREE_LANES -> zombieInThreepeaterRange(plant, state);
             case ROTOBAGA -> hasZombieInAnyDirection(
                     plant,
@@ -88,6 +96,7 @@ public enum Shooter implements PlantType {
                 state.getBoard().getLaneCount() - 1,
                 plant.getPosY() + 1
         );
+
         for (int lane = firstLane; lane <= lastLane; lane++) {
             addStraightProjectile(plant, state, lane);
         }
@@ -120,7 +129,7 @@ public enum Shooter implements PlantType {
                 plant.getDamage(),
                 element,
                 plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.5),
+                projectileSpeed(plant, 0.5),
                 plant.getPosX(),
                 plant.getPosY(),
                 direction[0],
@@ -136,6 +145,7 @@ public enum Shooter implements PlantType {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -149,6 +159,7 @@ public enum Shooter implements PlantType {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -158,7 +169,8 @@ public enum Shooter implements PlantType {
             double[] direction
     ) {
         for (Zombie zombie : state.getZombiesInTheGame()) {
-            if (!zombie.isDead() && isOnRay(
+            if (!zombie.isDead()
+                    && isOnRay(
                     plant.getPosX(),
                     plant.getPosY(),
                     zombie.getX(),
@@ -168,6 +180,7 @@ public enum Shooter implements PlantType {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -176,10 +189,19 @@ public enum Shooter implements PlantType {
             GameState state,
             double[] direction
     ) {
-        for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
-            for (int column = 0; column < state.getBoard().getColumnCount(); column++) {
+        for (int lane = 0;
+             lane < state.getBoard().getLaneCount();
+             lane++) {
+
+            for (int column = 0;
+                 column < state.getBoard().getColumnCount();
+                 column++) {
+
                 Tile tile = state.getBoard().getTile(lane, column);
-                if (tile != null && tile.hasGrave() && isOnRay(
+
+                if (tile != null
+                        && tile.hasGrave()
+                        && isOnRay(
                         plant.getPosX(),
                         plant.getPosY(),
                         column,
@@ -190,6 +212,7 @@ public enum Shooter implements PlantType {
                 }
             }
         }
+
         return false;
     }
 
@@ -203,24 +226,34 @@ public enum Shooter implements PlantType {
         double length = Math.hypot(direction[0], direction[1]);
         double unitX = direction[0] / length;
         double unitY = direction[1] / length;
+
         double relativeX = targetX - originX;
         double relativeY = targetY - originY;
-        double forwardDistance = relativeX * unitX + relativeY * unitY;
+
+        double forwardDistance =
+                relativeX * unitX + relativeY * unitY;
+
         if (forwardDistance <= 0) {
             return false;
         }
+
         double perpendicularDistance = Math.abs(
                 relativeX * unitY - relativeY * unitX
         );
+
         return perpendicularDistance <= RAY_TOLERANCE;
     }
 
-    private void addStraightProjectile(Plant plant, GameState state, int lane) {
+    private void addStraightProjectile(
+            Plant plant,
+            GameState state,
+            int lane
+    ) {
         state.getBoard().addProjectile(Projectile.straight(
                 plant.getDamage(),
                 element,
                 plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.5),
+                projectileSpeed(plant, 0.5),
                 plant.getPosX(),
                 lane,
                 new StraightMove(),
@@ -233,8 +266,10 @@ public enum Shooter implements PlantType {
         if (element != ElementType.ICE) {
             return 0;
         }
+
         return (int) Math.round(
-                plant.getPlantStat().chillDuration() * state.getTicksPerSecond()
+                plant.getPlantStat().chillDuration()
+                        * state.getTicksPerSecond()
         );
     }
 
@@ -243,26 +278,35 @@ public enum Shooter implements PlantType {
             GameState state,
             int lane
     ) {
-        List<Zombie> zombies = state.getBoard().getZombiesInLane(lane);
+        List<Zombie> zombies =
+                state.getBoard().getZombiesInLane(lane);
+
         for (Zombie zombie : zombies) {
-            if (!zombie.isDead() && zombie.getX() >= plant.getPosX()) {
+            if (!zombie.isDead()
+                    && zombie.getX() >= plant.getPosX()) {
                 return true;
             }
         }
+
         return false;
     }
 
-    private static boolean zombieInThreepeaterRange(Plant plant, GameState state) {
+    private static boolean zombieInThreepeaterRange(
+            Plant plant,
+            GameState state
+    ) {
         int firstLane = Math.max(0, plant.getPosY() - 1);
         int lastLane = Math.min(
                 state.getBoard().getLaneCount() - 1,
                 plant.getPosY() + 1
         );
+
         for (int lane = firstLane; lane <= lastLane; lane++) {
             if (zombieAheadInLane(plant, state, lane)) {
                 return true;
             }
         }
+
         return false;
     }
 

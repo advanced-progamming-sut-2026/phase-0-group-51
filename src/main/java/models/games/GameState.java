@@ -8,6 +8,8 @@ import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
 import models.items.Mower;
+import models.quests.QuestKillSourceType;
+import models.quests.QuestRunTracker;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +34,10 @@ public class GameState {
     private int tickCounter = 0;
     private ZombieWaveManager zombieWaveManager;
     private final Mower[] lawnMowers;
+    private final QuestRunTracker questTracker = new QuestRunTracker();
     private Consumer<String> eventLogger;
+    private int deadlineColumn = -1;
+    private boolean deadlineBreached;
     boolean mowerEnabled =true;
     public void logEvent(String message) {
         if (eventLogger != null) {
@@ -53,6 +58,9 @@ public class GameState {
         }
     }
     public boolean checkLoseCondition() {
+        if (checkDeadlineLoseCondition()) {
+            return true;
+        }
         if (!mowerEnabled) {
             return false;
         }
@@ -69,10 +77,54 @@ public class GameState {
         }
         return false;
     }
+
+    public void configureDeadline(int userFacingColumn) {
+        if (userFacingColumn < 1 || userFacingColumn > board.getColumnCount()) {
+            throw new IllegalArgumentException(
+                    "Deadline column must be inside the board."
+            );
+        }
+        deadlineColumn = userFacingColumn;
+        deadlineBreached = false;
+        logEvent(
+                "Deadline is haunting you : zombies must not cross the line before column "
+                        + deadlineColumn + ".\n"
+        );
+    }
+
+    public boolean hasDeadline() {
+        return deadlineColumn > 0;
+    }
+
+    public boolean checkDeadlineLoseCondition() {
+        if (!hasDeadline()) {
+            return false;
+        }
+        if (deadlineBreached) {
+            return true;
+        }
+
+        double deadlineX = deadlineColumn - 1.0;
+        for (Zombie zombie : zombiesInTheGame) {
+            if (zombie.isDead() || zombie.isHypnotized()) {
+                continue;
+            }
+            if (zombie.getX() < deadlineX) {
+                deadlineBreached = true;
+                logEvent(
+                        zombie.getAlias() + " crossed the Dead Line before column "
+                                + deadlineColumn + " in row "
+                                + (zombie.getLane() + 1) + "; YOU ARE PASSED YOUR DEADLINE LOSER!!!\n"
+                );
+                return true;
+            }
+        }
+        return false;
+    }
     private void killAllZombiesInLane(int lane) {
         for (Zombie z : zombiesInTheGame) {
             if (z.getLane() == lane) {
-                z.killInstantly(this);
+                z.killInstantly(this, QuestKillSourceType.MOWER);
             }
         }
     }
@@ -116,6 +168,7 @@ public class GameState {
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
     public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
@@ -138,10 +191,13 @@ public class GameState {
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
     public void pluckPlant(Plant plant, Tile tile){
-        if (plant == null || tile == null || tile.getPlant() != plant) throw new IllegalArgumentException("Plant is not on this tile");
+        if (plant == null || tile == null || tile.getPlant() != plant) {
+            throw new IllegalArgumentException("Plant is not on this tile");
+        }
         tile.removePlant();
         plant.setMarkedForRemoval(true);
     }
