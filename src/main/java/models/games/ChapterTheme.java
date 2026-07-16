@@ -49,7 +49,7 @@ public enum ChapterTheme {
             List.of(
                     new Level(1, LevelType.NORMAL, 2, 1000f, frostbiteLevelOne()),
                     new Level(2, LevelType.NORMAL, 3, 1500f, frostbiteLevelTwo()),
-                    new Level(3, LevelType.SAVE_OUR_SEEDS, 4, 2000f, frostbiteLevelThree()),
+                    new Level(3, LevelType.DEAD_LINE, 4, 2000f, frostbiteLevelThree(), 3),
                     new Level(4, LevelType.BOSS, 5, 2000f, frostbiteLevelFour())
             ),
             TimeOfTheDay.DAY

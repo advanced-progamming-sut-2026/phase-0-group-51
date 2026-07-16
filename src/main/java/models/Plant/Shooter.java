@@ -129,163 +129,149 @@ public enum Shooter implements PlantType {
         ));
     }
 
-    static void shootStraight(Plant plant, GameState state, int shotCount, ElementType element) {
-        if (!zombieInLane(plant, state)) {
-            return;
-        }
-        for (int i = 0; i < shotCount; i++) {
-            state.getBoard().addProjectile(Projectile.straight(
-                    plant.getDamage(),
-                    element,
-                    plant.getPlantTags(),
-                    projectileSpeed(plant),
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    new StraightMove(),
-                    1,
-                    effectDurationTicks(plant, state, element)
-            ).withSource(plant));
-    private boolean hasStarfruitTarget(Plant plant, GameState state) {
-        for (double[] direction : StarMove.STARFRUIT_DIRECTIONS) {
-            if (hasZombieInDirection(plant, state, direction)
-                    || hasGraveInDirection(plant, state, direction)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    private boolean hasZombieInAnyDirection(
-            Plant plant,
-            GameState state,
-            double[][] directions
-    ) {
-        for (double[] direction : directions) {
-            if (hasZombieInDirection(plant, state, direction)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean hasZombieInDirection(
-            Plant plant,
-            GameState state,
-            double[] direction
-    ) {
-        for (Zombie zombie : state.getZombiesInTheGame()) {
-            if (!zombie.isDead() && isOnRay(
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    zombie.getX(),
-                    zombie.getLane(),
-                    direction
-            )) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean hasGraveInDirection(
-            Plant plant,
-            GameState state,
-            double[] direction
-    ) {
-        for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
-            for (int column = 0; column < state.getBoard().getColumnCount(); column++) {
-                Tile tile = state.getBoard().getTile(lane, column);
-                if (tile != null && tile.hasGrave() && isOnRay(
-                        plant.getPosX(),
-                        plant.getPosY(),
-                        column,
-                        lane,
-                        direction
-                )) {
-                    return true;
+            private boolean hasStarfruitTarget (Plant plant, GameState state){
+                for (double[] direction : StarMove.STARFRUIT_DIRECTIONS) {
+                    if (hasZombieInDirection(plant, state, direction)
+                            || hasGraveInDirection(plant, state, direction)) {
+                        return true;
+                    }
                 }
+                return false;
             }
-        }
-        return false;
-    }
 
-    private static boolean isOnRay(
+            private boolean hasZombieInAnyDirection (
+                    Plant plant,
+                    GameState state,
+            double[][] directions
+    ){
+                for (double[] direction : directions) {
+                    if (hasZombieInDirection(plant, state, direction)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private boolean hasZombieInDirection (
+                    Plant plant,
+                    GameState state,
+            double[] direction
+    ){
+                for (Zombie zombie : state.getZombiesInTheGame()) {
+                    if (!zombie.isDead() && isOnRay(
+                            plant.getPosX(),
+                            plant.getPosY(),
+                            zombie.getX(),
+                            zombie.getLane(),
+                            direction
+                    )) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private boolean hasGraveInDirection (
+                    Plant plant,
+                    GameState state,
+            double[] direction
+    ){
+                for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
+                    for (int column = 0; column < state.getBoard().getColumnCount(); column++) {
+                        Tile tile = state.getBoard().getTile(lane, column);
+                        if (tile != null && tile.hasGrave() && isOnRay(
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                column,
+                                lane,
+                                direction
+                        )) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            private static boolean isOnRay (
             double originX,
             double originY,
             double targetX,
             double targetY,
             double[] direction
-    ) {
-        double length = Math.hypot(direction[0], direction[1]);
-        double unitX = direction[0] / length;
-        double unitY = direction[1] / length;
-        double relativeX = targetX - originX;
-        double relativeY = targetY - originY;
-        double forwardDistance = relativeX * unitX + relativeY * unitY;
-        if (forwardDistance <= 0) {
-            return false;
-        }
-        double perpendicularDistance = Math.abs(
-                relativeX * unitY - relativeY * unitX
-        );
-        return perpendicularDistance <= RAY_TOLERANCE;
-    }
+    ){
+                double length = Math.hypot(direction[0], direction[1]);
+                double unitX = direction[0] / length;
+                double unitY = direction[1] / length;
+                double relativeX = targetX - originX;
+                double relativeY = targetY - originY;
+                double forwardDistance = relativeX * unitX + relativeY * unitY;
+                if (forwardDistance <= 0) {
+                    return false;
+                }
+                double perpendicularDistance = Math.abs(
+                        relativeX * unitY - relativeY * unitX
+                );
+                return perpendicularDistance <= RAY_TOLERANCE;
+            }
 
-    private void addStraightProjectile(Plant plant, GameState state, int lane) {
-        state.getBoard().addProjectile(Projectile.straight(
-                plant.getDamage(),
-                element,
-                plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.5),
-                plant.getPosX(),
-                lane,
-                new StraightMove(),
-                1,
-                effectDurationTicks(plant, state)
-        ));
-    }
+            private void addStraightProjectile (Plant plant, GameState state,int lane){
+                state.getBoard().addProjectile(Projectile.straight(
+                        plant.getDamage(),
+                        element,
+                        plant.getPlantTags(),
+                        PlantEnumSupport.projectileSpeed(plant, 0.5),
+                        plant.getPosX(),
+                        lane,
+                        new StraightMove(),
+                        1,
+                        effectDurationTicks(plant, state)
+                ));
+            }
 
-    private int effectDurationTicks(Plant plant, GameState state) {
-        if (element != ElementType.ICE) {
-            return 0;
-        }
-        return (int) Math.round(
-                plant.getPlantStat().chillDuration() * state.getTicksPerSecond()
-        );
-    }
+            private int effectDurationTicks (Plant plant, GameState state){
+                if (element != ElementType.ICE) {
+                    return 0;
+                }
+                return (int) Math.round(
+                        plant.getPlantStat().chillDuration() * state.getTicksPerSecond()
+                );
+            }
 
-    private static boolean zombieAheadInLane(
-            Plant plant,
-            GameState state,
+            private static boolean zombieAheadInLane (
+                    Plant plant,
+                    GameState state,
             int lane
-    ) {
-        List<Zombie> zombies = state.getBoard().getZombiesInLane(lane);
-        for (Zombie zombie : zombies) {
-            if (!zombie.isDead() && zombie.getX() >= plant.getPosX()) {
-                return true;
+    ){
+                List<Zombie> zombies = state.getBoard().getZombiesInLane(lane);
+                for (Zombie zombie : zombies) {
+                    if (!zombie.isDead() && zombie.getX() >= plant.getPosX()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private static boolean zombieInThreepeaterRange (Plant plant, GameState state){
+                int firstLane = Math.max(0, plant.getPosY() - 1);
+                int lastLane = Math.min(
+                        state.getBoard().getLaneCount() - 1,
+                        plant.getPosY() + 1
+                );
+                for (int lane = firstLane; lane <= lastLane; lane++) {
+                    if (zombieAheadInLane(plant, state, lane)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private enum ShotPattern {
+                FORWARD,
+                THREE_LANES,
+                ROTOBAGA,
+                STARFRUIT
             }
         }
-        return false;
-    }
 
-    private static boolean zombieInThreepeaterRange(Plant plant, GameState state) {
-        int firstLane = Math.max(0, plant.getPosY() - 1);
-        int lastLane = Math.min(
-                state.getBoard().getLaneCount() - 1,
-                plant.getPosY() + 1
-        );
-        for (int lane = firstLane; lane <= lastLane; lane++) {
-            if (zombieAheadInLane(plant, state, lane)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private enum ShotPattern {
-        FORWARD,
-        THREE_LANES,
-        ROTOBAGA,
-        STARFRUIT
-    }
-}
