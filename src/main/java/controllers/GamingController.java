@@ -10,6 +10,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.Plant.Plant;
 import models.Plant.PlantFactory;
+import models.Plant.PlantTag;
 import models.Result;
 import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
@@ -111,11 +112,45 @@ public class GamingController {
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
         }
+        if (canStackSelectedPlant(selected, tile)) {
+            return createAndStackPlant(state, tile, selected, x, y);
+        }
         if (!tile.isOccupiable()) {
             return tileOccupationFailure(tile);
         }
         return createAndPlacePlant(state, tile, selected, x, y);
     }
+    private boolean canStackSelectedPlant(PlantData selected, Tile tile) {
+        return tile.hasPlant()
+                && selected.tags().contains(PlantTag.STACK)
+                && tile.getPlant().getId() == selected.id();
+    }
+
+    private Result createAndStackPlant(GameState state, Tile tile, PlantData selected, int x, int y) {
+        int availableAt = state.getPlantCooldownEnd(selected.id());
+        if (state.getTickCounter() < availableAt) {
+            int ticksLeft = availableAt - state.getTickCounter();
+            return failure("Plant is recharging for "
+                    + formatSeconds(ticksLeft, state.getTicksPerSecond()) + " more seconds.\n");
+        }
+        Plant addition = createPlantForCurrentUser(selected);
+        Plant existing = tile.getPlant();
+        try {
+            state.stackPlant(addition, existing);
+            state.startPlantCooldown(addition);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        String message = selected.name() + " stacked at (" + x + ", " + y + ").\n";
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null && PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
+            existing.feed(state);
+            PlantBoostRepository.consumeBoost(user.getId(), selected.id());
+            message += "The stored boost for " + selected.name() + " was activated on the stacked plant.\n";
+        }
+        return success(message);
+    }
+
     private Result createAndPlaceConveyorPlant(Game game, GameState state, Tile tile, PlantData selected, int x, int y
     ) {
         Plant plant = createPlantForCurrentUser(selected);
@@ -137,6 +172,12 @@ public class GamingController {
         User user = App.getInstance().getLoggedInUser();
         if (user == null || !PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
             return "";
+        }
+        boolean plantStillExists = !plant.isMarkedForRemoval()
+                && state.getBoard().getTileForPlant(plant) != null;
+        if (!plantStillExists) {
+            return "The stored boost was kept because "
+                    + selected.name() + " is an instant-use plant.\n";
         }
         plant.feed(state);
         PlantBoostRepository.consumeBoost(user.getId(), selected.id());
@@ -246,11 +287,21 @@ public class GamingController {
         if (!tile.hasPlant()) {
             return failure("There is no plant at (" + x + ", " + y + ").\n");
         }
+        Plant plant = tile.getPlant();
+        if (plant.isMarkedForRemoval() || plant.isDead()) {
+            return failure("This plant can no longer receive plant food.\n");
+        }
+        if (plant.isFrozenByIce() || plant.hasOctopus()) {
+            return failure("A covered plant cannot receive plant food.\n");
+        }
+        if (plant.isOnPlantFood()) {
+            return failure("This plant is already using plant food.\n");
+        }
         if (!state.consumePlantFood()) {
             return failure("You do not have any plant food.\n");
         }
-        tile.getPlant().feed(state);
-        return success(tile.getPlant().getName() + " was fed plant food; you have "
+        plant.feed(state);
+        return success(plant.getName() + " was fed plant food; you have "
                 + state.getPlantFoodCount() + " plant foods now.\n");
     }
 
@@ -653,6 +704,7 @@ public class GamingController {
                 else if (tile.hasPlant()) symbol = 'P';
                 else if (hasZombie) symbol = 'Z';else if (tile.hasGrave()) symbol = 'G';
                 else if (tile.isIceBlocked()) symbol = 'I';
+                else if (tile.isCrater()) symbol = 'C';
                 else if (tile.getIceFloorDirection() != null) {
                     symbol = tile.getIceFloorDirection().name().equals("UP") ? '^' : 'v';}
                 output.append('[').append(symbol).append("] ");}

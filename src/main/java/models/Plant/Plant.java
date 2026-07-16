@@ -13,7 +13,6 @@ public class Plant {
     private final String name;
     private final PlantType plantType;
     private int currentHP;
-    private static final float PLANT_FOOD_DURATION_TICKS = 10;
     public static final int MAX_FROST_LEVEL = 3;
     public static final int ICE_MAX_HEALTH = 600;
     private final List<PlantUpgrade> upgrades;
@@ -34,6 +33,7 @@ public class Plant {
     private int stackCount = 1;
     // for wramp-up plants
     private int growthStage = 0;
+    private int ageTicks = 0;
     // removing themselves after acting
     private boolean markedForRemoval = false;
     private int posX;
@@ -67,6 +67,8 @@ public class Plant {
         if (isFrozenByIce() || hasOctopus() || isTransformed()) {
             return;
         }
+        ageTicks++;
+        plantType.onEveryTick(this, gameState);
         if (disabledTicksRemaining > 0) {
             disabledTicksRemaining--;
             return;
@@ -103,9 +105,36 @@ public class Plant {
     }
 
     public void feed(GameState gameState) {
+        if (markedForRemoval || isDead() || isFrozenByIce() || hasOctopus() || isOnPlantFood()) {
+            return;
+        }
         plantType.onFeed(this, gameState);
-        ticksOfPlantFood = PLANT_FOOD_DURATION_TICKS;
+        ticksOfPlantFood = Math.max(0, plantType.plantFoodDurationTicks(this, gameState));
     }
+    public void setLifespanSeconds(double seconds, GameState state) {
+        lifespanRemaining = Math.max(0, (float) (seconds * state.getTicksPerSecond()));
+    }
+
+    public void resetLifespanSeconds(double seconds, GameState state) {
+        setLifespanSeconds(seconds, state);
+    }
+
+    public void forceReady(GameState state) {
+        tickFromLastAct = (float) (plantStat.actionInterval() * state.getTicksPerSecond());
+    }
+
+    public void healToFull() {
+        currentHP = plantStat.maxHp();
+    }
+
+    public void incrementStackCount(int maximum) {
+        stackCount = Math.min(maximum, stackCount + 1);
+    }
+
+    public boolean hasTemporaryArmor() {
+        return currentHP > plantStat.maxHp();
+    }
+
     public void disableFor(float ticks) {
         this.disabledTicksRemaining = ticks;
     }

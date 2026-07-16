@@ -130,6 +130,17 @@ public class Zombie {
             .findFirst().orElse(null);
     }
 
+    public boolean hasMetallicArmor() {
+        for (ZombieBehavior behavior : behaviors) {
+            if (behavior instanceof ArmorBehavior armor
+                    && armor.getDefinition().isMetallic()
+                    && !armor.isGone()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean pullMetallicArmor() {
         for (ZombieBehavior behavior : behaviors) {
             if (behavior instanceof ArmorBehavior armor && armor.tryMagnetPull()) {
@@ -195,6 +206,10 @@ public class Zombie {
         if (isFrozen() || isButtered()) {
             return;
         }
+        if (hypnotized) {
+            tickHypnotized(gs);
+            return;
+        }
         for (ZombieBehavior behavior : new ArrayList<>(behaviors)) {
             behavior.onTick(this, gs);
         }
@@ -210,6 +225,12 @@ public class Zombie {
             int wholeDamage = (int) eatDamageAccumulator;
             if (wholeDamage > 0) {
                 eatDamageAccumulator -= wholeDamage;
+                target.getPlantType().onEatenBy(
+                        target,
+                        this,
+                        wholeDamage,
+                        gs
+                );
                 target.takeDamage(wholeDamage, gs);
             }
         } else {
@@ -222,6 +243,27 @@ public class Zombie {
                 gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
             }
         }
+    }
+
+    private void tickHypnotized(GameState gs) {
+        Zombie enemy = gs.findNearestHostileZombieInRange(this, lane, x, 0.65f);
+        if (enemy != null) {
+            eating = true;
+            eatDamageAccumulator += (baseEatDps * damageMultiplier)
+                    / gs.getTicksPerSecond();
+            int wholeDamage = (int) eatDamageAccumulator;
+            if (wholeDamage > 0) {
+                eatDamageAccumulator -= wholeDamage;
+                enemy.takeDamage(wholeDamage, gs, null);
+            }
+            return;
+        }
+        eating = false;
+        float chillFactor = isChilled() ? CHILL_SPEED_FACTOR : 1.0f;
+        float previousX = x;
+        x -= direction * (baseSpeed * speedMultiplier * chillFactor)
+                / gs.getTicksPerSecond();
+        gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
     }
 
     private void tickEffects() {

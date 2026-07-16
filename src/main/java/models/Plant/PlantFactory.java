@@ -3,6 +3,7 @@ package models.Plant;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 
+import java.util.Comparator;
 import java.util.List;
 
 public final class PlantFactory {
@@ -43,6 +44,7 @@ public final class PlantFactory {
         return switch (data.id()) {
             case 1 -> SunProducer.SUNFLOWER.create();
             case 2 -> SunProducer.TWIN_SUNFLOWER.create();
+            case 3 -> SunProducer.SUN_SHROOM.create();
             case 4 -> SunProducer.PRIMAL_SUNFLOWER.create();
             case 5 -> SunProducer.GOLD_BLOOM.create();
             case 6 -> Shooter.PEASHOOTER.create();
@@ -50,10 +52,18 @@ public final class PlantFactory {
             case 8 -> Shooter.THREEPEATER.create();
             case 9 -> Shooter.SNOW_PEA.create();
             case 10 -> Shooter.ROTOBAGA.create();
+            case 11 -> Shooter.PEA_POD.create();
+            case 12 -> Shooter.SPLIT_PEA.create();
+            case 13 -> Shooter.CITRON.create();
+            case 14 -> Homing.CAULIPOWER.create();
+            case 15 -> Homing.ELECTRIC_BLUEBERRY.create();
             case 17 -> StrikeThrough.CACTUS.create();
             case 18 -> Shooter.FIRE_PEASHOOTER.create();
             case 19 -> Shooter.STARFRUIT.create();
+            case 20 -> Shooter.GOO_PEASHOOTER.create();
             case 21 -> Shooter.MEGA_GATLING_PEA.create();
+            case 22 -> Shooter.SEA_SHROOM.create();
+            case 23 -> Shooter.PUFF_SHROOM.create();
             case 24 -> StrikeThrough.FUME_SHROOM.create();
             case 25 -> Lobber.CABBAGE_PULT.create();
             case 26 -> Lobber.KERNEL_PULT.create();
@@ -63,12 +73,23 @@ public final class PlantFactory {
             case 30 -> Explosive.POTATO_MINE.create();
             case 31 -> Explosive.PRIMAL_POTATO_MINE.create();
             case 32 -> Explosive.CHERRY_BOMB.create();
+            case 33 -> Explosive.SQUASH.create();
             case 35 -> Explosive.JALAPENO.create();
+            case 36 -> Explosive.DOOM_SHROOM.create();
+            case 38 -> Explosive.ICEBERG_LETTUCE.create();
             case 39 -> Melee.BONK_CHOY.create();
             case 40 -> Melee.PHAT_BEET.create();
+            case 41 -> Melee.CHOMPER.create();
             case 42 -> Melee.WASABI_WHIP.create();
+            case 43 -> Melee.KIWIBEAST.create();
             case 44 -> WallNut.WALL_NUT.create();
+            case 45 -> WallNut.TALL_NUT.create();
+            case 46 -> WallNut.ENDURIAN.create();
+            case 47 -> WallNut.GARLIC.create();
+            case 48 -> WallNut.SWEET_POTATO.create();
             case 49 -> WallNut.EXPLODE_O_NUT.create();
+            case 51 -> WallNut.SUN_BEAN.create();
+            case 53 -> Homing.MAGNET_SHROOM.create();
             case 55 -> Homing.CAT_TAIL.create();
             default -> createDataDrivenPlant(data);
         };
@@ -84,6 +105,7 @@ public final class PlantFactory {
                 data.projectileSpeed()
         );
         List<PlantUpgrade> upgrades = data.upgrades().stream()
+                .sorted(Comparator.comparingInt(upgrade -> upgrade.level()))
                 .map(DataDrivenPlantUpgrade::new)
                 .map(upgrade -> (PlantUpgrade) upgrade)
                 .toList();

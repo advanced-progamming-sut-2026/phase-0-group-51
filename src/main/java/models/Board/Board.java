@@ -326,7 +326,12 @@ public class Board {
     }
 
     public List<Zombie> getRandomZombies(int count) {
-        List<Zombie> pool = new ArrayList<>(zombies);
+        List<Zombie> pool = new ArrayList<>();
+        for (Zombie zombie : zombies) {
+            if (!zombie.isDead()) {
+                pool.add(zombie);
+            }
+        }
         List<Zombie> chosen = new ArrayList<>();
         int n = Math.min(count, pool.size());
         for (int i = 0; i < n; i++) {
@@ -595,6 +600,29 @@ public class Board {
     public boolean isTileFree(int lane, int col) {
         Tile tile = getTile(lane, col);
         return tile != null && tile.isOccupiable();
+    }
+
+
+    public boolean moveZombieToAdjacentLane(Zombie zombie, GameState state) {
+        if (zombie == null || zombie.isDead()) {
+            return false;
+        }
+        List<Integer> candidates = new ArrayList<>();
+        if (zombie.getLane() > 0) {
+            candidates.add(zombie.getLane() - 1);
+        }
+        if (zombie.getLane() < laneCount - 1) {
+            candidates.add(zombie.getLane() + 1);
+        }
+        if (candidates.isEmpty()) {
+            return false;
+        }
+        int oldLane = zombie.getLane();
+        int newLane = candidates.get(random.nextInt(candidates.size()));
+        zombie.setLane(newLane);
+        state.logEvent(zombie.getAlias() + " moved from row "
+                + (oldLane + 1) + " to row " + (newLane + 1) + ".\n");
+        return true;
     }
 
     public void movePlant(Plant target, int lane, int col) {
