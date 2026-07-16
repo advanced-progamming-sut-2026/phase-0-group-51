@@ -68,17 +68,23 @@ public class QuestsRepository {
     public void saveAssignment(UserQuest assignment) {
         String sql = """
                 INSERT INTO user_quests
-                    (user_id, quest_id, progress, target_amount, reward_amount,
-                     is_completed, claimed, reset_date, parameter)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id, quest_id) DO UPDATE SET
-                    progress = excluded.progress,
-                    target_amount = excluded.target_amount,
-                    reward_amount = excluded.reward_amount,
-                    is_completed = excluded.is_completed,
-                    claimed = excluded.claimed,
-                    reset_date = excluded.reset_date,
-                    parameter = excluded.parameter
+                             (user_id, quest_id, progress, target_amount, reward_amount,
+                              is_completed, claimed, reset_date, parameter)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(user_id, quest_id) DO UPDATE SET
+                             progress = excluded.progress,
+                             target_amount = excluded.target_amount,
+                             reward_amount = excluded.reward_amount,
+                             is_completed = excluded.is_completed,
+                             claimed = excluded.claimed,
+                             reset_date = excluded.reset_date,
+                             parameter = excluded.parameter,
+                             completion_counted = CASE
+                                 WHEN COALESCE(user_quests.reset_date, '')
+                                      <> COALESCE(excluded.reset_date, '')
+                                 THEN 0
+                                 ELSE user_quests.completion_counted
+                             END
                 """;
         try (Connection connection = DataBaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -133,45 +139,138 @@ public class QuestsRepository {
         }
     }
 
-    public void addProgress(int userId, int questId, int amount) {
+    public boolean addProgress(int userId, int questId, int amount, QuestType questType
+    ) {
         if (amount <= 0) {
-            return;
+            return false;
         }
+
         String sql = """
-                UPDATE user_quests
-                SET progress = MIN(progress + ?, target_amount),
-                    is_completed = CASE
-                        WHEN progress + ? >= target_amount THEN 1
-                        ELSE is_completed
-                    END
-                WHERE user_id = ? AND quest_id = ? AND claimed = 0
-                """;
-        executeProgress(sql, amount, amount, userId, questId);
+            UPDATE user_quests
+            SET progress = MIN(progress + ?, target_amount),
+                is_completed = CASE
+                    WHEN progress + ? >= target_amount THEN 1
+                    ELSE is_completed
+                END
+            WHERE user_id = ?
+              AND quest_id = ?
+              AND claimed = 0
+              AND is_completed = 0
+            """;
+
+        return updateProgressAndCountCompletion(sql, amount, amount, userId, questId, questType);
     }
 
-    public void setProgress(int userId, int questId, int progress) {
+    public boolean setProgress(int userId, int questId, int progress, QuestType questType
+    ) {
         String sql = """
-                UPDATE user_quests
-                SET progress = MIN(MAX(?, 0), target_amount),
-                    is_completed = CASE WHEN ? >= target_amount THEN 1 ELSE 0 END
-                WHERE user_id = ? AND quest_id = ? AND claimed = 0
-                """;
-        executeProgress(sql, progress, progress, userId, questId);
+            UPDATE user_quests
+            SET progress = MIN(MAX(?, 0), target_amount),
+                is_completed = CASE
+                    WHEN ? >= target_amount THEN 1
+                    ELSE 0
+                END
+            WHERE user_id = ?
+              AND quest_id = ?
+              AND claimed = 0
+              AND is_completed = 0
+            """;
+
+        return updateProgressAndCountCompletion(sql, progress, progress, userId, questId, questType
+        );
     }
 
-    private void executeProgress(String sql, int first, int second, int userId, int questId) {
-        try (Connection connection = DataBaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, first);
-            statement.setInt(2, second);
-            statement.setInt(3, userId);
-            statement.setInt(4, questId);
-            statement.executeUpdate();
+    private boolean updateProgressAndCountCompletion(String progressSql, int firstValue,
+            int secondValue, int userId, int questId, QuestType questType
+    ) {
+        try (Connection connection = DataBaseManager.getConnection()) {
+            QuestDatabaseMigration.migrate(connection);
+            connection.setAutoCommit(false);
+
+            try {
+                try (PreparedStatement statement =
+                             connection.prepareStatement(progressSql)) {
+
+                    statement.setInt(1, firstValue);
+                    statement.setInt(2, secondValue);
+                    statement.setInt(3, userId);
+                    statement.setInt(4, questId);
+                    statement.executeUpdate();
+                }
+
+                boolean newlyCompleted = markCompletionCounted(connection, userId, questId
+                );
+
+                if (newlyCompleted) {
+                    incrementStoredQuestCounter(connection, userId, questType
+                    );
+                }
+
+                connection.commit();
+                return newlyCompleted;
+
+            } catch (SQLException | RuntimeException exception) {
+                connection.rollback();
+                throw exception;
+            }
+
         } catch (SQLException exception) {
-            throw databaseError("Could not update quest progress.", exception);
+            throw databaseError(
+                    "Could not update quest progress.",
+                    exception
+            );
         }
     }
 
+    private boolean markCompletionCounted(
+            Connection connection,
+            int userId,
+            int questId
+    ) throws SQLException {
+
+        String sql = """
+            UPDATE user_quests
+            SET completion_counted = 1
+            WHERE user_id = ?
+              AND quest_id = ?
+              AND is_completed = 1
+              AND completion_counted = 0
+            """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            statement.setInt(2, questId);
+
+            return statement.executeUpdate() == 1;
+        }
+    }
+
+    private void incrementStoredQuestCounter(
+            Connection connection,
+            int userId,
+            QuestType questType
+    ) throws SQLException {
+
+        String column = questType == QuestType.DAILY
+                ? "quest_daily_num"
+                : "quest_non_daily_num";
+
+        String sql = """
+            UPDATE users
+            SET %s = COALESCE(%s, 0) + 1
+            WHERE id = ?
+            """.formatted(column, column);
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "The quest owner's user record was not found."
+                );
+            }
+        }
+    }
     public boolean markClaimed(Connection connection, int userId, int questId)
             throws SQLException {
         String sql = """

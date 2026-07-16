@@ -11,6 +11,7 @@ answer -a <answer>
 menu logout
 
 menu enter chapter -c <chaptername>
+menu enter level -l <level-number>
 menu greenhouse
 menu travel-log
 menu leaderboard
@@ -60,6 +61,9 @@ show plants status
 show tile status -l (<x>, <y>)
 zombies info
 cheat spawn-zombie -t <zombie-type> -l <x, y>
+------Meow point game-----
+show score
+show scoring rules
 
 level 3 season 1:
 show conveyor
