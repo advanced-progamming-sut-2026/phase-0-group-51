@@ -7,6 +7,8 @@ public enum GameCommands implements Commands {
     SHOW_PLANT_STATUS_REGEX("^\\s*show\\s+plants?\\s+status\\s*$"),
     SHOW_CONVEYOR_REGEX("^\\s*show\\s+conveyor\\s*$"),
     SHOW_MAP_REGEX("^\\s*show\\s+map\\s*$"),
+    SHOW_SCORE_REGEX("^\\s*show\\s+score\\s*$"),
+    SHOW_SCORING_RULES_REGEX("^\\s*show\\s+scoring\\s+rules\\s*$"),
     CHEAT_ADD_PLANT_FOOD_REGEX("^\\s*cheat\\s+add-plant-food\\s*$"),
     FEED_PLANT_REGEX("^\\s*feed\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     PLUCK_PLANT_REGEX("^\\s*pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
@@ -18,7 +20,6 @@ public enum GameCommands implements Commands {
     PLANT_COLLECT_SUN_REGEX("^\\s*collect\\s+sun\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     ADVANCE_TIME_REGEX("^\\s*advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks\\s*$"),
     CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX);
-
     private final String regex;
 
     GameCommands(String regex) {

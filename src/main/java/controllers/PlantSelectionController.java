@@ -10,6 +10,7 @@ import models.Result;
 import models.User;
 import models.enums.Menu;
 import models.games.Game;
+import models.games.ScoringGame;
 
 import java.util.List;
 import java.util.Set;
@@ -104,7 +105,10 @@ public Result showCurrentMenu(){
             ,"You are now in the plant selection menu.\n",null);
 }
 public void exitMenu(){
-    App.getInstance().setCurrentMenu(Menu.GAME_MENU);
+    Game currentGame = App.getInstance().getCurrentGame();
+    boolean scoringGame = currentGame instanceof ScoringGame;
+    App.getInstance().setCurrentGame(null);
+    App.getInstance().setCurrentMenu(scoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU);
 }
 
 

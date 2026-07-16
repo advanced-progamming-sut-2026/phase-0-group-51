@@ -25,19 +25,15 @@ import java.util.Set;
 public final class QuestService {
     private static final QuestService INSTANCE =
             new QuestService(new QuestsRepository(), new Random());
-
     private final QuestsRepository repository;
     private final Random random;
-
     QuestService(QuestsRepository repository, Random random) {
         this.repository = repository;
         this.random = random;
     }
-
     public static QuestService getInstance() {
         return INSTANCE;
     }
-
     public void initializeForUser(int userId) {
         LocalDate today = LocalDate.now();
         for (Quest quest : repository.getAllQuests()) {
@@ -53,7 +49,6 @@ public final class QuestService {
             }
         }
     }
-
     private UserQuest createAssignment(int userId, Quest quest, LocalDate today) {
         String parameter = chooseParameter(userId, quest);
         int target = assignmentTarget(quest, parameter);
@@ -62,22 +57,17 @@ public final class QuestService {
                 userId, quest.getId(), 0, target, reward, false, false,
                 quest.getType() == QuestType.DAILY ? today : null, parameter);
     }
-
     private boolean assignmentNeedsRepair(Quest quest, UserQuest assignment) {
-        boolean parameterMissing = quest.getParameterOptions() != null
-                && !quest.getParameterOptions().isBlank()
-                && (assignment.getParameter() == null || assignment.getParameter().isBlank());
-        if (parameterMissing) {
+        if (parameterNeedsRepair(quest, assignment.getParameter())) {
             return true;
         }
         return assignment.getTargetAmount() != assignmentTarget(quest, assignment.getParameter())
                 || assignment.getRewardAmount() != assignmentReward(
-                        quest, assignment.getParameter());
+                quest, assignment.getParameter());
     }
-
     private UserQuest repairAssignment(int userId, Quest quest, UserQuest old) {
         String parameter = old.getParameter();
-        if (parameter == null || parameter.isBlank()) {
+        if (parameterNeedsRepair(quest, parameter)) {
             parameter = chooseParameter(userId, quest);
         }
         int target = assignmentTarget(quest, parameter);
@@ -88,7 +78,6 @@ public final class QuestService {
                 old.isCompleted() || progress >= target, old.isClaimed(),
                 old.getResetDate(), parameter);
     }
-
     private int assignmentTarget(Quest quest, String parameter) {
         return switch (quest.getEventType()) {
             case SUN_COLLECTED, MOWER_KILLS ->
@@ -96,7 +85,6 @@ public final class QuestService {
             default -> Math.max(1, quest.getTargetAmount());
         };
     }
-
     private int assignmentReward(Quest quest, String parameter) {
         int value = intParameter(parameter, 0);
         return switch (quest.getEventType()) {
@@ -106,7 +94,6 @@ public final class QuestService {
             default -> Math.max(0, quest.getRewardAmount());
         };
     }
-
     public List<QuestsRepository.QuestEntry> getPage(User user, QuestType type) {
         if (user == null) {
             throw new IllegalStateException("A logged-in user is required.");
@@ -114,7 +101,6 @@ public final class QuestService {
         initializeForUser(user.getId());
         return repository.getQuestEntries(user.getId(), type);
     }
-
     public void recordSunCollected(User user, int amount) {
         if (user == null || amount <= 0) {
             return;
@@ -127,11 +113,15 @@ public final class QuestService {
             UserQuest assignment = repository.getUserQuest(user.getId(), quest.getId())
                     .orElse(null);
             if (canProgress(assignment)) {
-                repository.addProgress(user.getId(), quest.getId(), amount);
+                boolean newlyCompleted = repository.addProgress(user.getId(), quest.getId(), amount, quest.getType()
+                );
+
+                if (newlyCompleted) {
+                    incrementQuestCounter(user, quest.getType());
+                }
             }
         }
     }
-
     public void evaluateAdventureRun(
             User user,
             GameState state,
@@ -153,20 +143,31 @@ public final class QuestService {
             }
             if (quest.getEventType() == QuestEventType.MAX_DIFFICULTY_WIN_STREAK) {
                 int next = won && difficultyLevel == 5 ? assignment.getProgress() + 1 : 0;
-                repository.setProgress(user.getId(), quest.getId(), next);
+                boolean newlyCompleted = repository.setProgress(user.getId(), quest.getId(), next, quest.getType());
+                if (newlyCompleted) {
+                    incrementQuestCounter(user, quest.getType());
+                }
                 continue;
             }
             int amount = evaluate(quest, assignment, tracker, state, chapter, won);
             if (amount > 0) {
-                repository.addProgress(user.getId(), quest.getId(), amount);
+                boolean newlyCompleted = repository.addProgress(user.getId(), quest.getId(), amount, quest.getType());
+                if (newlyCompleted) {
+                    incrementQuestCounter(user, quest.getType());
+                }
             }
         }
     }
-
+    private void incrementQuestCounter(User user, QuestType questType) {
+        if (questType == QuestType.DAILY) {
+            user.setQuestDailyNum(user.getQuestDailyNum() + 1);
+        } else {
+            user.setQuestNonDailyNum(user.getQuestNonDailyNum() + 1);
+        }
+    }
     private boolean canProgress(UserQuest assignment) {
         return assignment != null && !assignment.isClaimed() && !assignment.isCompleted();
     }
-
     private int evaluate(
             Quest quest,
             UserQuest assignment,
@@ -181,8 +182,10 @@ public final class QuestService {
             case SUN_COLLECTED -> 0;
             case CHAPTER_ZOMBIE_KILLS -> parameterMatchesChapter(parameter, chapter)
                     ? tracker.getTotalKills() : 0;
-            case PLANT_ONLY_KILLS -> Math.min(target, tracker.getPlantKills());
-            case SPECIFIC_PLANT_KILLS -> tracker.onlyPlantKillersByName(parameter)
+            case PLANT_ONLY_KILLS -> tracker.getNonPlantKills() == 0
+                    ? Math.min(target, tracker.getPlantKills()) : 0;
+            case SPECIFIC_PLANT_KILLS -> tracker.getNonPlantKills() == 0
+                    && tracker.onlyPlantKillersByName(parameter)
                     ? Math.min(target, tracker.getKillsByPlantName(parameter)) : 0;
             case WIN_MAX_PLANTS_LOST -> won
                     && tracker.getPlantsLost() <= intParameter(parameter, 0) ? target : 0;
@@ -191,10 +194,11 @@ public final class QuestService {
             case FAST_KILLS -> tracker.getFastKills(
                     intParameter(parameter, 30), state.getTicksPerSecond()) >= target
                     ? target : 0;
-            case EXPLOSIVE_PLANTS_USED -> tracker.getExplosivePlantsUsed() == target
+            case EXPLOSIVE_PLANTS_USED -> tracker.getExplosivePlantsUsed() >= target
                     ? target : 0;
             case FINISH_SYMMETRIC -> tracker.isSymmetric(state.getBoard()) ? target : 0;
-            case ONLY_FAMILY_KILLS -> tracker.onlyPlantKillersFromFamily(parameter)
+            case ONLY_FAMILY_KILLS -> tracker.getNonPlantKills() == 0
+                    && tracker.onlyPlantKillersFromFamily(parameter)
                     ? target : 0;
             case WIN_WITHOUT_FAMILY -> won && !tracker.usedFamily(parameter) ? target : 0;
             case WIN_DAY_WITH_NIGHT_PLANTS -> won && tracker.isDayLevel(chapter)
@@ -219,7 +223,6 @@ public final class QuestService {
             case MOWER_KILLS -> Math.min(target, tracker.getMowerKills());
         };
     }
-
     public String claimReward(User user, int questId) {
         if (user == null) {
             throw new IllegalStateException("A logged-in user is required.");
@@ -235,7 +238,6 @@ public final class QuestService {
         if (assignment.isClaimed()) {
             throw new IllegalStateException("Quest reward was already claimed.");
         }
-
         int oldCoins = user.getCoins();
         int oldGems = user.getGems();
         int oldDaily = user.getQuestDailyNum();
@@ -248,7 +250,7 @@ public final class QuestService {
                 if (!repository.markClaimed(connection, user.getId(), questId)) {
                     throw new IllegalStateException("Quest reward was already claimed.");
                 }
-                incrementQuestCounter(connection, user, quest.getType());
+                connection.commit();
                 connection.commit();
                 return reward;
             } catch (RuntimeException | SQLException exception) {
@@ -261,7 +263,6 @@ public final class QuestService {
             throw new IllegalStateException("Could not claim quest reward.", exception);
         }
     }
-
     public String resolvedCondition(Quest quest, UserQuest assignment) {
         String parameter = assignment.getParameter();
         if (parameter == null || parameter.isBlank()) {
@@ -276,7 +277,6 @@ public final class QuestService {
                 .replace("{row}", Integer.toString(cross[0]))
                 .replace("{column}", Integer.toString(cross[1]));
     }
-
     private String applyReward(
             Connection connection, User user, Quest quest, UserQuest assignment
     ) throws SQLException {
@@ -304,7 +304,6 @@ public final class QuestService {
             }
         };
     }
-
     private String chooseParameter(int userId, Quest quest) {
         String options = quest.getParameterOptions();
         if (options == null || options.isBlank()) {
@@ -314,13 +313,13 @@ public final class QuestService {
             case "@CHAPTER" -> randomChapter();
             case "@FAMILY" -> randomFamily(
                     userId, quest.getEventType() == QuestEventType.ONLY_FAMILY_KILLS);
+            case "@KILLING_PLANT" -> randomKillingPlant(userId);
             case "@ROW" -> Integer.toString(random.nextInt(5) + 1);
             case "@COLUMN" -> Integer.toString(random.nextInt(9) + 1);
-            case "@CROSS" -> (random.nextInt(5) + 1) + "," + (random.nextInt(9) + 1);
+            case "@CROSS" -> Integer.toString(random.nextInt(5) + 1);
             default -> randomOption(options);
         };
     }
-
     private String randomChapter() {
         List<ChapterTheme> chapters = List.of(
                 ChapterTheme.ANCIENT_EGYPT,
@@ -329,7 +328,50 @@ public final class QuestService {
                 ChapterTheme.DARK_AGES);
         return chapters.get(random.nextInt(chapters.size())).name();
     }
+    private String randomKillingPlant(int userId) {
+        List<PlantData> allKillingPlants = PlantRegistry.getAll().stream()
+                .filter(plant -> plant.damage() > 0)
+                .sorted((first, second) -> String.CASE_INSENSITIVE_ORDER.compare(
+                        first.name(), second.name()))
+                .toList();
+        if (allKillingPlants.isEmpty()) {
+            throw new IllegalStateException("No killing plant exists for this quest.");
+        }
 
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(userId);
+        List<PlantData> unlockedKillingPlants = allKillingPlants.stream()
+                .filter(plant -> unlocked.contains(plant.id()))
+                .toList();
+
+        if (!unlockedKillingPlants.isEmpty()) {
+            return unlockedKillingPlants.get(
+                    random.nextInt(unlockedKillingPlants.size())).name();
+        }
+        PlantData starterKiller = PlantRegistry.getById(1);
+        if (starterKiller != null && starterKiller.damage() > 0) {
+            return starterKiller.name();
+        }
+        return allKillingPlants.get(random.nextInt(allKillingPlants.size())).name();
+    }
+
+    private boolean parameterNeedsRepair(Quest quest, String parameter) {
+        String options = quest.getParameterOptions();
+        if (options == null || options.isBlank()) {
+            return false;
+        }
+        if (parameter == null || parameter.isBlank()) {
+            return true;
+        }
+
+        return switch (options.trim().toUpperCase(Locale.ROOT)) {
+            case "@CROSS" -> !parameter.trim().matches("[1-5]");
+            case "@KILLING_PLANT" -> {
+                PlantData plant = PlantRegistry.getByName(parameter);
+                yield plant == null || plant.damage() <= 0;
+            }
+            default -> false;
+        };
+    }
     private String randomFamily(int userId, boolean killingOnly) {
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(userId);
         Set<String> families = collectFamilies(unlocked, killingOnly);
@@ -342,7 +384,6 @@ public final class QuestService {
         List<String> values = new ArrayList<>(families);
         return values.get(random.nextInt(values.size()));
     }
-
     private Set<String> collectFamilies(Set<Integer> allowedIds, boolean killingOnly) {
         Set<String> families = new LinkedHashSet<>();
         PlantRegistry.getAll().stream()
@@ -354,7 +395,6 @@ public final class QuestService {
                 .forEach(families::add);
         return families;
     }
-
     private String randomOption(String options) {
         List<String> values = new ArrayList<>();
         for (String value : options.split("\\|")) {
@@ -364,7 +404,6 @@ public final class QuestService {
         }
         return values.isEmpty() ? null : values.get(random.nextInt(values.size()));
     }
-
     private int resolveInventoryPlant(int userId, String target) {
         Integer explicit = resolveExplicitPlantId(target);
         if (explicit != null) {
@@ -382,7 +421,6 @@ public final class QuestService {
         }
         return candidates.get(random.nextInt(candidates.size()));
     }
-
     private int resolveUnlockPlant(int userId, String target) {
         Integer explicit = resolveExplicitPlantId(target);
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(userId);
@@ -402,7 +440,6 @@ public final class QuestService {
         }
         return candidates.get(random.nextInt(candidates.size()));
     }
-
     private Integer resolveExplicitPlantId(String target) {
         if (target == null || target.isBlank()
                 || target.equalsIgnoreCase("NONE")
@@ -424,7 +461,6 @@ public final class QuestService {
         }
         return plant.id();
     }
-
     private void updateCurrency(Connection connection, int userId, String column, int amount)
             throws SQLException {
         if (!column.equals("coins") && !column.equals("gems")) {
@@ -437,7 +473,6 @@ public final class QuestService {
             statement.executeUpdate();
         }
     }
-
     private void addSeedPackets(Connection connection, int userId, int plantId, int amount)
             throws SQLException {
         String sql = """
@@ -453,7 +488,6 @@ public final class QuestService {
             statement.executeUpdate();
         }
     }
-
     private void unlockPlant(Connection connection, int userId, int plantId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT OR IGNORE INTO user_unlocked_plants(user_id, plant_id) VALUES (?, ?)")) {
@@ -463,36 +497,17 @@ public final class QuestService {
         }
     }
 
-    private void incrementQuestCounter(Connection connection, User user, QuestType type)
-            throws SQLException {
-        String column = type == QuestType.DAILY ? "quest_daily_num" : "quest_non_daily_num";
-        try (PreparedStatement statement = connection.prepareStatement(
-                "UPDATE users SET " + column + " = " + column + " + 1 WHERE id = ?")) {
-            statement.setInt(1, user.getId());
-            statement.executeUpdate();
-        }
-        if (type == QuestType.DAILY) {
-            user.setQuestDailyNum(user.getQuestDailyNum() + 1);
-        } else {
-            user.setQuestNonDailyNum(user.getQuestNonDailyNum() + 1);
-        }
-    }
-
     private void restoreUser(User user, int coins, int gems, int daily, int nonDaily) {
         user.setCoins(coins);
         user.setGems(gems);
         user.setQuestDailyNum(daily);
         user.setQuestNonDailyNum(nonDaily);
     }
-
     private boolean parameterMatchesChapter(String parameter, ChapterTheme chapter) {
-        if (parameter == null || parameter.equalsIgnoreCase("ANY")) {
-            return true;
-        }
+        if (parameter == null || parameter.equalsIgnoreCase("ANY")) {return true;}
         return chapter.name().equalsIgnoreCase(parameter)
                 || chapter.getName().equalsIgnoreCase(parameter.replace('_', ' '));
     }
-
     private int intParameter(String parameter, int fallback) {
         if (parameter == null || parameter.isBlank()) {
             return fallback;
@@ -503,7 +518,6 @@ public final class QuestService {
             return fallback;
         }
     }
-
     private int[] crossParameter(String parameter) {
         if (parameter != null && parameter.contains(",")) {
             String[] values = parameter.split(",", 2);
@@ -512,11 +526,9 @@ public final class QuestService {
         int value = intParameter(parameter, 1);
         return new int[]{value, value};
     }
-
     private String displayFamily(String family) {
         return family.replaceAll("([a-z])([A-Z])", "$1 $2");
     }
-
     private String displayChapter(String chapter) {
         try {
             return ChapterTheme.valueOf(chapter).getName();
@@ -524,7 +536,6 @@ public final class QuestService {
             return chapter.replace('_', ' ');
         }
     }
-
     private String plantLabel(int plantId) {
         PlantData plant = PlantRegistry.getById(plantId);
         return plant == null ? "plant #" + plantId : plant.name();
