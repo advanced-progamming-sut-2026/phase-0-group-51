@@ -171,6 +171,22 @@ public class GameState {
         questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
     }
+    public void stackPlant(Plant addition, Plant existing) {
+        if (addition == null || existing == null) {
+            throw new IllegalArgumentException("Both plants are required");
+        }
+        if (!addition.getPlantType().canStackOn(existing)) {
+            throw new IllegalStateException("This plant cannot be stacked here");
+        }
+        int cost = addition.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        questTracker.recordPlantPlaced(addition);
+        addition.getPlantType().onStacked(existing, this);
+    }
+
     public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
         validatePlantPlacement(plant, tile);
         placePlantOnTile(plant, tile);
@@ -209,6 +225,25 @@ public class GameState {
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);
     }
+    public Zombie findNearestHostileZombieInRange(Zombie self, int lane, float x, float range) {
+        Zombie nearest = null;
+        float nearestDistance = Float.MAX_VALUE;
+        for (Zombie other : zombiesInTheGame) {
+            if (other == self || other.isHypnotized() || other.isDead()) {
+                continue;
+            }
+            if (other.getLane() != lane) {
+                continue;
+            }
+            float distance = Math.abs(other.getX() - x);
+            if (distance <= range && distance < nearestDistance) {
+                nearest = other;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
     public Zombie findNearestHypnotizedZombieInRange(Zombie self, int lane, float x, int range) {
         Zombie nearest = null;
         float nearestDistance = Float.MAX_VALUE;

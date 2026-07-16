@@ -66,7 +66,15 @@ public enum ElementType {
             Zombie target, GameState state, int durationTicks, Plant sourcePlant
     ) {
         if (this == POISON) {
-            target.applyPoison(state, 5f, 6f, sourcePlant);
+            float damagePerSecond = sourcePlant == null
+                    ? 5f
+                    : (float) sourcePlant.getPlantStat().poisonDamage();
+            target.applyPoison(
+                    state,
+                    damagePerSecond,
+                    6f,
+                    sourcePlant
+            );
             return;
         }
         onHit(target, state, durationTicks);
