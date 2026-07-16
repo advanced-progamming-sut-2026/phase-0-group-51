@@ -10,6 +10,8 @@ import models.projectile.move.StraightMove;
 
 import java.util.List;
 
+import static models.Plant.PlantEnumSupport.projectileSpeed;
+
 public enum Shooter implements PlantType {
     PEASHOOTER(6, ShotPattern.FORWARD, 1, ElementType.NORMAL),
     REPEATER(7, ShotPattern.FORWARD, 2, ElementType.NORMAL),
@@ -120,7 +122,7 @@ public enum Shooter implements PlantType {
                 plant.getDamage(),
                 element,
                 plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.5),
+                projectileSpeed(plant, 0.5),
                 plant.getPosX(),
                 plant.getPosY(),
                 direction[0],
@@ -129,31 +131,16 @@ public enum Shooter implements PlantType {
         ));
     }
 
-    static void shootStraight(Plant plant, GameState state, int shotCount, ElementType element) {
-        if (!zombieInLane(plant, state)) {
-            return;
-        }
-        for (int i = 0; i < shotCount; i++) {
-            state.getBoard().addProjectile(Projectile.straight(
-                    plant.getDamage(),
-                    element,
-                    plant.getPlantTags(),
-                    projectileSpeed(plant),
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    new StraightMove(),
-                    1,
-                    effectDurationTicks(plant, state, element)
-            ).withSource(plant));
-    private boolean hasStarfruitTarget(Plant plant, GameState state) {
-        for (double[] direction : StarMove.STARFRUIT_DIRECTIONS) {
-            if (hasZombieInDirection(plant, state, direction)
-                    || hasGraveInDirection(plant, state, direction)) {
-                return true;
+   
+            private boolean hasStarfruitTarget (Plant plant, GameState state){
+                for (double[] direction : StarMove.STARFRUIT_DIRECTIONS) {
+                    if (hasZombieInDirection(plant, state, direction)
+                            || hasGraveInDirection(plant, state, direction)) {
+                        return true;
+                    }
+                }
+                return false;
             }
-        }
-        return false;
-    }
 
     private boolean hasZombieInAnyDirection(
             Plant plant,
@@ -236,7 +223,7 @@ public enum Shooter implements PlantType {
                 plant.getDamage(),
                 element,
                 plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.5),
+                projectileSpeed(plant, 0.5),
                 plant.getPosX(),
                 lane,
                 new StraightMove(),
