@@ -2,6 +2,7 @@ package controllers.miniGamesController;
 
 import controllers.GamingController;
 import models.App;
+import models.minigames.MinigameType;
 import models.minigames.vaseBreaker.Brain;
 import models.minigames.vaseBreaker.Vase;
 import models.Result;
@@ -18,9 +19,12 @@ import java.util.Map;
 
 public class VaseBreakerController extends GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
+    private final MinigameProgressService progressService =
+            new MinigameProgressService();
     public Result startStage(int stageNumber) {
-        if (stageNumber < 1 || stageNumber > 3) {
-            return failure("Vasebreaker level must be 1, 2, or 3.\n");
+        Result access = progressService.checkStageAccess(  MinigameType.VASEBREAKER, stageNumber);
+        if (!access.success()) {
+            return access;
         }
         try {
             VaseBreaker game = new VaseBreaker(stageNumber);
@@ -352,7 +356,6 @@ public class VaseBreakerController extends GamingController {
         }
         boolean won = game.getGameState().isWon();
         int stageNumber = game.getStage().getStageNumber();
-         // TODO:Save stage completion here when progress persistence is implemented.
         App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(
                 Menu.TRAVELLOG_MENU
@@ -360,8 +363,13 @@ public class VaseBreakerController extends GamingController {
 
         String ending;
         if (won) {
+            String progressMessage = progressService.recordWin(
+                    MinigameType.VASEBREAKER, stageNumber
+            );
             ending =
-                    "You completed Vasebreaker stage " + stageNumber + " and returned to the Travel Log.\n";
+                    "You completed Vasebreaker stage " + stageNumber
+                            + " and returned to the Travel Log.\n"
+                            + progressMessage;
         } else {
             ending = "You lost Vasebreaker stage " + stageNumber + " and returned to the Travel Log.\n";
         }

@@ -1,9 +1,12 @@
 package models.games;
 
+import Data.database.NewsRepository;
 import Data.loader.PlantData;
 import lombok.Getter;
 import lombok.Setter;
+import models.App;
 import models.Plant.Plant;
+import models.User;
 import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
@@ -220,7 +223,13 @@ public class GameState {
 
 
     public void addZombie(Zombie zombie) {
-        zombiesInTheGame.add(zombie);
+        if (zombie == null || !zombiesInTheGame.add(zombie)) {
+            return;
+        }
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {
+            new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());
+        }
     }
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);

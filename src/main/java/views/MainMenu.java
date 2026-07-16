@@ -17,7 +17,8 @@ public class MainMenu implements AppMenu{
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
     if(MainMenuCommands.LOGOUT_REGEX.matches(line)){
-        controller.logout();
+        Result result = controller.logout();
+        System.out.println(result.message());
     } else if(MainMenuCommands.CURRENT_MENU_REGEX.matches(line)) {
         Result result = controller.showCurrentMenu();
         System.out.println(result.message());

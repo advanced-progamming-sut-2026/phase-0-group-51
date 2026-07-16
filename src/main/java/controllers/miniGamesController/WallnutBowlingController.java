@@ -8,6 +8,7 @@ import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.ZombieWaveManager;
+import models.minigames.MinigameType;
 import models.minigames.wallnutBowling.RollingWallnut;
 import models.minigames.wallnutBowling.WallnutBowling;
 import models.minigames.wallnutBowling.WallnutType;
@@ -19,6 +20,8 @@ import java.util.stream.Collectors;
 
 public class WallnutBowlingController extends GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
+    private final MinigameProgressService progressService =
+            new MinigameProgressService();
 
     private String safeMessage(RuntimeException exception) {
         String message = exception.getMessage();
@@ -33,8 +36,11 @@ public class WallnutBowlingController extends GamingController {
         return new Result(false, message, null);
     }
     public Result startStage(int stageNumber) {
-        if (stageNumber < 1 || stageNumber > 3) {
-            return failure("Wall-nut Bowling stage must be 1, 2, or 3.\n");
+        Result access = progressService.checkStageAccess(
+                MinigameType.WALLNUT_BOWLING, stageNumber
+        );
+        if (!access.success()) {
+            return access;
         }
         try {
             WallnutBowling game = new WallnutBowling(stageNumber);
@@ -200,11 +206,18 @@ public class WallnutBowlingController extends GamingController {
         App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(Menu.TRAVELLOG_MENU);
 
-        String ending = won
-                ? "You completed Wall-nut Bowling stage " + stageNumber
+        String ending;
+        if (won) {
+            String progressMessage = progressService.recordWin(
+                    MinigameType.WALLNUT_BOWLING, stageNumber
+            );
+            ending = "You completed Wall-nut Bowling stage " + stageNumber
                 + " and returned to the Travel Log.\n"
-                : "You lost Wall-nut Bowling stage " + stageNumber
+                    + progressMessage;
+        } else {
+            ending = "You lost Wall-nut Bowling stage " + stageNumber
                 + " and returned to the Travel Log.\n";
+        }
         return success(message + ending);
     }
 

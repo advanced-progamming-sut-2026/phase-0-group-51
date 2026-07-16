@@ -8,6 +8,9 @@ public enum TravelLogMenuCommands implements Commands{
     START_VASEBREAKER("(?i)^\\s*start\\s+vasebreaker\\s+-s\\s+(?<stage>[1-3])\\s*$"),
     START_WALLNUT_BOWLING("(?i)^\\s*start\\s+wallnut\\s+bowling"
             + "\\s+-s\\s+(?<stage>[1-3])\\s*$"),
+    START_I_ZOMBIE("(?i)^\\s*start\\s+i\\s*,?\\s*zombie\\s+-s\\s+(?<stage>[1-3])\\s*$"),
+    START_BEGHOULDED("(?i)^\\s*start\\s+beghouled\\s+-s\\s+(?<stage>[1-3])\\s*$"),
+    START_ZOMBOTANY("(?i)^\\s*start\\s+zombotany\\s+-s\\s+(?<stage>[1-3])\\s*$"),
     CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX),
     EXIT_MENU_REGEX(Commands.EXIT_MENU_REGEX);
 

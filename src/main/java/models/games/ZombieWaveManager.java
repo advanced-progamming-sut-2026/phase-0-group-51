@@ -1,8 +1,11 @@
 package models.games;
 
+import Data.database.NewsRepository;
 import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
+import models.App;
+import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.items.Wave;
@@ -151,6 +154,9 @@ public class ZombieWaveManager {
             zombie.setLane(lane);
             zombie.setX(Math.max(0f, x));
             gs.addZombie(zombie);
+            User user = App.getInstance().getLoggedInUser();
+            if (user != null) {new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());
+            }
             wave.addZombie(zombie);
             remaining -= zombie.getWavePointCost();
 

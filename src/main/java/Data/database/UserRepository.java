@@ -87,24 +87,50 @@ public class UserRepository {
         return null;
     }
 
-    public void setStayLoggedIn(int userId, boolean value) {
-        String sql =
-                "UPDATE users SET stay_logged_in = ? WHERE id = ?";
+    public boolean setStayLoggedIn(int userId, boolean stayLoggedIn) {
+        String clearSql = "UPDATE users SET stay_logged_in = 0";
+        String rememberSql = "UPDATE users SET stay_logged_in = 1 WHERE id = ?";
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
 
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (PreparedStatement clearStatement =
+                         connection.prepareStatement(clearSql);
+                 PreparedStatement rememberStatement =
+                         connection.prepareStatement(rememberSql)) {
+                clearStatement.executeUpdate();
 
-            pstmt.setInt(1, value ? 1 : 0);
-            pstmt.setInt(2, userId);
+                if (stayLoggedIn) {
+                    rememberStatement.setInt(1, userId);
 
-            pstmt.executeUpdate();
+                    int affectedRows = rememberStatement.executeUpdate();
 
-        } catch (SQLException e) {
-            e.printStackTrace();
+                    if (affectedRows != 1) {
+                        throw new SQLException(
+                                "User was not found while saving login session."
+                        );
+                    }
+                }
+                connection.commit();
+                return true;
+
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+                return false;
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
         }
     }
     public User getRememberedUser() {
-        String sql = "SELECT * FROM users WHERE stay_logged_in = 1 LIMIT 1";
+        String sql = """
+        SELECT *
+        FROM users
+        WHERE stay_logged_in = 1
+        ORDER BY id DESC
+        LIMIT 1
+        """;
         try (Connection conn = DataBaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             ResultSet rs = pstmt.executeQuery();
@@ -286,6 +312,21 @@ public class UserRepository {
         }
 
         return 0;
+    }
+    public boolean clearStayLoggedIn() {
+        String sql = "UPDATE users SET stay_logged_in = 0";
+
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+
+            statement.executeUpdate();
+            return true;
+
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
     }
     }
 
