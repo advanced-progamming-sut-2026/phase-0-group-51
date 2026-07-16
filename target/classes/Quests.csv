@@ -1,24 +1,21 @@
-﻿Name,Condition,Priority,TargetAmount,RewardAmount,RewardType,QuestType,UnlockableId
-Daily Sun Gather I,Collect 3000 units of sun during one day,AVERAGE,3000,30,CURRENCY_COINS,DAILY,NONE
-Daily Sun Gather II,Collect 4000 units of sun during one day,AVERAGE,4000,40,CURRENCY_COINS,DAILY,NONE
-Daily Sun Gather III,Collect 5000 units of sun during one day,AVERAGE,5000,50,CURRENCY_COINS,DAILY,NONE
-Chapter Hunter,Defeat 50 zombies from a chapter,HIGH,50,10,INVENTORY,MAIN,NONE
-Pro Plant Killer,Kill ten zombies using only plants,HIGH,10,0,UNLOCKABLE,DAILY,any_plant
-Only Cactus,Kill ten zombies using only cactus,HIGH,10,20,CURRENCY_GEMS,DAILY,NONE
-Economic Vegetarian I,Win a level without losing more than 1 plants,HIGH,1,19,INVENTORY,MAIN,NONE
-Economic Vegetarian II,Win a level without losing more than 3 plants,HIGH,1,17,INVENTORY,MAIN,NONE
-Economic Vegetarian III,Win a level without losing more than 5 plants,HIGH,1,15,INVENTORY,MAIN,NONE
-Defense Master,Finish a level with exactly zero sun,CRITICAL,1,200,CURRENCY_GEMS,EPIC,NONE
-Speedrun,Kill 10 zombies in less than 30 seconds from the start of the first wave,AVERAGE,10,500,CURRENCY_COINS,MAIN,NONE
-Professional Demolisher,Use 3 explosive plants in one level,LOW,3,100,CURRENCY_COINS,DAILY,NONE
-Symmetry,The garden must end up symmetrical,HIGH,1,500,CURRENCY_COINS,DAILY,NONE
-Family Slaughter,Use only plants of a specific family to kill zombies,AVERAGE,1,1000,CURRENCY_COINS,DAILY,NONE
-Blooming within Limits,Win the level without using any plant from a specific family,HIGH,1,100,CURRENCY_GEMS,DAILY,NONE
-Night or Morning,Finish a day level using only night plants (mushrooms),HIGH,1,20,CURRENCY_GEMS,EPIC,NONE
-Back-to-Back Victory,Win 5 consecutive levels on the highest difficulty,AVERAGE,5,5000,CURRENCY_COINS,DAILY,NONE
-Almost Win,Kill 10 zombies in the first column of a row that has no lawn mower,AVERAGE,10,300,CURRENCY_COINS,DAILY,NONE
-No OCD,Win the level with no symmetry in the garden (except the middle row),AVERAGE,1,800,CURRENCY_COINS,DAILY,NONE
-Cloudy Day,Play a level using only 3 sun-producing plants,HIGH,1,10,CURRENCY_GEMS,DAILY,NONE
-One Less Column,Win a level without planting anything in a specific column,HIGH,1,10,CURRENCY_GEMS,DAILY,NONE
-Defenseless Row,Win a level without planting anything in a specific row,HIGH,1,20,CURRENCY_GEMS,DAILY,NONE
-Defenseless Cross,Win a level leaving a specific column and row empty,HIGH,1,25,CURRENCY_GEMS,DAILY,NONE
+name,condition,priority,event_type,target_amount,reward_amount,reward_type,quest_type,unlockable_id,parameter_options
+Daily Sun Collector,Collect {parameter} units of sun during one day,MEDIUM,SUN_COLLECTED,3000,30,CURRENCY_COINS,DAILY,NONE,3000|4000|5000
+Chapter Hunter,Defeat 50 zombies from {chapter},HIGH,CHAPTER_ZOMBIE_KILLS,50,10,INVENTORY,MAIN,NONE,@CHAPTER
+Professional Plant Killer,Kill 10 zombies using only plants,HIGH,PLANT_ONLY_KILLS,10,0,UNLOCKABLE,DAILY,any_plant,NONE
+Only Cactus,Kill 10 zombies using only {plant},HIGH,SPECIFIC_PLANT_KILLS,10,20,CURRENCY_GEMS,DAILY,NONE,Cactus
+Economical Plant Eater,Win a level without losing more than {parameter} plants,HIGH,WIN_MAX_PLANTS_LOST,1,20,INVENTORY,MAIN,NONE,0|1|2|3|4|5
+Defense Master,Finish a level with exactly {parameter} sun remaining,CRITICAL,WIN_EXACT_SUN,1,200,CURRENCY_GEMS,EPIC,NONE,0
+Quick Action,Kill 10 zombies in less than {parameter} seconds after the first wave starts,MEDIUM,FAST_KILLS,10,500,CURRENCY_COINS,MAIN,NONE,30
+Professional Destroyer,Use exactly 3 explosive plants in one level,LOW,EXPLOSIVE_PLANTS_USED,3,100,CURRENCY_COINS,DAILY,NONE,NONE
+Symmetry,Finish a level with a garden symmetrical across the middle row,HIGH,FINISH_SYMMETRIC,1,500,CURRENCY_COINS,DAILY,NONE,NONE
+Family Massacre,Use only plants from the {family} family to kill zombies,MEDIUM,ONLY_FAMILY_KILLS,1,1000,CURRENCY_COINS,DAILY,NONE,@FAMILY
+Blooming Under Restrictions,Win without using a plant from the {family} family,HIGH,WIN_WITHOUT_FAMILY,1,100,CURRENCY_GEMS,DAILY,NONE,@FAMILY
+Night or Morning,Complete a daytime level using only night plants or mushrooms,HIGH,WIN_DAY_WITH_NIGHT_PLANTS,1,20,CURRENCY_GEMS,EPIC,NONE,NONE
+Win Streak,Win 5 consecutive levels at difficulty 5,MEDIUM,MAX_DIFFICULTY_WIN_STREAK,5,5000,CURRENCY_COINS,DAILY,NONE,NONE
+Almost Victory,Kill 10 zombies in column 1 of a row whose lawn mower is gone,MEDIUM,FIRST_COLUMN_KILLS_NO_MOWER,10,300,CURRENCY_COINS,DAILY,NONE,NONE
+OCD Challenge,Win a level where the garden has no symmetry except the middle row,MEDIUM,WIN_ASYMMETRIC_EXCEPT_MIDDLE,1,800,CURRENCY_COINS,DAILY,NONE,NONE
+Cloudy Day,Complete a level after planting exactly {parameter} plants and only sun-producing plants,HIGH,WIN_ONLY_SUN_PRODUCERS_EXACT_COUNT,1,10,CURRENCY_GEMS,DAILY,NONE,3
+One Less Column,Win without planting anything in column {column},HIGH,WIN_EMPTY_COLUMN,1,10,CURRENCY_GEMS,DAILY,NONE,@COLUMN
+Defenseless Row,Win without planting anything in row {row},HIGH,WIN_EMPTY_ROW,1,20,CURRENCY_GEMS,DAILY,NONE,@ROW
+Defenseless Cross,Win while leaving row {row} and column {column} empty,HIGH,WIN_EMPTY_CROSS,1,25,CURRENCY_GEMS,DAILY,NONE,@CROSS
+Lawn Mowing Time,Kill at least {parameter} zombies using lawn mowers,MEDIUM,MOWER_KILLS,10,10,CURRENCY_GEMS,EPIC,NONE,10|20|30|40|50
