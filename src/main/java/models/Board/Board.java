@@ -25,6 +25,7 @@ public class Board {
     private final List<Projectile> projectiles = new ArrayList<>();
     private Set<Zombie> zombies;
     private Random random = new Random();
+    private int leftmostWaterColumn = 9;
 
     public Board() {
         initializeTiles();
@@ -52,7 +53,16 @@ public class Board {
     }
     public void removePlant(int lane, int column) {
         Tile tile = getTile(lane, column);
-        if (tile != null) tile.removePlant();
+        if (tile != null) {
+            tile.removePlant();
+        }
+    }
+
+    public void removePlant(Plant plant) {
+        Tile tile = getTileForPlant(plant);
+        if (tile != null) {
+            tile.removeSpecificPlant(plant);
+        }
     }
     public Plant findNearestPlantInRange(int lane, int fromColumn, int range) {
         int minCol = Math.max(0, fromColumn - range);
@@ -68,8 +78,14 @@ public class Board {
         List<Plant> result = new ArrayList<>();
         for (int col = 0; col < columnCount; col++) {
             Tile tile = getTile(lane, col);
-            if (tile != null && tile.hasPlant()) {
-                result.add(tile.getPlant());
+            if (tile == null) {
+                continue;
+            }
+            if (tile.getTopPlant() != null) {
+                result.add(tile.getTopPlant());
+            }
+            if (tile.getLilyPadPlant() != null) {
+                result.add(tile.getLilyPadPlant());
             }
         }
         return result;
@@ -84,7 +100,7 @@ public class Board {
         Plant plant = current.getPlant();
         plant.setPosX(behind.getColumn());
         behind.setPlant(plant);
-        current.setPlant(null);
+        current.removeSpecificPlant(plant);
         return true;
     }
     public void setIceBlock(int lane, int column, boolean blocked) {
@@ -370,8 +386,9 @@ public class Board {
         if (plant == null) return null;
         for (int i = 0; i < laneCount; i++) {
             for (int j = 0; j < columnCount; j++) {
-                if (tiles[i][j].hasPlant() && tiles[i][j].getPlant().equals(plant)) {
-                    return tiles[i][j];
+                Tile tile = tiles[i][j];
+                if (tile.getTopPlant() == plant || tile.getLilyPadPlant() == plant) {
+                    return tile;
                 }
             }
         }
@@ -388,7 +405,13 @@ public class Board {
         List<Plant> result = new ArrayList<>();
         for (int lane = 0; lane < laneCount; lane++) {
             for (int col = 0; col < columnCount; col++) {
-                if (tiles[lane][col].hasPlant()) result.add(tiles[lane][col].getPlant());
+                Tile tile = tiles[lane][col];
+                if (tile.getTopPlant() != null) {
+                    result.add(tile.getTopPlant());
+                }
+                if (tile.getLilyPadPlant() != null) {
+                    result.add(tile.getLilyPadPlant());
+                }
             }
         }
         return result;
@@ -589,7 +612,9 @@ public class Board {
     public void tickPlants(GameState state) {
         for (Plant plant : new ArrayList<>(getAllPlants())) {
             plant.tick(state);
-            if (plant.isMarkedForRemoval()) removePlant(plant.getPosY(), plant.getPosX());
+            if (plant.isMarkedForRemoval()) {
+                removePlant(plant);
+            }
         }
     }
 
@@ -603,11 +628,20 @@ public class Board {
     }
 
     public void setWaterLevel(int leftmostWaterColumn) {
+        this.leftmostWaterColumn = Math.max(0, Math.min(columnCount, leftmostWaterColumn));
         for (int lane = 0; lane < laneCount; lane++) {
             for (int col = 0; col < columnCount; col++) {
-                getTile(lane, col).setWater(col >= leftmostWaterColumn);
+                getTile(lane, col).setWater(col >= this.leftmostWaterColumn);
+            }
             }
         }
+
+    public int getWaterColumnCount() {
+        return columnCount - leftmostWaterColumn;
+    }
+
+    public void clearWater() {
+        setWaterLevel(columnCount);
     }
 
     public boolean isTileFree(int lane, int col) {
@@ -648,8 +682,8 @@ public class Board {
             return;
         }
         Tile from = getTile(target.getPosY(), target.getPosX());
-        if (from != null && from.getPlant() == target) {
-            from.setPlant(null);
+        if (from != null) {
+            from.removeSpecificPlant(target);
         }
         target.setPosY(lane);
         target.setPosX(col);

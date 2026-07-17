@@ -61,8 +61,13 @@ public enum LevelType {
 
     PLANT_WHAT_YOU_GET{
         @Override
-        // دادن خورشید اولیه  و توقف  خورشید و کاشت هرچی گیاه که میخوایم
-        public void initialize(GameState state) { }
+        public void initialize(GameState state) {
+            state.logEvent(
+                    "Plant What You Get started with " + state.getSun()
+                            + " sun.sun-producing plants are forbidden, and the lawn is dry. Plant freely "
+                            + "without recharge, then use 'start zombie waves'.\n"
+            );
+        }
         @Override
         public boolean isFinished(GameState state) {
             return state.getZombieWaveManager().isLevelCleared();

@@ -34,7 +34,7 @@ import java.util.Map;
 
 public class GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
-
+    private static final int LILY_PAD_ID = 58;
     private Result success(String message) {
         return new Result(true, message, null);
     }
@@ -64,7 +64,13 @@ public class GamingController {
         if (game == null || game.getGameState() == null) {
             return failure("No active game found.\n");
         }
-
+        if (game.isPreparingPlantWhatYouGet()) {
+            return failure(
+                    "Time is paused during Plant_What_You_Get preparation. "
+                            + "Plant your plants, then use "
+                            + "'start zombie waves'.\n"
+            );
+        }
         GameState state = game.getGameState();
         StringBuilder output = new StringBuilder()
                 .append("Game advanced by ")
@@ -113,6 +119,15 @@ public class GamingController {
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
         }
+        if (game.isPlantWhatYouGetLevel() && isSunProducer(selected)) {
+            return failure("Sun-producing plants are forbidden in Plant What You Get.\n");
+        }
+        if (tile.isWater()) {
+            return placePlantOnWater(state, tile, selected, x, y);
+        }
+        if (isLilyPad(selected) || selected.tags().contains(PlantTag.WATER)) {
+            return failure(selected.name() + " can only be planted on water.\n");
+        }
         if (canStackSelectedPlant(selected, tile)) {
             return createAndStackPlant(state, tile, selected, x, y);
         }
@@ -121,6 +136,117 @@ public class GamingController {
         }
         return createAndPlacePlant(state, tile, selected, x, y);
     }
+    private Result placePlantOnWater(GameState state, Tile tile, PlantData selected, int x, int y) {
+        if (!isLilyPad(selected) && canStackSelectedPlant(selected, tile)) {
+            return createAndStackPlant(state, tile, selected, x, y);
+        }
+        if (isLilyPad(selected)) {
+            if (tile.hasPlant()) {
+                return failure("This water tile already contains a plant or Lily Pad.\n");
+            }
+            return createAndPlaceLilyPad(state, tile, selected, x, y);
+        }
+        if (selected.tags().contains(PlantTag.WATER)) {
+        if (!tile.isOccupiable()) {
+            return tileOccupationFailure(tile);
+        }
+        return createAndPlacePlant(state, tile, selected, x, y);
+    }
+        if (tile.hasLilyPad() && !tile.hasTopPlant()) {
+            return createAndPlacePlantOnLilyPad(state, tile, selected, x, y);
+        }
+        return failure(
+                "A non-aquatic plant needs an empty Lily Pad on this water tile.\n"
+        );
+    }
+
+    private Result createAndPlaceLilyPad(
+            GameState state, Tile tile,
+            PlantData selected, int x, int y
+    ) {
+        Result cooldownFailure = cooldownFailure(state, selected);
+        if (cooldownFailure != null) {
+            return cooldownFailure;
+        }
+        Plant lilyPad = createPlantForCurrentUser(selected);
+        try {
+            state.plantLilyPad(lilyPad, tile);
+            startCooldownIfRequired(state, lilyPad);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success(
+                selected.name() + " planted on water at (" + x + ", " + y + ").\n"
+                        + activateStoredBoost(selected, lilyPad, state)
+        );
+    }
+
+    private Result createAndPlacePlantOnLilyPad(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        Result cooldownFailure = cooldownFailure(state, selected);
+        if (cooldownFailure != null) {
+            return cooldownFailure;
+        }
+        Plant plant = createPlantForCurrentUser(selected);
+        try {
+            state.plantOnLilyPad(plant, tile);
+            startCooldownIfRequired(state, plant);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success(
+                selected.name() + " planted on a Lily Pad at ("
+                        + x + ", " + y + ").\n"
+                        + activateStoredBoost(selected, plant, state)
+        );
+    }
+
+    private Result cooldownFailure(GameState state, PlantData selected) {
+        if (rechargeDisabledDuringPreparation()) {
+            return null;
+        }
+        int availableAt = state.getPlantCooldownEnd(selected.id());
+        if (state.getTickCounter() >= availableAt) {
+            return null;
+        }
+        int ticksLeft = availableAt - state.getTickCounter();
+        return failure(
+                "Plant is recharging for "
+                        + formatSeconds(ticksLeft, state.getTicksPerSecond())
+                        + " more seconds.\n"
+        );
+    }
+
+    private void startCooldownIfRequired(GameState state, Plant plant) {
+        if (!rechargeDisabledDuringPreparation()) {
+            state.startPlantCooldown(plant);
+        }
+    }
+
+    private boolean rechargeDisabledDuringPreparation() {
+        Game game = App.getInstance().getCurrentGame();
+        return game != null && game.isPreparingPlantWhatYouGet();
+    }
+
+    private boolean isLilyPad(PlantData plant) {
+        return plant != null && plant.id() == LILY_PAD_ID;
+    }
+
+    private boolean isSunProducer(PlantData plant) {
+        if (plant == null) {
+            return false;
+        }
+        String category = plant.category() == null ? "" : plant.category().replaceAll("[^A-Za-z]", "")
+                .toLowerCase(Locale.ROOT);
+
+        return category.equals("sunproducer") || plant.tags().contains(PlantTag.SUN);
+    }
+
     private boolean canStackSelectedPlant(PlantData selected, Tile tile) {
         return tile.hasPlant()
                 && selected.tags().contains(PlantTag.STACK)
@@ -129,7 +255,8 @@ public class GamingController {
 
     private Result createAndStackPlant(GameState state, Tile tile, PlantData selected, int x, int y) {
         int availableAt = state.getPlantCooldownEnd(selected.id());
-        if (state.getTickCounter() < availableAt) {
+        if (!rechargeDisabledDuringPreparation()
+                && state.getTickCounter() < availableAt) {
             int ticksLeft = availableAt - state.getTickCounter();
             return failure("Plant is recharging for "
                     + formatSeconds(ticksLeft, state.getTicksPerSecond()) + " more seconds.\n");
@@ -138,7 +265,9 @@ public class GamingController {
         Plant existing = tile.getPlant();
         try {
             state.stackPlant(addition, existing);
+            if (!rechargeDisabledDuringPreparation()) {
             state.startPlantCooldown(addition);
+            }
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
@@ -194,7 +323,8 @@ public class GamingController {
 
     private Result createAndPlacePlant(GameState state, Tile tile, PlantData selected, int x, int y) {
         int availableAt = state.getPlantCooldownEnd(selected.id());
-        if (state.getTickCounter() < availableAt) {
+        if (!rechargeDisabledDuringPreparation()
+                && state.getTickCounter() < availableAt) {
             int ticksLeft = availableAt - state.getTickCounter();
             String seconds = formatSeconds(
                     ticksLeft,
@@ -215,7 +345,9 @@ public class GamingController {
         }
         try {
             state.plantPlant(plant, tile);
+            if (!rechargeDisabledDuringPreparation()) {
             state.startPlantCooldown(plant);
+            }
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
@@ -254,6 +386,9 @@ public class GamingController {
         }
         if (tile.getIceFloorDirection() != null) {
             return failure("An ice floor cannot be planted on.\n");
+        }
+        if (tile.isWater()) {
+            return failure("This water tile requires an aquatic plant or a Lily Pad.\n");
         }
         return failure("This tile cannot be occupied.\n");
     }
@@ -496,6 +631,12 @@ public class GamingController {
             output.append("ice-floor-")
                     .append(tile.getIceFloorDirection().name().toLowerCase(Locale.ROOT))
                     .append('\n');
+        } else if (tile.isWater() && tile.isLowShore()) {
+            output.append("flooded low shore\n");
+        } else if (tile.isWater()) {
+            output.append("water\n");
+        } else if (tile.isLowShore()) {
+            output.append("dry low shore\n");
         } else if (tile.isFrosted()) {
             output.append("frosted\n");
         } else {
@@ -504,20 +645,35 @@ public class GamingController {
     }
 
     private void appendTilePlant(StringBuilder output, Tile tile) {
-        if (!tile.hasPlant()) {
+        if (!tile.hasTopPlant() && !tile.hasLilyPad()) {
             output.append("plant: none\n");
             return;
         }
-        Plant plant = tile.getPlant();
-        output.append("plant: ").append(plant.getName()).append('\n')
-                .append("plant health: ").append(plant.getCurrentHP())
+        if (tile.hasTopPlant()) {
+            appendPlantDetails(output, "plant", tile.getTopPlant());
+        } else {
+            output.append("plant: none\n");
+        }
+        if (tile.hasLilyPad()) {
+            appendPlantDetails(output, "lily pad", tile.getLilyPadPlant());
+        }
+    }
+
+    private void appendPlantDetails(
+            StringBuilder output,
+            String label,
+            Plant plant
+    ) {
+        output.append(label).append(": ").append(plant.getName()).append('\n')
+                .append(label).append(" health: ").append(plant.getCurrentHP())
                 .append('/').append(plant.getPlantStat().maxHp()).append('\n')
-                .append("plant level: ").append(plant.getLevel()).append('\n')
-                .append("frost level: ").append(plant.getFrostLevel()).append("/3\n")
-                .append("plant food active: ")
+                .append(label).append(" level: ").append(plant.getLevel()).append('\n')
+                .append(label).append(" frost level: ")
+                .append(plant.getFrostLevel()).append("/3\n")
+                .append(label).append(" plant food active: ")
                 .append(plant.isOnPlantFood() ? "yes" : "no").append('\n');
         if (plant.isFrozenByIce()) {
-            output.append("plant ice: ").append(plant.getIceHealth())
+            output.append(label).append(" ice: ").append(plant.getIceHealth())
                     .append('/').append(Plant.ICE_MAX_HEALTH).append('\n');
         }
     }
@@ -617,6 +773,24 @@ public class GamingController {
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
     }
 
+    public Result startZombieWaves() {
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null || game.getGameState() == null) {
+            return failure("No active game found.\n");
+        }
+        if (!game.isPlantWhatYouGetLevel()) {
+            return failure("This command is only available in Plant What You Get.\n");
+        }
+        if (!game.isPreparingPlantWhatYouGet()) {
+            return failure("Zombie waves have already started.\n");
+        }
+        game.getGameState().setEventLogger(null);
+        if (!game.startZombieWaves()) {
+            return failure("Zombie waves could not be started.\n");
+        }
+        return success("First Zombie waves started.\n");
+    }
+
     public Result removeCooldowns() {
         if (scoringGameIsActive()) {
             return failure("Cheats are disabled in the Scoring Game.\n");
@@ -697,6 +871,16 @@ public class GamingController {
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (game.isPreparingPlantWhatYouGet()) {
+            output.append("PREPARATION - no recharge; use 'start zombie waves'.\n");
+        } else if (game.isPlantWhatYouGetLevel()) {
+            output.append("ZOMBIE WAVES - recharge active.\n");
+        }
+        if (state.getBoard().getWaterColumnCount() > 0) {
+            output.append("Water: rightmost ")
+                    .append(state.getBoard().getWaterColumnCount())
+                    .append(" columns. Maximum tide reaches column 6.\n");
+        }
         if (game instanceof ScoringGame scoringGame) {
             output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}
         if (state.hasDeadline()) {
@@ -734,10 +918,12 @@ public class GamingController {
         }
 
         output.append("\nCell position 1 (base): ")
-                .append("P=plant, F=frozen plant, G=normal grave, ")
+                .append("P=land plant, F=frozen plant, A=aquatic plant, ")
+                .append("Y=plant on Lily Pad, G=normal grave, ")
                 .append("S=sun grave, Q=plant-food grave, I=ice block, ")
                 .append("C=crater, U=ice floor up, D=ice floor down, ")
-                .append("W=water, .=empty\n")
+                .append("L=Lily Pad, W=water, B=flooded low shore, ")
+                .append("T=dry low shore, .=empty\n")
                 .append("Cell position 2: Z=zombie, .=none\n")
                 .append("Cell position 3: S=collectible/grounded sun, ")
                 .append("s=falling sun, .=none\n")
@@ -786,8 +972,20 @@ public class GamingController {
     }
 
     private char getBaseMapSymbol(Tile tile) {
-        if (tile.hasPlant()) {
-            return tile.getPlant().isFrozenByIce() ? 'F' : 'P';
+        if (tile.hasTopPlant()) {
+            if (tile.getTopPlant().isFrozenByIce()) {
+                return 'F';
+            }
+            if (tile.isWater() && tile.hasLilyPad()) {
+                return 'Y';
+            }
+            if (tile.isWater()) {
+                return 'A';
+            }
+            return 'P';
+        }
+        if (tile.hasLilyPad()) {
+            return 'L';
         }
         if (tile.hasGrave()) {
             Grave grave = tile.getGrave();
@@ -810,8 +1008,14 @@ public class GamingController {
                     ? 'U'
                     : 'D';
         }
+        if (tile.isWater() && tile.isLowShore()) {
+            return 'B';
+        }
         if (tile.isWater()) {
             return 'W';
+        }
+        if (tile.isLowShore()) {
+            return 'T';
         }
         return '.';
     }

@@ -48,6 +48,10 @@ boost plant -t <type>
 start game
 
 advance time -t <count> ticks
+
+season3:
+start zombie waves
+
 collect sun -l (<x>, <y>)
 show sun amount
 cheat add -n <count> suns
