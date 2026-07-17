@@ -76,7 +76,7 @@ public class TravelLogMenu implements AppMenu{
     private void startZombotany(String line) {
         Matcher matcher = TravelLogMenuCommands.START_ZOMBOTANY.getMatcher(line);
         Integer stage = parseStage(matcher);
-        //if (stage != null) print(zombotanyController.startStage(stage));
+        if (stage != null) print(zombotanyController.startStage(stage));
     }
     private Integer parseStage(Matcher matcher) {
         if (matcher == null) {
