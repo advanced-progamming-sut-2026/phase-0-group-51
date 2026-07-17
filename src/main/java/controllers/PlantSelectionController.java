@@ -6,10 +6,12 @@ import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import models.App;
+import models.Plant.PlantTag;
 import models.Result;
 import models.User;
 import models.enums.Menu;
 import models.games.Game;
+import models.games.LevelType;
 import models.games.ScoringGame;
 
 import java.util.List;
@@ -23,6 +25,9 @@ public class PlantSelectionController {
     public Result showAllPlants(){
         StringBuilder sb = new StringBuilder();
         for (PlantData data : PlantRegistry.getAll()) {
+            if (isForbiddenForCurrentLevel(data)) {
+                continue;
+            }
             sb.append(data.name()).append("\n");}
         return new Result(true,sb.toString(), null);
     }
@@ -31,7 +36,7 @@ public class PlantSelectionController {
         StringBuilder sb = new StringBuilder();
         for(Integer id: unlockedPlantsId){
             PlantData data = PlantRegistry.getById(id);
-            if(data!=null){
+            if (data != null && !isForbiddenForCurrentLevel(data)) {
                 sb.append(data.name()).append("\n");
             }
         }
@@ -41,6 +46,14 @@ public class PlantSelectionController {
         PlantData plant = PlantRegistry.getByName(plantType);
         if (plant == null) {
             return new Result(false, "Plant does not exist.", null);
+        }
+        if (isForbiddenForCurrentLevel(plant)) {
+            return new Result(
+                    false,
+                    "Sun-producing and water-only plants cannot be selected "
+                            + "in the dry Plant What You Get level.",
+                    null
+            );
         }
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
         if (!unlocked.contains(plant.id())) {
@@ -89,16 +102,37 @@ public Result boostPlant(String plantType){
     return new Result(true, "Plant boosted successfully.", null);
 }
 public Result startGame(){
-    if (App.getInstance().getCurrentGame().getSelectedPlantsForThisGame().isEmpty()) {
+    Game currentGame = App.getInstance().getCurrentGame();
+    if (currentGame == null) {
+        return new Result(false, "No level is selected.", null);
+    }
+    if (currentGame.getSelectedPlantsForThisGame().stream()
+            .anyMatch(this::isForbiddenForCurrentLevel)) {
+        return new Result(
+                false,
+                "Remove all sun-producing and water-only plants before starting "
+                        + "Plant What You Get.",
+                null
+        );
+    }
+    if (currentGame.getSelectedPlantsForThisGame().isEmpty()) {
         return new Result(false,
                 "Select some plants before start the game.", null);
     }
-    Game currentGame = App.getInstance().getCurrentGame();
      currentGame.loadLevel();
      currentGame.start();
     App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
-    return new Result(true,
-            "Game started successfully.", null);
+    if (currentGame.isPreparingPlantWhatYouGet()) {
+        return new Result(
+                true,
+                "Plant What You Get preparation started with "
+                        + currentGame.getGameState().getSun()
+                        + " sun. The lawn is dry and zombie waves are paused. "
+                        + "Plant without recharge, then use 'start zombie waves'.",
+                null
+        );
+    }
+    return new Result(true, "Game started successfully.", null);
 }
 public Result showCurrentMenu(){
     return new Result(true
@@ -109,6 +143,30 @@ public void exitMenu(){
     boolean scoringGame = currentGame instanceof ScoringGame;
     App.getInstance().setCurrentGame(null);
     App.getInstance().setCurrentMenu(scoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU);
+}
+
+private boolean isForbiddenForCurrentLevel(PlantData plant) {
+    Game game = App.getInstance().getCurrentGame();
+    if (game == null || plant == null) {
+        return false;
+    }
+    int chapterIndex = game.getCurrentChapterIndex();
+    int levelIndex = game.getCurrentLevelIndex();
+    if (chapterIndex < 0 || chapterIndex >= 4) {
+        return false;
+    }
+    LevelType type = game.getChapters().get(chapterIndex).getLevels().get(levelIndex)
+            .type();
+    return type == LevelType.PLANT_WHAT_YOU_GET && (isSunProducer(plant)
+            || plant.id() == 58 || plant.tags().contains(PlantTag.WATER));
+}
+
+private boolean isSunProducer(PlantData plant) {
+    String category = plant.category() == null ? ""
+            : plant.category().replaceAll("[^A-Za-z]", "").toLowerCase();
+    return category.equals("sunproducer")
+            || plant.tags().contains(PlantTag.SUN)
+            || (plant.id() >= 1 && plant.id() <= 5);
 }
 
 

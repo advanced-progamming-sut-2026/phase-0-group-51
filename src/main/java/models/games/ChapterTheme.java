@@ -65,7 +65,7 @@ public enum ChapterTheme {
             List.of(
                     new Level(1, LevelType.NORMAL, 2, 1000f),
                     new Level(2, LevelType.NORMAL, 3, 1500f),
-                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4, 2000f),
+                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4, 2000f, 800, List.of()),
                     new Level(4, LevelType.BOSS, 5, 2000f)
             ),
             TimeOfTheDay.DAY

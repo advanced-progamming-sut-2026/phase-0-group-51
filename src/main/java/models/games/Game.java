@@ -16,6 +16,7 @@ import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ancientEgypt.ConveyorBeltLevel;
 import models.games.ancientEgypt.Grave;
+import models.games.bigWaveBeach.BigWaveBeachFeature;
 import models.games.frostbite.FrostbiteCavesFeature;
 import models.quests.QuestService;
 import models.sun.SkySunSpawner;
@@ -38,26 +39,64 @@ public class Game{
     private SkySunSpawner skySunSpawner;
     private ConveyorBeltLevel conveyorBeltLevel;
     private long pendingScaledTicks;
+    private boolean zombieWavesManuallyStarted;
     private final Random random = new Random();
-    public void start(){if (this.gameState != null && this.gameState.getZombieWaveManager() != null) {
-        this.gameState.getZombieWaveManager().start();
+
+    public void start() {
+        if (gameState == null || gameState.getZombieWaveManager() == null) {
+            return;
+        }
+        if (isPlantWhatYouGetLevel()) {
+            zombieWavesManuallyStarted = false;
+            gameState.logEvent(
+                    "plant your plants without cooldown time, "
+                            + "then start zombie wave manually .\n"
+            );
+            return;
     }
+        gameState.getZombieWaveManager().start();
+    }
+
+    public boolean isPlantWhatYouGetLevel() {
+        return gameState != null
+                && gameState.getCurrentLevel() != null
+                && gameState.getCurrentLevel().type() == LevelType.PLANT_WHAT_YOU_GET;
+    }
+
+    public boolean isPreparingPlantWhatYouGet() {
+        return isPlantWhatYouGetLevel() && !zombieWavesManuallyStarted;
+    }
+
+    public boolean startZombieWaves() {
+        if (!isPreparingPlantWhatYouGet()
+                || gameState.getZombieWaveManager() == null) {
+            return false;
+        }
+        zombieWavesManuallyStarted = true;
+        gameState.clearPlantCooldowns();
+        gameState.getZombieWaveManager().start();
+        gameState.logEvent("Zombie waves started. Recharge rules are active now.\n");
+        return true;
     }
     public void loadLevel(){
         ChapterTheme theme = chapters.get(currentChapterIndex);
         Level level = theme.getLevels().get(currentLevelIndex);
         Board board = new Board();
+        this.zombieWavesManuallyStarted = false;
         this.gameState = new GameState(board, theme);
         this.gameState.setCurrentLevel(level);
         this.gameState.setSun(level.startingSun());
-        boolean skySunDisabled = theme.getTimeOfTheDay() == TimeOfTheDay.NIGHT || level.type() == LevelType.NIGHT_OPS;
+        boolean skySunDisabled = theme.getTimeOfTheDay() == TimeOfTheDay.NIGHT
+                || level.type() == LevelType.NIGHT_OPS
+                || level.type() == LevelType.PLANT_WHAT_YOU_GET;
         this.skySunSpawner = skySunDisabled ? null : new SkySunSpawner();
         this.conveyorBeltLevel = null;
         List<ZombieType> allowedZombies = level.resolveAllowedZombies(theme.getAllowedZombies());
         int totalWaves = level.totalWaves();
         float baseDifficulty = level.baseDifficulty();
+        boolean autoStartWaves = level.type() != LevelType.PLANT_WHAT_YOU_GET;
         ZombieWaveManager waveManager = new ZombieWaveManager(
-                this.gameState, allowedZombies, totalWaves, baseDifficulty
+                this.gameState,  allowedZombies,totalWaves, baseDifficulty,autoStartWaves,new Random()
         );
         this.gameState.setZombieWaveManager(waveManager);
         applyChapterFeatures(theme, level, board, waveManager);
@@ -116,6 +155,7 @@ public class Game{
     ) {
         applyAncientEgyptFeatures(theme, board, waveManager);
         applyFrostbiteFeatures(theme, level, waveManager);
+        applyBigWaveBeachFeatures(theme, level, board, waveManager);
         applyDarkAgesFeatures(theme, board, waveManager);
     }
 
@@ -129,6 +169,18 @@ public class Game{
             waveManager.setTornadoFinalWave(true);
         }
     }
+    private void applyBigWaveBeachFeatures(ChapterTheme theme,Level level,Board board,ZombieWaveManager waveManager) {
+        if (theme != ChapterTheme.BIG_WAVE_BEACH) {
+            return;
+        }
+        if (level.type() == LevelType.PLANT_WHAT_YOU_GET) {
+        board.clearWater();
+        return;
+        }
+        BigWaveBeachFeature feature = new BigWaveBeachFeature( gameState,waveManager);
+        feature.initialize();
+    }
+
     private void applyDarkAgesFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
         if (theme != ChapterTheme.DARK_AGES) {
             return;

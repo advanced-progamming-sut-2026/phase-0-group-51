@@ -155,15 +155,12 @@ public class IZombieController extends GamingController {
             .append("Remaining brains: ").append(game.getRemainingBrainCount()).append("\n\n");
         Map<Long, Character> zombieSymbols = new HashMap<>();
         for (Zombie zombie : state.getZombiesInTheGame()) {
-            if (zombie.isDead()) {
-                continue;
-            }
+            if (zombie.isDead()) continue;
             long key = tileKey(zombie.getLane(), zombie.getColumn());
             char symbol = IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias()) ? 'S' : 'Z';
             Character existing = zombieSymbols.get(key);
             if (existing == null || existing == 'S') {
-                zombieSymbols.put(key, symbol);
-            }
+                zombieSymbols.put(key, symbol);}
         }
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             output.append("Row ").append(lane + 1).append(": ")
