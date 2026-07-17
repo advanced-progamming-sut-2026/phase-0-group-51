@@ -75,6 +75,13 @@ public class Zombie {
             this.speedMultiplier = speedScale / baseSpeed;
         }
     }
+    public int getColumn() {
+        return (int) x;
+    }
+
+    public void setColumn(int column) {
+        this.x = column;
+    }
 
     public void applySpeedScale(float scale) {
         this.speedMultiplier *= scale;
@@ -398,8 +405,5 @@ public class Zombie {
 
     public void reverseDirection() {
         direction = direction * -1;
-    }
-    public int getColumn() {
-        return (int) (x/TILE_WIDTH);
     }
 }

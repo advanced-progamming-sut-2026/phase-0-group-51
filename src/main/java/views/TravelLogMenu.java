@@ -64,7 +64,7 @@ public class TravelLogMenu implements AppMenu{
     private void startIZombie(String line) {
         Matcher matcher = TravelLogMenuCommands.START_I_ZOMBIE.getMatcher(line);
         Integer stage = parseStage(matcher);
-       // if (stage != null) print(iZombieController.startStage(stage));
+        if (stage != null) print(iZombieController.startStage(stage));
     }
 
     private void startBeghouled(String line) {

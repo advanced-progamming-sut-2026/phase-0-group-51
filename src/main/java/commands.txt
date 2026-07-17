@@ -5,7 +5,7 @@ menu exit
 register -u <username> -p <password> <password_confirm> -n <nickname> -e <email> -g <gender>
 pick question -q <question_number> -a <answer> -c <answer_confirm>
 login -u <username> -p <password> -stay-logged-in
-login -u <username> -p <password> 
+login -u <username> -p <password>
 forget password -u <username> -e <email>
 answer -a <answer>
 menu logout
@@ -107,5 +107,13 @@ roll wallnut -l (<x>, <y>)
 advance time -t <count> ticks
 show conveyor
 show walnut bowling status
+menu show current
+menu exit
+--------I, Zombie minigame:
+place zombie -t <zombie-type> -l (<x>, <y>)
+show roster
+advance time -t <count> ticks
+show izombie status
+show map
 menu show current
 menu exit

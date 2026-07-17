@@ -121,7 +121,7 @@ public class TravelLogController {
                 "start wallnut bowling -s <stage>"
         );
         appendMinigame(
-                output, user, MinigameType.I_ZOMBIE,
+                output, user, MinigameType.IZOMBIE,
                 "start IZombie -s <stage>"
         );
         appendMinigame(
