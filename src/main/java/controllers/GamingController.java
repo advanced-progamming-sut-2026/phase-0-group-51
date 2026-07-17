@@ -469,14 +469,26 @@ public class GamingController {
         appendTileTerrain(output, tile);
         appendTilePlant(output, tile);
         appendTileZombies(output, tile, state);
+        appendTileSuns(output, tile, state);
         return success(output.toString());
     }
 
     private void appendTileTerrain(StringBuilder output, Tile tile) {
         output.append("terrain: ");
         if (tile.hasGrave()) {
-            output.append("grave\n")
-                    .append("grave health: ").append(tile.getGrave().getHealth()).append("/700\n");
+            Grave grave = tile.getGrave();
+            if (grave.hasPlantFood()) {
+                output.append("plant-food grave\n")
+                        .append("grave reward: 1 plant food\n");
+            } else if (grave.hasSun()) {
+                output.append("sun grave\n")
+                        .append("grave reward: 50 sun\n");
+            } else {
+                output.append("normal grave\n");
+            }
+            output.append("grave health: ")
+                    .append(grave.getHealth())
+                    .append("/700\n");
         } else if (tile.isIceBlocked()) {
             output.append("ice-blocked\n");
         } else if (tile.getIceFloorDirection() != null) {
@@ -510,7 +522,9 @@ public class GamingController {
     }
 
     private void appendTileZombies(StringBuilder output, Tile tile, GameState state) {
-        List<Zombie> zombies = tile.getZombies(state);
+        List<Zombie> zombies = getZombiesAtTile(
+                state, tile.getLane(), tile.getColumn()
+        );
         if (zombies.isEmpty()) {
             output.append("zombies: none\n");
             return;
@@ -525,6 +539,25 @@ public class GamingController {
                         .append('/').append(Zombie.ICE_SHELL_MAX_HEALTH);
             }
             output.append('\n');
+        }
+    }
+
+    private void appendTileSuns(StringBuilder output, Tile tile, GameState state) {
+        List<Sun> suns = getSunsAtTile( state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        if (suns.isEmpty()) {
+            output.append("suns: none\n");
+            return;
+        }
+        output.append("suns:\n");
+        for (Sun sun : suns) {
+            output.append("  ")
+                    .append(sun.getSunType())
+                    .append(" - amount ")
+                    .append(sun.getAmount())
+                    .append(" - ")
+                    .append(sun.isGrounded() ? "grounded" : "falling")
+                    .append('\n');
         }
     }
 
@@ -668,17 +701,11 @@ public class GamingController {
         if (state.hasDeadline()) {
             output.append("Dead Line: before column ")
                     .append(state.getDeadlineColumn())
-                    .append("; don't you dare miss the dead line .\n");}
+                    .append(".\n");
+        }
+
         if (game.isConveyorBeltLevel()) {
-            output.append("Conveyor: ");
-            List<PlantData> belt = game.getConveyorBeltPlants();
-            if (belt.isEmpty()) {output.append("empty");
-            } else {
-                for (int i = 0; i < belt.size(); i++) {
-                    if (i > 0) {output.append(" -> ");}
-                    output.append(belt.get(i).name());}}
-            output.append("\nNext conveyor delivery: ")
-                    .append(game.getTicksUntilNextConveyorDelivery()).append(" ticks\n");
+            appendConveyorSummary(output, game);
         }
                 output.append("\n===== LAWN MOWERS =====\n");
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
@@ -686,32 +713,167 @@ public class GamingController {
             output.append("Row ").append(lane + 1).append(": ")
                     .append(mower.isDestroyed() ? "USED" : "AVAILABLE").append('\n');
         }
-        output.append("\n===== BOARD =====\n");
+
         Board board = state.getBoard();
+        output.append("\n===== BOARD =====\n")
+                .append("Each cell contains  3 chars: ")
+                .append("[base][zombie][sun].\n\n");
+
+        appendBoardColumnHeader(output, board);
+
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             output.append("Row ").append(lane + 1).append(": ");
             for (int column = 0; column < board.getColumnCount(); column++) {
-                if (state.hasDeadline()
-                        && column == state.getDeadlineColumn() - 1) {
-                    output.append("|| ");
-                }
                 Tile tile = board.getTile(lane, column);
-                char symbol = '.';
-                boolean hasZombie = tile.hasZombie(state);
-                if (tile.hasPlant() && hasZombie) symbol = 'B';
-                else if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) symbol = 'F';
-                else if (tile.hasPlant()) symbol = 'P';
-                else if (hasZombie) symbol = 'Z';else if (tile.hasGrave()) symbol = 'G';
-                else if (tile.isIceBlocked()) symbol = 'I';
-                else if (tile.isCrater()) symbol = 'C';
-                else if (tile.getIceFloorDirection() != null) {
-                    symbol = tile.getIceFloorDirection().name().equals("UP") ? '^' : 'v';}
-                output.append('[').append(symbol).append("] ");}
-            output.append('\n');}
-        output.append("Legend: P=plant, F=frozen plant, Z=zombie, G=grave, ")
-                .append("I=ice block, ^=slide up, v=slide down, ||=Dead Line\n");
+                output.append('[')
+                        .append(buildThreeCharacterCell(state, tile))
+                        .append("] ");
+            }
+            output.append('\n');
+        }
+
+        output.append("\nCell position 1 (base): ")
+                .append("P=plant, F=frozen plant, G=normal grave, ")
+                .append("S=sun grave, Q=plant-food grave, I=ice block, ")
+                .append("C=crater, U=ice floor up, D=ice floor down, ")
+                .append("W=water, .=empty\n")
+                .append("Cell position 2: Z=zombie, .=none\n")
+                .append("Cell position 3: S=collectible/grounded sun, ")
+                .append("s=falling sun, .=none\n")
+                .append("Examples: [PZS]=plant + zombie + grounded sun, ")
+                .append("[SZ.]=sun grave + zombie, ")
+                .append("[Q.S]=plant-food grave + grounded sun.\n");
+
         return success(output.toString());
     }
+
+    private void appendConveyorSummary(StringBuilder output, Game game) {
+        output.append("Conveyor: ");
+        List<PlantData> belt = game.getConveyorBeltPlants();
+        if (belt.isEmpty()) {
+            output.append("empty");
+        } else {
+            for (int i = 0; i < belt.size(); i++) {
+                if (i > 0) {
+                    output.append(" -> ");
+                }
+                output.append(belt.get(i).name());
+            }
+        }
+        output.append("\nNext conveyor delivery: ")
+                .append(game.getTicksUntilNextConveyorDelivery())
+                .append(" ticks\n");
+    }
+
+    private void appendBoardColumnHeader(StringBuilder output, Board board) {
+        output.append("       ");
+        for (int column = 0; column < board.getColumnCount(); column++) {
+            output.append(String.format(Locale.ROOT, "%-6d", column + 1));
+        }
+        output.append('\n');
+    }
+
+    private String buildThreeCharacterCell(GameState state, Tile tile) {
+        char base = getBaseMapSymbol(tile);
+        char zombie = getZombiesAtTile(
+                state, tile.getLane(), tile.getColumn()
+        ).isEmpty() ? '.' : 'Z';
+        char sun = getSunMapSymbol(
+                state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        return new String(new char[]{base, zombie, sun});
+    }
+
+    private char getBaseMapSymbol(Tile tile) {
+        if (tile.hasPlant()) {
+            return tile.getPlant().isFrozenByIce() ? 'F' : 'P';
+        }
+        if (tile.hasGrave()) {
+            Grave grave = tile.getGrave();
+            if (grave.hasPlantFood()) {
+                return 'Q';
+            }
+            if (grave.hasSun()) {
+                return 'S';
+            }
+            return 'G';
+        }
+        if (tile.isIceBlocked()) {
+            return 'I';
+        }
+        if (tile.isCrater()) {
+            return 'C';
+        }
+        if (tile.getIceFloorDirection() != null) {
+            return tile.getIceFloorDirection().name().equals("UP")
+                    ? 'U'
+                    : 'D';
+        }
+        if (tile.isWater()) {
+            return 'W';
+        }
+        return '.';
+    }
+
+    private List<Zombie> getZombiesAtTile(
+            GameState state, int lane, int column
+    ) {
+        List<Zombie> result = new ArrayList<>();
+        if (state == null || state.getZombiesInTheGame() == null) {
+            return result;
+        }
+        for (Zombie zombie : state.getZombiesInTheGame()) {
+            if (zombie == null || zombie.isDead()) {
+                continue;
+            }
+            if (zombie.getLane() != lane) {
+                continue;
+            }
+            int zombieColumn = (int) Math.floor(zombie.getX());
+            if (zombieColumn == column) {
+                result.add(zombie);
+            }
+        }
+        return result;
+    }
+
+    private List<Sun> getSunsAtTile(
+            Board board, int lane, int column
+    ) {
+        List<Sun> result = new ArrayList<>();
+        if (board == null || board.getActiveSuns() == null) {
+            return result;
+        }
+        for (Sun sun : board.getActiveSuns()) {
+            if (sun == null || !sun.isActive()) {
+                continue;
+            }
+            if (sun.getLane() != lane) {
+                continue;
+            }
+            int sunColumn = (int) Math.floor(sun.getX());
+            if (sunColumn == column) {
+                result.add(sun);
+            }
+        }
+        return result;
+    }
+
+    private char getSunMapSymbol(
+            Board board, int lane, int column
+    ) {
+        List<Sun> suns = getSunsAtTile(board, lane, column);
+        if (suns.isEmpty()) {
+            return '.';
+        }
+        for (Sun sun : suns) {
+            if (sun.isGrounded()) {
+                return 'S';
+            }
+        }
+        return 's';
+    }
+
     private boolean scoringGameIsActive() {
         return App.getInstance().getCurrentGame() instanceof ScoringGame;
     }
