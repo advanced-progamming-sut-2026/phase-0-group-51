@@ -85,6 +85,11 @@ public class IZombie extends Game {
         sunProducers.clear();
         roster.clear();
         roster.putAll(LevelConfig.forStage(stage.getStageNumber()).roster());
+        roster.keySet().removeIf(alias -> ZombieRegistry.getTemplate(alias) == null);
+        if (roster.isEmpty()) {
+            throw new IllegalStateException(
+                "No roster zombie for this stage is available in the ZombieRegistry.");
+        }
         initializeBrains(board.getLaneCount());
         generateLevel();
     }
@@ -97,6 +102,7 @@ public class IZombie extends Game {
 
     @Override
     public void start() {
+        // should be empty.
     }
 
     @Override

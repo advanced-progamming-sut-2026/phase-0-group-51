@@ -52,7 +52,7 @@ public class GameMenu implements AppMenu{
     }
     public void handleEnterLevel(String input){
         Matcher matcher = GameMenuCommands.ENTER_LEVEL_REGEX.getMatcher(input);
-        Result result = controller.enterLevel(parseInteger(matcher, "level-number"));
+        Result result = controller.enterLevel(parseInteger(matcher, "levelNumber"));
         System.out.println(result.message());
     }
     public void handleCheatAdd(String input){

@@ -1,6 +1,7 @@
 package models.enums;
 
 import views.*;
+import views.miniGames.IZombieMenu;
 import views.miniGames.VaseBreakerMenu;
 import views.miniGames.WallnutBowllingMenu;
 
@@ -24,6 +25,7 @@ public enum Menu {
     PlantSelection_Menu(new PlantSelectionMenu()),
     VASE_BREAKER(new VaseBreakerMenu()),
     WALLNUT_BOWLING(new WallnutBowllingMenu()),
+    IZOMBIE(new IZombieMenu()),
     EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){
