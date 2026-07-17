@@ -51,6 +51,7 @@ public class Projectile {
     private final Set<Zombie> alreadyHit = new HashSet<>();
     @Getter
     private boolean markedForRemoval;
+    private boolean graveTarget;
     private Plant sourcePlant;
 
     public static Projectile straight(
@@ -298,6 +299,11 @@ public class Projectile {
         return this;
     }
 
+    public Projectile withGraveTarget() {
+        graveTarget = true;
+        return this;
+    }
+
     public void tick(GameState state) {
         if (markedForRemoval) {
             return;
@@ -448,7 +454,9 @@ public class Projectile {
     }
 
     private void impact(GameState state, Zombie primaryTarget) {
-        if (aoeRadius > 0) {
+        if (graveTarget) {
+            hitLandingTarget(state);
+        } else if (aoeRadius > 0) {
             hitArea(state);
         } else if (primaryTarget != null) {
             hit(primaryTarget, state);
@@ -480,6 +488,19 @@ public class Projectile {
     }
 
     private void hitLandingTarget(GameState state) {
+        if (graveTarget) {
+            Tile tile = state.getBoard().getTile(
+                    (int) Math.round(targetY),
+                    (int) Math.round(targetX)
+            );
+            if (tile != null && tile.hasGrave()) {
+                damageGrave(state, tile);
+                hitGraveSplash(state);
+            }
+            destroy(state);
+            return;
+        }
+
         Zombie landed = state.getBoard().getZombieNear(
                 (int) Math.round(targetY),
                 targetX,
@@ -489,6 +510,19 @@ public class Projectile {
             hit(landed, state);
         }
         destroy(state);
+    }
+
+    private void hitGraveSplash(GameState state) {
+        if (aoeRadius <= 0) {
+            return;
+        }
+        for (Zombie zombie : state.getBoard().getZombiesInRadius(
+                targetY,
+                targetX,
+                aoeRadius
+        )) {
+            hit(zombie, state, splashDamage);
+        }
     }
 
     private void hit(Zombie zombie, GameState state) {

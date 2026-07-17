@@ -1,5 +1,6 @@
 package models.Plant;
 
+import models.Board.Tile;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
@@ -37,19 +38,31 @@ public enum Lobber implements PlantType {
 
     @Override
     public void onTick(Plant plant, GameState state) {
-        Zombie target = state.getBoard().getFirstZombieAheadInLane(
+        Zombie zombieTarget = state.getBoard().getFirstZombieAheadInLane(
                 plant.getPosY(),
                 plant.getPosX()
         );
-        if (target != null) {
-            launchAt(plant, state, target);
+        if (zombieTarget != null) {
+            launchAtZombie(plant, state, zombieTarget);
+            return;
         }
+
+        Tile graveTarget = state.getBoard().getFirstGraveAheadInLane(
+                plant.getPosY(),
+                plant.getPosX()
+        );
+        if (graveTarget != null) {
+            launchAtGrave(plant, state, graveTarget);
+            return;
+        }
+
+        plant.forceReady(state);
     }
 
     @Override
     public void onFoodTick(Plant plant, GameState state) {
         for (Zombie zombie : state.getBoard().getRandomZombies(3)) {
-            launchAt(plant, state, zombie);
+            launchAtZombie(plant, state, zombie);
         }
     }
 
@@ -58,7 +71,38 @@ public enum Lobber implements PlantType {
         return true;
     }
 
-    private void launchAt(Plant plant, GameState state, Zombie target) {
+    private void launchAtZombie(
+            Plant plant,
+            GameState state,
+            Zombie target
+    ) {
+        state.getBoard().addProjectile(createProjectile(
+                plant,
+                state,
+                target.getX(),
+                target.getLane()
+        ));
+    }
+
+    private void launchAtGrave(
+            Plant plant,
+            GameState state,
+            Tile target
+    ) {
+        state.getBoard().addProjectile(createProjectile(
+                plant,
+                state,
+                target.getColumn(),
+                target.getLane()
+        ).withGraveTarget());
+    }
+
+    private Projectile createProjectile(
+            Plant plant,
+            GameState state,
+            double targetX,
+            double targetLane
+    ) {
         ElementType shotElement = element;
         int damage = plant.getDamage();
         if (kernelPult && shouldLaunchButter(plant, state)) {
@@ -66,8 +110,9 @@ public enum Lobber implements PlantType {
             damage = Math.max(40, damage);
         }
         double splashRadius = plant.hasTag(PlantTag.AOE) ? areaRadius : 0;
-        int splashDamage = damage + (int) Math.round(plant.getPlantStat().aoeDamage());
-        state.getBoard().addProjectile(Projectile.targeted(
+        int splashDamage = damage
+                + (int) Math.round(plant.getPlantStat().aoeDamage());
+        return Projectile.targeted(
                 damage,
                 splashDamage,
                 shotElement,
@@ -75,11 +120,11 @@ public enum Lobber implements PlantType {
                 PlantEnumSupport.projectileSpeed(plant, 0.35),
                 plant.getPosX(),
                 plant.getPosY(),
-                target.getX(),
-                target.getLane(),
+                targetX,
+                targetLane,
                 new ArcMove(),
                 splashRadius
-        ).withSource(plant));
+        ).withSource(plant);
     }
 
     private boolean shouldLaunchButter(Plant plant, GameState state) {

@@ -403,6 +403,19 @@ public class Board {
         return first;
     }
 
+    public Tile getFirstGraveAheadInLane(int lane, double column) {
+        int firstColumn = Math.max(0, (int) Math.ceil(column));
+        for (int currentColumn = firstColumn;
+             currentColumn < columnCount;
+             currentColumn++) {
+            Tile tile = getTile(lane, currentColumn);
+            if (tile != null && tile.hasGrave()) {
+                return tile;
+            }
+        }
+        return null;
+    }
+
     public Zombie getZombieNear(int lane, double column, double radius) {
         Zombie closest = null;
         double closestDistance = Double.MAX_VALUE;

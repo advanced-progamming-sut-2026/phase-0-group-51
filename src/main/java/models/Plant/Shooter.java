@@ -139,31 +139,31 @@ public enum Shooter implements PlantType {
 
     private boolean hasTarget(Plant plant, GameState state) {
         return switch (pattern) {
-            case FORWARD, PEA_POD, CITRON -> zombieAheadInLane(
+            case FORWARD, PEA_POD, CITRON -> targetAheadInLane(
                     plant,
                     state,
                     plant.getPosY(),
                     baseRange
             );
-            case SHORT_RANGE -> zombieAheadInLane(
+            case SHORT_RANGE -> targetAheadInLane(
                     plant,
                     state,
                     plant.getPosY(),
                     PlantEnumSupport.upgradedRange(plant, baseRange)
             );
             case THREE_LANES -> zombieInThreepeaterRange(plant, state);
-            case ROTOBAGA -> hasZombieInAnyDirection(
+            case ROTOBAGA -> hasTargetInAnyDirection(
                     plant,
                     state,
                     StarMove.ROTOBAGA_DIRECTIONS
             );
             case STARFRUIT -> hasStarfruitTarget(plant, state);
-            case SPLIT_PEA -> zombieAheadInLane(
+            case SPLIT_PEA -> targetAheadInLane(
                     plant,
                     state,
                     plant.getPosY(),
                     baseRange
-            ) || zombieBehindInLane(plant, state);
+            ) || targetBehindInLane(plant, state);
         };
     }
 
@@ -190,7 +190,7 @@ public enum Shooter implements PlantType {
     }
 
     private void shootSplitPea(Plant plant, GameState state) {
-        if (zombieAheadInLane(plant, state, plant.getPosY(), baseRange)) {
+        if (targetAheadInLane(plant, state, plant.getPosY(), baseRange)) {
             addStraightProjectile(
                     plant,
                     state,
@@ -198,7 +198,7 @@ public enum Shooter implements PlantType {
                     plant.getDamage()
             );
         }
-        if (zombieBehindInLane(plant, state)) {
+        if (targetBehindInLane(plant, state)) {
             addDirectionalProjectile(
                     plant,
                     state,
@@ -227,7 +227,7 @@ public enum Shooter implements PlantType {
 
     private void shootRotobagaDirections(Plant plant, GameState state) {
         for (double[] direction : StarMove.ROTOBAGA_DIRECTIONS) {
-            if (hasZombieInDirection(plant, state, direction)) {
+            if (hasTargetInDirection(plant, state, direction)) {
                 addDirectionalProjectile(
                         plant,
                         state,
@@ -320,17 +320,26 @@ public enum Shooter implements PlantType {
         return false;
     }
 
-    private boolean hasZombieInAnyDirection(
+    private boolean hasTargetInAnyDirection(
             Plant plant,
             GameState state,
             double[][] directions
     ) {
         for (double[] direction : directions) {
-            if (hasZombieInDirection(plant, state, direction)) {
+            if (hasTargetInDirection(plant, state, direction)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean hasTargetInDirection(
+            Plant plant,
+            GameState state,
+            double[] direction
+    ) {
+        return hasZombieInDirection(plant, state, direction)
+                || hasGraveInDirection(plant, state, direction);
     }
 
     private boolean hasZombieInDirection(
@@ -429,6 +438,16 @@ public enum Shooter implements PlantType {
         );
     }
 
+    private static boolean targetAheadInLane(
+            Plant plant,
+            GameState state,
+            int lane,
+            double range
+    ) {
+        return zombieAheadInLane(plant, state, lane, range)
+                || graveAheadInLane(plant, state, lane, range);
+    }
+
     private static boolean zombieAheadInLane(
             Plant plant,
             GameState state,
@@ -445,6 +464,34 @@ public enum Shooter implements PlantType {
         return false;
     }
 
+    private static boolean graveAheadInLane(
+            Plant plant,
+            GameState state,
+            int lane,
+            double range
+    ) {
+        int firstColumn = Math.max(0, plant.getPosX());
+        int lastColumn = Math.min(
+                state.getBoard().getColumnCount() - 1,
+                (int) Math.floor(plant.getPosX() + range)
+        );
+        for (int column = firstColumn; column <= lastColumn; column++) {
+            Tile tile = state.getBoard().getTile(lane, column);
+            if (tile != null && tile.hasGrave()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean targetBehindInLane(
+            Plant plant,
+            GameState state
+    ) {
+        return zombieBehindInLane(plant, state)
+                || graveBehindInLane(plant, state);
+    }
+
     private static boolean zombieBehindInLane(
             Plant plant,
             GameState state
@@ -453,6 +500,22 @@ public enum Shooter implements PlantType {
                 plant.getPosY()
         )) {
             if (!zombie.isDead() && zombie.getX() < plant.getPosX()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean graveBehindInLane(
+            Plant plant,
+            GameState state
+    ) {
+        for (int column = plant.getPosX() - 1; column >= 0; column--) {
+            Tile tile = state.getBoard().getTile(
+                    plant.getPosY(),
+                    column
+            );
+            if (tile != null && tile.hasGrave()) {
                 return true;
             }
         }
@@ -469,7 +532,7 @@ public enum Shooter implements PlantType {
                 plant.getPosY() + 1
         );
         for (int lane = firstLane; lane <= lastLane; lane++) {
-            if (zombieAheadInLane(plant, state, lane, 9)) {
+            if (targetAheadInLane(plant, state, lane, 9)) {
                 return true;
             }
         }
