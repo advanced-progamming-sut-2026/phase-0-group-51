@@ -37,6 +37,7 @@ menu collection show-all-zombies
 menu collection show-plant -p <plant_name>
 menu collection show-zombie -z <zombie_name>
 menu collection upgrade-plant -p <plant_name>
+menu collection cheat-upgrade-plant -p <plant_name>
 menu collection purchase-plant -p <plant_name>
 
 show all plants

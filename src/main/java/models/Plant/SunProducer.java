@@ -92,9 +92,7 @@ public enum SunProducer implements PlantType {
         if (this == SUN_SHROOM) {
             plant.setGrowthStage(3);
         }
-        state.increaseSunBalance(plantFoodSunAmount);
-        state.logEvent(plant.getName() + " plant food produced "
-                + plantFoodSunAmount + " suns.\n");
+        spawnPlantFoodSun(plant, state, plantFoodSunAmount);
     }
 
     @Override
@@ -111,6 +109,29 @@ public enum SunProducer implements PlantType {
             case 2 -> 50;
             default -> 25;
         };
+    }
+
+    private static void spawnPlantFoodSun(
+            Plant plant,
+            GameState state,
+            int amount
+    ) {
+        Sun sun = new Sun(
+                plant.getPosX(),
+                plant.getPosY(),
+                plant.getPosY(),
+                SunType.ORDINARY,
+                amount,
+                Integer.MAX_VALUE
+        );
+        sun.setGrounded(true);
+        state.getBoard().spawnSun(sun);
+        state.logEvent(plant.getName()
+                + " produced a collectible sun worth "
+                + amount + " at ("
+                + (plant.getPosX() + 1) + ", "
+                + (plant.getPosY() + 1)
+                + ") using plant food.\n");
     }
 
     private static void produceCollectableSun(

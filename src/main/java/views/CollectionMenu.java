@@ -31,6 +31,8 @@ public class CollectionMenu implements AppMenu{
             handleShowAZombie(line);
         } else if (CollectionMenuCommands.UPGRADE_PLANT_REGEX.matches(line)) {
             handleUpgrade(line);
+        } else if (CollectionMenuCommands.CHEAT_UPGRADE_PLANT_REGEX.matches(line)) {
+            handleCheatUpgrade(line);
         } else if (CollectionMenuCommands.PURCHASE_PLANT_REGEX.matches(line)) {
             handlePurchase(line);
         } else if (CollectionMenuCommands.EXIT_MENU_REGEX.matches(line)) {
@@ -48,8 +50,20 @@ public class CollectionMenu implements AppMenu{
     }
 
     private void handleUpgrade(String line) {
-        String plantName = CollectionMenuCommands.UPGRADE_PLANT_REGEX.getGroup(line, "plantName");
+        String plantName = CollectionMenuCommands.UPGRADE_PLANT_REGEX.getGroup(
+                line,
+                "plantName"
+        );
         Result result = controller.upgrade(plantName);
+        System.out.println(result.message());
+    }
+
+    private void handleCheatUpgrade(String line) {
+        String plantName = CollectionMenuCommands.CHEAT_UPGRADE_PLANT_REGEX.getGroup(
+                line,
+                "plantName"
+        );
+        Result result = controller.cheatUpgrade(plantName);
         System.out.println(result.message());
     }
 
