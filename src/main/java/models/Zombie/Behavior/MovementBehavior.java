@@ -13,7 +13,6 @@ import java.util.Random;
 @Getter
 public class MovementBehavior implements PersistableBehavior {
     private static final Random RANDOM = new Random();
-    private static final float TILE_WIDTH = 80f;
 
     public static final List<String> DODO_FLY_OVER_PLANTS = List.of(
         "iceburg",
@@ -58,7 +57,7 @@ public class MovementBehavior implements PersistableBehavior {
     public void onTick(Zombie zombie, GameState gs) {
         Board board = gs.getBoard();
         int lane = zombie.getLane();
-        int col = (int) (zombie.getX() / TILE_WIDTH);
+        int col = (int) (zombie.getX());
         skipEatingThisTick = false;
 
         switch (type) {
@@ -67,7 +66,7 @@ public class MovementBehavior implements PersistableBehavior {
                 Plant ahead = board.findNearestPlantInRange(lane, col, 1);
                 if (ahead != null && isFlyOverTarget(ahead)) {
                     skipEatingThisTick = true;
-                    zombie.setX(Math.max(0f, ahead.getPosX() - 1) * TILE_WIDTH);
+                    zombie.setX(Math.max(0f, ahead.getPosX() - 1));
                 }
             }
             case UNDERGROUND -> {

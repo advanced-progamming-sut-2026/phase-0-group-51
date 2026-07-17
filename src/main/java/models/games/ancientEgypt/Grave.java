@@ -1,16 +1,38 @@
 package models.games.ancientEgypt;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class Grave {
     private int health;
     private final int lane;
     private final int column;
-//این دوتا مخصوص فصل dark ages ان
+
     private boolean hasSun;
     private boolean hasPlantFood;
     public Grave(int lane, int column) {
         this.lane = lane;
         this.column = column;
         this.health = 700;
+    }
+    public void makeSunGrave() {
+        hasSun = true;
+        hasPlantFood = false;
+    }
+    public void makePlantFoodGrave() {
+        hasPlantFood = true;
+        hasSun = false;
+    }
+    public String getDisplayType() {
+        if (hasPlantFood) {
+            return "Plant Food grave";
+        }
+        if (hasSun) {
+            return "Sun grave";
+        }
+        return "normal grave";
     }
 
     public void takeDamage(int damage) {
@@ -22,17 +44,5 @@ public class Grave {
 
     public boolean isDestroyed() {
         return this.health <= 0;
-    }
-
-    public int getHealth() {
-        return health;
-    }
-
-    public int getLane() {
-        return lane;
-    }
-
-    public int getColumn() {
-        return column;
     }
 }

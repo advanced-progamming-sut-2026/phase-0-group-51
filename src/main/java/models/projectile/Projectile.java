@@ -7,6 +7,7 @@ import models.Plant.Plant;
 import models.Plant.PlantTag;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.games.ancientEgypt.Grave;
 import models.projectile.move.MovingStrategy;
 import models.projectile.move.StarMove;
 import models.projectile.move.StraightMove;
@@ -380,14 +381,42 @@ public class Projectile {
     }
 
     private void damageGrave(GameState state, Tile graveTile) {
-        graveTile.getGrave().takeDamage(damage);
-        state.logEvent("Grave at (" + (graveTile.getColumn() + 1) + ", "
-                + (graveTile.getLane() + 1) + ") took " + damage + " damage.\n");
-        if (graveTile.getGrave().isDestroyed()) {
-            graveTile.removeGrave();
-            state.logEvent("Grave at (" + (graveTile.getColumn() + 1) + ", "
-                    + (graveTile.getLane() + 1) + ") was destroyed.\n");
+        Grave grave = graveTile.getGrave();
+        if (grave == null) return;
+        grave.takeDamage(damage);
+        state.logEvent(
+                "Grave at (" + (graveTile.getColumn() + 1)
+                        + ", " + (graveTile.getLane() + 1)
+                        + ") took " + damage + " damage.\n"
+        );
+        if (!grave.isDestroyed()) {
+            return;
         }
+        if (grave.isHasSun()) {
+            state.increaseSunBalance(50);
+
+            state.logEvent(
+                    "The grave contained 50 sun. "
+                            + "You now have " + state.getSun() + " sun.\n"
+            );
+        }
+        if (grave.isHasPlantFood()) {
+            boolean collected = state.addPlantFood();
+            if (collected) {
+                state.logEvent(
+                        "The grave contained a Plant Food. "
+                                + "You now have " + state.getPlantFoodCount() + " Plant Foods.\n"
+                );
+            } else {
+                state.logEvent(
+                        "The grave contained a Plant Food, " + "but your Plant Food storage is full.\n"
+                );
+            }
+        }
+        graveTile.removeGrave();
+        state.logEvent(
+                "Grave at (" + (graveTile.getColumn() + 1) + ", " + (graveTile.getLane() + 1) + ") was destroyed.\n"
+        );
     }
 
     private void handleTargetedMovement(GameState state) {
