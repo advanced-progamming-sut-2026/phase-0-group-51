@@ -23,7 +23,6 @@ public class ZombieBehaviorFactory {
             case "MOVEMENT"        -> buildMovement(rs);
             case "WORLD_EFFECT"    -> buildWorldEffect(rs);
             case "AURA"            -> buildAura(rs);
-            case "DEATH_EFFECT"    -> buildDeathEffect(rs);
             case "TRANSFORM"       -> buildTransform(rs);
             case "PUSH_OBJECT"     -> buildPushObject(rs);
             case "CONTACT_KILL"    -> buildContactKill(rs);
@@ -99,13 +98,6 @@ public class ZombieBehaviorFactory {
         );
     }
 
-    private static ZombieBehavior buildDeathEffect(ResultSet rs) throws SQLException {
-        return new DeathEffectBehavior(
-            DeathEffectBehavior.DeathEffectType.valueOf(rs.getString("death_effect_type")),
-            rs.getString("death_spawn_alias"),
-            rs.getInt("death_spawn_count")
-        );
-    }
 
     private static ZombieBehavior buildTransform(ResultSet rs) throws SQLException {
         return new TransformBehavior(

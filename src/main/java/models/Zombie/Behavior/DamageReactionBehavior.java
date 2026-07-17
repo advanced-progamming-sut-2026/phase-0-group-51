@@ -62,7 +62,7 @@ public class DamageReactionBehavior implements PersistableBehavior {
             }
             case DEFLECT_LOBBER -> {
                 // Parasol
-                if (plant.getPlantType().equals(Lobber.class)) {
+                if (plant.getPlantType() instanceof Lobber) {
                     return 0;
                 }
             }
