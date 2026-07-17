@@ -24,7 +24,9 @@ public class GameView implements AppMenu {
         } else if (GameCommands.ADVANCE_TIME_REGEX.matches(line)) {
             Matcher matcher = GameCommands.ADVANCE_TIME_REGEX.getMatcher(line);
             print(controller.advanceTime(parseInteger(matcher, "count")));
-        } else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
+        }  else if (GameCommands.START_ZOMBIE_WAVES_REGEX.matches(line)) {
+            print(controller.startZombieWaves());
+        }  else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
             Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(line);
             int[] coordinates = parseCoordinates(matcher);
             if (coordinates != null) {

@@ -19,6 +19,7 @@ public enum GameCommands implements Commands {
     CHEAT_ADD_SUN_REGEX("^\\s*cheat\\s+add\\s+-n\\s+(?<count>\\d+)\\s+suns\\s*$"),
     PLANT_COLLECT_SUN_REGEX("^\\s*collect\\s+sun\\s+-l\\s+\\((?<x>\\d+),\\s*(?<y>\\d+)\\)\\s*$"),
     ADVANCE_TIME_REGEX("^\\s*advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks\\s*$"),
+    START_ZOMBIE_WAVES_REGEX("^\\s*start\\s+zombie\\s+waves\\s*$"),
     CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX);
     private final String regex;
 

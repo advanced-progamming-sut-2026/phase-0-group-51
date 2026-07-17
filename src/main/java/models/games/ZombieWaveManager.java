@@ -20,7 +20,7 @@ import java.util.function.IntConsumer;
 @Getter
 @Setter
 public class ZombieWaveManager {
-
+    private static final float BACKWATER_MAX_ZOMBIE_COST = 700f;
     private final GameState gs;
     private final List<ZombieType> allowedAliases; // this chapter zombies
     private final int totalWaves;
@@ -227,4 +227,27 @@ public class ZombieWaveManager {
 
         return zombie;
     }
+    public Zombie spawnZombieFromBackwater(Tile shoreTile, int waveNumber) {
+        if (shoreTile == null || !shoreTile.isLowShore() || !shoreTile.isWater()) {
+            return null;}
+        Zombie existingZombie = gs.getBoard().getZombieInPosition(shoreTile.getLane(), shoreTile.getColumn());
+        if (existingZombie != null) {return null;}
+        Zombie zombie = pickAffordableZombie(BACKWATER_MAX_ZOMBIE_COST);
+        if (zombie == null) {return null;}
+        zombie.setLane(shoreTile.getLane());
+        zombie.setX(shoreTile.getColumn());
+        zombie.setGlowing(random.nextInt(100) < 5);
+        gs.addZombie(zombie);
+        if (currentWave != null) {
+            currentWave.addZombie(zombie);}
+        gs.logEvent(
+                "Backwater spawned " + zombie.getAlias()
+                        + " from below the low shore at ("
+                        + (shoreTile.getColumn() + 1) + ", "
+                        + (shoreTile.getLane() + 1) + ") during wave "
+                        + waveNumber + ".\n"
+        );
+        return zombie;
+    }
+
 }

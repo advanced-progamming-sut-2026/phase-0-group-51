@@ -19,14 +19,17 @@ public class Tile {
     private final float x;
     private final float y;
     private Plant plant;
+    private Plant lilyPadPlant;
+
     private boolean iceBlocked = false;
     private boolean water = false;
+    private boolean lowShore = false;
     private boolean crater = false;
     private boolean frosted = false;
     private IceFloorDirection iceFloorDirection;
     private Grave grave;
 
-    public static final float TILEWIDTH = 80f; // for example , we'll change it later in phase 2
+    public static final float TILEWIDTH = 80f;
     public static final float TILEHEIGHT = 70f;
 
     public Tile(int lane,int column){
@@ -36,11 +39,24 @@ public class Tile {
         this.y = lane * TILEHEIGHT;
     }
 
+    public Plant getPlant() {
+        return plant != null ? plant : lilyPadPlant;
+    }
+
+    public Plant getTopPlant() {
+        return plant;
+    }
+
+    public boolean hasTopPlant() {
+        return plant != null;
+    }
+
+    public boolean hasLilyPad() {
+        return lilyPadPlant != null;
+    }
+
     public boolean hasPlant() {
-        if (plant == null) {
-            return false;
-        }
-        return true;
+        return plant != null || lilyPadPlant != null;
     }
 
     public boolean hasGrave() {
@@ -48,8 +64,24 @@ public class Tile {
     }
 
     public void removePlant() {
-        this.plant = null;
+        if (plant != null) {
+            plant = null;
+        } else {
+            lilyPadPlant = null;
+        }
     }
+
+    public void removeSpecificPlant(Plant target) {
+        if (target == null) {
+            return;
+        }
+        if (plant == target) {
+            plant = null;
+        } else if (lilyPadPlant == target) {
+            lilyPadPlant = null;
+    }
+    }
+
     public static int toTiles(double worldUnits) {
         return (int) Math.ceil(worldUnits / TILEWIDTH);
     }
@@ -66,7 +98,7 @@ public class Tile {
             return zombies;
         }
         // TEST
-        float tileStartX = column - 1;
+        float tileStartX = column;
         float tileEndX = tileStartX + 1f;
         for (Zombie zombie : state.getZombiesInTheGame()) {
             if (zombie.isDead()) {

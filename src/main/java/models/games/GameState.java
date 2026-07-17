@@ -194,6 +194,51 @@ public class GameState {
         validatePlantPlacement(plant, tile);
         placePlantOnTile(plant, tile);
     }
+
+    public void plantLilyPad(Plant lilyPad, Tile tile) {
+        if (lilyPad == null || tile == null) {
+            throw new IllegalArgumentException("Plant and tile are required");
+        }
+        if (!tile.isWater()) {
+            throw new IllegalStateException("Lily Pad can only be planted on water");
+        }
+        if (tile.hasPlant() || tile.hasGrave() || tile.isIceBlocked()
+                || tile.isCrater() || tile.getIceFloorDirection() != null) {
+            throw new IllegalStateException("Tile is not available for a Lily Pad");
+        }
+        int cost = lilyPad.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        lilyPad.setPosX(tile.getColumn());
+        lilyPad.setPosY(tile.getLane());
+        tile.setLilyPadPlant(lilyPad);
+        questTracker.recordPlantPlaced(lilyPad);
+        lilyPad.getPlantType().onPlanted(lilyPad, this);
+    }
+
+    public void plantOnLilyPad(Plant plant, Tile tile) {
+        if (plant == null || tile == null) {
+            throw new IllegalArgumentException("Plant and tile are required");
+        }
+        if (!tile.isWater() || !tile.hasLilyPad()) {
+            throw new IllegalStateException("This plant requires a Lily Pad on water");
+        }
+        if (tile.hasTopPlant()) {
+            throw new IllegalStateException("The Lily Pad already has a plant");
+        }
+        int cost = plant.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
+        plant.getPlantType().onPlanted(plant, this);
+    }
     private void validatePlantPlacement(Plant plant, Tile tile) {
 
        if (plant == null || tile == null) {
