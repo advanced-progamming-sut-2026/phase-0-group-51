@@ -20,6 +20,7 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ScoringGame;
+import models.games.ancientEgypt.Grave;
 import models.items.Mower;
 import models.quests.QuestService;
 import models.sun.Sun;
@@ -477,10 +478,10 @@ public class GamingController {
         output.append("terrain: ");
         if (tile.hasGrave()) {
             Grave grave = tile.getGrave();
-            if (grave.hasPlantFood()) {
+            if (grave.isHasPlantFood()) {
                 output.append("plant-food grave\n")
                         .append("grave reward: 1 plant food\n");
-            } else if (grave.hasSun()) {
+            } else if (grave.isHasSun()) {
                 output.append("sun grave\n")
                         .append("grave reward: 50 sun\n");
             } else {
@@ -790,10 +791,10 @@ public class GamingController {
         }
         if (tile.hasGrave()) {
             Grave grave = tile.getGrave();
-            if (grave.hasPlantFood()) {
+            if (grave.isHasPlantFood()) {
                 return 'Q';
             }
-            if (grave.hasSun()) {
+            if (grave.isHasSun()) {
                 return 'S';
             }
             return 'G';

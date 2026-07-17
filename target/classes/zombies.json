@@ -665,7 +665,7 @@
         "mY": 10
       },
       "Hitpoints": 250,
-      "MaxTorchReach": 37,
+      "MaxTorchReach": 1,
       "PlantsToEat": {
         "List": [
           "frostbonnet",
