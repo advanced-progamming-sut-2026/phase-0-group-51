@@ -42,9 +42,9 @@ public class MainMenuController {
         int unreadCount = newsRepository.countUnreadNews(user.getId());
         String newsOption = unreadCount > 0
                 ? "news [NEW: " + unreadCount + "]"
-                : "news";
+                : "";
         String message =
-                "You are now in the main menu.\n" +  "- " + newsOption + "\n";
+                "You are now in the main menu.\n"  + newsOption + "\n";
         return new Result(true, message, null);
     }
     public Result enterMenu(String menuName){

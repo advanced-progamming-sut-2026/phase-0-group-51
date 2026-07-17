@@ -197,7 +197,7 @@ public class Board {
         for (int lane = 0; lane < laneCount; lane++) {
             for (int col = 4; col < columnCount; col++) {
                 Tile tile = tiles[lane][col];
-                if (tile.isOccupiable()) {
+                if (tile.isOccupiable()  && getZombieInPosition(lane, col) == null) {
                     eligible.add(tile);
                 }
             }

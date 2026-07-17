@@ -5,6 +5,7 @@ import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
+import models.Board.Tile;
 import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
@@ -192,5 +193,38 @@ public class ZombieWaveManager {
             }
         }
         return affordable.get(affordable.size() - 1);
+    }
+    public Zombie spawnZombieFromGrave(Tile graveTile, int waveNumber) {
+        if (graveTile == null || !graveTile.hasGrave()) {
+            return null;
+        }
+        Zombie existingZombie = gs.getBoard().getZombieInPosition(graveTile.getLane(), graveTile.getColumn());
+        if (existingZombie != null) {
+            return null;
+        }
+        Zombie zombie = pickAffordableZombie(Float.MAX_VALUE);
+        if (zombie == null) {
+            return null;
+        }
+        zombie.setLane(graveTile.getLane());
+        zombie.setX(graveTile.getColumn());
+        zombie.setGlowing(random.nextInt(100) < 5);
+        gs.addZombie(zombie);
+
+        if (currentWave != null) {
+            currentWave.addZombie(zombie);
+        }
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());}
+
+        gs.logEvent(
+                "Necromancy summoned "
+                        + zombie.getAlias()
+                        + " from the grave at (" + (graveTile.getColumn() + 1)
+                        + ", " + (graveTile.getLane() + 1) + ") during wave "
+                        + waveNumber + ".\n"
+        );
+
+        return zombie;
     }
 }
