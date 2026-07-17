@@ -38,10 +38,12 @@ public enum LevelType {
 
     NIGHT_OPS{
         @Override
-        public void initialize(GameState state) { }
+        public void initialize(GameState state) {
+            state.logEvent("Night Ops started.\n");
+        }
         @Override
         public boolean isFinished(GameState state) {
-            return state.getZombieWaveManager().isLevelCleared();
+           return state.getZombieWaveManager() != null && state.getZombieWaveManager().isLevelCleared();
         }
     },
 

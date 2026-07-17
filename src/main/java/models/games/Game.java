@@ -10,18 +10,17 @@ import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Board.Board;
+import models.Board.Tile;
 import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ancientEgypt.ConveyorBeltLevel;
+import models.games.ancientEgypt.Grave;
 import models.games.frostbite.FrostbiteCavesFeature;
 import models.quests.QuestService;
 import models.sun.SkySunSpawner;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -39,6 +38,7 @@ public class Game{
     private SkySunSpawner skySunSpawner;
     private ConveyorBeltLevel conveyorBeltLevel;
     private long pendingScaledTicks;
+    private final Random random = new Random();
     public void start(){if (this.gameState != null && this.gameState.getZombieWaveManager() != null) {
         this.gameState.getZombieWaveManager().start();
     }
@@ -50,7 +50,8 @@ public class Game{
         this.gameState = new GameState(board, theme);
         this.gameState.setCurrentLevel(level);
         this.gameState.setSun(level.startingSun());
-        this.skySunSpawner = new SkySunSpawner();
+        boolean skySunDisabled = theme.getTimeOfTheDay() == TimeOfTheDay.NIGHT || level.type() == LevelType.NIGHT_OPS;
+        this.skySunSpawner = skySunDisabled ? null : new SkySunSpawner();
         this.conveyorBeltLevel = null;
         List<ZombieType> allowedZombies = level.resolveAllowedZombies(theme.getAllowedZombies());
         int totalWaves = level.totalWaves();
@@ -115,23 +116,101 @@ public class Game{
     ) {
         applyAncientEgyptFeatures(theme, board, waveManager);
         applyFrostbiteFeatures(theme, level, waveManager);
+        applyDarkAgesFeatures(theme, board, waveManager);
     }
 
-    private void applyAncientEgyptFeatures(
-            ChapterTheme theme,
-            Board board,
-            ZombieWaveManager waveManager
-    ) {
-        if (theme.getChapterFeatures().contains(ChapterFeature.GRAVE)) {
+    private void applyAncientEgyptFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
+        if (theme == ChapterTheme.ANCIENT_EGYPT && theme.getChapterFeatures().contains(ChapterFeature.GRAVE)) {
             for (int i = 0; i < 5; i++) {
                 board.placeGraveOnRandomTile();
             }
         }
-        if (theme.getChapterFeatures().contains(ChapterFeature.TORNADO)) {
+        if (theme == ChapterTheme.ANCIENT_EGYPT && theme.getChapterFeatures().contains(ChapterFeature.TORNADO)) {
             waveManager.setTornadoFinalWave(true);
         }
     }
+    private void applyDarkAgesFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
+        if (theme != ChapterTheme.DARK_AGES) {
+            return;
+        }
+        skySunSpawner = null;
 
+        if (theme.getChapterFeatures().contains(ChapterFeature.GRAVE)) {
+            for (int i = 0; i < 4; i++) {
+                createDarkAgesGrave(board, 0);
+            }
+        }
+        boolean graveSpawnEnabled = theme.getChapterFeatures().contains(ChapterFeature.GRAVE_SPAWN);
+        boolean necromancyEnabled = theme.getChapterFeatures().contains(ChapterFeature.NECROMANCY);
+        waveManager.setOnWaveStart(waveNumber -> {
+            if (graveSpawnEnabled && random.nextInt(100) < 80) {
+                int graveCount = 1 + random.nextInt(4);
+                for (int i = 0; i < graveCount; i++) {
+                    Tile created = createDarkAgesGrave(board, waveNumber);
+                    if (created == null) {
+                        break;
+                    }
+                }
+            }
+
+            if (necromancyEnabled && random.nextInt(100) < 80) {
+                performNecromancy(board, waveManager, waveNumber);
+            }
+        });
+    }
+    private Tile createDarkAgesGrave(Board board, int waveNumber) {
+        Tile tile = board.placeGraveOnRandomTile();
+        if (tile == null) {
+            gameState.logEvent("No valid tile was available for a new grave.\n");
+            return null;
+        }
+        Grave grave = tile.getGrave();
+        int rewardRoll = random.nextInt(100);
+//احتمال میذارم چون داک گفته ممکن است(نگفته همیشه)...
+        if (rewardRoll < 30) {
+            grave.makePlantFoodGrave();
+        } else if (rewardRoll < 60) {
+            grave.makeSunGrave();
+        }
+        String moment = waveNumber == 0
+                ? "at the start of the level"
+                : "at the start of wave " + waveNumber;
+        gameState.logEvent(
+                "A " + grave.getDisplayType()
+                        + "  appeared at ("
+                        + (tile.getColumn() + 1)
+                        + ", "
+                        + (tile.getLane() + 1)
+                        + ") "
+                        + moment
+                        + ".\n"
+        );
+
+        return tile;
+    }
+    private void performNecromancy(Board board, ZombieWaveManager waveManager, int waveNumber) {
+        List<Tile> graveTiles = new ArrayList<>();
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+            for (int column = 0; column < board.getColumnCount(); column++) {
+                Tile tile = board.getTile(lane, column);
+                if (tile == null || !tile.hasGrave()) {
+                    continue;
+                }
+                if (board.getZombieInPosition(lane, column) != null) {
+                    continue;
+                }
+                graveTiles.add(tile);
+            }
+        }
+        if (graveTiles.isEmpty()) {
+            return;
+        }
+        Collections.shuffle(graveTiles, random);
+        int zombieCount = Math.min(1 + random.nextInt(3), graveTiles.size());
+        for (int i = 0; i < zombieCount; i++) {
+            waveManager.spawnZombieFromGrave(graveTiles.get(i), waveNumber);
+        }
+    }
     private void applyFrostbiteFeatures(
             ChapterTheme theme,
             Level level,
@@ -238,10 +317,7 @@ public class Game{
         }
         boolean saved = progressRepository.saveProgress(user.getId(), newChapter, newLevel);
         if (!saved) {
-            gameState.logEvent(
-                    "Progress could not be saved.\n"
-            );
-            return;
+            gameState.logEvent("Progress could not be saved.\n");return;
         }
         NewsRepository newsRepository = new NewsRepository();
         ChapterTheme unlockedTheme = chapters.get(nextChapterIndex);
