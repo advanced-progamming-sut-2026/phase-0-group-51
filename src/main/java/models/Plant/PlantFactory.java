@@ -57,6 +57,7 @@ public final class PlantFactory {
             case 13 -> Shooter.CITRON.create();
             case 14 -> Homing.CAULIPOWER.create();
             case 15 -> Homing.ELECTRIC_BLUEBERRY.create();
+            case 16 -> Shooter.BOWLING_BULB.create();
             case 17 -> StrikeThrough.CACTUS.create();
             case 18 -> Shooter.FIRE_PEASHOOTER.create();
             case 19 -> Shooter.STARFRUIT.create();
@@ -74,8 +75,10 @@ public final class PlantFactory {
             case 31 -> Explosive.PRIMAL_POTATO_MINE.create();
             case 32 -> Explosive.CHERRY_BOMB.create();
             case 33 -> Explosive.SQUASH.create();
+            case 34 -> Explosive.GRAPESHOT.create();
             case 35 -> Explosive.JALAPENO.create();
             case 36 -> Explosive.DOOM_SHROOM.create();
+            case 37 -> Explosive.TANGLE_KELP.create();
             case 38 -> Explosive.ICEBERG_LETTUCE.create();
             case 39 -> Melee.BONK_CHOY.create();
             case 40 -> Melee.PHAT_BEET.create();
@@ -88,9 +91,26 @@ public final class PlantFactory {
             case 47 -> WallNut.GARLIC.create();
             case 48 -> WallNut.SWEET_POTATO.create();
             case 49 -> WallNut.EXPLODE_O_NUT.create();
+            case 50 -> WallNut.PUMPKIN.create();
             case 51 -> WallNut.SUN_BEAN.create();
+            case 52 -> Modifier.TORCHWOOD.create();
             case 53 -> Homing.MAGNET_SHROOM.create();
+            case 54 -> Modifier.HYPNO_SHROOM.create();
             case 55 -> Homing.CAT_TAIL.create();
+            case 56 -> Modifier.IMITATER.create();
+            case 57 -> Explosive.ICE_SHROOM.create();
+            case 58 -> Modifier.LILY_PAD.create();
+            case 59 -> Explosive.HOT_POTATO.create();
+            case 60 -> Explosive.GRAVE_BUSTER.create();
+            case 61 -> Mint.ENLIGHTEN_MINT.create();
+            case 62 -> Mint.APPEASE_MINT.create();
+            case 63 -> Mint.ARMA_MINT.create();
+            case 64 -> Mint.BOMBARD_MINT.create();
+            case 65 -> Mint.ENFORCE_MINT.create();
+            case 66 -> Mint.REINFORCE_MINT.create();
+            case 67 -> Mint.ENCHANT_MINT.create();
+            case 68 -> Mint.PIERCE_MINT.create();
+            case 69 -> Mint.CAT_TAIL_MINT.create();
             default -> createDataDrivenPlant(data);
         };
     }

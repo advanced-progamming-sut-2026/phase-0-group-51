@@ -11,6 +11,7 @@ public enum CollectionMenuCommands implements Commands{
     SHOW_A_PLANT_REGEX("^menu\\s+collection\\s+show-plant\\s+-p\\s+(?<plantName>.+?)\\s*$"),
     SHOW_A_ZOMBIE_REGEX( "^menu\\s+collection\\s+show-zombie\\s+-z\\s+(?<zombieName>.+?)\\s*$"),
     UPGRADE_PLANT_REGEX("^menu\\s+collection\\s+upgrade-plant\\s+-p\\s+(?<plantName>.+?)\\s*$"),
+    CHEAT_UPGRADE_PLANT_REGEX("^menu\\s+collection\\s+cheat-upgrade-plant\\s+-p\\s+(?<plantName>.+?)\\s*$"),
     PURCHASE_PLANT_REGEX("^menu\\s+collection\\s+purchase-plant\\s+-p\\s+(?<plantName>.+?)\\s*$");
 
     private final String regex;

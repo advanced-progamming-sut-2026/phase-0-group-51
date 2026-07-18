@@ -54,6 +54,19 @@ public enum ElementType {
         public void onHit(Zombie target, GameState state) {
             target.applyButter(40);
         }
+    },
+
+    HYPNOTIZE {
+        @Override
+        public void onHit(Zombie target, GameState state) {
+            if (target.isDead() || target.isHypnotized()) {
+                return;
+            }
+            target.setHypnotized(true);
+            if (target.getDirection() > 0) {
+                target.reverseDirection();
+            }
+        }
     };
 
     public abstract void onHit(Zombie target, GameState state);

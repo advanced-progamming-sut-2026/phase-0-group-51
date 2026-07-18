@@ -91,6 +91,9 @@ public class MovementBehavior implements PersistableBehavior {
     }
 
     private boolean isFlyOverTarget(Plant plant) {
+        if (plant.getPlantType().blocksJumping()) {
+            return false;
+        }
         String name = normalize(plant.getName());
         if (name.isEmpty()) {
             return false;

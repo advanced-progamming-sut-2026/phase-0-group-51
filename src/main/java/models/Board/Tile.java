@@ -20,6 +20,7 @@ public class Tile {
     private final float y;
     private Plant plant;
     private Plant lilyPadPlant;
+    private Plant pumpkinPlant;
 
     private boolean iceBlocked = false;
     private boolean water = false;
@@ -40,6 +41,9 @@ public class Tile {
     }
 
     public Plant getPlant() {
+        if (pumpkinPlant != null) {
+            return pumpkinPlant;
+        }
         return plant != null ? plant : lilyPadPlant;
     }
 
@@ -55,8 +59,12 @@ public class Tile {
         return lilyPadPlant != null;
     }
 
+    public boolean hasPumpkin() {
+        return pumpkinPlant != null;
+    }
+
     public boolean hasPlant() {
-        return plant != null || lilyPadPlant != null;
+        return plant != null || lilyPadPlant != null || pumpkinPlant != null;
     }
 
     public boolean hasGrave() {
@@ -64,7 +72,9 @@ public class Tile {
     }
 
     public void removePlant() {
-        if (plant != null) {
+        if (pumpkinPlant != null) {
+            pumpkinPlant = null;
+        } else if (plant != null) {
             plant = null;
         } else {
             lilyPadPlant = null;
@@ -79,7 +89,23 @@ public class Tile {
             plant = null;
         } else if (lilyPadPlant == target) {
             lilyPadPlant = null;
+        } else if (pumpkinPlant == target) {
+            pumpkinPlant = null;
+        }
     }
+
+    public List<Plant> getPlants() {
+        List<Plant> plants = new ArrayList<>();
+        if (pumpkinPlant != null) {
+            plants.add(pumpkinPlant);
+        }
+        if (plant != null) {
+            plants.add(plant);
+        }
+        if (lilyPadPlant != null) {
+            plants.add(lilyPadPlant);
+        }
+        return plants;
     }
 
     public static int toTiles(double worldUnits) {

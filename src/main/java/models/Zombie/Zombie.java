@@ -31,7 +31,7 @@ public class Zombie {
     public static final int ICE_SHELL_MAX_HEALTH = 600;
 
     private final String alias;
-    private final int maxHitpoints;
+    private int maxHitpoints;
     private int hitpoints;
     private final float baseSpeed;
     private final float baseEatDps;
@@ -40,7 +40,6 @@ public class Zombie {
 
     private int lane;
     private float x;
-    final float TILE_WIDTH = 80f;
     private int direction = 1; // 1 = walking normal, -1 = reversed
 
     private float speedMultiplier = 1.0f;
@@ -93,6 +92,14 @@ public class Zombie {
 
     public void applyDamageScale(float scale) {
         this.damageMultiplier *= scale;
+    }
+
+    public void applyHealthScale(float scale) {
+        if (scale <= 0) {
+            return;
+        }
+        maxHitpoints = Math.max(1, Math.round(maxHitpoints * scale));
+        hitpoints = Math.max(1, Math.round(hitpoints * scale));
     }
 
     public void applyChill(int ticks) {
@@ -311,6 +318,9 @@ public class Zombie {
                 ? gs.getLawnMowers()[lane] : null;
         gs.getQuestTracker().recordZombieKill(
                 this, sourceType, sourcePlant, gs.getTickCounter(), mower);
+        if (sourcePlant != null) {
+            sourcePlant.getPlantType().onZombieKilled(sourcePlant, this, gs);
+        }
         gs.logEvent("Zombie of type " + alias + " is dead at ("
             + String.format(java.util.Locale.US, "%.2f", x + 1)
             + ", " + (lane + 1) + ")\n");

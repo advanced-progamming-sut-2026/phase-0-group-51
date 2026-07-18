@@ -37,6 +37,7 @@ menu collection show-all-zombies
 menu collection show-plant -p <plant_name>
 menu collection show-zombie -z <zombie_name>
 menu collection upgrade-plant -p <plant_name>
+menu collection cheat-upgrade-plant -p <plant_name>
 menu collection purchase-plant -p <plant_name>
 
 show all plants
@@ -65,6 +66,7 @@ show plants status
 show tile status -l (<x>, <y>)
 zombies info
 cheat spawn-zombie -t <zombie-type> -l <x, y>
+plant plant -t Imitater:<copied plant name> -l (<x>, <y>)
 ------Meow point game-----
 show score
 show scoring rules
@@ -118,6 +120,14 @@ place zombie -t <zombie-type> -l (<x>, <y>)
 show roster
 advance time -t <count> ticks
 show izombie status
+show map
+menu show current
+menu exit
+--------Zombotany minigame:
+show available plants
+plant plant -t <type> -l (<x>, <y>)
+advance time -t <count> ticks
+show zombotany status
 show map
 menu show current
 menu exit

@@ -163,6 +163,11 @@ public class GameState {
     public void clearPlantCooldowns() {
         cooldownUntilTick.clear();
     }
+
+    public void resetPlantCooldown(int plantId) {
+        cooldownUntilTick.remove(plantId);
+    }
+
     public void plantPlant(Plant plant, Tile tile){
         if (plant == null || tile == null) throw new IllegalArgumentException("Plant and tile are required");
         if (!tile.isOccupiable()) throw new IllegalStateException("Tile is not occupiable");
@@ -173,6 +178,7 @@ public class GameState {
         tile.setPlant(plant);
         questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
+        activateEntryPlantFood(plant);
     }
     public void stackPlant(Plant addition, Plant existing) {
         if (addition == null || existing == null) {
@@ -216,6 +222,7 @@ public class GameState {
         tile.setLilyPadPlant(lilyPad);
         questTracker.recordPlantPlaced(lilyPad);
         lilyPad.getPlantType().onPlanted(lilyPad, this);
+        activateEntryPlantFood(lilyPad);
     }
 
     public void plantOnLilyPad(Plant plant, Tile tile) {
@@ -238,6 +245,67 @@ public class GameState {
         tile.setPlant(plant);
         questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
+        activateEntryPlantFood(plant);
+    }
+
+    public void plantPumpkin(Plant pumpkin, Tile tile) {
+        if (pumpkin == null || tile == null) {
+            throw new IllegalArgumentException("Plant and tile are required");
+        }
+        if (!tile.hasPlant() || tile.hasPumpkin()) {
+            throw new IllegalStateException(
+                    "Pumpkin requires a plant without another Pumpkin"
+            );
+        }
+        int cost = pumpkin.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        pumpkin.setPosX(tile.getColumn());
+        pumpkin.setPosY(tile.getLane());
+        tile.setPumpkinPlant(pumpkin);
+        questTracker.recordPlantPlaced(pumpkin);
+        pumpkin.getPlantType().onPlanted(pumpkin, this);
+        activateEntryPlantFood(pumpkin);
+    }
+
+    public void useInstantPlantOnTile(Plant plant, Tile tile) {
+        if (plant == null || tile == null) {
+            throw new IllegalArgumentException("Plant and tile are required");
+        }
+        int cost = plant.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        questTracker.recordPlantPlaced(plant);
+        plant.getPlantType().onPlanted(plant, this);
+        activateEntryPlantFood(plant);
+    }
+
+    public void plantOnGrave(Plant plant, Tile tile) {
+        if (plant == null || tile == null || !tile.hasGrave()) {
+            throw new IllegalStateException(
+                    "Grave Buster must be planted on a grave"
+            );
+        }
+        if (tile.hasPlant()) {
+            throw new IllegalStateException("The grave tile already has a plant");
+        }
+        int cost = plant.getPlantStat().cost();
+        if (sun < cost) {
+            throw new IllegalStateException("Not enough sun");
+        }
+        decreaseSunBalance(cost);
+        plant.setPosX(tile.getColumn());
+        plant.setPosY(tile.getLane());
+        tile.setPlant(plant);
+        questTracker.recordPlantPlaced(plant);
+        plant.getPlantType().onPlanted(plant, this);
+        activateEntryPlantFood(plant);
     }
     private void validatePlantPlacement(Plant plant, Tile tile) {
 
@@ -257,6 +325,15 @@ public class GameState {
         tile.setPlant(plant);
         questTracker.recordPlantPlaced(plant);
         plant.getPlantType().onPlanted(plant, this);
+        activateEntryPlantFood(plant);
+    }
+
+    private void activateEntryPlantFood(Plant plant) {
+        if (plant.isAutoPlantFoodOnEntry()
+                && !plant.isMarkedForRemoval()
+                && !plant.isDead()) {
+            plant.feed(this);
+        }
     }
     public void pluckPlant(Plant plant, Tile tile){
         if (plant == null || tile == null || tile.getPlant() != plant) {

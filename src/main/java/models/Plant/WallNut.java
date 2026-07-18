@@ -2,6 +2,8 @@ package models.Plant;
 
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.sun.Sun;
+import models.sun.SunType;
 
 import java.util.ArrayList;
 
@@ -28,6 +30,7 @@ public enum WallNut implements PlantType {
             }
         }
     },
+    PUMPKIN(50, DefenseMode.PUMPKIN),
     SUN_BEAN(51, DefenseMode.SUN_ON_BITE);
 
     private static final double SWEET_POTATO_ATTRACT_RANGE = 1.5;
@@ -98,7 +101,26 @@ public enum WallNut implements PlantType {
             plant.healToFull();
             return;
         }
-        plant.addArmor(plant.getPlantStat().maxHp());
+        if (this == WALL_NUT) {
+            plant.addArmor(4000);
+        } else if (this == TALL_NUT) {
+            plant.addArmor(8000);
+        } else {
+            plant.addArmor(plant.getPlantStat().maxHp());
+        }
+    }
+
+    @Override
+    public void onArmorBroken(Plant plant, GameState state) {
+        if (mode == DefenseMode.EXPLODE) {
+            onDeath(plant, state);
+            state.logEvent("Explode-o-nut's metal armor exploded.\n");
+        }
+    }
+
+    @Override
+    public boolean blocksJumping() {
+        return this == TALL_NUT;
     }
 
     @Override
@@ -123,9 +145,18 @@ public enum WallNut implements PlantType {
 
     private static void produceBiteSun(Plant plant, GameState state) {
         int amount = plant.getLevel() >= 2 ? 10 : 5;
-        state.increaseSunBalance(amount);
-        state.logEvent(plant.getName() + " produced " + amount
-                + " suns after being bitten.\n");
+        Sun sun = new Sun(
+                plant.getPosX(),
+                plant.getPosY(),
+                plant.getPosY(),
+                SunType.ORDINARY,
+                amount,
+                Integer.MAX_VALUE
+        );
+        sun.setGrounded(true);
+        state.getBoard().spawnSun(sun);
+        state.logEvent(plant.getName() + " spawned a collectible "
+                + amount + "-sun object after being bitten.\n");
     }
 
     private static void attractNearbyZombies(
@@ -157,6 +188,7 @@ public enum WallNut implements PlantType {
         REDIRECT,
         ATTRACT,
         EXPLODE,
+        PUMPKIN,
         SUN_ON_BITE
     }
 }

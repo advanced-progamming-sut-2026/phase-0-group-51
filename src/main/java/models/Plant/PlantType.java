@@ -26,6 +26,14 @@ public interface PlantType {
         return;
     }
 
+    default void onArmorBroken(Plant plant, GameState gameState) {
+        return;
+    }
+
+    default void onZombieKilled(Plant plant, Zombie zombie, GameState gameState) {
+        return;
+    }
+
     default void onPlanted(Plant plant, GameState gameState) {
         return;
     }
@@ -53,5 +61,13 @@ public interface PlantType {
 
     default boolean isLobber() {
         return false;
+    }
+
+    default boolean blocksJumping() {
+        return false;
+    }
+
+    default double actionIntervalSeconds(Plant plant) {
+        return plant.getPlantStat().actionInterval();
     }
 }
