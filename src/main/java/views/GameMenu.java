@@ -3,6 +3,7 @@ package views;
 import controllers.GameMenuController;
 import models.App;
 import models.Result;
+import models.enums.Menu;
 import models.enums.commands.GameCommands;
 import models.enums.commands.GameMenuCommands;
 
@@ -34,6 +35,9 @@ public class GameMenu implements AppMenu{
             handleCheatAdd(line);
         } else if (GameMenuCommands.ENTER_MENU_REGEX.matches(line)) {
             handleEnterMenu(line);
+        } else if (GameMenuCommands.EXIT_MENU_REGEX.matches(line)) {
+            models.App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+            System.out.println("You returned to the Main Menu.");
         } else{
             invalidCommand();
         }

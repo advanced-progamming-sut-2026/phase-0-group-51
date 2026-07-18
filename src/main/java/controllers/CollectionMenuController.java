@@ -215,6 +215,56 @@ public class CollectionMenuController {
             );
         };
     }
+    public Result cheatUpgrade(String plantName) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before using the upgrade cheat.\n");
+        }
+
+        PlantData plant = PlantRegistry.getByName(cleanName(plantName));
+        if (plant == null) {
+            return failure(
+                    "No plant named '" + cleanName(plantName) + "' was found.\n"
+            );
+        }
+
+        if (!PlantRepository.loadUnlockedPlants(user.getId()).contains(plant.id())) {
+            return failure(
+                    "You must unlock " + plant.name()
+                            + " before changing its level.\n"
+            );
+        }
+
+        int currentLevel = PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(plant.id(), 1);
+        int maximumLevel = maximumLevel(plant);
+        if (currentLevel >= maximumLevel) {
+            return failure(
+                    plant.name() + " is already at maximum level "
+                            + maximumLevel + ".\n"
+            );
+        }
+
+        int newLevel = currentLevel + 1;
+        PlantRepository.savePlantLevel(user.getId(), plant.id(), newLevel);
+
+        int savedLevel = PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(plant.id(), currentLevel);
+        if (savedLevel != newLevel) {
+            return failure(
+                    "The cheat upgrade could not be saved in the database.\n"
+            );
+        }
+
+        return success(
+                "CHEAT: " + plant.name() + " upgraded from level "
+                        + currentLevel + " to level " + newLevel + " for free.\n"
+                        + "No coins or seed packets were consumed.\n"
+                        + "Upgrade effect: "
+                        + upgradeDescription(plant, newLevel) + "\n"
+        );
+    }
+
     public Result showAZombie(String zombieName) {
         Zombie zombie = findZombieTemplate(cleanName(zombieName));
         if (zombie == null) {
