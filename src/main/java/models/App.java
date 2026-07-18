@@ -16,12 +16,11 @@ import java.util.ArrayList;
 @Getter
 @Setter
 public class App {
-    private static App instance;
     public Menu currentMenu;
     private Game currentGame;
     public static User loggedInUser;
     public ArrayList<User> users = new ArrayList<>();
-    private App(){
+    private App() {
         DataBaseManager.initializeDatabase();
         QuestLoader.loadQuestsToDatabase();
         PlantLoader.load();
@@ -33,18 +32,28 @@ public class App {
             currentMenu = Menu.SIGN_UP_MENU;
             return;
         }
-        rememberedUser.setGreenHouse(GreenHouseRepository.load(rememberedUser.getId()));
+        rememberedUser.setGreenHouse(GreenHouseRepository.load(
+                rememberedUser.getId())
+        );
+
         loggedInUser = rememberedUser;
         currentMenu = Menu.MAIN_MENU;
     }
-    public static App getInstance(){
-        if(instance==null){instance = new App ();}
-        return instance;
+
+    private static final class AppHolder {
+        private static final App INSTANCE = new App();
+        private AppHolder() {}
     }
-    public User getLoggedInUser(){
+
+    public static App getInstance() {
+        return AppHolder.INSTANCE;
+    }
+
+    public User getLoggedInUser() {
         return loggedInUser;
     }
-    public void setLoggedInUser(User user){
+
+    public void setLoggedInUser(User user) {
         loggedInUser = user;
     }
 }

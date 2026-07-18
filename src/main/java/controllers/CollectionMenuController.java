@@ -122,35 +122,40 @@ public class CollectionMenuController {
             return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
         }
 
-        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
-        if (unlocked.contains(plant.id())) {
-            return failure("You already own " + plant.name() + ".\n");
-        }
+
 
         int purchaseCost = 2000;
-        if (user.getCoins() < purchaseCost) {
-            return failure(
-                    "You need " + purchaseCost + " coins to purchase " + plant.name()
-                            + ", but you only have " + user.getCoins() + ".\n"
+        PlantRepository.PurchaseResult result = PlantRepository.tryPurchasePlant(
+                user.getId(), plant.id(), purchaseCost
             );
-        }
 
-        user.setCoins(user.getCoins() - purchaseCost);
-        if (!new UserRepository().updateStats(user)) {
-            user.setCoins(user.getCoins() + purchaseCost);
-            return failure("The purchase could not be saved in the database.\n");
-        }
-
-            PlantRepository.unlockPlant(user.getId(), plant.id());
+        return switch (result.status()) {
+            case SUCCESS -> {
+                user.setCoins(result.remainingCoins());
         newsRepository.createNewsForUser(
                 user.getId(),
                 "New plant unlocked: " + plant.name() + "."
         );
-
-        return success(
+                yield success(
                 plant.name() + " was added to your collection. "
-                        + "You now have " + user.getCoins() + " coins.\n"
+                                + "You now have " + result.remainingCoins() + " coins.\n"
+                );
+            }
+            case ALREADY_UNLOCKED -> failure(
+                    "You already own " + plant.name() + ".\n"
+            );
+            case NOT_ENOUGH_COINS -> failure(
+                    "You need " + purchaseCost + " coins to purchase "
+                            + plant.name() + ", but you only have "
+                            + result.remainingCoins() + ".\n"
+            );
+            case USER_NOT_FOUND -> failure(
+                    "The logged-in user no longer exists.\n"
         );
+            case DATABASE_ERROR -> failure(
+                    "The purchase could not be saved in the database.\n"
+            );
+        };
     }
 
     public Result upgrade(String plantName) {

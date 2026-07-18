@@ -12,7 +12,8 @@ public class MinigameProgressRepository {
             boolean saved,
             boolean newlyCompletedStage,
             int newlyUnlockedStage,
-            boolean minigameNewlyCompleted
+            boolean minigameNewlyCompleted,
+            int miniGamesPlayed
     ) {
     }
 
@@ -77,7 +78,7 @@ public class MinigameProgressRepository {
 
     public Completion completeStage(int userId, MinigameType type, int stageNumber) {
         if (stageNumber < 1 || stageNumber > 3) {
-            return new Completion(false, false, 0, false);
+            return new Completion(false, false, 0, false, -1);
         }
 
         String selectSql = """
@@ -96,6 +97,14 @@ public class MinigameProgressRepository {
                 DO UPDATE SET
                     highest_unlocked_stage = excluded.highest_unlocked_stage,
                     highest_completed_stage = excluded.highest_completed_stage
+                """;
+        String incrementCounterSql = """
+                UPDATE users
+                SET mini_games_played = COALESCE(mini_games_played, 0) + 1
+                WHERE id = ?
+                """;
+        String readCounterSql = """
+                SELECT mini_games_played FROM users WHERE id = ?
                 """;
 
         try (Connection connection = DataBaseManager.getConnection()) {
@@ -118,7 +127,7 @@ public class MinigameProgressRepository {
 
                 if (stageNumber > oldUnlocked) {
                     connection.rollback();
-                    return new Completion(false, false, 0, false);
+                    return new Completion(false, false, 0, false, -1);
                 }
 
                 boolean newlyCompletedStage = stageNumber > oldCompleted;
@@ -140,23 +149,51 @@ public class MinigameProgressRepository {
                     upsert.executeUpdate();
                 }
 
+                int miniGamesPlayed = -1;
+                if (minigameNewlyCompleted) {
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            incrementCounterSql
+                    )) {
+                        statement.setInt(1, userId);
+                        if (statement.executeUpdate() != 1) {
+                            throw new SQLException(
+                                    "Could not update the completed-minigame counter."
+                            );
+                        }
+                    }
+                    try (PreparedStatement statement = connection.prepareStatement(
+                            readCounterSql
+                    )) {
+                        statement.setInt(1, userId);
+                        try (ResultSet resultSet = statement.executeQuery()) {
+                            if (!resultSet.next()) {
+                                throw new SQLException(
+                                        "Could not read the completed-minigame counter."
+                                );
+                            }
+                            miniGamesPlayed = resultSet.getInt("mini_games_played");
+                        }
+                    }
+                }
+
                 connection.commit();
                 return new Completion(
                         true,
                         newlyCompletedStage,
                         newlyUnlockedStage,
-                        minigameNewlyCompleted
+                        minigameNewlyCompleted,
+                        miniGamesPlayed
                 );
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
-                return new Completion(false, false, 0, false);
+                return new Completion(false, false, 0, false, -1);
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return new Completion(false, false, 0, false);
+            return new Completion(false, false, 0, false, -1);
         }
     }
 }

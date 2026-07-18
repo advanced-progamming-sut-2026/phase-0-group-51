@@ -4,7 +4,7 @@ public enum SignUpMenuCommands implements Commands{
     REGISTER_REGEX(
             "^\\s*register\\s+-u\\s+(?<username>.+)\\s+" +
                     "-p\\s+(?<password>\\S+)\\s+(?<passwordConfirm>\\S+)\\s+" +
-                    "-n\\s+(?<nickname>\\S+)\\s+" +
+                    "-n\\s+(?<nickname>.+?)\\s+" +
                     "-e\\s+(?<email>\\S+)\\s+" +
                     "-g\\s+(?<gender>\\S+)\\s*$"
     ),

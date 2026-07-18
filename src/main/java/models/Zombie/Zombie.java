@@ -1,5 +1,7 @@
 package models.Zombie;
 
+import Data.database.GreenHouseRepository;
+import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
@@ -8,7 +10,9 @@ import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
+import models.enums.LootType;
 import models.games.GameState;
+import models.greenHouse.FlowerPot;
 import models.projectile.ElementType;
 import models.quests.QuestKillSourceType;
 
@@ -328,27 +332,40 @@ public class Zombie {
         if (user == null) {
             return;
         }
-        String[] options = {"coin", "diamond", "pot"};
-        String item = options[(int) (Math.random() * options.length)];
-        int count;
-        switch (item) {
-            case "coin" -> {
-                user.setCoins(user.getCoins() + 1);
-                count = user.getCoins();
-            }
-            case "diamond" -> {
-                user.setGems(user.getGems() + 1);
-                count = user.getGems();
-            }
-            default -> {
-                if (!user.getGreenHouse().unlockNextPot()) {
-                    return;
-                }
-                count = user.getGreenHouse().countUnlockedPots();
-            }
+        LootType[] options = {LootType.COIN, LootType.GEM, LootType.POT};
+        LootType lootType = options[(int) (Math.random() * options.length)];
+        UserRepository.LootResult result = new UserRepository().applyZombieLoot(user.getId(), lootType);
+        if (!result.saved()) {
+            return;
         }
-        gs.logEvent("A zombie dropped a " + item + "; you have "
-            + count + " " + item + "s now.\n");
+        String item;
+        switch (lootType) {
+            case COIN -> {
+                user.setCoins(result.total());
+                item = "coin";
+            }
+            case GEM -> {
+                user.setGems(result.total());
+                item = "diamond";
+            }
+            case POT -> {
+                if (user.getGreenHouse() == null) {
+                    user.setGreenHouse(GreenHouseRepository.load(user.getId()));
+                }
+
+                if (user.getGreenHouse() != null) {
+                    FlowerPot pot = user.getGreenHouse().getPot(result.unlockedRow(), result.unlockedColumn());
+                    if (pot != null) {
+                        pot.setUnlocked(true);
+                    }
+                }
+                item = "pot";
+            }
+            default ->
+                    throw new IllegalStateException("Unexpected loot type: " + lootType);}
+        gs.logEvent(
+                "A zombie dropped a " + item + "; you have " + result.total() + " " + item + "s now.\n"
+        );
     }
 
     public Zombie copy() {

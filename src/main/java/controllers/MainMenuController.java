@@ -30,6 +30,7 @@ public class MainMenuController {
         app.setLoggedInUser(null);
         app.setCurrentGame(null);
         app.setCurrentMenu(Menu.SIGN_UP_MENU);
+        Menu.resetAllViews();
         return new Result(
                 true, "Logout successful.\n", null
         );
