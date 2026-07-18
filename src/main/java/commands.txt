@@ -123,3 +123,11 @@ show izombie status
 show map
 menu show current
 menu exit
+--------Zombotany minigame:
+show available plants
+plant plant -t <type> -l (<x>, <y>)
+advance time -t <count> ticks
+show zombotany status
+show map
+menu show current
+menu exit

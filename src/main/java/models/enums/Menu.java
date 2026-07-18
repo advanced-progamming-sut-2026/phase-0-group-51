@@ -4,6 +4,7 @@ import views.*;
 import views.miniGames.IZombieMenu;
 import views.miniGames.VaseBreakerMenu;
 import views.miniGames.WallnutBowllingMenu;
+import views.miniGames.ZombotanyMenu;
 
 import java.util.Scanner;
 
@@ -26,6 +27,7 @@ public enum Menu {
     VASE_BREAKER(new VaseBreakerMenu()),
     WALLNUT_BOWLING(new WallnutBowllingMenu()),
     IZOMBIE(new IZombieMenu()),
+    ZOMBOTANY(new ZombotanyMenu()),
     EXIT_MENU(new ExitMenu());
     private final AppMenu menu;
     Menu(AppMenu menu){
