@@ -21,6 +21,7 @@ public enum Shooter implements PlantType {
     PEA_POD(11, ShotPattern.PEA_POD, 1, ElementType.NORMAL, 9),
     SPLIT_PEA(12, ShotPattern.SPLIT_PEA, 1, ElementType.NORMAL, 9),
     CITRON(13, ShotPattern.CITRON, 1, ElementType.NORMAL, 9),
+    BOWLING_BULB(16, ShotPattern.BOWLING_BULB, 1, ElementType.NORMAL, 9),
     FIRE_PEASHOOTER(18, ShotPattern.FORWARD, 1, ElementType.FIRE, 9),
     STARFRUIT(19, ShotPattern.STARFRUIT, 1, ElementType.NORMAL, 9),
     GOO_PEASHOOTER(20, ShotPattern.FORWARD, 1, ElementType.POISON, 9),
@@ -31,6 +32,11 @@ public enum Shooter implements PlantType {
     private static final double RAY_TOLERANCE = 0.45;
     private static final int MAX_PEA_POD_HEADS = 5;
     private static final double SHROOM_LIFESPAN_SECONDS = 60;
+    private static final int RAPID_FIRE_TICKS = 10;
+    private static final int MEGA_GATLING_FOOD_TICKS = 20;
+    private static final int SNOW_PEA_FREEZE_SECONDS = 10;
+    private static final int[] BOWLING_REGEN_SECONDS = {2, 5, 10};
+    private static final int[] BOWLING_DAMAGE_MULTIPLIERS = {1, 3, 0};
 
     private final int id;
     private final ShotPattern pattern;
@@ -67,6 +73,11 @@ public enum Shooter implements PlantType {
                     state
             );
         }
+        if (this == BOWLING_BULB) {
+            for (int slot = 0; slot < BOWLING_REGEN_SECONDS.length; slot++) {
+                plant.setBowlingBulbCooldown(slot, 0);
+            }
+        }
     }
 
     @Override
@@ -76,10 +87,18 @@ public enum Shooter implements PlantType {
 
     @Override
     public void onFeed(Plant plant, GameState state) {
-        if (this == PEA_POD) {
+        if (this == REPEATER) {
+            fireGiantPeas(plant, state, 1);
+        } else if (this == PEA_POD) {
             fireGiantPeas(plant, state);
         } else if (this == CITRON) {
             clearLane(plant, state);
+        } else if (this == SNOW_PEA) {
+            freezeLane(plant, state);
+        } else if (this == MEGA_GATLING_PEA) {
+            fireGiantPeas(plant, state, 4);
+        } else if (this == BOWLING_BULB) {
+            fireExplosiveBowlingBulbs(plant, state);
         } else if (this == SEA_SHROOM || this == PUFF_SHROOM) {
             resetFamilyLifespans(plant, state);
         }
@@ -87,17 +106,43 @@ public enum Shooter implements PlantType {
 
     @Override
     public void onFoodTick(Plant plant, GameState state) {
-        if (this != PEA_POD && this != CITRON) {
-            fire(plant, state);
+        switch (this) {
+            case PEA_POD, CITRON, BOWLING_BULB -> {
+                return;
+            }
+            case THREEPEATER -> shootAllLanes(plant, state);
+            case ROTOBAGA -> shootDirections(
+                    plant,
+                    state,
+                    StarMove.ROTOBAGA_DIRECTIONS
+            );
+            case FIRE_PEASHOOTER -> burnWholeLane(plant, state);
+            default -> fire(plant, state);
         }
     }
 
     @Override
     public int plantFoodDurationTicks(Plant plant, GameState state) {
-        if (this == PEA_POD || this == CITRON) {
+        if (this == PEA_POD || this == CITRON || this == BOWLING_BULB) {
             return 0;
         }
-        return 10;
+        return this == MEGA_GATLING_PEA
+                ? MEGA_GATLING_FOOD_TICKS
+                : RAPID_FIRE_TICKS;
+    }
+
+    @Override
+    public void onZombieKilled(
+            Plant plant,
+            Zombie zombie,
+            GameState state
+    ) {
+        if (this == MEGA_GATLING_PEA
+                && plant.getLevel() >= 3
+                && state.getBoard().getRandom().nextInt(100) < 5
+                && state.addPlantFood()) {
+            state.logEvent("Mega Gatling Pea generated a Plant Food.\n");
+        }
     }
 
     @Override
@@ -134,6 +179,7 @@ public enum Shooter implements PlantType {
             );
             case PEA_POD -> shootPeaPod(plant, state);
             case SPLIT_PEA -> shootSplitPea(plant, state);
+            case BOWLING_BULB -> shootBowlingBulb(plant, state);
         }
     }
 
@@ -164,6 +210,12 @@ public enum Shooter implements PlantType {
                     plant.getPosY(),
                     baseRange
             ) || targetBehindInLane(plant, state);
+            case BOWLING_BULB -> targetAheadInLane(
+                    plant,
+                    state,
+                    plant.getPosY(),
+                    baseRange
+            );
         };
     }
 
@@ -225,6 +277,71 @@ public enum Shooter implements PlantType {
         }
     }
 
+    private void shootAllLanes(Plant plant, GameState state) {
+        for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
+            addStraightProjectile(plant, state, lane, plant.getDamage());
+        }
+    }
+
+    private void shootBowlingBulb(Plant plant, GameState state) {
+        int selectedSlot = -1;
+        for (int slot = BOWLING_REGEN_SECONDS.length - 1; slot >= 0; slot--) {
+            if (plant.getBowlingBulbCooldown(slot) == 0) {
+                selectedSlot = slot;
+                break;
+            }
+        }
+        if (selectedSlot < 0) {
+            plant.forceReady(state);
+            return;
+        }
+        int damage = selectedSlot == 2
+                ? (int) Math.round(plant.getDamage() * 4.5)
+                : plant.getDamage()
+                * BOWLING_DAMAGE_MULTIPLIERS[selectedSlot];
+        double verticalSign = plant.getPosY() % 2 == 0 ? 1 : -1;
+        state.getBoard().addProjectile(Projectile.bouncing(
+                damage,
+                ElementType.NORMAL,
+                plant.getPlantTags(),
+                projectileSpeed(plant, 0.35),
+                plant.getPosX(),
+                plant.getPosY(),
+                verticalSign,
+                Integer.MAX_VALUE,
+                0
+        ).withSource(plant));
+        int regenSeconds = BOWLING_REGEN_SECONDS[selectedSlot];
+        if (plant.getLevel() >= 2) {
+            regenSeconds = Math.max(1, regenSeconds - 1);
+        }
+        plant.setBowlingBulbCooldown(
+                selectedSlot,
+                regenSeconds * state.getTicksPerSecond()
+        );
+    }
+
+    private void fireExplosiveBowlingBulbs(
+            Plant plant,
+            GameState state
+    ) {
+        for (int i = 0; i < 3; i++) {
+            double sign = i == 0 ? -1 : i == 1 ? 1 :
+                    (plant.getPosY() % 2 == 0 ? 1 : -1);
+            state.getBoard().addProjectile(Projectile.bouncing(
+                    Math.max(180, plant.getDamage() * 4),
+                    ElementType.NORMAL,
+                    plant.getPlantTags(),
+                    projectileSpeed(plant, 0.35),
+                    plant.getPosX(),
+                    plant.getPosY(),
+                    sign,
+                    3,
+                    1.5
+            ).withSource(plant));
+        }
+    }
+
     private void shootRotobagaDirections(Plant plant, GameState state) {
         for (double[] direction : StarMove.ROTOBAGA_DIRECTIONS) {
             if (hasTargetInDirection(plant, state, direction)) {
@@ -261,6 +378,48 @@ public enum Shooter implements PlantType {
                     plant.getPosY(),
                     plant.getDamage() * 20
             );
+        }
+    }
+
+    private void fireGiantPeas(
+            Plant plant,
+            GameState state,
+            int count
+    ) {
+        for (int i = 0; i < count; i++) {
+            addStraightProjectile(
+                    plant,
+                    state,
+                    plant.getPosY(),
+                    plant.getDamage() * 20
+            );
+        }
+    }
+
+    private void freezeLane(Plant plant, GameState state) {
+        if (state.getChapterTheme()
+                == models.games.ChapterTheme.FROSTBITE_CAVES) {
+            return;
+        }
+        int ticks = SNOW_PEA_FREEZE_SECONDS * state.getTicksPerSecond();
+        for (Zombie zombie : state.getBoard().getZombiesInLane(
+                plant.getPosY()
+        )) {
+            zombie.applyFreeze(ticks);
+        }
+    }
+
+    private void burnWholeLane(Plant plant, GameState state) {
+        for (Zombie zombie : state.getBoard().getZombiesInLane(
+                plant.getPosY()
+        )) {
+            zombie.takeDamage(
+                    plant.getDamage(),
+                    ElementType.FIRE,
+                    state,
+                    plant
+            );
+            ElementType.FIRE.onHit(zombie, state);
         }
     }
 
@@ -548,5 +707,6 @@ public enum Shooter implements PlantType {
         SPLIT_PEA,
         CITRON,
         SHORT_RANGE
+        ,BOWLING_BULB
     }
 }

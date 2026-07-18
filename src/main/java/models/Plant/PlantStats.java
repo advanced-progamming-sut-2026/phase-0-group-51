@@ -28,7 +28,7 @@ public record PlantStats(
         };
         double next = switch (operation) { case "MULTIPLY" -> old * value; case "SET" -> value; default -> old + value; };
         return switch (key) {
-            case MAX_HP -> withMaxHp((int) next); case DAMAGE -> withDamage((int) next); case COST -> withCost((int) next);
+            case MAX_HP -> withMaxHp((int) next); case DAMAGE -> withDamage((int) next); case COST -> withCost(Math.max(0, (int) next));
             case ACTION_INTERVAL -> withInterval(Math.max(0, next)); case RECHARGE -> withRecharge(Math.max(0, next));
             case PROJECTILE_SPEED -> new PlantStats(maxHp,damage,cost,actionInterval,recharge,next,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);
             case DOUBLE_SUN_CHANCE -> withDoubleSunChance(next != 0);
@@ -42,7 +42,7 @@ public record PlantStats(
     }
     public PlantStats withMaxHp(int v){return new PlantStats(v,damage,cost,actionInterval,recharge,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
     public PlantStats withDamage(int v){return new PlantStats(maxHp,v,cost,actionInterval,recharge,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
-    public PlantStats withCost(int v){return new PlantStats(maxHp,damage,v,actionInterval,recharge,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
+    public PlantStats withCost(int v){return new PlantStats(maxHp,damage,Math.max(0,v),actionInterval,recharge,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
     public PlantStats withInterval(double v){return new PlantStats(maxHp,damage,cost,v,recharge,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
     public PlantStats withRecharge(double v){return new PlantStats(maxHp,damage,cost,actionInterval,v,projectileSpeed,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}
     public PlantStats withProjectileSpeed(double v){return new PlantStats(maxHp,damage,cost,actionInterval,recharge,v,doubleSunChance,range,pierceCount,aoeDamage,chillDuration,freezeDuration,targetCount,lifespan,warmthRadius,poisonDamage,sunAmount);}

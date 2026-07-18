@@ -11,6 +11,7 @@ import models.Board.Tile;
 import models.Plant.Plant;
 import models.Plant.PlantFactory;
 import models.Plant.PlantTag;
+import models.Plant.Modifier;
 import models.Result;
 import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
@@ -35,6 +36,10 @@ import java.util.Map;
 public class GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
     private static final int LILY_PAD_ID = 58;
+    private static final int PUMPKIN_ID = 50;
+    private static final int IMITATER_ID = 56;
+    private static final int HOT_POTATO_ID = 59;
+    private static final int GRAVE_BUSTER_ID = 60;
     private Result success(String message) {
         return new Result(true, message, null);
     }
@@ -103,9 +108,17 @@ public class GamingController {
         if (tile == null) {
             return failure("Coordinates are outside the map.\n");
         }
-        PlantData selected = PlantRegistry.getByName(plantType);
+        PlantData imitaterTarget = parseImitaterTarget(plantType);
+        PlantData selected = imitaterTarget == null
+                ? PlantRegistry.getByName(plantType)
+                : PlantRegistry.getById(IMITATER_ID);
         if (selected == null) {
             return failure("Unknown plant.\n");
+        }
+        if (selected.id() == IMITATER_ID && imitaterTarget == null) {
+            return failure(
+                    "Use Imitater:<plant name> to choose what Imitater copies.\n"
+            );
         }
         if (game.isConveyorBeltLevel()) {
             if (!game.hasConveyorPlant(selected)) {
@@ -118,6 +131,28 @@ public class GamingController {
         }
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
+        }
+        if (imitaterTarget != null) {
+            if (!game.getSelectedPlantsForThisGame().contains(imitaterTarget)) {
+                return failure("The copied plant must also be selected for this level.\n");
+            }
+            return placeImitaterCopy(
+                    state,
+                    tile,
+                    selected,
+                    imitaterTarget,
+                    x,
+                    y
+            );
+        }
+        if (selected.id() == HOT_POTATO_ID) {
+            return placeHotPotato(state, tile, selected, x, y);
+        }
+        if (selected.id() == GRAVE_BUSTER_ID) {
+            return placeGraveBuster(state, tile, selected, x, y);
+        }
+        if (selected.id() == PUMPKIN_ID) {
+            return placePumpkin(state, tile, selected, x, y);
         }
         if (game.isPlantWhatYouGetLevel() && isSunProducer(selected)) {
             return failure("Sun-producing plants are forbidden in Plant What You Get.\n");
@@ -235,6 +270,169 @@ public class GamingController {
 
     private boolean isLilyPad(PlantData plant) {
         return plant != null && plant.id() == LILY_PAD_ID;
+    }
+
+    private PlantData parseImitaterTarget(String input) {
+        if (input == null) {
+            return null;
+        }
+        String prefix = "imitater:";
+        String normalized = input.trim();
+        if (!normalized.toLowerCase(Locale.ROOT).startsWith(prefix)) {
+            return null;
+        }
+        String copiedName = normalized.substring(prefix.length()).trim();
+        if (copiedName.isEmpty()) {
+            return null;
+        }
+        PlantData target = PlantRegistry.getByName(copiedName);
+        if (target == null || target.id() == IMITATER_ID) {
+            return null;
+        }
+        return target;
+    }
+
+    private Result placeImitaterCopy(
+            GameState state,
+            Tile tile,
+            PlantData imitater,
+            PlantData target,
+            int x,
+            int y
+    ) {
+        Result cooldown = cooldownFailure(state, imitater);
+        if (cooldown != null) {
+            return cooldown;
+        }
+        User user = App.getInstance().getLoggedInUser();
+        int imitaterLevel = user == null ? 1
+                : PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(IMITATER_ID, 1);
+        int targetLevel = user == null ? 1
+                : PlantRepository.loadPlantLevels(user.getId())
+                .getOrDefault(target.id(), 1);
+        Plant copy = Modifier.createImitaterCopy(
+                target,
+                targetLevel,
+                imitaterLevel
+        );
+        try {
+            if (target.id() == HOT_POTATO_ID) {
+                boolean hasFrozenPlant = tile.getPlants().stream()
+                        .anyMatch(Plant::isFrozenByIce);
+                if (!tile.isIceBlocked() && !hasFrozenPlant) {
+                    throw new IllegalStateException(
+                            "Hot Potato must be used on ice or a frozen plant"
+                    );
+                }
+                state.useInstantPlantOnTile(copy, tile);
+            } else if (target.id() == GRAVE_BUSTER_ID) {
+                state.plantOnGrave(copy, tile);
+            } else if (target.id() == PUMPKIN_ID) {
+                state.plantPumpkin(copy, tile);
+            } else if (target.id() == LILY_PAD_ID) {
+                state.plantLilyPad(copy, tile);
+            } else if (tile.isWater()
+                    && copy.hasTag(PlantTag.WATER)) {
+                state.plantPlant(copy, tile);
+            } else if (tile.isWater() && tile.hasLilyPad()
+                    && !tile.hasTopPlant()) {
+                state.plantOnLilyPad(copy, tile);
+            } else {
+                state.plantPlant(copy, tile);
+            }
+            state.startPlantCooldown(copy);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success("Imitater copied " + target.name() + " at ("
+                + x + ", " + y + ").\n");
+    }
+
+    private Result placeHotPotato(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        boolean hasFrozenPlant = tile.getPlants().stream()
+                .anyMatch(Plant::isFrozenByIce);
+        if (!tile.isIceBlocked() && !hasFrozenPlant) {
+            return failure("Hot Potato must be used on ice or a frozen plant.\n");
+        }
+        return placeSpecialInstantPlant(state, tile, selected, x, y);
+    }
+
+    private Result placeGraveBuster(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        if (!tile.hasGrave()) {
+            return failure("Grave Buster must be planted on a grave.\n");
+        }
+        Result cooldown = cooldownFailure(state, selected);
+        if (cooldown != null) {
+            return cooldown;
+        }
+        Plant plant = createPlantForCurrentUser(selected);
+        try {
+            state.plantOnGrave(plant, tile);
+            startCooldownIfRequired(state, plant);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success("Grave Buster started eating the grave at ("
+                + x + ", " + y + ").\n");
+    }
+
+    private Result placePumpkin(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        if (!tile.hasPlant() || tile.hasPumpkin()) {
+            return failure("Pumpkin must cover an existing plant.\n");
+        }
+        Result cooldown = cooldownFailure(state, selected);
+        if (cooldown != null) {
+            return cooldown;
+        }
+        Plant pumpkin = createPlantForCurrentUser(selected);
+        try {
+            state.plantPumpkin(pumpkin, tile);
+            startCooldownIfRequired(state, pumpkin);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success("Pumpkin covered the plant at (" + x + ", " + y + ").\n");
+    }
+
+    private Result placeSpecialInstantPlant(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        Result cooldown = cooldownFailure(state, selected);
+        if (cooldown != null) {
+            return cooldown;
+        }
+        Plant plant = createPlantForCurrentUser(selected);
+        try {
+            state.useInstantPlantOnTile(plant, tile);
+            startCooldownIfRequired(state, plant);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success(selected.name() + " activated at ("
+                + x + ", " + y + ").\n");
     }
 
     private boolean isSunProducer(PlantData plant) {

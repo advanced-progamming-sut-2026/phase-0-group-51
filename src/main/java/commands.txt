@@ -66,6 +66,7 @@ show plants status
 show tile status -l (<x>, <y>)
 zombies info
 cheat spawn-zombie -t <zombie-type> -l <x, y>
+plant plant -t Imitater:<copied plant name> -l (<x>, <y>)
 ------Meow point game-----
 show score
 show scoring rules

@@ -90,7 +90,20 @@ public enum Homing implements PlantType {
     private static void hypnotizeOne(Plant plant, GameState state) {
         List<Zombie> targets = randomEligibleZombies(state, 1);
         if (!targets.isEmpty()) {
-            hypnotize(targets.getFirst(), plant, state);
+            Zombie target = targets.getFirst();
+            state.getBoard().addProjectile(Projectile.homing(
+                    0,
+                    ElementType.HYPNOTIZE,
+                    plant.getPlantTags(),
+                    Math.max(
+                            0.35,
+                            PlantEnumSupport.projectileSpeed(plant, 0.45)
+                    ),
+                    plant.getPosX(),
+                    plant.getPosY(),
+                    target,
+                    new HomingMove()
+            ).withSource(plant));
         }
     }
 
@@ -130,11 +143,9 @@ public enum Homing implements PlantType {
             Plant plant,
             GameState state
     ) {
-        zombie.takeDamage(
-                plant.getDamage(),
-                ElementType.NORMAL,
+        zombie.killInstantly(
                 state,
-                plant
+                models.quests.QuestKillSourceType.PLANT
         );
         state.logEvent(plant.getName() + " struck " + zombie.getAlias() + " with lightning.\n");
     }

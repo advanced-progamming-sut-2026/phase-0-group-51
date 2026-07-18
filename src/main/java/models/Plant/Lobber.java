@@ -7,6 +7,8 @@ import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.projectile.move.ArcMove;
 
+import java.util.List;
+
 public enum Lobber implements PlantType {
     CABBAGE_PULT(25, ElementType.NORMAL, 0, false),
     KERNEL_PULT(26, ElementType.NORMAL, 0, true),
@@ -60,10 +62,57 @@ public enum Lobber implements PlantType {
     }
 
     @Override
-    public void onFoodTick(Plant plant, GameState state) {
-        for (Zombie zombie : state.getBoard().getRandomZombies(3)) {
-            launchAtZombie(plant, state, zombie);
+    public void onEveryTick(Plant plant, GameState state) {
+        if (this != PEPPER_PULT
+                || plant.getAgeTicks() % state.getTicksPerSecond() != 0) {
+            return;
         }
+        state.getBoard().warmArea(
+                plant.getPosY(),
+                plant.getPosX(),
+                1.0 + plant.getPlantStat().warmthRadius(),
+                state
+        );
+    }
+
+    @Override
+    public void onFeed(Plant plant, GameState state) {
+        if (this == KERNEL_PULT) {
+            for (Zombie zombie : List.copyOf(
+                    state.getZombiesInTheGame()
+            )) {
+                if (!zombie.isDead()) {
+                    launchFoodProjectile(
+                            plant,
+                            state,
+                            zombie,
+                            ElementType.BUTTER,
+                            Math.max(40, plant.getDamage()),
+                            0
+                    );
+                }
+            }
+            return;
+        }
+        int damageMultiplier = this == CABBAGE_PULT ? 1 : 3;
+        double foodRadius = plant.hasTag(PlantTag.AOE)
+                ? Math.max(2.0, areaRadius)
+                : 0;
+        for (Zombie zombie : state.getBoard().getRandomZombies(3)) {
+            launchFoodProjectile(
+                    plant,
+                    state,
+                    zombie,
+                    element,
+                    plant.getDamage() * damageMultiplier,
+                    foodRadius
+            );
+        }
+    }
+
+    @Override
+    public int plantFoodDurationTicks(Plant plant, GameState state) {
+        return 0;
     }
 
     @Override
@@ -125,6 +174,29 @@ public enum Lobber implements PlantType {
                 new ArcMove(),
                 splashRadius
         ).withSource(plant);
+    }
+
+    private void launchFoodProjectile(
+            Plant plant,
+            GameState state,
+            Zombie target,
+            ElementType foodElement,
+            int damage,
+            double splashRadius
+    ) {
+        state.getBoard().addProjectile(Projectile.targeted(
+                damage,
+                damage,
+                foodElement,
+                plant.getPlantTags(),
+                PlantEnumSupport.projectileSpeed(plant, 0.35),
+                plant.getPosX(),
+                plant.getPosY(),
+                target.getX(),
+                target.getLane(),
+                new ArcMove(),
+                splashRadius
+        ).withSource(plant));
     }
 
     private boolean shouldLaunchButter(Plant plant, GameState state) {

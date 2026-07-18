@@ -11,7 +11,6 @@ public enum SunProducer implements PlantType {
     PRIMAL_SUNFLOWER(4, 75, 225, false),
     GOLD_BLOOM(5, 375, 0, true);
 
-    private static final int DOUBLE_SUN_CHANCE_PERCENT = 25;
     private static final int SUN_SHROOM_STAGE_TWO_SECONDS = 24;
     private static final int SUN_SHROOM_STAGE_THREE_SECONDS = 72;
 
@@ -45,9 +44,12 @@ public enum SunProducer implements PlantType {
             return;
         }
         int amount = baseSunAmount + sunAmountUpgrade(plant);
-        state.increaseSunBalance(amount);
-        state.logEvent(plant.getName() + " immediately produced "
-                + amount + " suns.\n");
+        spawnInstantCollectableSun(
+                plant,
+                state,
+                amount,
+                "its planting ability"
+        );
         removeAfterActing(plant, state);
     }
 
@@ -100,6 +102,16 @@ public enum SunProducer implements PlantType {
         return 0;
     }
 
+    @Override
+    public double actionIntervalSeconds(Plant plant) {
+        // Sun-shroom's level-2 CSV upgrade is specifically a growth-time
+        // reduction. Its normal sun-production cycle remains 24 seconds.
+        if (this == SUN_SHROOM) {
+            return 24.0;
+        }
+        return plant.getPlantStat().actionInterval();
+    }
+
     private int currentSunAmount(Plant plant) {
         if (this != SUN_SHROOM) {
             return baseSunAmount;
@@ -116,6 +128,15 @@ public enum SunProducer implements PlantType {
             GameState state,
             int amount
     ) {
+        spawnInstantCollectableSun(plant, state, amount, "plant food");
+    }
+
+    private static void spawnInstantCollectableSun(
+            Plant plant,
+            GameState state,
+            int amount,
+            String reason
+    ) {
         Sun sun = new Sun(
                 plant.getPosX(),
                 plant.getPosY(),
@@ -131,7 +152,7 @@ public enum SunProducer implements PlantType {
                 + amount + " at ("
                 + (plant.getPosX() + 1) + ", "
                 + (plant.getPosY() + 1)
-                + ") using plant food.\n");
+                + ") using " + reason + ".\n");
     }
 
     private static void produceCollectableSun(
@@ -165,9 +186,9 @@ public enum SunProducer implements PlantType {
             Plant plant,
             GameState state
     ) {
-        return plant.getPlantStat().doubleSunChance()
-                && state.getBoard().getRandom().nextInt(100)
-                < DOUBLE_SUN_CHANCE_PERCENT;
+        // The JSON modifier SETs DOUBLE_SUN_CHANCE to 1 and does not provide
+        // a probability. Treat the completed upgrade as guaranteed double sun.
+        return plant.getPlantStat().doubleSunChance();
     }
 
     private static int sunAmountUpgrade(Plant plant) {

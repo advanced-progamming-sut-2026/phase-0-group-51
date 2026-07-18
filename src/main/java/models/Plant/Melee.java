@@ -52,6 +52,15 @@ public enum Melee implements PlantType {
 
     @Override
     public void onEveryTick(Plant plant, GameState state) {
+        if (this == WASABI_WHIP
+                && plant.getAgeTicks() % state.getTicksPerSecond() == 0) {
+            state.getBoard().warmArea(
+                    plant.getPosY(),
+                    plant.getPosX(),
+                    1.0,
+                    state
+            );
+        }
         if (this != KIWIBEAST) {
             return;
         }
@@ -102,8 +111,23 @@ public enum Melee implements PlantType {
 
     @Override
     public void onFoodTick(Plant plant, GameState state) {
-        if (this != CHOMPER && this != KIWIBEAST) {
-            onTick(plant, state);
+        if (this == CHOMPER || this == KIWIBEAST) {
+            return;
+        }
+        int multiplier = this == PHAT_BEET ? 3 : 1;
+        for (Zombie zombie : state.getBoard().getZombiesInSquare(
+                plant.getPosY(),
+                plant.getPosX(),
+                1,
+                1
+        )) {
+            zombie.takeDamage(
+                    plant.getDamage() * multiplier,
+                    element,
+                    state,
+                    plant
+            );
+            element.onHit(zombie, state, 0, plant);
         }
     }
 

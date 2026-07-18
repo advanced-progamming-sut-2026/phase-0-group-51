@@ -87,6 +87,9 @@ public class Board {
             if (tile.getLilyPadPlant() != null) {
                 result.add(tile.getLilyPadPlant());
             }
+            if (tile.getPumpkinPlant() != null) {
+                result.add(tile.getPumpkinPlant());
+            }
         }
         return result;
     }
@@ -285,6 +288,34 @@ public class Board {
         return null;
     }
 
+    public Plant getFirstTorchwoodCrossed(
+            int lane,
+            double fromX,
+            double toX,
+            Set<Plant> excluded
+    ) {
+        int step = toX >= fromX ? 1 : -1;
+        int column = (int) Math.floor(fromX) + step;
+        int end = (int) Math.floor(toX);
+        while ((step > 0 && column <= end)
+                || (step < 0 && column >= end)) {
+            Tile tile = getTile(lane, column);
+            if (tile != null) {
+                for (Plant candidate : tile.getPlants()) {
+                    if (candidate.getId() == 52
+                            && !candidate.isDead()
+                            && !candidate.isMarkedForRemoval()
+                            && (excluded == null
+                            || !excluded.contains(candidate))) {
+                        return candidate;
+                    }
+                }
+            }
+            column += step;
+        }
+        return null;
+    }
+
     public Zombie getClosestZombieAnywhere(int fromLane, int fromColumn) {
         Zombie closest = null;
         double closestDistSq = Double.MAX_VALUE;
@@ -379,6 +410,28 @@ public class Board {
         return chosen;
     }
 
+    public List<Tile> getRandomEmptyWaterTiles(int requestedCount) {
+        List<Tile> candidates = new ArrayList<>();
+        for (int lane = 0; lane < laneCount; lane++) {
+            for (int column = 0; column < columnCount; column++) {
+                Tile tile = getTile(lane, column);
+                if (tile.isWater()
+                        && !tile.hasPlant()
+                        && !tile.hasGrave()
+                        && !tile.isIceBlocked()
+                        && !tile.isCrater()
+                        && tile.getIceFloorDirection() == null) {
+                    candidates.add(tile);
+                }
+            }
+        }
+        java.util.Collections.shuffle(candidates, random);
+        return new ArrayList<>(candidates.subList(
+                0,
+                Math.min(requestedCount, candidates.size())
+        ));
+    }
+
     public List<Tile> getTwoRandomTilesWithoutPlants() {
         return getRandomEmptyTiles(2);
     }
@@ -387,7 +440,9 @@ public class Board {
         for (int i = 0; i < laneCount; i++) {
             for (int j = 0; j < columnCount; j++) {
                 Tile tile = tiles[i][j];
-                if (tile.getTopPlant() == plant || tile.getLilyPadPlant() == plant) {
+                if (tile.getTopPlant() == plant
+                        || tile.getLilyPadPlant() == plant
+                        || tile.getPumpkinPlant() == plant) {
                     return tile;
                 }
             }
@@ -411,6 +466,9 @@ public class Board {
                 }
                 if (tile.getLilyPadPlant() != null) {
                     result.add(tile.getLilyPadPlant());
+                }
+                if (tile.getPumpkinPlant() != null) {
+                    result.add(tile.getPumpkinPlant());
                 }
             }
         }
@@ -482,6 +540,38 @@ public class Board {
         for (Zombie zombie : getZombiesInLane(lane)) {
             zombie.meltIceShell(state);
             zombie.clearColdEffects();
+        }
+    }
+
+    public void warmArea(
+            int centerLane,
+            int centerColumn,
+            double radius,
+            GameState state
+    ) {
+        int laneRadius = (int) Math.ceil(radius);
+        int columnRadius = (int) Math.ceil(radius);
+        for (int lane = Math.max(0, centerLane - laneRadius);
+             lane <= Math.min(laneCount - 1, centerLane + laneRadius);
+             lane++) {
+            for (int column = Math.max(0, centerColumn - columnRadius);
+                 column <= Math.min(
+                         columnCount - 1,
+                         centerColumn + columnRadius
+                 );
+                 column++) {
+                if (Math.hypot(
+                        lane - centerLane,
+                        column - centerColumn
+                ) > radius) {
+                    continue;
+                }
+                Tile tile = getTile(lane, column);
+                tile.setIceBlocked(false);
+                for (Plant warmed : tile.getPlants()) {
+                    warmed.meltCompletely(state);
+                }
+            }
         }
     }
 

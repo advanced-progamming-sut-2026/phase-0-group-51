@@ -36,8 +36,41 @@ public enum StrikeThrough implements PlantType {
     }
 
     @Override
-    public void onFoodTick(Plant plant, GameState state) {
-        onTick(plant, state);
+    public void onFeed(Plant plant, GameState state) {
+        if (this == CACTUS) {
+            state.getBoard().addProjectile(Projectile.straight(
+                    plant.getDamage() * 3,
+                    ElementType.NORMAL,
+                    plant.getPlantTags(),
+                    PlantEnumSupport.projectileSpeed(plant, 0.65),
+                    plant.getPosX(),
+                    plant.getPosY(),
+                    new StraightMove(),
+                    Integer.MAX_VALUE
+            ).withSource(plant));
+            return;
+        }
+        double effectiveRange = PlantEnumSupport.upgradedRange(
+                plant,
+                range + 2
+        );
+        for (Zombie zombie : state.getBoard().getZombiesInLane(
+                plant.getPosY()
+        )) {
+            double distance = zombie.getX() - plant.getPosX();
+            if (distance >= 0 && distance <= effectiveRange) {
+                zombie.takeDamage(plant.getDamage() * 3, state, plant);
+                zombie.setX(Math.min(
+                        state.getBoard().getColumnCount(),
+                        zombie.getX() + 1.5f
+                ));
+            }
+        }
+    }
+
+    @Override
+    public int plantFoodDurationTicks(Plant plant, GameState state) {
+        return 0;
     }
 
     private void shootPiercingProjectile(Plant plant, GameState state) {

@@ -28,7 +28,7 @@ public class Plant {
     // (Chomper), charge-up (Citron, Bowling Bulb), etc.
     private float disabledTicksRemaining;
     // plants with limited life span:
-    private float lifespanRemaining;
+    private float lifespanRemaining = -1;
     //for stack plants:
     private int stackCount = 1;
     // for wramp-up plants
@@ -47,6 +47,14 @@ public class Plant {
 
     // Wizard sheep transform
     private boolean transformed = false;
+
+    // Shared state for plants whose special behavior needs a small amount of
+    // persistent runtime data without introducing one class per plant.
+    private final int[] bowlingBulbCooldownTicks = new int[3];
+    private boolean hypnoGargantuarPrimed;
+    private boolean blueFlame;
+    private int blueFlameTicks;
+    private boolean autoPlantFoodOnEntry;
 
     private int damage;
 
@@ -68,12 +76,13 @@ public class Plant {
             return;
         }
         ageTicks++;
+        tickSpecialState();
         plantType.onEveryTick(this, gameState);
         if (disabledTicksRemaining > 0) {
             disabledTicksRemaining--;
             return;
         }
-        if (lifespanRemaining > 0) {
+        if (lifespanRemaining >= 0) {
             lifespanRemaining--;
             if (lifespanRemaining <= 0) {
                 markedForRemoval = true;
@@ -92,7 +101,8 @@ public class Plant {
     }
 
     public boolean canAct(GameState gameState) {
-        double requiredTicks = plantStat.actionInterval() * gameState.getTicksPerSecond();
+        double requiredTicks = plantType.actionIntervalSeconds(this)
+                * gameState.getTicksPerSecond();
         if (tickFromLastAct >= requiredTicks) {
             tickFromLastAct = 0;
             return true;
@@ -109,7 +119,22 @@ public class Plant {
             return;
         }
         plantType.onFeed(this, gameState);
-        ticksOfPlantFood = Math.max(0, plantType.plantFoodDurationTicks(this, gameState));
+        ticksOfPlantFood = Math.max(
+                0,
+                plantType.plantFoodDurationTicks(this, gameState)
+        );
+        if (ticksOfPlantFood > 0 && !markedForRemoval) {
+            plantType.onFoodTick(this, gameState);
+            ticksOfPlantFood--;
+        }
+    }
+
+    public void feedForAtLeast(GameState gameState, int durationTicks) {
+        feed(gameState);
+        int remaining = Math.max(0, durationTicks - 1);
+        if (!markedForRemoval && remaining > ticksOfPlantFood) {
+            ticksOfPlantFood = remaining;
+        }
     }
     public void setLifespanSeconds(double seconds, GameState state) {
         lifespanRemaining = Math.max(0, (float) (seconds * state.getTicksPerSecond()));
@@ -120,7 +145,8 @@ public class Plant {
     }
 
     public void forceReady(GameState state) {
-        tickFromLastAct = (float) (plantStat.actionInterval() * state.getTicksPerSecond());
+        tickFromLastAct = (float) (plantType.actionIntervalSeconds(this)
+                * state.getTicksPerSecond());
     }
 
     public void healToFull() {
@@ -213,7 +239,11 @@ public class Plant {
             octopusHP = Math.max(0, octopusHP - damage);
             return;
         }
+        boolean armorBefore = hasTemporaryArmor();
         this.currentHP = Math.max(0, this.currentHP - damage);
+        if (armorBefore && !hasTemporaryArmor() && currentHP > 0) {
+            plantType.onArmorBroken(this, gameState);
+        }
         if (this.currentHP <= 0) die(gameState);
     }
     public boolean isDead(){
@@ -221,6 +251,48 @@ public class Plant {
     }
     public void addArmor(int hp){
         this.currentHP += hp;
+    }
+
+    public void setBowlingBulbCooldown(int slot, int ticks) {
+        if (slot >= 0 && slot < bowlingBulbCooldownTicks.length) {
+            bowlingBulbCooldownTicks[slot] = Math.max(0, ticks);
+        }
+    }
+
+    public int getBowlingBulbCooldown(int slot) {
+        if (slot < 0 || slot >= bowlingBulbCooldownTicks.length) {
+            return Integer.MAX_VALUE;
+        }
+        return bowlingBulbCooldownTicks[slot];
+    }
+
+    public void meltCompletely(GameState state) {
+        if (frostLevel == 0 && iceHealth == 0) {
+            return;
+        }
+        frostLevel = 0;
+        iceHealth = 0;
+        state.logEvent(name + " at (" + (posX + 1) + ", "
+                + (posY + 1) + ") was warmed and thawed.\n");
+    }
+
+    public void activateBlueFlame(int ticks) {
+        blueFlame = true;
+        blueFlameTicks = Math.max(blueFlameTicks, ticks);
+    }
+
+    private void tickSpecialState() {
+        for (int i = 0; i < bowlingBulbCooldownTicks.length; i++) {
+            if (bowlingBulbCooldownTicks[i] > 0) {
+                bowlingBulbCooldownTicks[i]--;
+            }
+        }
+        if (blueFlameTicks > 0) {
+            blueFlameTicks--;
+            if (blueFlameTicks == 0) {
+                blueFlame = false;
+            }
+        }
     }
     public void die(GameState gameState) {
         if (markedForRemoval) return;

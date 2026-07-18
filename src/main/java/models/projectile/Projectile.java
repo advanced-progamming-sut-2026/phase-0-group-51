@@ -9,6 +9,7 @@ import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
 import models.projectile.move.MovingStrategy;
+import models.projectile.move.BounceMove;
 import models.projectile.move.StarMove;
 import models.projectile.move.StraightMove;
 
@@ -18,11 +19,11 @@ import java.util.Set;
 
 public class Projectile {
     @Getter
-    private final int damage;
+    private int damage;
     @Getter
-    private final int splashDamage;
+    private int splashDamage;
     @Getter
-    private final ElementType elementType;
+    private ElementType elementType;
     @Getter
     private final List<PlantTag> tags;
     @Getter
@@ -53,6 +54,9 @@ public class Projectile {
     private boolean markedForRemoval;
     private boolean graveTarget;
     private Plant sourcePlant;
+    private int remainingTicks = -1;
+    private final Set<Plant> passedModifiers = new HashSet<>();
+    private boolean torchwoodModified;
 
     public static Projectile straight(
             int damage,
@@ -229,6 +233,63 @@ public class Projectile {
         );
     }
 
+    public static Projectile bouncing(
+            int damage,
+            ElementType elementType,
+            List<PlantTag> tags,
+            double speed,
+            double posX,
+            int lane,
+            double initialVerticalSign,
+            int hitCount,
+            double aoeRadius
+    ) {
+        return bouncing(
+                damage,
+                elementType,
+                tags,
+                speed,
+                posX,
+                lane,
+                1.0,
+                initialVerticalSign,
+                hitCount,
+                aoeRadius
+        );
+    }
+
+    public static Projectile bouncing(
+            int damage,
+            ElementType elementType,
+            List<PlantTag> tags,
+            double speed,
+            double posX,
+            int lane,
+            double horizontalSign,
+            double initialVerticalSign,
+            int hitCount,
+            double aoeRadius
+    ) {
+        return new Projectile(
+                damage,
+                damage,
+                elementType,
+                tags,
+                speed,
+                posX,
+                lane,
+                horizontalSign,
+                initialVerticalSign,
+                new BounceMove(horizontalSign, initialVerticalSign),
+                Math.max(1, hitCount),
+                aoeRadius,
+                0,
+                null,
+                null,
+                null
+        );
+    }
+
     public Projectile(
             int damage,
             ElementType elementType,
@@ -304,6 +365,11 @@ public class Projectile {
         return this;
     }
 
+    public Projectile withLifetime(int ticks) {
+        remainingTicks = Math.max(1, ticks);
+        return this;
+    }
+
     public void tick(GameState state) {
         if (markedForRemoval) {
             return;
@@ -311,6 +377,11 @@ public class Projectile {
         double previousX = posX;
         double previousY = posY;
         movingStrategy.move(this, speed);
+        if (remainingTicks > 0 && --remainingTicks == 0) {
+            destroy(state);
+            return;
+        }
+        applyTorchwoodIfCrossed(state, previousX, previousY);
         if (isOutOfBounds(state)) {
             destroy(state);
             return;
@@ -329,6 +400,36 @@ public class Projectile {
         if (contact != null && !alreadyHit.contains(contact)) {
             impact(state, contact);
         }
+    }
+
+    private void applyTorchwoodIfCrossed(
+            GameState state,
+            double previousX,
+            double previousY
+    ) {
+        if (torchwoodModified
+                || !tags.contains(PlantTag.PEA)
+                || Math.abs(posY - previousY) >= 0.001) {
+            return;
+        }
+        Plant torchwood = state.getBoard().getFirstTorchwoodCrossed(
+                (int) Math.round(posY),
+                previousX,
+                posX,
+                passedModifiers
+        );
+        if (torchwood == null) {
+            return;
+        }
+        passedModifiers.add(torchwood);
+        torchwoodModified = true;
+        int multiplier = torchwood.isBlueFlame() ? 3 : 2;
+        damage *= multiplier;
+        splashDamage *= multiplier;
+        elementType = ElementType.FIRE;
+        state.logEvent("Torchwood changed a passing pea into "
+                + (multiplier == 3 ? "blue" : "normal")
+                + " fire.\n");
     }
 
     private boolean hitFrozenPlantIfCrossed(
@@ -456,10 +557,23 @@ public class Projectile {
     private void impact(GameState state, Zombie primaryTarget) {
         if (graveTarget) {
             hitLandingTarget(state);
+        } else if (aoeRadius > 0 && primaryTarget != null) {
+            hitArea(state, primaryTarget);
+            if (movingStrategy instanceof BounceMove bounceMove && pierceRemaining > 0) {
+                bounceMove.onHit();
+                return;
+            }
+            destroy(state);
         } else if (aoeRadius > 0) {
-            hitArea(state);
+            hitArea(state, null);
+            destroy(state);
         } else if (primaryTarget != null) {
             hit(primaryTarget, state);
+            if (movingStrategy instanceof BounceMove bounceMove
+                    && pierceRemaining > 0) {
+                bounceMove.onHit();
+                return;
+            }
             if (pierceRemaining <= 0) {
                 destroy(state);
             }
@@ -470,21 +584,44 @@ public class Projectile {
         }
     }
 
-    private void hitArea(GameState state) {
-        Zombie primary = state.getBoard().getZombieNear(
-                (int) Math.round(targetY == null ? posY : targetY),
-                targetX == null ? posX : targetX,
-                0.75
-        );
-        for (Zombie zombie : state.getBoard().getZombiesInRadius(
+    private void hitArea(GameState state, Zombie explicitPrimary) {
+        Zombie primary = explicitPrimary != null
+                ? explicitPrimary
+                : state.getBoard().getZombieNear(
+                        (int) Math.round(targetY == null ? posY : targetY),
+                        targetX == null ? posX : targetX,
+                        0.75
+                );
+        List<Zombie> targets = state.getBoard().getZombiesInRadius(
                 posY,
                 posX,
                 aoeRadius
-        )) {
-            int appliedDamage = zombie == primary ? damage : splashDamage;
-            hit(zombie, state, appliedDamage);
+        );
+        if (targets.isEmpty() && primary != null) {
+            hit(primary, state);
+            return;
         }
-        destroy(state);
+        boolean primaryHit = false;
+        for (Zombie zombie : targets) {
+            if (zombie == primary) {
+                hit(zombie, state, damage);
+                primaryHit = true;
+            } else {
+                damageWithoutConsumingPierce(zombie, state, splashDamage);
+            }
+        }
+        if (!primaryHit && primary != null) {
+            hit(primary, state, damage);
+        }
+    }
+
+    private void damageWithoutConsumingPierce(Zombie zombie, GameState state, int appliedDamage) {
+        boolean protectedByIce = zombie.hasIceShell();
+        zombie.takeDamage(appliedDamage, elementType, state, sourcePlant);
+        if (!protectedByIce) {
+            elementType.onHit(zombie, state, effectDurationTicks, sourcePlant);
+        }
+        alreadyHit.add(zombie);
     }
 
     private void hitLandingTarget(GameState state) {
