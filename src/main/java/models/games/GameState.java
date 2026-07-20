@@ -105,35 +105,24 @@ public class GameState {
 
     public void configureSaveOurSeeds(SaveOurSeedsConfig config) {
         if (config == null || !config.isConfigured()) {
-            throw new IllegalArgumentException(
-                    "Save Our Seeds requires at least one protected plant."
-            );
+            throw new IllegalArgumentException("Save Our Seeds requires at least one protected plant.");
         }
-
         protectedPlants.clear();
         protectedPlantLost = false;
-
-        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
-                resolveProtectedPlantPlacements(config);
-
-        for (SaveOurSeedsConfig.ProtectedPlantPlacement placement
-                : placements) {
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements = resolveProtectedPlantPlacements(config);
+        for (SaveOurSeedsConfig.ProtectedPlantPlacement placement : placements) {
             Tile tile = board.getTileAtUserCoordinates(
-                    placement.column() - 1,
-                    placement.row() - 1
-            );
+                    placement.column() - 1, placement.row() - 1);
             if (tile == null) {
                 throw new IllegalArgumentException(
                         "Protected plant coordinates are outside the board: ("
-                                + placement.column() + ", "
-                                + placement.row() + ")."
+                                + placement.column() + ", " + placement.row() + ")."
                 );
             }
             PlantData data = PlantRegistry.getById(placement.plantId());
             if (data == null) {
                 throw new IllegalArgumentException(
-                        "Unknown protected plant id: " + placement.plantId()
-                );
+                        "Unknown protected plant id: " + placement.plantId());
             }
 
             Plant plant = PlantFactory.create(data, placement.level());
@@ -144,9 +133,7 @@ public class GameState {
             tile.setPlant(plant);
             plant.getPlantType().onPlanted(plant, this);
             activateEntryPlantFood(plant);
-
-            if (plant.isDead() || plant.isMarkedForRemoval()
-                    || board.getTileForPlant(plant) == null) {
+            if (plant.isDead() || plant.isMarkedForRemoval() || board.getTileForPlant(plant) == null) {
                 protectedPlants.remove(plant);
                 board.removePlant(plant);
                 throw new IllegalArgumentException(
@@ -161,22 +148,16 @@ public class GameState {
         if (!config.usesRandomPlacement()) {
             return config.protectedPlants();
         }
-
-        SaveOurSeedsConfig.RandomPlacementRule rule =
-                config.randomPlacementRule();
-        int maximumColumn = board.getColumnCount()
-                - rule.excludedRightColumns();
+        SaveOurSeedsConfig.RandomPlacementRule rule = config.randomPlacementRule();
+        int maximumColumn = board.getColumnCount() - rule.excludedRightColumns();
         if (rule.minimumColumn() > maximumColumn) {
             throw new IllegalArgumentException(
-                    "No columns remain for random protected-plant placement."
-            );
+                    "No columns remain for random protected-plant placement.");
         }
         if (rule.distinctRows() && rule.count() > board.getLaneCount()) {
             throw new IllegalArgumentException(
-                    "Not enough rows for distinct protected-plant placement."
-            );
+                    "Not enough rows for distinct protected-plant placement.");
         }
-
         List<Tile> candidates = new ArrayList<>();
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             for (int column = rule.minimumColumn() - 1;
@@ -189,23 +170,18 @@ public class GameState {
             }
         }
         Collections.shuffle(candidates, new Random());
-
-        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
-                new ArrayList<>();
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements = new ArrayList<>();
         Set<Integer> usedRows = new HashSet<>();
         for (Tile tile : candidates) {
-            if (rule.distinctRows() && !usedRows.add(tile.getLane())) {
-                continue;
-            }
+            if (rule.distinctRows() && !usedRows.add(tile.getLane())) continue;
             placements.add(new SaveOurSeedsConfig.ProtectedPlantPlacement(
                     rule.plantId(),
                     tile.getColumn() + 1,
                     tile.getLane() + 1,
                     rule.level()
             ));
-            if (placements.size() == rule.count()) {
-                break;
-            }
+            if (placements.size() == rule.count()) break;
+
         }
 
         if (placements.size() < rule.count()) {

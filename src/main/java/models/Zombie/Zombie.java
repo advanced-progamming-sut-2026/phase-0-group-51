@@ -217,14 +217,10 @@ public class Zombie {
 
 
     public void onTick(GameState gs) {
-        if (dead || hasIceShell()) {
-            return;
-        }
+        if (dead || hasIceShell()) return;
         tickEffects();
         tickPoison(gs);
-        if (isFrozen() || isButtered()) {
-            return;
-        }
+        if (isFrozen() || isButtered()) return;
         if (hypnotized) {
             tickHypnotized(gs);
             return;
@@ -232,43 +228,29 @@ public class Zombie {
         for (ZombieBehavior behavior : new ArrayList<>(behaviors)) {
             behavior.onTick(this, gs);
         }
-        if (dead) {
-            return;
-        }
+        if (dead) return;
         boolean eatSuppressed = behaviors.stream()
                 .anyMatch(behavior -> behavior.suppressesDefaultEating(this));
         Zombie hypnotizedTarget = eatSuppressed
                 ? null
                 : gs.findNearestHypnotizedZombieInRange(
-                        this,
-                        lane,
-                        x,
-                        0.65f
-                );
+                        this, lane, x, 0.65f);
         if (hypnotizedTarget != null) {
             attackOpposingZombie(hypnotizedTarget, gs);
             return;
         }
-
         Plant target = eatSuppressed
                 ? null
                 : gs.getBoard().findNearestPlantInRange(
-                        lane,
-                        x,
-                        EATING_DISTANCE
+                        lane, x, EATING_DISTANCE
                 );
         if (target != null) {
             eating = true;
-            eatDamageAccumulator += (baseEatDps * damageMultiplier)
-                    / gs.getTicksPerSecond();
+            eatDamageAccumulator += (baseEatDps * damageMultiplier) / gs.getTicksPerSecond();
             int wholeDamage = (int) eatDamageAccumulator;
             if (wholeDamage > 0) {
                 eatDamageAccumulator -= wholeDamage;
-                target.getPlantType().onEatenBy(
-                        target,
-                        this,
-                        wholeDamage,
-                        gs
+                target.getPlantType().onEatenBy(target, this, wholeDamage, gs
                 );
                 target.takeDamage(wholeDamage, gs);
             }
