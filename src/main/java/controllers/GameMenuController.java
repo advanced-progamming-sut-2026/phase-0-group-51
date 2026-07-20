@@ -56,8 +56,7 @@ public class GameMenuController {
                     null
             );
         }
-        ProgressRepository progressRepository = new ProgressRepository();
-        int[] currentProgress = progressRepository.getCurrentProgress(App.loggedInUser.getId());
+        int[] currentProgress = normalizedProgress(App.loggedInUser);
         int unlockedChapterIndex = currentProgress[0] - 1;
         if (requestedChapterIndex > unlockedChapterIndex) {
             ChapterTheme highestUnlockedChapter = ADVENTURE_CHAPTERS[unlockedChapterIndex];
@@ -102,8 +101,7 @@ public class GameMenuController {
                     null
             );
         }
-        ProgressRepository progressRepository = new ProgressRepository();
-        int[] currentProgress = progressRepository.getCurrentProgress(App.loggedInUser.getId());
+        int[] currentProgress = normalizedProgress(App.loggedInUser);
         int unlockedChapterIndex = currentProgress[0] - 1;
         int unlockedLevelIndex = currentProgress[1] - 1;
         if (selectedChapterIndex > unlockedChapterIndex) {
@@ -217,5 +215,19 @@ public class GameMenuController {
                     "New plant unlocked: " + plantName + "."
             );
         }
+    }
+
+    private int[] normalizedProgress(User user) {
+        ProgressRepository repository = new ProgressRepository();
+        int[] raw = repository.getCurrentProgress(user.getId());
+
+        int chapter = Math.max(1, Math.min(ADVENTURE_CHAPTERS.length, raw[0]));
+        int levelCount = ADVENTURE_CHAPTERS[chapter - 1].getLevels().size();
+        int level = Math.max(1, Math.min(levelCount, raw[1]));
+
+        if (chapter != raw[0] || level != raw[1]) {
+            repository.saveProgress(user.getId(), chapter, level);
+        }
+        return new int[]{chapter, level};
     }
 }

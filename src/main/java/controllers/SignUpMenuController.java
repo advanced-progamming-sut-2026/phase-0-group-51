@@ -127,7 +127,6 @@ public class SignUpMenuController {
             isRegisterValid = false;
             return new Result(false, "Registration failed\n", null);
         }
-        GreenHouseRepository.createForUser(user.getId());
         resetFields();
         return new Result(true, "Registration completed successfully.\n", null);
     }

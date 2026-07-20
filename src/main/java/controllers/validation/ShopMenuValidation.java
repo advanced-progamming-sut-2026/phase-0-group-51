@@ -2,29 +2,33 @@ package controllers.validation;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import lombok.Getter;
 import models.App;
+import models.User;
 import models.greenHouse.FlowerPot;
 import models.greenHouse.GreenHouse;
 import models.shop.ShopItem;
-
+@Getter
 public class ShopMenuValidation {
-    public int count, id, totalGemsNeeded, totalCoinsNeeded;
-    public PlantData data;
-
+    private int count;
+    private int id;
+    private int totalGemsNeeded;
+    private int totalCoinsNeeded;
+    private PlantData data;
     public boolean isCountValid(String countString) {
         try {
             count = Integer.parseInt(countString);
             return count >= 1;
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException exception) {
             return false;
         }
     }
 
-    public boolean isIdValid(String IdString) {
+    public boolean isIdValid(String idString) {
         try {
-            id = Integer.parseInt(IdString);
+            id = Integer.parseInt(idString);
             return id >= 1 && id <= 5;
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException exception) {
             return false;
         }
     }
@@ -34,31 +38,13 @@ public class ShopMenuValidation {
         return data != null;
     }
 
-    public boolean isCoinEnough(ShopItem item) {
+    public boolean isCoinEnough(User user, ShopItem item) {
         totalCoinsNeeded = item.getBasePrice() * count;
-        return App.getInstance().getLoggedInUser().getCoins() >= totalCoinsNeeded;
+        return user != null && user.getCoins() >= totalCoinsNeeded;
     }
 
-    public boolean isGemEnough(ShopItem item) {
+    public boolean isGemEnough(User user, ShopItem item) {
         totalGemsNeeded = item.getBasePrice() * count;
-        return App.getInstance().getLoggedInUser().getGems() >= totalGemsNeeded;
-    }
-
-    public boolean doesExceedsMaxStackPot() {
-        GreenHouse greenHouse = App.getInstance().getLoggedInUser().getGreenHouse();
-        int unlocked = 0;
-        for (FlowerPot[] row : greenHouse.getPots()) {
-            for (FlowerPot pot : row) {
-                if (pot.isUnlocked()) {
-                    unlocked++;
-                }
-            }
-        }
-        return unlocked + count > 20;
-    }
-
-    public boolean doesExceedsMaxStackFood() {
-        return App.getInstance().getLoggedInUser().getPlantFoodNum() + count > 3;
+        return user != null && user.getGems() >= totalGemsNeeded;
     }
 }
-

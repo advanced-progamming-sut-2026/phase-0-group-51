@@ -986,7 +986,7 @@ public class GamingController {
         if (!game.startZombieWaves()) {
             return failure("Zombie waves could not be started.\n");
         }
-        return success("First Zombie waves started.\n");
+        return success("Zombie waves started. Recharge rules are active now.\n");
     }
 
     public Result removeCooldowns() {
@@ -1077,7 +1077,7 @@ public class GamingController {
         if (state.getBoard().getWaterColumnCount() > 0) {
             output.append("Water: rightmost ")
                     .append(state.getBoard().getWaterColumnCount())
-                    .append(" columns. Maximum tide reaches column 6.\n");
+                    .append(" columns. Maximum tide reaches column 4.\n");
         }
         if (game instanceof ScoringGame scoringGame) {
             output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}

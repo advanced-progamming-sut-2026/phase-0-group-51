@@ -4,6 +4,7 @@ package models.games;
 import Data.database.NewsRepository;
 import Data.database.PlantRepository;
 import Data.database.ProgressRepository;
+import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
@@ -102,7 +103,23 @@ public class Game{
         applyChapterFeatures(theme, level, board, waveManager);
         level.type().initialize(this.gameState);
         initializeConveyorBeltLevel(level);
+        loadPurchasedPlantFood();
     }
+
+    private void loadPurchasedPlantFood() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null || gameState == null) {
+            return;
+    }
+        int storedPlantFood = new UserRepository().claimStoredPlantFood(user.getId());
+        if (storedPlantFood < 0) {
+            gameState.logEvent("Stored Plant Food could not be loaded.\n");
+            return;
+        }
+        gameState.setPlantFoodCount(storedPlantFood);
+        user.setPlantFoodNum(0);
+    }
+
     private void initializeConveyorBeltLevel(Level level) {
         if (level.type() != LevelType.CONVEYOR_BELT) {
             return;
@@ -115,7 +132,9 @@ public class Game{
     private List<PlantData> loadUnlockedConveyorPlants() {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
-        gameState.logEvent("user is null.\n");
+            throw new IllegalStateException(
+                    "You must log in before starting a Conveyor Belt level."
+            );
         }
 
         Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
@@ -125,7 +144,9 @@ public class Game{
                 .sorted(Comparator.comparingInt(PlantData::id))
                 .toList();
         if (plants.isEmpty()) {
-            gameState.logEvent("You have no unlocked plants available for the Conveyor Belt level.");
+            throw new IllegalStateException(
+                    "No unlocked plants are available for the Conveyor Belt."
+            );
         }
         return plants;
     }
@@ -218,7 +239,6 @@ public class Game{
         }
         Grave grave = tile.getGrave();
         int rewardRoll = random.nextInt(100);
-//احتمال میذارم چون داک گفته ممکن است(نگفته همیشه)...
         if (rewardRoll < 30) {
             grave.makePlantFoodGrave();
         } else if (rewardRoll < 60) {
@@ -320,6 +340,16 @@ public class Game{
         gameState.setFinished(true);
         gameState.setWon(false);
         evaluateQuestRun(false);
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return;
+        }
+        int gamesPlayed = new UserRepository().recordAdventureLoss(user.getId());
+        if (gamesPlayed < 0) {
+            gameState.logEvent("The played-game counter could not be saved.\n");
+            return;
+        }
+        user.setGamesPlayed(gamesPlayed);
     }
 
     private void evaluateQuestRun(boolean won) {
@@ -344,36 +374,51 @@ public class Game{
         }
     }
     private void saveProgressInDatabase() {
-        ChapterTheme currentTheme = chapters.get(currentChapterIndex);
-        int nextLevelIndex = currentLevelIndex;
-        int nextChapterIndex = currentChapterIndex;
-        if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
-            nextLevelIndex++;
-        } else if (currentChapterIndex + 1
-                < chapters.size()) {
-            nextChapterIndex++;
-            nextLevelIndex = 0;
-        }
-        int newChapter = nextChapterIndex + 1;
-        int newLevel = nextLevelIndex + 1;
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
             return;
         }
+
+        int completedChapter = currentChapterIndex + 1;
+        int completedLevel = currentLevelIndex + 1;
+        Integer candidateChapter = null;
+        Integer candidateLevel = null;
+
+        ChapterTheme currentTheme = chapters.get(currentChapterIndex);
+        if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
+            candidateChapter = completedChapter;
+            candidateLevel = completedLevel + 1;
+        } else if (currentChapterIndex + 1 < chapters.size()) {
+            candidateChapter = completedChapter + 1;
+            candidateLevel = 1;
+        }
+
         ProgressRepository progressRepository = new ProgressRepository();
-        int[] oldProgress = progressRepository.getCurrentProgress(user.getId());
-        boolean chapterAdvanced = newChapter > oldProgress[0];
-        boolean levelAdvanced = newChapter == oldProgress[0] && newLevel > oldProgress[1];
-        if (!chapterAdvanced && !levelAdvanced) {
+        ProgressRepository.AdventureWinResult result =
+                progressRepository.recordAdventureWin(
+                        user.getId(),
+                        completedChapter,
+                        completedLevel,
+                        candidateChapter,
+                        candidateLevel
+                );
+
+        if (!result.saved()) {
+            gameState.logEvent("Adventure progress could not be saved.\n");
             return;
         }
-        boolean saved = progressRepository.saveProgress(user.getId(), newChapter, newLevel);
-        if (!saved) {
-            gameState.logEvent("Progress could not be saved.\n");return;
+
+        user.setGamesPlayed(result.gamesPlayed());
+        user.setLastWonGame(
+                "Chapter " + completedChapter + " Level " + completedLevel
+        );
+
+        if (!result.progressAdvanced()) {
+            return;
         }
         NewsRepository newsRepository = new NewsRepository();
-        ChapterTheme unlockedTheme = chapters.get(nextChapterIndex);
-        if (chapterAdvanced) {
+        ChapterTheme unlockedTheme = chapters.get(result.newChapter() - 1);
+        if (result.newChapter() > result.oldChapter()) {
             newsRepository.createNewsForUser(
                     user.getId(),
                     "New chapter unlocked: "
@@ -386,7 +431,7 @@ public class Game{
                     "New level unlocked: "
                             + unlockedTheme.getName()
                             + " Level "
-                            + newLevel
+                            + result.newLevel()
                             + "."
             );
         }

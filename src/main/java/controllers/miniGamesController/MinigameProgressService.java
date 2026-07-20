@@ -65,10 +65,7 @@ public class MinigameProgressService {
             }
 
             if (completion.minigameNewlyCompleted()) {
-                user.setMiniGamesPlayed(user.getMiniGamesPlayed() + 1);
-                if (!userRepository.updateStats(user)) {
-                    message.append("The completed-minigame counter could not be saved.\n");
-                }
+                user.setMiniGamesPlayed(completion.miniGamesPlayed());
 
                 String news = "You completed all three stages of "
                         + type.getDisplayName() + ".";

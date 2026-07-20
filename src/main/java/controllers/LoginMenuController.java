@@ -86,10 +86,19 @@ public class LoginMenuController {
             if (!validation.hasWeakPasswordSpecialSymbol(newPass))
                 sb.append("It must contain at least one special symbol.\n"); }
         if (isNewPassValid) {
-            repository.updatePassword(resetPasswordUser.getUsername(), hash);
+            boolean updated = repository.updatePassword(
+                    resetPasswordUser.getUsername(), hash
+            );
+            if (!updated) {
+                return new Result(
+                        false,
+                        "Password could not be saved. Please try again.\n",
+                        null
+                );
+            }
             waitingForNewPassword = false;
             resetPasswordUser = null;
-            sb.append("Password changed successfully.");
+            sb.append("Password changed successfully.\n");
         }
         return new Result(isNewPassValid, sb.toString(), null);
     }

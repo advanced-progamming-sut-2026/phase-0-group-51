@@ -70,7 +70,7 @@ public class TravelLogMenu implements AppMenu{
     private void startBeghouled(String line) {
         Matcher matcher = TravelLogMenuCommands.START_BEGHOULDED.getMatcher(line);
         Integer stage = parseStage(matcher);
-       // if (stage != null) print(beghouledController.startStage(stage));
+        if (stage != null) print(beghouledController.startStage(stage));
     }
 
     private void startZombotany(String line) {

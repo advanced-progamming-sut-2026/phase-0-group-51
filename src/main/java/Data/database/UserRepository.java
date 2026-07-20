@@ -1,89 +1,127 @@
 package Data.database;
 import models.User;
+import models.enums.LootType;
 
 import java.sql.*;
 
 public class UserRepository {
 
         public boolean register(User user) {
-            String sql = "INSERT INTO users (username, email, password_hash, gender, nickname, security_question," +
-                    " answer) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)";
-            try (Connection conn = DataBaseManager.getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(
-                         sql,
-                         Statement.RETURN_GENERATED_KEYS)) {
+        String userSql = """
+                INSERT INTO users (
+                    username, email, password_hash, gender, nickname,
+                    security_question, answer
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """;
+        String progressSql = """
+                INSERT INTO user_progress(user_id, chapter_index, level_index)
+                VALUES (?, 1, 1)
+                """;
 
-                pstmt.setString(1, user.getUsername());
-                pstmt.setString(2, user.getEmail());
-                pstmt.setString(3, user.getPasswordHash());
-                pstmt.setString(4, user.getGender());
-                pstmt.setString(5, user.getNickname());
-                pstmt.setInt(6, user.getSecurityQuestion());
-                pstmt.setString(7, user.getAnswer());
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement statement = connection.prepareStatement(
+                        userSql, Statement.RETURN_GENERATED_KEYS
+                )) {
+                    statement.setString(1, user.getUsername());
+                    statement.setString(2, user.getEmail());
+                    statement.setString(3, user.getPasswordHash());
+                    statement.setString(4, user.getGender());
+                    statement.setString(5, user.getNickname());
+                    statement.setInt(6, user.getSecurityQuestion());
+                    statement.setString(7, user.getAnswer());
 
-                pstmt.executeUpdate();
-                ResultSet rs = pstmt.getGeneratedKeys();
-                if (rs.next()) {
-                    user.setId(rs.getInt(1));
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("The user row was not created.");
+                    }
+                    try (ResultSet resultSet = statement.getGeneratedKeys()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("The generated user id was not returned.");
                 }
-                initializeProgress(user.getUsername());
+                        user.setId(resultSet.getInt(1));
+                    }
+                }
+
+                try (PreparedStatement statement = connection.prepareStatement(progressSql)) {
+                    statement.setInt(1, user.getId());
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("The initial progress row was not created.");
+                    }
+                }
+
+                GreenHouseRepository.insertInitialPots(connection, user.getId());
+                connection.commit();
                 return true;
-            } catch (SQLException e) {
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+                user.setId(0);
                 return false;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            user.setId(0);
+            return false;
             }
         }
     public boolean usernameExists(String username) {
         String sql = "SELECT 1 FROM users WHERE username = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, username);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            return rs.next();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
             return false;
         }
     }
+    public boolean emailExists(String email) {
+        String sql = "SELECT 1 FROM users WHERE email = ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean emailExistsForAnotherUser(String email, int userId) {
+        String sql = "SELECT 1 FROM users WHERE email = ? AND id <> ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email);
+            statement.setInt(2, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
+    }
+
     public User getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                User user = new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("email"),
-                        rs.getString("password_hash"),
-                        rs.getString("gender"),
-                        rs.getString("nickname"),
-                        rs.getInt("security_question"),
-                        rs.getString("answer"),
-                        rs.getInt("coins"),
-                        rs.getInt("gems"),
-                        rs.getInt("plant_food_num"),
-                        rs.getInt("most_meow_point"),
-                        rs.getInt("max_point"),
-                        rs.getInt("games_played"),
-                        rs.getInt("mini_games_played"),
-                        rs.getString("last_won_game"),
-                        rs.getInt("difficulty_level")
-                );
-                user.setQuestDailyNum(rs.getInt("quest_daily_num"));
-                user.setQuestNonDailyNum(rs.getInt("quest_non_daily_num"));
-                return user;
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return readUser(resultSet);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+        }
         return null;
     }
 
@@ -101,12 +139,9 @@ public class UserRepository {
 
                 if (stayLoggedIn) {
                     rememberStatement.setInt(1, userId);
-
-                    int affectedRows = rememberStatement.executeUpdate();
-
-                    if (affectedRows != 1) {
+                    if (rememberStatement.executeUpdate() != 1) {
                         throw new SQLException(
-                                "User was not found while saving login session."
+                                "User was not found while saving the login session."
                         );
                     }
                 }
@@ -117,6 +152,8 @@ public class UserRepository {
                 connection.rollback();
                 exception.printStackTrace();
                 return false;
+            } finally {
+                connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
@@ -131,187 +168,301 @@ public class UserRepository {
         ORDER BY id DESC
         LIMIT 1
         """;
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                User user = new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("email"),
-                        rs.getString("password_hash"),
-                        rs.getString("gender"),
-                        rs.getString("nickname"),
-                        rs.getInt("security_question"),
-                        rs.getString("answer"),
-                        rs.getInt("coins"),
-                        rs.getInt("gems"),
-                        rs.getInt("plant_food_num"),
-                        rs.getInt("most_meow_point"),
-                        rs.getInt("max_point"),
-                        rs.getInt("games_played"),
-                        rs.getInt("mini_games_played"),
-                        rs.getString("last_won_game"),
-                        rs.getInt("difficulty_level")
-                );
-                user.setQuestDailyNum(rs.getInt("quest_daily_num"));
-                user.setQuestNonDailyNum(rs.getInt("quest_non_daily_num"));
-                return user;
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql);
+             ResultSet resultSet = statement.executeQuery()) {
+            if (resultSet.next()) {
+                return readUser(resultSet);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException exception) {
+            exception.printStackTrace();
         }
 
         return null;
     }
         public boolean updateStats(User user) {
-            String sql = "UPDATE users SET coins = ?, gems = ?, plant_food_num = ?, " +
-                    "most_meow_point = ?, max_point = ?, games_played = ?, mini_games_played = ? WHERE id = ?";
-            try (Connection conn = DataBaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        String sql = """
+                UPDATE users
+                SET coins = ?, gems = ?, plant_food_num = ?,
+                    most_meow_point = ?, max_point = ?, games_played = ?,
+                    mini_games_played = ?, last_won_game = ?
+                WHERE id = ?
+                """;
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, user.getCoins());
+            statement.setInt(2, user.getGems());
+            statement.setInt(3, user.getPlantFoodNum());
+            statement.setInt(4, user.getMostMeowPoint());
+            statement.setInt(5, user.getMaxPoint());
+            statement.setInt(6, user.getGamesPlayed());
+            statement.setInt(7, user.getMiniGamesPlayed());
+            statement.setString(8, user.getLastWonGame());
+            statement.setInt(9, user.getId());
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
+    }
 
-                pstmt.setInt(1, user.getCoins());
-                pstmt.setInt(2, user.getGems());
-                pstmt.setInt(3, user.getPlantFoodNum());
-                pstmt.setInt(4, user.getMostMeowPoint());
-                pstmt.setInt(5, user.getMaxPoint());
-                pstmt.setInt(6, user.getGamesPlayed());
-                pstmt.setInt(7, user.getMiniGamesPlayed());
-                pstmt.setInt(8, user.getId());
+    public boolean updateUsername(int userId, String newUsername) {
+        return updateSingleStringField(
+                "UPDATE users SET username = ? WHERE id = ?",
+                userId,
+                newUsername
+        );
+    }
 
-                pstmt.executeUpdate();
-                return true;
-            } catch (SQLException e) {
-                e.printStackTrace();
+    public boolean updateNickname(int userId, String newNickname) {
+        return updateSingleStringField(
+                "UPDATE users SET nickname = ? WHERE id = ?",
+                userId,
+                newNickname
+        );
+    }
+
+    public boolean updateEmail(int userId, String newEmail) {
+        return updateSingleStringField(
+                "UPDATE users SET email = ? WHERE id = ?",
+                userId,
+                newEmail
+        );
+    }
+
+    public boolean updatePassword(String username, String passwordHash) {
+        String sql = "UPDATE users SET password_hash = ? WHERE username = ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, passwordHash);
+            statement.setString(2, username);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
                 return false;
             }
         }
 
-        @SuppressWarnings("CallToPrintStackTrace")
-        private void initializeProgress(String username) {
-            String sql = "INSERT INTO user_progress (user_id, chapter_index, level_index) " +
-                    "SELECT id, 1, 1 FROM users WHERE username = ?";
-            try (Connection conn = DataBaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, username);
-                pstmt.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    public void updateUsername(int userId, String newUsername) {
-        String sql = "UPDATE users SET username = ? WHERE id = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newUsername);
-            pstmt.setInt(2, userId);
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public void updateNickname(int userId, String newNickname) {
-        String sql = "UPDATE users SET nickname = ? WHERE id = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newNickname);
-            pstmt.setInt(2, userId);
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public void updateEmail(int userId, String newEmail) {
-        String sql = "UPDATE users SET email = ? WHERE id = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, newEmail);
-            pstmt.setInt(2, userId);
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+    public boolean updateDifficulty(String username, int difficultyLevel) {
+        String sql = "UPDATE users SET difficulty_level = ? WHERE username = ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, difficultyLevel);
+            statement.setString(2, username);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
         }
     }
 
-    public void updatePassword(String username,
-                               String passwordHash) {
 
-        String sql =
-                "UPDATE users SET password_hash = ? WHERE username = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, passwordHash);
-            pstmt.setString(2, username);
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public void updateDifficulty(String username, int difficultyLevel) {
-
-        String sql =
-                "UPDATE users SET difficulty_level = ? WHERE username = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, difficultyLevel);
-            pstmt.setString(2, username);
-
-            pstmt.executeUpdate();
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    private static final int LEVELS_PER_CHAPTER = 4;
 
     public int getPassedLevels(int userId) {
-
-        String sql =
-                "SELECT chapter_index, level_index " +
-                        "FROM user_progress WHERE user_id = ?";
-
-        try (Connection conn = DataBaseManager.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, userId);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-
-                int chapterIndex =
-                        rs.getInt("chapter_index");
-
-                int levelIndex =
-                        rs.getInt("level_index");
-
-                return (chapterIndex - 1) * LEVELS_PER_CHAPTER
-                        + (levelIndex - 1);
+        String sql = """
+                SELECT COUNT(*) AS completed_count
+                FROM user_completed_levels
+                WHERE user_id = ?
+                """;
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt("completed_count");
             }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+        }
         return 0;
+    }
+
+    public int claimStoredPlantFood(int userId) {
+        String selectSql = "SELECT plant_food_num FROM users WHERE id = ?";
+        String clearSql = "UPDATE users SET plant_food_num = 0 WHERE id = ?";
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                int amount;
+                try (PreparedStatement statement = connection.prepareStatement(selectSql)) {
+                    statement.setInt(1, userId);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            connection.rollback();
+                            return -1;
+                        }
+                        amount = Math.max(0, Math.min(3, resultSet.getInt("plant_food_num")));
+                    }
+                }
+                try (PreparedStatement statement = connection.prepareStatement(clearSql)) {
+                    statement.setInt(1, userId);
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("Could not consume stored Plant Food.");
+                    }
+                }
+                connection.commit();
+                return amount;
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+                return -1;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return -1;
+        }
+    }
+
+    public int recordAdventureLoss(int userId) {
+        String updateSql = """
+                UPDATE users
+                SET games_played = COALESCE(games_played, 0) + 1
+                WHERE id = ?
+                """;
+        String selectSql = "SELECT games_played FROM users WHERE id = ?";
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement statement = connection.prepareStatement(updateSql)) {
+                    statement.setInt(1, userId);
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("Could not record the played Adventure game.");
+                    }
+                }
+                int gamesPlayed;
+                try (PreparedStatement statement = connection.prepareStatement(selectSql)) {
+                    statement.setInt(1, userId);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("Could not read the games-played counter.");
+                        }
+                        gamesPlayed = resultSet.getInt("games_played");
+                    }
+                }
+                connection.commit();
+                return gamesPlayed;
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+                return -1;
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return -1;
+        }
+    }
+
+    public LootResult applyZombieLoot(int userId, LootType lootType) {
+        String updateCoinsSql = """
+                UPDATE users SET coins = COALESCE(coins, 0) + 50 WHERE id = ?
+                """;
+        String updateGemsSql = """
+                UPDATE users SET gems = COALESCE(gems, 0) + 1 WHERE id = ?
+                """;
+        String selectBalanceSql = lootType == LootType.COIN
+                ? "SELECT coins AS total FROM users WHERE id = ?"
+                : "SELECT gems AS total FROM users WHERE id = ?";
+        String selectPotSql = """
+                SELECT row, "column"
+                FROM greenhouse_pots
+                WHERE user_id = ? AND unlocked = 0
+                ORDER BY row, "column"
+                LIMIT 1
+                """;
+        String unlockPotSql = """
+                UPDATE greenhouse_pots
+                SET unlocked = 1
+                WHERE user_id = ? AND row = ? AND "column" = ? AND unlocked = 0
+                """;
+        String countPotsSql = """
+                SELECT COUNT(*) AS total
+                FROM greenhouse_pots
+                WHERE user_id = ? AND unlocked = 1
+                """;
+
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                if (lootType == LootType.POT) {
+                    int row;
+                    int column;
+                    try (PreparedStatement statement = connection.prepareStatement(selectPotSql)) {
+                        statement.setInt(1, userId);
+                        try (ResultSet resultSet = statement.executeQuery()) {
+                            if (!resultSet.next()) {
+                                connection.rollback();
+                                return new LootResult(false, 0, 0, 0);
+                            }
+                            row = resultSet.getInt("row");
+                            column = resultSet.getInt("column");
+                        }
+                    }
+                    try (PreparedStatement statement = connection.prepareStatement(unlockPotSql)) {
+                        statement.setInt(1, userId);
+                        statement.setInt(2, row);
+                        statement.setInt(3, column);
+                        if (statement.executeUpdate() != 1) {
+                            throw new SQLException("Could not unlock the dropped flower pot.");
+                        }
+                    }
+                    int total;
+                    try (PreparedStatement statement = connection.prepareStatement(countPotsSql)) {
+                        statement.setInt(1, userId);
+                        try (ResultSet resultSet = statement.executeQuery()) {
+                            if (!resultSet.next()) {
+                                throw new SQLException("Could not count the unlocked flower pots.");
+                            }
+                            total = resultSet.getInt("total");
+                        }
+                    }
+                    connection.commit();
+                    return new LootResult(true, total, row, column);
+                }
+
+                String updateSql = lootType == LootType.COIN
+                        ? updateCoinsSql : updateGemsSql;
+                try (PreparedStatement statement = connection.prepareStatement(updateSql)) {
+                    statement.setInt(1, userId);
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("Could not save the zombie loot.");
+                    }
+                }
+                int total;
+                try (PreparedStatement statement = connection.prepareStatement(selectBalanceSql)) {
+                    statement.setInt(1, userId);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("Could not read the updated loot balance.");
+                        }
+                        total = resultSet.getInt("total");
+                    }
+                }
+                connection.commit();
+                return new LootResult(true, total, 0, 0);
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+                return new LootResult(false, 0, 0, 0);
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return new LootResult(false, 0, 0, 0);
+        }
+    }
+    public record LootResult(
+            boolean saved,
+            int total,
+            int unlockedRow,
+            int unlockedColumn
+    ) {
     }
     public boolean clearStayLoggedIn() {
         String sql = "UPDATE users SET stay_logged_in = 0";
@@ -322,11 +473,49 @@ public class UserRepository {
 
             statement.executeUpdate();
             return true;
-
         } catch (SQLException exception) {
             exception.printStackTrace();
             return false;
         }
     }
+    private boolean updateSingleStringField(
+            String sql,
+            int userId,
+            String value
+    ) {
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, value);
+            statement.setInt(2, userId);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
     }
+
+    private User readUser(ResultSet resultSet) throws SQLException {
+        User user = new User(
+                resultSet.getInt("id"),
+                resultSet.getString("username"),
+                resultSet.getString("email"),
+                resultSet.getString("password_hash"),
+                resultSet.getString("gender"),
+                resultSet.getString("nickname"),
+                resultSet.getInt("security_question"),
+                resultSet.getString("answer"),
+                resultSet.getInt("coins"),
+                resultSet.getInt("gems"),
+                resultSet.getInt("plant_food_num"),
+                resultSet.getInt("most_meow_point"),
+                resultSet.getInt("max_point"),
+                resultSet.getInt("games_played"),
+                resultSet.getInt("mini_games_played"),
+                resultSet.getString("last_won_game"),
+                resultSet.getInt("difficulty_level")
+        );
+        user.setQuestDailyNum(resultSet.getInt("quest_daily_num"));
+        user.setQuestNonDailyNum(resultSet.getInt("quest_non_daily_num"));
+        return user;
+    }}
 
