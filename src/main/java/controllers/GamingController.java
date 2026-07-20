@@ -83,6 +83,9 @@ public class GamingController {
                 .append(" ticks.\n");
         state.setEventLogger(output::append);
         game.forward(ticks);
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
 
         if (state.isFinished()) {
             Menu destination = game instanceof ScoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU;
@@ -610,8 +613,12 @@ public class GamingController {
                     "This plant is protected in Save Our Seeds and cannot be plucked.\n"
             );
         }
-        state.pluckPlant(plant, tile);
-        return success(plant.getName() + " was plucked from (" + x + ", " + y + ").\n");
+        int refundedSun = state.pluckPlant(plant, tile);
+        return success(
+                plant.getName() + " was plucked from (" + x + ", " + y + ").\n"
+                        + refundedSun + " suns were returned. You now have "
+                        + state.getSun() + " suns.\n"
+        );
     }
 
     public Result feedPlant(int x, int y) {
@@ -1074,6 +1081,9 @@ public class GamingController {
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
         if (state.isSaveOurSeedsActive()) {
             output.append(state.getSaveOurSeedsStatus()).append('\n')
                     .append("WARNING: rows marked with ! contain protected plants.\n");

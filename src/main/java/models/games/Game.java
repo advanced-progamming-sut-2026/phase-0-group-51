@@ -302,6 +302,10 @@ public class Game{
         }
         gameState.tickMowers();
         gameState.getBoard().tickSuns(gameState);
+        if (gameState.checkTimedBattleLoseCondition()) {
+            finishAsLoss();
+            return;
+        }
         if (gameState.getCurrentLevel().type().isFinished(gameState)) {
             gameState.setFinished(true);
             gameState.setWon(true);

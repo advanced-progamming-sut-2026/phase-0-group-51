@@ -24,6 +24,7 @@ public class Zombie {
     public static final String EFFECT_FROZEN = "frozen";
     public static final String EFFECT_BUTTERED = "buttered";
     private static final float CHILL_SPEED_FACTOR = 0.5f;
+    private static final float EATING_DISTANCE = 0.65f;
     public static final int ICE_SHELL_MAX_HEALTH = 600;
 
     private final String alias;
@@ -247,7 +248,11 @@ public class Zombie {
 
         Plant target = eatSuppressed
                 ? null
-                : gs.getBoard().findNearestPlantInRange(lane, (int) x, 1);
+                : gs.getBoard().findNearestPlantInRange(
+                        lane,
+                        x,
+                        EATING_DISTANCE
+                );
         if (target != null) {
             eating = true;
             eatDamageAccumulator += (baseEatDps * damageMultiplier)
@@ -364,6 +369,7 @@ public class Zombie {
                 ? gs.getLawnMowers()[lane] : null;
         gs.getQuestTracker().recordZombieKill(
                 this, sourceType, sourcePlant, gs.getTickCounter(), mower);
+        gs.recordTimedBattleZombieKill(this, sourceType);
         if (sourcePlant != null) {
             sourcePlant.getPlantType().onZombieKilled(sourcePlant, this, gs);
         }

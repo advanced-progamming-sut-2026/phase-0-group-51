@@ -155,6 +155,14 @@ public Result startGame(){
      currentGame.loadLevel();
      currentGame.start();
     App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
+    if (currentGame.getGameState().isTimedBattleActive()) {
+        return new Result(
+                true,
+                "Timed Battle started. Complete both objectives before time runs out.\n"
+                        + currentGame.getGameState().timedBattleStatusLine(),
+                null
+        );
+    }
     if (currentGame.getGameState().isSaveOurSeedsActive()) {
         return new Result(
                 true,

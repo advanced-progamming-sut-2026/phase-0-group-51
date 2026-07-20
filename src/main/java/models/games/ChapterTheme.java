@@ -4,7 +4,8 @@ import lombok.Getter;
 import models.Zombie.ZombieType;
 import models.games.frostbite.FrostbiteLevelConfig;
 import models.games.frostbite.IceFloorDirection;
-import models.games.saveourseeds.SaveOurSeedsConfig;
+import models.games.specialLevelConfig.SaveOurSeedsConfig;
+import models.games.specialLevelConfig.TimedBattleConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +51,8 @@ public enum ChapterTheme {
             List.of(ChapterFeature.ICE_WIND, ChapterFeature.ICE_FLOOR),
             List.of(
                     new Level(1, LevelType.NORMAL, 2, 1000f, frostbiteLevelOne()),
-                    new Level(2, LevelType.NORMAL, 3, 1500f, frostbiteLevelTwo()),
+                    new Level(2, LevelType.TIMED_BATTLE, 3, 1500f,
+                            frostbiteLevelTwo(), TimedBattleConfig.combined(12, 250, 90)),
                     new Level(3, LevelType.DEAD_LINE, 4, 2000f, frostbiteLevelThree(), 3),
                     new Level(4, LevelType.BOSS, 5, 2000f, frostbiteLevelFour())
             ),

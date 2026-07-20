@@ -18,6 +18,7 @@ public class Plant {
     private final List<PlantUpgrade> upgrades;
     private final List<PlantTag> plantTags;
     private PlantStats plantStat;
+    private int refundableSunCost = 0;
     private int level = 1;
     private int sunPer;
     private boolean pendingSun;

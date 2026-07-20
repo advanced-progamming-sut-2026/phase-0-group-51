@@ -12,10 +12,11 @@ import models.User;
 import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
+import models.games.specialLevelConfig.TimedBattleConfig;
 import models.items.Mower;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
-import models.games.saveourseeds.SaveOurSeedsConfig;
+import models.games.specialLevelConfig.SaveOurSeedsConfig;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -54,6 +56,11 @@ public class GameState {
             new IdentityHashMap<>()
     );
     private boolean protectedPlantLost;
+    private TimedBattleConfig timedBattleConfig = TimedBattleConfig.none();
+    private int timedBattleStartTick;
+    private int timedBattleZombieKills;
+    private int timedBattleSunProduced;
+    private boolean timedBattleFailed;
     boolean mowerEnabled =true;
     public void logEvent(String message) {
         if (eventLogger != null) {
@@ -284,6 +291,156 @@ public class GameState {
                 + " protected plants alive. Protect: " + locations + ".";
     }
 
+    public void configureTimedBattle(TimedBattleConfig config) {
+        if (config == null || !config.isEnabled()) {
+            throw new IllegalArgumentException(
+                    "Timed Battle requires at least one objective."
+            );
+        }
+        timedBattleConfig = config;
+        timedBattleStartTick = tickCounter;
+        timedBattleZombieKills = 0;
+        timedBattleSunProduced = 0;
+        timedBattleFailed = false;
+        logEvent("Timed Battle started. " + timedBattleStatusLine());
+    }
+
+    public boolean isTimedBattleActive() {
+        return currentLevel != null
+                && currentLevel.type() == LevelType.TIMED_BATTLE
+                && timedBattleConfig.isEnabled();
+    }
+
+    public int getTimedBattleRemainingTicks() {
+        if (!isTimedBattleActive()) {
+            return 0;
+        }
+        int durationTicks = timedBattleConfig.durationSeconds()
+                * ticksPerSecond;
+        int elapsedTicks = tickCounter - timedBattleStartTick;
+        return Math.max(0, durationTicks - elapsedTicks);
+    }
+
+    public double getTimedBattleRemainingSeconds() {
+        return getTimedBattleRemainingTicks() / (double) ticksPerSecond;
+    }
+
+    public boolean isTimedBattleKillObjectiveComplete() {
+        return !timedBattleConfig.requiresZombieKills()
+                || timedBattleZombieKills
+                >= timedBattleConfig.zombieKillTarget();
+    }
+
+    public boolean isTimedBattleSunObjectiveComplete() {
+        return !timedBattleConfig.requiresSunProduction()
+                || timedBattleSunProduced
+                >= timedBattleConfig.sunProductionTarget();
+    }
+
+    public boolean isTimedBattleComplete() {
+        return isTimedBattleActive()
+                && isTimedBattleKillObjectiveComplete()
+                && isTimedBattleSunObjectiveComplete();
+    }
+
+    public boolean checkTimedBattleLoseCondition() {
+        if (!isTimedBattleActive() || isTimedBattleComplete()) {
+            return false;
+        }
+        if (timedBattleFailed) {
+            return true;
+        }
+        if (getTimedBattleRemainingTicks() > 0) {
+            return false;
+        }
+        timedBattleFailed = true;
+        logEvent(
+                "Timed Battle failed: time is up. "
+                        + timedBattleStatusLine()
+        );
+        return true;
+    }
+
+    public void recordTimedBattleZombieKill(
+            Zombie zombie,
+            QuestKillSourceType sourceType
+    ) {
+        if (!isTimedBattleActive()
+                || !timedBattleConfig.requiresZombieKills()
+                || zombie == null
+                || zombie.isHypnotized()
+                || !zombie.isQuestEligible()
+                || sourceType == QuestKillSourceType.CHEAT
+                || isTimedBattleKillObjectiveComplete()) {
+            return;
+        }
+        timedBattleZombieKills = Math.min(
+                timedBattleConfig.zombieKillTarget(),
+                timedBattleZombieKills + 1
+        );
+        logTimedBattleProgress();
+    }
+
+    public void recordTimedBattleSunProduced(int amount) {
+        if (!isTimedBattleActive()
+                || !timedBattleConfig.requiresSunProduction()
+                || amount <= 0
+                || isTimedBattleSunObjectiveComplete()) {
+            return;
+        }
+        timedBattleSunProduced = Math.min(
+                timedBattleConfig.sunProductionTarget(),
+                timedBattleSunProduced + amount
+        );
+        logTimedBattleProgress();
+    }
+
+    public String timedBattleStatusLine() {
+        if (!isTimedBattleActive()) {
+            return "";
+        }
+        StringBuilder status = new StringBuilder("Timed Battle: ");
+        if (timedBattleConfig.requiresZombieKills()) {
+            status.append("Kills ")
+                    .append(timedBattleZombieKills)
+                    .append('/')
+                    .append(timedBattleConfig.zombieKillTarget());
+        }
+        if (timedBattleConfig.requiresZombieKills()
+                && timedBattleConfig.requiresSunProduction()) {
+            status.append(" | ");
+        }
+        if (timedBattleConfig.requiresSunProduction()) {
+            status.append("Plant-produced sun ")
+                    .append(timedBattleSunProduced)
+                    .append('/')
+                    .append(timedBattleConfig.sunProductionTarget());
+        }
+        status.append(" | Time left: ")
+                .append(String.format(
+                        Locale.US,
+                        "%.1f",
+                        getTimedBattleRemainingSeconds()
+                ))
+                .append(" seconds.\n");
+        return status.toString();
+    }
+
+    private void logTimedBattleProgress() {
+        logEvent(timedBattleStatusLine());
+        if (isTimedBattleComplete()) {
+            logEvent(
+                    "Both Timed Battle objectives completed with "
+                            + String.format(
+                                    Locale.US,
+                                    "%.1f",
+                                    getTimedBattleRemainingSeconds()
+                            )
+                            + " seconds remaining.\n"
+            );
+        }
+    }
+
     public void configureDeadline(int userFacingColumn) {
         if (userFacingColumn < 1 || userFacingColumn > board.getColumnCount()) {
             throw new IllegalArgumentException(
@@ -374,8 +531,10 @@ public class GameState {
     public void plantPlant(Plant plant, Tile tile){
         if (plant == null || tile == null) throw new IllegalArgumentException("Plant and tile are required");
         if (!tile.isOccupiable()) throw new IllegalStateException("Tile is not occupiable");
-        if (sun < plant.getPlantStat().cost()) throw new IllegalStateException("Not enough sun");
-        decreaseSunBalance(plant.getPlantStat().cost());
+        int cost = plant.getPlantStat().cost();
+        if (sun < cost) throw new IllegalStateException("Not enough sun");
+        decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -395,12 +554,16 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        existing.setRefundableSunCost(
+                existing.getRefundableSunCost() + cost
+        );
         questTracker.recordPlantPlaced(addition);
         addition.getPlantType().onStacked(existing, this);
     }
 
     public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
         validatePlantPlacement(plant, tile);
+        plant.setRefundableSunCost(0);
         placePlantOnTile(plant, tile);
     }
 
@@ -420,6 +583,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        lilyPad.setRefundableSunCost(cost);
         lilyPad.setPosX(tile.getColumn());
         lilyPad.setPosY(tile.getLane());
         tile.setLilyPadPlant(lilyPad);
@@ -443,6 +607,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -465,6 +630,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        pumpkin.setRefundableSunCost(cost);
         pumpkin.setPosX(tile.getColumn());
         pumpkin.setPosY(tile.getLane());
         tile.setPumpkinPlant(pumpkin);
@@ -503,6 +669,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -538,7 +705,7 @@ public class GameState {
             plant.feed(this);
         }
     }
-    public void pluckPlant(Plant plant, Tile tile){
+    public int pluckPlant(Plant plant, Tile tile){
         if (plant == null || tile == null || tile.getPlant() != plant) {
             throw new IllegalArgumentException("Plant is not on this tile");
         }
@@ -547,8 +714,12 @@ public class GameState {
                     "Protected plants cannot be plucked in Save Our Seeds"
             );
         }
-        tile.removePlant();
+        int refund = Math.max(0, plant.getRefundableSunCost());
+        tile.removeSpecificPlant(plant);
         plant.setMarkedForRemoval(true);
+        increaseSunBalance(refund);
+        plant.setRefundableSunCost(0);
+        return refund;
     }
 
 

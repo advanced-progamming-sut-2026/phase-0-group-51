@@ -69,11 +69,14 @@ public enum LevelType {
     },
     TIMED_BATTLE{
         @Override
-        public void initialize(GameState state) {}
+        public void initialize(GameState state) {
+            state.configureTimedBattle(
+                    state.getCurrentLevel().timedBattleConfig()
+            );
+        }
         @Override
         public boolean isFinished(GameState state) {
-            return state.getZombieWaveManager() != null
-                    && state.getZombieWaveManager().isLevelCleared();
+            return state.isTimedBattleComplete();
         }
     },
     DEAD_LINE {
