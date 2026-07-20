@@ -83,6 +83,9 @@ public class GamingController {
                 .append(" ticks.\n");
         state.setEventLogger(output::append);
         game.forward(ticks);
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
 
         if (state.isFinished()) {
             Menu destination = game instanceof ScoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU;
@@ -102,6 +105,7 @@ public class GamingController {
         if (game == null || game.getGameState() == null) {
             return failure("No active game found.\n");
         }
+
         GameState state = game.getGameState();
         Tile tile = state.getBoard()
                 .getTileAtUserCoordinates(x - 1, y - 1);
@@ -156,7 +160,9 @@ public class GamingController {
         if (choice.imitaterTarget() != null) {
             if (!game.getSelectedPlantsForThisGame()
                     .contains(choice.imitaterTarget())) {
-                return failure("The copied plant must also be selected for this level.\n");
+                return failure(
+                        "The copied plant must also be selected for this level.\n"
+                );
             }
             return placeImitaterCopy(
                     state,
@@ -192,10 +198,10 @@ public class GamingController {
                 state,
                 tile,
                 selected,
-                    x,
-                    y
-            );
-        }
+                x,
+                y
+        );
+    }
 
     private Result placeRegularSelection(
             Game game,
@@ -215,13 +221,18 @@ public class GamingController {
             return placePumpkin(state, tile, selected, x, y);
         }
         if (game.isPlantWhatYouGetLevel() && isSunProducer(selected)) {
-            return failure("Sun-producing plants are forbidden in Plant What You Get.\n");
+            return failure(
+                    "Sun-producing plants are forbidden in Plant What You Get.\n"
+            );
         }
         if (tile.isWater()) {
             return placePlantOnWater(state, tile, selected, x, y);
         }
-        if (isLilyPad(selected) || selected.tags().contains(PlantTag.WATER)) {
-            return failure(selected.name() + " can only be planted on water.\n");
+        if (isLilyPad(selected)
+                || selected.tags().contains(PlantTag.WATER)) {
+            return failure(
+                    selected.name() + " can only be planted on water.\n"
+            );
         }
         if (canStackSelectedPlant(selected, tile)) {
             return createAndStackPlant(state, tile, selected, x, y);
@@ -237,27 +248,45 @@ public class GamingController {
             PlantData imitaterTarget
     ) {
     }
-    private Result placePlantOnWater(GameState state, Tile tile, PlantData selected, int x, int y) {
-        if (!isLilyPad(selected) && canStackSelectedPlant(selected, tile)) {
+
+    private Result placePlantOnWater(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        if (!isLilyPad(selected)
+                && canStackSelectedPlant(selected, tile)) {
             return createAndStackPlant(state, tile, selected, x, y);
         }
         if (isLilyPad(selected)) {
             if (tile.hasPlant()) {
-                return failure("This water tile already contains a plant or Lily Pad.\n");
+                return failure(
+                        "This water tile already contains "
+                                + "a plant or Lily Pad.\n"
+                );
             }
             return createAndPlaceLilyPad(state, tile, selected, x, y);
         }
         if (selected.tags().contains(PlantTag.WATER)) {
-        if (!tile.isOccupiable()) {
-            return tileOccupationFailure(tile);
+            if (!tile.isOccupiable()) {
+                return tileOccupationFailure(tile);
+            }
+            return createAndPlacePlant(state, tile, selected, x, y);
         }
-        return createAndPlacePlant(state, tile, selected, x, y);
-    }
         if (tile.hasLilyPad() && !tile.hasTopPlant()) {
-            return createAndPlacePlantOnLilyPad(state, tile, selected, x, y);
+            return createAndPlacePlantOnLilyPad(
+                    state,
+                    tile,
+                    selected,
+                    x,
+                    y
+            );
         }
         return failure(
-                "A non-aquatic plant needs an empty Lily Pad on this water tile.\n"
+                "A non-aquatic plant needs an empty Lily Pad "
+                        + "on this water tile.\n"
         );
     }
 
@@ -386,10 +415,12 @@ public class GamingController {
 
     private Plant createImitaterCopyForUser(PlantData target) {
         User user = App.getInstance().getLoggedInUser();
-        int imitaterLevel = user == null ? 1
+        int imitaterLevel = user == null
+                ? 1
                 : PlantRepository.loadPlantLevels(user.getId())
                 .getOrDefault(IMITATER_ID, 1);
-        int targetLevel = user == null ? 1
+        int targetLevel = user == null
+                ? 1
                 : PlantRepository.loadPlantLevels(user.getId())
                 .getOrDefault(target.id(), 1);
         return Modifier.createImitaterCopy(
@@ -405,31 +436,30 @@ public class GamingController {
             PlantData target,
             Plant copy
     ) {
-            if (target.id() == HOT_POTATO_ID) {
-                boolean hasFrozenPlant = tile.getPlants().stream()
-                        .anyMatch(Plant::isFrozenByIce);
-                if (!tile.isIceBlocked() && !hasFrozenPlant) {
-                    throw new IllegalStateException(
-                            "Hot Potato must be used on ice or a frozen plant"
-                    );
-                }
-                state.useInstantPlantOnTile(copy, tile);
-            } else if (target.id() == GRAVE_BUSTER_ID) {
-                state.plantOnGrave(copy, tile);
-            } else if (target.id() == PUMPKIN_ID) {
-                state.plantPumpkin(copy, tile);
-            } else if (target.id() == LILY_PAD_ID) {
-                state.plantLilyPad(copy, tile);
+        if (target.id() == HOT_POTATO_ID) {
+            boolean hasFrozenPlant = tile.getPlants().stream()
+                    .anyMatch(Plant::isFrozenByIce);
+            if (!tile.isIceBlocked() && !hasFrozenPlant) {
+                throw new IllegalStateException(
+                        "Hot Potato must be used on ice or a frozen plant"
+                );
+            }
+            state.useInstantPlantOnTile(copy, tile);
+        } else if (target.id() == GRAVE_BUSTER_ID) {
+            state.plantOnGrave(copy, tile);
+        } else if (target.id() == PUMPKIN_ID) {
+            state.plantPumpkin(copy, tile);
+        } else if (target.id() == LILY_PAD_ID) {
+            state.plantLilyPad(copy, tile);
         } else if (tile.isWater() && copy.hasTag(PlantTag.WATER)) {
             state.plantPlant(copy, tile);
-            } else if (tile.isWater()
+        } else if (tile.isWater()
                 && tile.hasLilyPad()
-                    && !tile.hasTopPlant()) {
-                state.plantOnLilyPad(copy, tile);
-            } else {
-                state.plantPlant(copy, tile);
-            }
-
+                && !tile.hasTopPlant()) {
+            state.plantOnLilyPad(copy, tile);
+        } else {
+            state.plantPlant(copy, tile);
+        }
     }
 
     private Result placeHotPotato(
@@ -522,10 +552,13 @@ public class GamingController {
         if (plant == null) {
             return false;
         }
-        String category = plant.category() == null ? "" : plant.category().replaceAll("[^A-Za-z]", "")
+        String category = plant.category() == null
+                ? ""
+                : plant.category()
+                .replaceAll("[^A-Za-z]", "")
                 .toLowerCase(Locale.ROOT);
-
-        return category.equals("sunproducer") || plant.tags().contains(PlantTag.SUN);
+        return category.equals("sunproducer")
+                || plant.tags().contains(PlantTag.SUN);
     }
 
     private boolean canStackSelectedPlant(PlantData selected, Tile tile) {
@@ -534,35 +567,52 @@ public class GamingController {
                 && tile.getPlant().getId() == selected.id();
     }
 
-    private Result createAndStackPlant(GameState state, Tile tile, PlantData selected, int x, int y) {
-        int availableAt = state.getPlantCooldownEnd(selected.id());
-        if (!rechargeDisabledDuringPreparation()
-                && state.getTickCounter() < availableAt) {
-            int ticksLeft = availableAt - state.getTickCounter();
-            return failure("Plant is recharging for "
-                    + formatSeconds(ticksLeft, state.getTicksPerSecond()) + " more seconds.\n");
+    private Result createAndStackPlant(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        Result cooldown = cooldownFailure(state, selected);
+        if (cooldown != null) {
+            return cooldown;
         }
         Plant addition = createPlantForCurrentUser(selected);
         Plant existing = tile.getPlant();
         try {
             state.stackPlant(addition, existing);
-            if (!rechargeDisabledDuringPreparation()) {
-            state.startPlantCooldown(addition);
-            }
+            startCooldownIfRequired(state, addition);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
-        String message = selected.name() + " stacked at (" + x + ", " + y + ").\n";
+        String message = selected.name()
+                + " stacked at (" + x + ", " + y + ").\n";
         User user = App.getInstance().getLoggedInUser();
-        if (user != null && PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
+        if (user != null
+                && PlantBoostRepository.hasBoost(
+                user.getId(),
+                selected.id()
+        )) {
             existing.feed(state);
-            PlantBoostRepository.consumeBoost(user.getId(), selected.id());
-            message += "The stored boost for " + selected.name() + " was activated on the stacked plant.\n";
+            PlantBoostRepository.consumeBoost(
+                    user.getId(),
+                    selected.id()
+            );
+            message += "The stored boost for "
+                    + selected.name()
+                    + " was activated on the stacked plant.\n";
         }
         return success(message);
     }
 
-    private Result createAndPlaceConveyorPlant(Game game, GameState state, Tile tile, PlantData selected, int x, int y
+    private Result createAndPlaceConveyorPlant(
+            Game game,
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
     ) {
         Plant plant = createPlantForCurrentUser(selected);
         try {
@@ -571,7 +621,7 @@ public class GamingController {
             return failure(exception.getMessage() + ".\n");
         }
         if (!game.consumeConveyorPlant(selected)) {
-            //محض اطمینانه وگرنه این اتفاق نمیوفته احتمالا هیچوقت
+            // Defensive rollback if the conveyor entry disappeared.
             state.pluckPlant(plant, tile);
             return failure("The conveyor plant was no longer available.\n");
         }
@@ -579,7 +629,12 @@ public class GamingController {
                 + x + ", " + y + ") for 0 sun.\n";
         return success(message + activateStoredBoost(selected, plant, state));
     }
-    private String activateStoredBoost(PlantData selected, Plant plant, GameState state) {
+
+    private String activateStoredBoost(
+            PlantData selected,
+            Plant plant,
+            GameState state
+    ) {
         User user = App.getInstance().getLoggedInUser();
         if (user == null || !PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
             return "";
@@ -602,53 +657,39 @@ public class GamingController {
         return PlantFactory.create(selected, level);
     }
 
-    private Result createAndPlacePlant(GameState state, Tile tile, PlantData selected, int x, int y) {
-        int availableAt = state.getPlantCooldownEnd(selected.id());
-        if (!rechargeDisabledDuringPreparation()
-                && state.getTickCounter() < availableAt) {
-            int ticksLeft = availableAt - state.getTickCounter();
-            String seconds = formatSeconds(
-                    ticksLeft, state.getTicksPerSecond());
-            return failure("Plant is recharging for " + seconds + " more seconds.\n");
+    private Result createAndPlacePlant(
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        Result cooldown = cooldownFailure(state, selected);
+        if (cooldown != null) {
+            return cooldown;
         }
-        User user = App.getInstance().getLoggedInUser();
-        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
-                .getOrDefault(selected.id(), 1);
-        Plant plant = PlantFactory.create(selected, level);
+        Plant plant = createPlantForCurrentUser(selected);
         int cost = plant.getPlantStat().cost();
         if (state.getSun() < cost) {
             return failure(
-                    "Not enough sun. " + selected.name() + " costs " + cost + " suns.\n");
+                    "Not enough sun. "
+                            + selected.name()
+                            + " costs "
+                            + cost
+                            + " suns.\n"
+            );
         }
         try {
             state.plantPlant(plant, tile);
-            if (!rechargeDisabledDuringPreparation()) {
-            state.startPlantCooldown(plant);
-            }
+            startCooldownIfRequired(state, plant);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
-        String message = selected.name() + " planted at (" + x + ", " + y + ").\n";
-        if (user != null
-                && PlantBoostRepository.hasBoost(
-                user.getId(),
-                selected.id()
-        )) {
-            boolean plantStillExists = tile.getPlant() == plant
-                    && !plant.isMarkedForRemoval();
-            if (plantStillExists) {
-                plant.feed(state);
-                PlantBoostRepository.consumeBoost(user.getId(), selected.id());
-                message += "The stored boost for "
-                        + selected.name()
-                        + " was activated.\n";
-            } else {
-                message += "The stored boost was kept because "
-                        + selected.name()
-                        + " is an instant-use plant.\n";
-            }
-        }
-        return success(message);
+        String message = selected.name()
+                + " planted at (" + x + ", " + y + ").\n";
+        return success(
+                message + activateStoredBoost(selected, plant, state)
+        );
     }
 
     private Result tileOccupationFailure(Tile tile) {
@@ -684,8 +725,18 @@ public class GamingController {
         }
 
         Plant plant = tile.getPlant();
-        state.pluckPlant(plant, tile);
-        return success(plant.getName() + " was plucked from (" + x + ", " + y + ").\n");
+        if (state.isProtectedPlant(plant)) {
+            return failure(
+                    "This plant is protected in Save Our Seeds "
+                            + "and cannot be plucked.\n"
+            );
+        }
+        int refundedSun = state.pluckPlant(plant, tile);
+        return success(
+                plant.getName() + " was plucked from (" + x + ", " + y + ").\n"
+                        + refundedSun + " suns were returned. You now have "
+                        + state.getSun() + " suns.\n"
+        );
     }
 
     public Result feedPlant(int x, int y) {
@@ -976,8 +1027,15 @@ public class GamingController {
         }
     }
 
-    private void appendTileSuns(StringBuilder output, Tile tile, GameState state) {
-        List<Sun> suns = getSunsAtTile( state.getBoard(), tile.getLane(), tile.getColumn()
+    private void appendTileSuns(
+            StringBuilder output,
+            Tile tile,
+            GameState state
+    ) {
+        List<Sun> suns = getSunsAtTile(
+                state.getBoard(),
+                tile.getLane(),
+                tile.getColumn()
         );
         if (suns.isEmpty()) {
             output.append("suns: none\n");
@@ -1141,7 +1199,10 @@ public class GamingController {
     public Result showMap() {
         Game game = App.getInstance().getCurrentGame();
         GameState state = activeState();
-        if (state == null) {return failure("No active game found.\n");}
+        if (state == null) {
+            return failure("No active game found.\n");
+        }
+
         StringBuilder output = new StringBuilder();
         appendGameStatus(output, game, state);
         appendMowerStatus(output, state);
@@ -1155,10 +1216,14 @@ public class GamingController {
             Game game,
             GameState state
     ) {
-        int wave = state.getZombieWaveManager() == null ? 0 : state.getZombieWaveManager().getCurrentWaveNumber();
-        output.append("===== GAME STATUS =====\n").append("Wave: ").append(wave).append('\n')
+        int wave = state.getZombieWaveManager() == null
+                ? 0
+                : state.getZombieWaveManager().getCurrentWaveNumber();
+        output.append("===== GAME STATUS =====\n")
+                .append("Wave: ").append(wave).append('\n')
                 .append("Sun: ").append(state.getSun()).append('\n')
-                .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
+                .append("Plant food: ")
+                .append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
         appendLevelStatus(output, game, state);
     }
@@ -1168,19 +1233,37 @@ public class GamingController {
             Game game,
             GameState state
     ) {
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
+        if (state.isSaveOurSeedsActive()) {
+            output.append(state.getSaveOurSeedsStatus()).append('\n')
+                    .append(
+                            "WARNING: rows marked with ! contain "
+                                    + "protected plants.\n"
+                    );
+        }
         if (game.isPreparingPlantWhatYouGet()) {
-            output.append("PREPARATION - no recharge; use 'start zombie waves'.\n");
+            output.append(
+                    "PREPARATION - no recharge; use 'start zombie waves'.\n"
+            );
         } else if (game.isPlantWhatYouGetLevel()) {
-            output.append("ZOMBIE WAVES - recharge active.\n");}
+            output.append("ZOMBIE WAVES - recharge active.\n");
+        }
         if (state.getBoard().getWaterColumnCount() > 0) {
             output.append("Water: rightmost ")
                     .append(state.getBoard().getWaterColumnCount())
                     .append(" columns. Maximum tide reaches column 4.\n");
         }
         if (game instanceof ScoringGame scoringGame) {
-            output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}
+            output.append("MeowPoint: ")
+                    .append(scoringGame.getScoreTracker().currentTotal())
+                    .append('\n');
+        }
         if (state.hasDeadline()) {
-            output.append("Dead Line: before column ").append(state.getDeadlineColumn()).append(".\n");
+            output.append("Dead Line: before column ")
+                    .append(state.getDeadlineColumn())
+                    .append(".\n");
         }
         if (game.isConveyorBeltLevel()) {
             appendConveyorSummary(output, game);
@@ -1191,11 +1274,14 @@ public class GamingController {
             StringBuilder output,
             GameState state
     ) {
-                output.append("\n===== LAWN MOWERS =====\n");
-        for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
+        output.append("\n===== LAWN MOWERS =====\n");
+        for (int lane = 0;
+             lane < state.getBoard().getLaneCount();
+             lane++) {
             Mower mower = state.getLawnMowers()[lane];
             output.append("Row ").append(lane + 1).append(": ")
-                    .append(mower.isDestroyed() ? "USED" : "AVAILABLE").append('\n');
+                    .append(mower.isDestroyed() ? "USED" : "AVAILABLE")
+                    .append('\n');
         }
     }
 
@@ -1205,20 +1291,31 @@ public class GamingController {
     ) {
         Board board = state.getBoard();
         output.append("\n===== BOARD =====\n")
-                .append("Each cell contains  3 chars: ").append("[base][zombie][sun].\n\n");
+                .append("Each cell contains  3 chars: ")
+                .append("[base][zombie][sun].\n\n");
         appendBoardColumnHeader(output, board);
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("Row ").append(lane + 1).append(": ");
-            for (int column = 0; column < board.getColumnCount(); column++) {
+            output.append(state.isProtectedRow(lane) ? "! Row " : "  Row ")
+                    .append(lane + 1)
+                    .append(": ");
+            for (int column = 0;
+                 column < board.getColumnCount();
+                 column++) {
                 Tile tile = board.getTile(lane, column);
-                output.append('[').append(buildThreeCharacterCell(state, tile)).append("] ");}
+                output.append('[')
+                        .append(buildThreeCharacterCell(state, tile))
+                        .append("] ");
+            }
             output.append('\n');
         }
     }
 
     private void appendMapLegend(StringBuilder output) {
         output.append("\nCell position 1 (base): ")
-                .append("P=land plant, F=frozen plant, A=aquatic plant, ")
+                .append(
+                        "E=protected plant, P=land plant, "
+                                + "F=frozen plant, A=aquatic plant, "
+                )
                 .append("Y=plant on Lily Pad, G=normal grave, ")
                 .append("S=sun grave, Q=plant-food grave, I=ice block, ")
                 .append("C=crater, U=ice floor up, D=ice floor down, ")
@@ -1230,7 +1327,6 @@ public class GamingController {
                 .append("Examples: [PZS]=plant + zombie + grounded sun, ")
                 .append("[SZ.]=sun grave + zombie, ")
                 .append("[Q.S]=plant-food grave + grounded sun.\n");
-
     }
 
     private void appendConveyorSummary(StringBuilder output, Game game) {
@@ -1241,7 +1337,8 @@ public class GamingController {
         } else {
             for (int i = 0; i < belt.size(); i++) {
                 if (i > 0) {
-                    output.append(" -> ");}
+                    output.append(" -> ");
+                }
                 output.append(belt.get(i).name());
             }
         }
@@ -1259,7 +1356,7 @@ public class GamingController {
     }
 
     private String buildThreeCharacterCell(GameState state, Tile tile) {
-        char base = getBaseMapSymbol(tile);
+        char base = getBaseMapSymbol(state, tile);
         char zombie = getZombiesAtTile(
                 state, tile.getLane(), tile.getColumn()
         ).isEmpty() ? '.' : 'Z';
@@ -1269,18 +1366,9 @@ public class GamingController {
         return new String(new char[]{base, zombie, sun});
     }
 
-    private char getBaseMapSymbol(Tile tile) {
+    private char getBaseMapSymbol(GameState state, Tile tile) {
         if (tile.hasTopPlant()) {
-            if (tile.getTopPlant().isFrozenByIce()) {
-                return 'F';
-            }
-            if (tile.isWater() && tile.hasLilyPad()) {
-                return 'Y';
-            }
-            if (tile.isWater()) {
-                return 'A';
-            }
-            return 'P';
+            return getPlantMapSymbol(state, tile);
         }
         if (tile.hasLilyPad()) {
             return 'L';
@@ -1316,6 +1404,20 @@ public class GamingController {
             return 'T';
         }
         return '.';
+    }
+
+
+    private char getPlantMapSymbol(GameState state, Tile tile) {
+        if (state.isProtectedPlant(tile.getTopPlant())) {
+            return 'E';
+        }
+        if (tile.getTopPlant().isFrozenByIce()) {
+            return 'F';
+        }
+        if (tile.isWater() && tile.hasLilyPad()) {
+            return 'Y';
+        }
+        return tile.isWater() ? 'A' : 'P';
     }
 
     private List<Zombie> getZombiesAtTile(
@@ -1396,5 +1498,4 @@ public class GamingController {
             return failure("This command is only available in the Scoring Game.\n");
         }
         return success(scoringGame.showScoringRules());
-    }
-}
+    }}

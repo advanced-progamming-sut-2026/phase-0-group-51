@@ -28,6 +28,7 @@ public class Zombie {
     public static final String EFFECT_FROZEN = "frozen";
     public static final String EFFECT_BUTTERED = "buttered";
     private static final float CHILL_SPEED_FACTOR = 0.5f;
+    private static final float EATING_DISTANCE = 0.65f;
     public static final int ICE_SHELL_MAX_HEALTH = 600;
 
     private final String alias;
@@ -234,12 +235,32 @@ public class Zombie {
         if (dead) {
             return;
         }
-        boolean eatSuppressed = behaviors.stream().anyMatch(b -> b.suppressesDefaultEating(this));
-        Plant target = eatSuppressed ? null
-            : gs.getBoard().findNearestPlantInRange(lane, (int) x, 1);
+        boolean eatSuppressed = behaviors.stream()
+                .anyMatch(behavior -> behavior.suppressesDefaultEating(this));
+        Zombie hypnotizedTarget = eatSuppressed
+                ? null
+                : gs.findNearestHypnotizedZombieInRange(
+                        this,
+                        lane,
+                        x,
+                        0.65f
+                );
+        if (hypnotizedTarget != null) {
+            attackOpposingZombie(hypnotizedTarget, gs);
+            return;
+        }
+
+        Plant target = eatSuppressed
+                ? null
+                : gs.getBoard().findNearestPlantInRange(
+                        lane,
+                        x,
+                        EATING_DISTANCE
+                );
         if (target != null) {
             eating = true;
-            eatDamageAccumulator += (baseEatDps * damageMultiplier) / gs.getTicksPerSecond();
+            eatDamageAccumulator += (baseEatDps * damageMultiplier)
+                    / gs.getTicksPerSecond();
             int wholeDamage = (int) eatDamageAccumulator;
             if (wholeDamage > 0) {
                 eatDamageAccumulator -= wholeDamage;
@@ -264,16 +285,14 @@ public class Zombie {
     }
 
     private void tickHypnotized(GameState gs) {
-        Zombie enemy = gs.findNearestHostileZombieInRange(this, lane, x, 0.65f);
+        Zombie enemy = gs.findNearestHostileZombieInRange(
+                this,
+                lane,
+                x,
+                0.65f
+        );
         if (enemy != null) {
-            eating = true;
-            eatDamageAccumulator += (baseEatDps * damageMultiplier)
-                    / gs.getTicksPerSecond();
-            int wholeDamage = (int) eatDamageAccumulator;
-            if (wholeDamage > 0) {
-                eatDamageAccumulator -= wholeDamage;
-                enemy.takeDamage(wholeDamage, gs, null);
-            }
+            attackOpposingZombie(enemy, gs);
             return;
         }
         eating = false;
@@ -282,6 +301,42 @@ public class Zombie {
         x -= direction * (baseSpeed * speedMultiplier * chillFactor)
                 / gs.getTicksPerSecond();
         gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
+    }
+
+    private void attackOpposingZombie(Zombie target, GameState state) {
+        if (target == null
+                || target.isDead()
+                || target.isHypnotized() == hypnotized) {
+            return;
+        }
+        eating = true;
+        eatDamageAccumulator += (baseEatDps * damageMultiplier)
+                / state.getTicksPerSecond();
+        int wholeDamage = (int) eatDamageAccumulator;
+        if (wholeDamage <= 0) {
+            return;
+        }
+        eatDamageAccumulator -= wholeDamage;
+        int hitpointsBefore = target.getHitpoints();
+        target.takeDamage(
+                wholeDamage,
+                ElementType.NORMAL,
+                state,
+                null
+        );
+        System.out.printf(
+                "[DEBUG][ZOMBIE FIGHT] %s %s dealt %d raw damage to %s %s "
+                        + "at row %d, x=%.2f. HP: %d -> %d.%n",
+                hypnotized ? "Hypnotized" : "Normal",
+                getAlias(),
+                wholeDamage,
+                target.isHypnotized() ? "hypnotized" : "normal",
+                target.getAlias(),
+                target.getLane() + 1,
+                target.getX(),
+                hitpointsBefore,
+                target.getHitpoints()
+        );
     }
 
     private void tickEffects() {
@@ -318,6 +373,7 @@ public class Zombie {
                 ? gs.getLawnMowers()[lane] : null;
         gs.getQuestTracker().recordZombieKill(
                 this, sourceType, sourcePlant, gs.getTickCounter(), mower);
+        gs.recordTimedBattleZombieKill(this, sourceType);
         if (sourcePlant != null) {
             sourcePlant.getPlantType().onZombieKilled(sourcePlant, this, gs);
         }

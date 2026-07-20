@@ -2,21 +2,32 @@ package models.games;
 
 import Data.database.NewsRepository;
 import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Plant.Plant;
+import models.Plant.PlantFactory;
 import models.User;
 import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
+import models.games.specialLevelConfig.TimedBattleConfig;
 import models.items.Mower;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
+import models.games.specialLevelConfig.SaveOurSeedsConfig;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -41,6 +52,15 @@ public class GameState {
     private Consumer<String> eventLogger;
     private int deadlineColumn = -1;
     private boolean deadlineBreached;
+    private final Set<Plant> protectedPlants = Collections.newSetFromMap(
+            new IdentityHashMap<>()
+    );
+    private boolean protectedPlantLost;
+    private TimedBattleConfig timedBattleConfig = TimedBattleConfig.none();
+    private int timedBattleStartTick;
+    private int timedBattleZombieKills;
+    private int timedBattleSunProduced;
+    private boolean timedBattleFailed;
     boolean mowerEnabled =true;
     private int plantLossLimit = -1;
     private boolean plantLossLimitReached;
@@ -63,7 +83,7 @@ public class GameState {
         }
     }
     public boolean checkLoseCondition() {
-        if (checkDeadlineLoseCondition() || checkPlantLossLoseCondition()) {
+        if (checkDeadlineLoseCondition() || checkPlantLossLoseCondition() || checkSaveOurSeedsLoseCondition()) {
             return true;
         }
         if (!mowerEnabled) {
@@ -81,6 +101,346 @@ public class GameState {
             }
         }
         return false;
+    }
+
+    public void configureSaveOurSeeds(SaveOurSeedsConfig config) {
+        if (config == null || !config.isConfigured()) {
+            throw new IllegalArgumentException(
+                    "Save Our Seeds requires at least one protected plant."
+            );
+        }
+
+        protectedPlants.clear();
+        protectedPlantLost = false;
+
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
+                resolveProtectedPlantPlacements(config);
+
+        for (SaveOurSeedsConfig.ProtectedPlantPlacement placement
+                : placements) {
+            Tile tile = board.getTileAtUserCoordinates(
+                    placement.column() - 1,
+                    placement.row() - 1
+            );
+            if (tile == null) {
+                throw new IllegalArgumentException(
+                        "Protected plant coordinates are outside the board: ("
+                                + placement.column() + ", "
+                                + placement.row() + ")."
+                );
+            }
+            PlantData data = PlantRegistry.getById(placement.plantId());
+            if (data == null) {
+                throw new IllegalArgumentException(
+                        "Unknown protected plant id: " + placement.plantId()
+                );
+            }
+
+            Plant plant = PlantFactory.create(data, placement.level());
+            validatePlantPlacement(plant, tile);
+            plant.setPosX(tile.getColumn());
+            plant.setPosY(tile.getLane());
+            protectedPlants.add(plant);
+            tile.setPlant(plant);
+            plant.getPlantType().onPlanted(plant, this);
+            activateEntryPlantFood(plant);
+
+            if (plant.isDead() || plant.isMarkedForRemoval()
+                    || board.getTileForPlant(plant) == null) {
+                protectedPlants.remove(plant);
+                board.removePlant(plant);
+                throw new IllegalArgumentException(
+                        data.name() + " cannot be used as a protected starting plant."
+                );
+            }
+        }
+    }
+
+    private List<SaveOurSeedsConfig.ProtectedPlantPlacement>
+    resolveProtectedPlantPlacements(SaveOurSeedsConfig config) {
+        if (!config.usesRandomPlacement()) {
+            return config.protectedPlants();
+        }
+
+        SaveOurSeedsConfig.RandomPlacementRule rule =
+                config.randomPlacementRule();
+        int maximumColumn = board.getColumnCount()
+                - rule.excludedRightColumns();
+        if (rule.minimumColumn() > maximumColumn) {
+            throw new IllegalArgumentException(
+                    "No columns remain for random protected-plant placement."
+            );
+        }
+        if (rule.distinctRows() && rule.count() > board.getLaneCount()) {
+            throw new IllegalArgumentException(
+                    "Not enough rows for distinct protected-plant placement."
+            );
+        }
+
+        List<Tile> candidates = new ArrayList<>();
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+            for (int column = rule.minimumColumn() - 1;
+                    column < maximumColumn;
+                    column++) {
+                Tile tile = board.getTile(lane, column);
+                if (tile != null && tile.isOccupiable()) {
+                    candidates.add(tile);
+                }
+            }
+        }
+        Collections.shuffle(candidates, new Random());
+
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
+                new ArrayList<>();
+        Set<Integer> usedRows = new HashSet<>();
+        for (Tile tile : candidates) {
+            if (rule.distinctRows() && !usedRows.add(tile.getLane())) {
+                continue;
+            }
+            placements.add(new SaveOurSeedsConfig.ProtectedPlantPlacement(
+                    rule.plantId(),
+                    tile.getColumn() + 1,
+                    tile.getLane() + 1,
+                    rule.level()
+            ));
+            if (placements.size() == rule.count()) {
+                break;
+            }
+        }
+
+        if (placements.size() < rule.count()) {
+            throw new IllegalArgumentException(
+                    "Not enough eligible tiles for random protected plants."
+            );
+        }
+        return List.copyOf(placements);
+    }
+
+    public boolean isSaveOurSeedsActive() {
+        return currentLevel != null
+                && currentLevel.type() == LevelType.SAVE_OUR_SEEDS;
+    }
+
+    public boolean isProtectedPlant(Plant plant) {
+        return plant != null && protectedPlants.contains(plant);
+    }
+
+    public boolean isProtectedRow(int zeroBasedLane) {
+        for (Plant plant : protectedPlants) {
+            if (plant.getPosY() == zeroBasedLane) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasLostProtectedPlant() {
+        return protectedPlantLost;
+    }
+
+    public boolean checkSaveOurSeedsLoseCondition() {
+        if (!isSaveOurSeedsActive()) {
+            return false;
+        }
+        if (!protectedPlantLost) {
+            for (Plant plant : protectedPlants) {
+                if (plant.isDead()
+                        || plant.isMarkedForRemoval()
+                        || board.getTileForPlant(plant) == null) {
+                    onPlantDestroyed(plant);
+                    break;
+                }
+            }
+        }
+        return protectedPlantLost;
+    }
+
+    public void onPlantDestroyed(Plant plant) {
+        if (!isProtectedPlant(plant) || protectedPlantLost) {
+            return;
+        }
+        protectedPlantLost = true;
+        logEvent(
+                "SAVE OUR SEEDS FAILED: protected " + plant.getName()
+                        + " at (" + (plant.getPosX() + 1) + ", "
+                        + (plant.getPosY() + 1)
+                        + ") was destroyed. You lose immediately.\n"
+        );
+    }
+
+    public String getSaveOurSeedsStatus() {
+        if (!isSaveOurSeedsActive()) {
+            return "";
+        }
+        List<Plant> ordered = protectedPlants.stream()
+                .sorted(
+                        Comparator.comparingInt(Plant::getPosY)
+                                .thenComparingInt(Plant::getPosX)
+                )
+                .toList();
+        long surviving = ordered.stream()
+                .filter(plant -> !plant.isDead()
+                        && !plant.isMarkedForRemoval()
+                        && board.getTileForPlant(plant) != null)
+                .count();
+        String locations = ordered.stream()
+                .map(plant -> plant.getName() + " ("
+                        + (plant.getPosX() + 1) + ", "
+                        + (plant.getPosY() + 1) + ")")
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("none");
+        return "Save Our Seeds: " + surviving + "/" + ordered.size()
+                + " protected plants alive. Protect: " + locations + ".";
+    }
+
+    public void configureTimedBattle(TimedBattleConfig config) {
+        if (config == null || !config.isEnabled()) {
+            throw new IllegalArgumentException(
+                    "Timed Battle requires at least one objective."
+            );
+        }
+        timedBattleConfig = config;
+        timedBattleStartTick = tickCounter;
+        timedBattleZombieKills = 0;
+        timedBattleSunProduced = 0;
+        timedBattleFailed = false;
+        logEvent("Timed Battle started. " + timedBattleStatusLine());
+    }
+
+    public boolean isTimedBattleActive() {
+        return currentLevel != null
+                && currentLevel.type() == LevelType.TIMED_BATTLE
+                && timedBattleConfig.isEnabled();
+    }
+
+    public int getTimedBattleRemainingTicks() {
+        if (!isTimedBattleActive()) {
+            return 0;
+        }
+        int durationTicks = timedBattleConfig.durationSeconds()
+                * ticksPerSecond;
+        int elapsedTicks = tickCounter - timedBattleStartTick;
+        return Math.max(0, durationTicks - elapsedTicks);
+    }
+
+    public double getTimedBattleRemainingSeconds() {
+        return getTimedBattleRemainingTicks() / (double) ticksPerSecond;
+    }
+
+    public boolean isTimedBattleKillObjectiveComplete() {
+        return !timedBattleConfig.requiresZombieKills()
+                || timedBattleZombieKills
+                >= timedBattleConfig.zombieKillTarget();
+    }
+
+    public boolean isTimedBattleSunObjectiveComplete() {
+        return !timedBattleConfig.requiresSunProduction()
+                || timedBattleSunProduced
+                >= timedBattleConfig.sunProductionTarget();
+    }
+
+    public boolean isTimedBattleComplete() {
+        return isTimedBattleActive()
+                && isTimedBattleKillObjectiveComplete()
+                && isTimedBattleSunObjectiveComplete();
+    }
+
+    public boolean checkTimedBattleLoseCondition() {
+        if (!isTimedBattleActive() || isTimedBattleComplete()) {
+            return false;
+        }
+        if (timedBattleFailed) {
+            return true;
+        }
+        if (getTimedBattleRemainingTicks() > 0) {
+            return false;
+        }
+        timedBattleFailed = true;
+        logEvent(
+                "Timed Battle failed: time is up. "
+                        + timedBattleStatusLine()
+        );
+        return true;
+    }
+
+    public void recordTimedBattleZombieKill(
+            Zombie zombie,
+            QuestKillSourceType sourceType
+    ) {
+        if (!isTimedBattleActive()
+                || !timedBattleConfig.requiresZombieKills()
+                || zombie == null
+                || zombie.isHypnotized()
+                || !zombie.isQuestEligible()
+                || sourceType == QuestKillSourceType.CHEAT
+                || isTimedBattleKillObjectiveComplete()) {
+            return;
+        }
+        timedBattleZombieKills = Math.min(
+                timedBattleConfig.zombieKillTarget(),
+                timedBattleZombieKills + 1
+        );
+        logTimedBattleProgress();
+    }
+
+    public void recordTimedBattleSunProduced(int amount) {
+        if (!isTimedBattleActive()
+                || !timedBattleConfig.requiresSunProduction()
+                || amount <= 0
+                || isTimedBattleSunObjectiveComplete()) {
+            return;
+        }
+        timedBattleSunProduced = Math.min(
+                timedBattleConfig.sunProductionTarget(),
+                timedBattleSunProduced + amount
+        );
+        logTimedBattleProgress();
+    }
+
+    public String timedBattleStatusLine() {
+        if (!isTimedBattleActive()) {
+            return "";
+        }
+        StringBuilder status = new StringBuilder("Timed Battle: ");
+        if (timedBattleConfig.requiresZombieKills()) {
+            status.append("Kills ")
+                    .append(timedBattleZombieKills)
+                    .append('/')
+                    .append(timedBattleConfig.zombieKillTarget());
+        }
+        if (timedBattleConfig.requiresZombieKills()
+                && timedBattleConfig.requiresSunProduction()) {
+            status.append(" | ");
+        }
+        if (timedBattleConfig.requiresSunProduction()) {
+            status.append("Plant-produced sun ")
+                    .append(timedBattleSunProduced)
+                    .append('/')
+                    .append(timedBattleConfig.sunProductionTarget());
+        }
+        status.append(" | Time left: ")
+                .append(String.format(
+                        Locale.US,
+                        "%.1f",
+                        getTimedBattleRemainingSeconds()
+                ))
+                .append(" seconds.\n");
+        return status.toString();
+    }
+
+    private void logTimedBattleProgress() {
+        logEvent(timedBattleStatusLine());
+        if (isTimedBattleComplete()) {
+            logEvent(
+                    "Both Timed Battle objectives completed with "
+                            + String.format(
+                                    Locale.US,
+                                    "%.1f",
+                                    getTimedBattleRemainingSeconds()
+                            )
+                            + " seconds remaining.\n"
+            );
+        }
     }
 
     public void configureDeadline(int userFacingColumn) {
@@ -206,8 +566,10 @@ public class GameState {
     public void plantPlant(Plant plant, Tile tile){
         if (plant == null || tile == null) throw new IllegalArgumentException("Plant and tile are required");
         if (!tile.isOccupiable()) throw new IllegalStateException("Tile is not occupiable");
-        if (sun < plant.getPlantStat().cost()) throw new IllegalStateException("Not enough sun");
-        decreaseSunBalance(plant.getPlantStat().cost());
+        int cost = plant.getPlantStat().cost();
+        if (sun < cost) throw new IllegalStateException("Not enough sun");
+        decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -227,12 +589,16 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        existing.setRefundableSunCost(
+                existing.getRefundableSunCost() + cost
+        );
         questTracker.recordPlantPlaced(addition);
         addition.getPlantType().onStacked(existing, this);
     }
 
     public void plantPlantWithoutSunCost(Plant plant, Tile tile) {
         validatePlantPlacement(plant, tile);
+        plant.setRefundableSunCost(0);
         placePlantOnTile(plant, tile);
     }
 
@@ -252,6 +618,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        lilyPad.setRefundableSunCost(cost);
         lilyPad.setPosX(tile.getColumn());
         lilyPad.setPosY(tile.getLane());
         tile.setLilyPadPlant(lilyPad);
@@ -275,6 +642,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -297,6 +665,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        pumpkin.setRefundableSunCost(cost);
         pumpkin.setPosX(tile.getColumn());
         pumpkin.setPosY(tile.getLane());
         tile.setPumpkinPlant(pumpkin);
@@ -335,6 +704,7 @@ public class GameState {
             throw new IllegalStateException("Not enough sun");
         }
         decreaseSunBalance(cost);
+        plant.setRefundableSunCost(cost);
         plant.setPosX(tile.getColumn());
         plant.setPosY(tile.getLane());
         tile.setPlant(plant);
@@ -370,12 +740,21 @@ public class GameState {
             plant.feed(this);
         }
     }
-    public void pluckPlant(Plant plant, Tile tile){
+    public int pluckPlant(Plant plant, Tile tile){
         if (plant == null || tile == null || tile.getPlant() != plant) {
             throw new IllegalArgumentException("Plant is not on this tile");
         }
-        tile.removePlant();
+        if (isProtectedPlant(plant)) {
+            throw new IllegalStateException(
+                    "Protected plants cannot be plucked in Save Our Seeds"
+            );
+        }
+        int refund = Math.max(0, plant.getRefundableSunCost());
+        tile.removeSpecificPlant(plant);
         plant.setMarkedForRemoval(true);
+        increaseSunBalance(refund);
+        plant.setRefundableSunCost(0);
+        return refund;
     }
 
 
@@ -410,12 +789,36 @@ public class GameState {
         return nearest;
     }
 
-    public Zombie findNearestHypnotizedZombieInRange(Zombie self, int lane, float x, int range) {
+    public Zombie findNearestHypnotizedZombieInRange(
+            Zombie self,
+            int lane,
+            float x,
+            int range
+    ) {
+        return findNearestHypnotizedZombieInRange(
+                self,
+                lane,
+                x,
+                (float) range
+        );
+    }
+
+    public Zombie findNearestHypnotizedZombieInRange(
+            Zombie self,
+            int lane,
+            float x,
+            float range
+    ) {
         Zombie nearest = null;
         float nearestDistance = Float.MAX_VALUE;
         for (Zombie other : zombiesInTheGame) {
-            if (other == self || !other.isHypnotized() || other.isDead()) continue;
-            if (other.getLane() != lane) continue;
+            if (other == self
+                    || !other.isHypnotized()
+                    || other.isDead()
+                    || other.getLane() != lane) {
+                continue;
+            }
+
             float distance = Math.abs(other.getX() - x);
             if (distance <= range && distance < nearestDistance) {
                 nearest = other;
