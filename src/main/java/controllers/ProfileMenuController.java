@@ -101,27 +101,21 @@ public class ProfileMenuController {
         if (user == null) {
             return loginRequired();
         }
-
         String oldPasswordHash = HashUtil.hashPassword(oldPassword);
         if (!validation.arePasswordsTheSame(oldPasswordHash, user.getPasswordHash())) {
             return new Result(false, "Current password is incorrect.\n", null);
         }
-
         String newPasswordHash = HashUtil.hashPassword(newPassword);
         if (validation.arePasswordsTheSame(newPasswordHash, user.getPasswordHash())) {
             return new Result(
-                    false,
-                    "New password must be different from current password.\n",
-                    null
+                    false, "New password must be different from current password.\n", null
             );
         }
 
         StringBuilder errors = new StringBuilder();
         if (!signUpValidation.isPasswordValid(newPassword)) {
             return new Result(
-                    false,
-                    "Password can only contain A-Za-z letters, numbers, and special symbols.\n",
-                    null
+                    false, "Password can only contain A-Za-z letters, numbers, and special symbols.\n", null
             );
         }
         if (!signUpValidation.isPasswordStrong(newPassword)) {
@@ -143,7 +137,6 @@ public class ProfileMenuController {
         }
             return new Result(false, errors.toString(), null);
         }
-
         if (!repository.updatePassword(user.getUsername(), newPasswordHash)) {
             return new Result(false, "Password could not be saved.\n", null);
         }

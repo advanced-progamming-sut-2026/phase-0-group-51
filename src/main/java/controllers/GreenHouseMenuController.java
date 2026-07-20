@@ -165,16 +165,11 @@ public class GreenHouseMenuController  {
         if (!validation.isNumberXValid(x) || !validation.isNumberYValid(y)) {
             return new Result(false, "Please enter valid x and y.\n", null);
         }
-
         User user = currentUser();
-        if (user == null) {
-            return loginRequired();
-        }
+        if (user == null) return loginRequired();
         GreenHouse greenHouse = user.getGreenHouse();
         if (greenHouse == null) {
-            return new Result(false, "Your greenhouse could not be loaded.\n", null);
-        }
-
+            return new Result(false, "Your greenhouse could not be loaded.\n", null);}
         int row = validation.y;
         int column = validation.x;
         FlowerPot pot = greenHouse.getPot(row, column);
@@ -182,31 +177,16 @@ public class GreenHouseMenuController  {
             return new Result(false,  "This flower pot is locked!\n",null);
         }
         if (pot.isEmpty()) {
-            return new Result(
-                    false,
-                    "This flower pot does not contain a plant!\n",
-                    null
-            );
+            return new Result(false, "This flower pot does not contain a plant!\n", null);
         }
         if (pot.isReady()) {
-            return new Result(
-                    false,
-                    "This plant is already ready to collect!\n",
-                    null
-            );
+            return new Result(false, "This plant is already ready to collect!\n", null);
         }
-
         int gemsNeeded = Math.toIntExact(pot.getCeilRemainingHours());
         int growthHours = pot.getPlantId() == FlowerPot.MARIGOLD_ID ? 2 : 8;
         LocalDateTime readyPlantedAt = LocalDateTime.now().minusHours(growthHours);
         GreenHouseRepository.GrowResult result =
-                GreenHouseRepository.growPotInstantly(
-                        user.getId(),
-                        row,
-                        column,
-                        gemsNeeded,
-                        readyPlantedAt
-                );
+                GreenHouseRepository.growPotInstantly(user.getId(), row, column, gemsNeeded, readyPlantedAt);
 
         return switch (result.status()) {
             case SUCCESS -> {
@@ -215,17 +195,13 @@ public class GreenHouseMenuController  {
                 yield new Result(true, "The plant grew instantly.\n", null);
     }
             case NOT_ENOUGH_GEMS -> new Result(
-                    false, "You do not have enough gems!\n", null
-            );
+                    false, "You do not have enough gems!\n", null);
             case POT_LOCKED -> new Result(
-                    false, "This flower pot is locked!\n", null
-            );
+                    false, "This flower pot is locked!\n", null);
             case POT_EMPTY -> new Result(
-                    false, "This flower pot does not contain a plant!\n", null
-            );
+                    false, "This flower pot does not contain a plant!\n", null);
             case POT_NOT_FOUND, DATABASE_ERROR -> new Result(
-                    false, "The instant growth could not be saved.\n", null
-            );
+                    false, "The instant growth could not be saved.\n", null);
         };
     }
 

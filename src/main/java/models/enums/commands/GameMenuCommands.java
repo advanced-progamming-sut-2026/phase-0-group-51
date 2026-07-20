@@ -6,6 +6,7 @@ public enum GameMenuCommands implements Commands{
     ENTER_MENU_REGEX(Commands.ENTER_MENU_REGEX),
     ENTER_CHAPTER_REGEX("^menu\\s+enter\\s+chapter\\s+-c\\s+(?<chapterName>.+?)$"),
     ENTER_LEVEL_REGEX("^menu\\s+enter\\s+level\\s+-l\\s+(?<levelNumber>.+?)$"),
+    LOCKED_PLANTS_MODE_REGEX("^choose\\s+locked-plants\\s+mode\\s+-m\\s+(?<mode>family|forced|1|2)$"),
     GREENHOUSE_REGEX("^menu\\s+greenhouse$"),
     TRAVEL_LOG_REGEX("^menu\\s+travel-log$"),
     LEADERBOARD_REGEX("^menu\\s+leaderboard$"),

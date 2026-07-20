@@ -183,8 +183,7 @@ public class Beghouled extends Game {
         GameState state = getGameState();
         if (state.getSun() < rule.cost()) {
             throw new IllegalStateException(
-                    "Not enough sun. This upgrade costs " + rule.cost() + " sun, but you have " + state.getSun() + "."
-            );
+                    "Not enough sun. This upgrade costs " + rule.cost() + " sun, but you have " + state.getSun() + ".");
         }
         List<Tile> targets = new ArrayList<>();
         Board board = state.getBoard();
@@ -197,11 +196,9 @@ public class Beghouled extends Game {
                 }
             }
         }
-
         if (targets.isEmpty()) {
             throw new IllegalStateException(
-                    "There are no " + from.name() + " plants on the board."
-            );
+                    "There are no " + from.name() + " plants on the board.");
         }
         state.decreaseSunBalance(rule.cost());
         for (Tile tile : targets) {
@@ -213,7 +210,8 @@ public class Beghouled extends Game {
             placeFreshPlant(tile, to.name());
         }
         state.logEvent(
-                "Upgraded " + targets.size() + " " + from.name() + " plant(s) to " + to.name() + " for " + rule.cost() + " sun.\n"
+        "Upgraded " + targets.size() + " " + from.name() + " plant(s) to " + to.name() + " for " + rule.cost() +
+                " sun.\n"
         );
         List<MatchGroup> groups = findMatchGroups();
         if (!groups.isEmpty()) {

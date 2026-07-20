@@ -33,7 +33,8 @@ public class User {
     private GreenHouse greenHouse;
 
     public User(int id, String username, String email, String passwordHash, String gender,
-                String nickname, int securityQuestion, String answer, int coins, int gems, int plantFoodNum, int mostMeowPoint, int maxPoint,
+                String nickname, int securityQuestion, String answer, int coins, int gems, int plantFoodNum,
+                int mostMeowPoint, int maxPoint,
                 int gamesPlayed, int miniGamesPlayed, String lastWonGame, int difficultyLevel) {
         this.id = id;
         this.username = username;

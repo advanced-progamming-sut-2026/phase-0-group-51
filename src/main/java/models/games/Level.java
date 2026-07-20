@@ -13,7 +13,8 @@ public record Level(
         int startingSun,
         List<ZombieType> allowedZombies,
         FrostbiteLevelConfig frostbiteConfig,
-        int deadlineColumn
+        int deadlineColumn,
+        int plantLossLimit
 ) {
     public Level(int levelNumber, LevelType type, int totalWaves, float baseDifficulty) {
         this(
@@ -24,6 +25,7 @@ public record Level(
                 50,
                 List.of(),
                 FrostbiteLevelConfig.none(),
+                -1,
                 -1
         );
     }
@@ -43,6 +45,7 @@ public record Level(
                 50,
                 List.of(),
                 frostbiteConfig,
+                -1,
                 -1
         );
     }
@@ -63,6 +66,7 @@ public record Level(
                 startingSun,
                 allowedZombies,
                 FrostbiteLevelConfig.none(),
+                -1,
                 -1
         );
     }
@@ -83,7 +87,28 @@ public record Level(
                 50,
                 List.of(),
                 frostbiteConfig,
-                deadlineColumn
+                deadlineColumn,
+                -1
+        );
+    }
+
+    public Level(
+            int levelNumber,
+            LevelType type,
+            int totalWaves,
+            float baseDifficulty,
+            int plantLossLimit
+    ) {
+        this(
+                levelNumber,
+                type,
+                totalWaves,
+                baseDifficulty,
+                50,
+                List.of(),
+                FrostbiteLevelConfig.none(),
+                -1,
+                plantLossLimit
         );
     }
 
@@ -95,9 +120,19 @@ public record Level(
                     "A Dead Line level requires a positive deadline column."
             );
         }
-    }
 
-    public List<ZombieType> resolveAllowedZombies(List<ZombieType> chapterDefaults) {
-        return allowedZombies.isEmpty() ? chapterDefaults : allowedZombies;
+        if (type == LevelType.LOVE_YOUR_PLANTS && plantLossLimit < 1) {
+            throw new IllegalArgumentException(
+                    "A Plants You Love level requires a positive plant-loss limit."
+            );
+    }
+}
+
+    public List<ZombieType> resolveAllowedZombies(
+            List<ZombieType> chapterDefaults
+    ) {
+        return allowedZombies.isEmpty()
+                ? chapterDefaults
+                : allowedZombies;
     }
 }

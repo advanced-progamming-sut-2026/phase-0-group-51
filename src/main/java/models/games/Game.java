@@ -12,12 +12,14 @@ import lombok.Setter;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
+import models.Plant.PlantTag;
 import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ancientEgypt.ConveyorBeltLevel;
 import models.games.ancientEgypt.Grave;
 import models.games.bigWaveBeach.BigWaveBeachFeature;
+import models.games.darkAges.LockedPlantsMode;
 import models.games.frostbite.FrostbiteCavesFeature;
 import models.quests.QuestService;
 import models.sun.SkySunSpawner;
@@ -41,6 +43,8 @@ public class Game{
     private ConveyorBeltLevel conveyorBeltLevel;
     private long pendingScaledTicks;
     private boolean zombieWavesManuallyStarted;
+    private LockedPlantsMode lockedPlantsMode;
+    private final Map<String, Integer> allowedPlantByLockedFamily = new LinkedHashMap<>();
     private final Random random = new Random();
 
     public void start() {
@@ -79,6 +83,165 @@ public class Game{
         gameState.logEvent("Zombie waves started. Recharge rules are active now.\n");
         return true;
     }
+
+    public Level getSelectedLevel() {
+        if (currentChapterIndex < 0 || currentChapterIndex >= chapters.size()) {
+            throw new IllegalStateException("The selected chapter is invalid.");
+        }
+
+        ChapterTheme chapter = chapters.get(currentChapterIndex);
+        if (currentLevelIndex < 0 || currentLevelIndex >= chapter.getLevels().size()) {
+            throw new IllegalStateException("The selected level is invalid.");
+        }
+
+        return chapter.getLevels().get(currentLevelIndex);
+    }
+
+    public boolean isLockedPlantsLevel() {
+        return getSelectedLevel().type() == LevelType.LOCKED_PLANTS;
+    }
+
+    public boolean hasChosenLockedPlantsMode() {
+        return lockedPlantsMode != null;
+    }
+
+    public boolean isForcedLoadoutMode() {
+        return lockedPlantsMode == LockedPlantsMode.FORCED;
+    }
+
+    public void chooseLockedPlantsMode(LockedPlantsMode mode) {
+        if (!isLockedPlantsLevel()) {
+            throw new IllegalStateException(
+                    "The selected level is not a Locked Plants level."
+            );
+        }
+        if (mode == null) {
+            throw new IllegalArgumentException(
+                    "Locked Plants mode cannot be null."
+            );
+        }
+
+        selectedPlantsForThisGame.clear();
+        allowedPlantByLockedFamily.clear();
+
+        if (mode == LockedPlantsMode.FAMILY) {
+            prepareFamilyLockMode(mode);
+        } else {
+            prepareForcedLoadoutMode(mode);
+        }
+
+        lockedPlantsMode = mode;
+    }
+
+    private void prepareFamilyLockMode(LockedPlantsMode mode) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            throw new IllegalStateException(
+                    "You must log in before selecting plants."
+            );
+        }
+
+        Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
+        List<PlantData> unlockedPlants = unlockedIds.stream()
+                .map(PlantRegistry::getById)
+                .filter(Objects::nonNull)
+                .filter(plant -> !plant.tags().contains(PlantTag.WATER))
+                .filter(plant -> plant.id() != 58 && plant.id() != 59)
+                .sorted(Comparator.comparingInt(PlantData::id))
+                .toList();
+
+        for (String family : mode.getRestrictedFamilies()) {
+            String normalizedFamily = LockedPlantsMode.normalizeFamily(family);
+            List<PlantData> candidates = unlockedPlants.stream()
+                    .filter(plant -> normalizedFamily.equals(
+                            LockedPlantsMode.normalizeFamily(plant.category())
+                    ))
+                    .toList();
+
+            if (candidates.isEmpty()) {
+                continue;
+            }
+
+            PlantData allowedPlant = candidates.get(random.nextInt(candidates.size()));
+            allowedPlantByLockedFamily.put(normalizedFamily, allowedPlant.id());
+        }
+    }
+
+    private void prepareForcedLoadoutMode(LockedPlantsMode mode) {
+        if (mode.getForcedPlantIds().size() != 8) {
+            throw new IllegalStateException(
+                    "Forced Plants mode must contain exactly eight plants."
+            );
+        }
+
+        for (int plantId : mode.getForcedPlantIds()) {
+            PlantData plant = PlantRegistry.getById(plantId);
+            if (plant == null) {
+                throw new IllegalStateException(
+                        "Forced plant with id " + plantId + " does not exist."
+                );
+            }
+            selectedPlantsForThisGame.add(plant);
+        }
+    }
+
+    public boolean isPlantLockedByFamilyMode(PlantData plant) {
+        if (plant == null || lockedPlantsMode != LockedPlantsMode.FAMILY) {
+            return false;
+        }
+
+        String family = LockedPlantsMode.normalizeFamily(plant.category());
+        Integer allowedPlantId = allowedPlantByLockedFamily.get(family);
+        return allowedPlantId != null && allowedPlantId != plant.id();
+    }
+
+    public boolean isFamilyChoicePlant(PlantData plant) {
+        if (plant == null || lockedPlantsMode != LockedPlantsMode.FAMILY) {
+            return false;
+        }
+
+        String family = LockedPlantsMode.normalizeFamily(plant.category());
+        Integer allowedPlantId = allowedPlantByLockedFamily.get(family);
+        return allowedPlantId != null && allowedPlantId == plant.id();
+    }
+
+    public PlantData getAllowedPlantForFamily(PlantData plant) {
+        if (plant == null) {
+            return null;
+        }
+
+        String family = LockedPlantsMode.normalizeFamily(plant.category());
+        Integer allowedPlantId = allowedPlantByLockedFamily.get(family);
+        return allowedPlantId == null ? null : PlantRegistry.getById(allowedPlantId);
+    }
+
+    public boolean isForcedLockedPlant(PlantData plant) {
+        return plant != null
+                && lockedPlantsMode == LockedPlantsMode.FORCED
+                && lockedPlantsMode.getForcedPlantIds().contains(plant.id());
+    }
+
+    private void validateLockedPlantsSelection(Level level) {
+        if (level.type() != LevelType.LOCKED_PLANTS) {
+            return;
+        }
+        if (lockedPlantsMode == null) {
+            throw new IllegalStateException(
+                    "Choose a Locked Plants mode before starting the level."
+            );
+        }
+        if (lockedPlantsMode == LockedPlantsMode.FORCED
+                && selectedPlantsForThisGame.size() != 8) {
+            throw new IllegalStateException(
+                    "Forced Plants mode requires exactly eight locked plants."
+            );
+        }
+        if (selectedPlantsForThisGame.stream().anyMatch(this::isPlantLockedByFamilyMode)) {
+            throw new IllegalStateException(
+                    "A plant locked by Family Lock mode is still selected."
+            );
+        }
+    }
     public void loadLevel(){
         ChapterTheme theme = chapters.get(currentChapterIndex);
         Level level = theme.getLevels().get(currentLevelIndex);
@@ -87,9 +250,11 @@ public class Game{
         this.gameState = new GameState(board, theme);
         this.gameState.setCurrentLevel(level);
         this.gameState.setSun(level.startingSun());
-        boolean skySunDisabled = theme.getTimeOfTheDay() == TimeOfTheDay.NIGHT
-                || level.type() == LevelType.NIGHT_OPS
-                || level.type() == LevelType.PLANT_WHAT_YOU_GET;
+        boolean forceSkySun =
+                level.type() == LevelType.LOCKED_PLANTS || level.type() == LevelType.LOVE_YOUR_PLANTS;
+        boolean skySunDisabled =
+                !forceSkySun && (theme.getTimeOfTheDay() == TimeOfTheDay.NIGHT || level.type() == LevelType.NIGHT_OPS
+                                || level.type() == LevelType.PLANT_WHAT_YOU_GET);
         this.skySunSpawner = skySunDisabled ? null : new SkySunSpawner();
         this.conveyorBeltLevel = null;
         List<ZombieType> allowedZombies = level.resolveAllowedZombies(theme.getAllowedZombies());
@@ -319,6 +484,11 @@ public class Game{
             finishAsLoss();
             return;
         }
+        if (gameState.checkDeadlineLoseCondition()
+                || gameState.checkPlantLossLoseCondition()) {
+            finishAsLoss();
+            return;
+        }
         gameState.tickMowers();
         gameState.getBoard().tickSuns(gameState);
         if (gameState.getCurrentLevel().type().isFinished(gameState)) {
@@ -330,8 +500,6 @@ public class Game{
             );
             evaluateQuestRun(true);
             saveProgressInDatabase();
-        } else if (gameState.checkLoseCondition()) {
-            finishAsLoss();
         }
 
     }
@@ -347,8 +515,7 @@ public class Game{
         int gamesPlayed = new UserRepository().recordAdventureLoss(user.getId());
         if (gamesPlayed < 0) {
             gameState.logEvent("The played-game counter could not be saved.\n");
-            return;
-        }
+            return;}
         user.setGamesPlayed(gamesPlayed);
     }
 
@@ -375,15 +542,11 @@ public class Game{
     }
     private void saveProgressInDatabase() {
         User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            return;
-        }
-
+        if (user == null) return;
         int completedChapter = currentChapterIndex + 1;
         int completedLevel = currentLevelIndex + 1;
         Integer candidateChapter = null;
         Integer candidateLevel = null;
-
         ChapterTheme currentTheme = chapters.get(currentChapterIndex);
         if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
             candidateChapter = completedChapter;
@@ -392,30 +555,17 @@ public class Game{
             candidateChapter = completedChapter + 1;
             candidateLevel = 1;
         }
-
         ProgressRepository progressRepository = new ProgressRepository();
         ProgressRepository.AdventureWinResult result =
                 progressRepository.recordAdventureWin(
-                        user.getId(),
-                        completedChapter,
-                        completedLevel,
-                        candidateChapter,
-                        candidateLevel
-                );
-
+                        user.getId(), completedChapter, completedLevel, candidateChapter, candidateLevel);
         if (!result.saved()) {
             gameState.logEvent("Adventure progress could not be saved.\n");
             return;
         }
-
         user.setGamesPlayed(result.gamesPlayed());
-        user.setLastWonGame(
-                "Chapter " + completedChapter + " Level " + completedLevel
-        );
-
-        if (!result.progressAdvanced()) {
-            return;
-        }
+        user.setLastWonGame("Chapter " + completedChapter + " Level " + completedLevel);
+        if (!result.progressAdvanced()) return;
         NewsRepository newsRepository = new NewsRepository();
         ChapterTheme unlockedTheme = chapters.get(result.newChapter() - 1);
         if (result.newChapter() > result.oldChapter()) {

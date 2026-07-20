@@ -20,10 +20,6 @@ public class SkySunSpawner {
         this.random = Objects.requireNonNull(random);
     }
     public Sun onTick(GameState gameState) {
-        if (gameState.getChapterTheme() == ChapterTheme.DARK_AGES) {
-            return null;
-        }
-
         float elapsedSeconds = gameState.getTickCounter() / (float) gameState.getTicksPerSecond();
         float baseSecondsPerDrop = Math.max(6.0f + 0.05f * elapsedSeconds, 12.0f);
         User user = App.getInstance().getLoggedInUser();

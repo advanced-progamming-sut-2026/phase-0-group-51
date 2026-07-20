@@ -162,29 +162,23 @@ public class CollectionMenuController {
     public Result upgrade(String plantName) {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
-            return failure("You must log in before upgrading a plant.\n");
-        }
+            return failure("You must log in before upgrading a plant.\n");}
         PlantData plant = PlantRegistry.getByName(cleanName(plantName));
         if (plant == null) {
-            return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
-        }
+            return failure("No plant named '" + cleanName(plantName) + "' was found.\n");}
         if (!PlantRepository.loadUnlockedPlants(user.getId()).contains(plant.id())) {
-            return failure("You have not unlocked " + plant.name() + " yet.\n");
-        }
+            return failure("You have not unlocked " + plant.name() + " yet.\n");}
         int currentLevel = PlantRepository.loadPlantLevels(user.getId())
                 .getOrDefault(plant.id(), 1);
         int maximumLevel = maximumLevel(plant);
         if (currentLevel >= maximumLevel) {
             return failure(plant.name() + " is already at maximum level "
-                    + maximumLevel + ".\n");
-        }
+                    + maximumLevel + ".\n");}
         int targetLevel = currentLevel + 1;
         int coinCost = coinCostForLevel(targetLevel);
         int packetCost = seedPacketCostForLevel(targetLevel);
-
         PlantRepository.UpgradeResult result = PlantRepository.tryUpgradePlant(
-                user.getId(), plant.id(), maximumLevel, coinCost, packetCost
-        );
+                user.getId(), plant.id(), maximumLevel, coinCost, packetCost);
         return switch (result.status()) {
             case SUCCESS -> {
                 user.setCoins(result.remainingCoins());
@@ -192,29 +186,23 @@ public class CollectionMenuController {
                 yield success(
                         plant.name() + " upgraded from level " + result.oldLevel()
                                 + " to level " + result.newLevel() + ".\n"
-                                + "Cost: " + coinCost + " coins and " + packetCost
-                                + " seed packets.\n"
+                                + "Cost: " + coinCost + " coins and " + packetCost + " seed packets.\n"
                                 + "Upgrade effect: " + description + "\n"
                                 + "Remaining: " + result.remainingCoins() + " coins and "
-                                + result.remainingSeedPackets() + " seed packets.\n"
-                );
+                                + result.remainingSeedPackets() + " seed packets.\n");
             }
             case NOT_ENOUGH_COINS -> failure(
                     "Not enough coins to upgrade " + plant.name() + " to level "
                             + targetLevel + ". Required: " + coinCost + ", available: "
-                            + result.remainingCoins() + ".\n"
-            );
+                            + result.remainingCoins() + ".\n");
             case NOT_ENOUGH_SEED_PACKETS -> failure(
                     "Not enough seed packets to upgrade " + plant.name() + " to level "
                             + targetLevel + ". Required: " + packetCost + ", available: "
-                            + result.remainingSeedPackets() + ".\n"
-            );
+                            + result.remainingSeedPackets() + ".\n");
             case MAX_LEVEL -> failure(
-                    plant.name() + " is already at its maximum level.\n"
-            );
+                    plant.name() + " is already at its maximum level.\n");
             case PLANT_NOT_UNLOCKED -> failure(
-                    "You have not unlocked " + plant.name() + " yet.\n"
-            );
+                    "You have not unlocked " + plant.name() + " yet.\n");
             case USER_NOT_FOUND -> failure("The logged-in user no longer exists.\n");
             case DATABASE_ERROR -> failure(
                     "The plant upgrade could not be saved in the database.\n"

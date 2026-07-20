@@ -525,15 +525,11 @@ public class GamingController {
                 && state.getTickCounter() < availableAt) {
             int ticksLeft = availableAt - state.getTickCounter();
             String seconds = formatSeconds(
-                    ticksLeft,
-                    state.getTicksPerSecond()
-            );
+                    ticksLeft, state.getTicksPerSecond());
             return failure("Plant is recharging for " + seconds + " more seconds.\n");
         }
         User user = App.getInstance().getLoggedInUser();
-        int level = user == null
-                ? 1
-                : PlantRepository.loadPlantLevels(user.getId())
+        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
                 .getOrDefault(selected.id(), 1);
         Plant plant = PlantFactory.create(selected, level);
         int cost = plant.getPlantStat().cost();
@@ -1072,8 +1068,7 @@ public class GamingController {
         if (game.isPreparingPlantWhatYouGet()) {
             output.append("PREPARATION - no recharge; use 'start zombie waves'.\n");
         } else if (game.isPlantWhatYouGetLevel()) {
-            output.append("ZOMBIE WAVES - recharge active.\n");
-        }
+            output.append("ZOMBIE WAVES - recharge active.\n");}
         if (state.getBoard().getWaterColumnCount() > 0) {
             output.append("Water: rightmost ")
                     .append(state.getBoard().getWaterColumnCount())
@@ -1082,39 +1077,27 @@ public class GamingController {
         if (game instanceof ScoringGame scoringGame) {
             output.append("MeowPoint: ").append(scoringGame.getScoreTracker().currentTotal()).append('\n');}
         if (state.hasDeadline()) {
-            output.append("Dead Line: before column ")
-                    .append(state.getDeadlineColumn())
-                    .append(".\n");
+            output.append("Dead Line: before column ").append(state.getDeadlineColumn()).append(".\n");
         }
-
         if (game.isConveyorBeltLevel()) {
-            appendConveyorSummary(output, game);
-        }
+            appendConveyorSummary(output, game);}
                 output.append("\n===== LAWN MOWERS =====\n");
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
             Mower mower = state.getLawnMowers()[lane];
             output.append("Row ").append(lane + 1).append(": ")
                     .append(mower.isDestroyed() ? "USED" : "AVAILABLE").append('\n');
         }
-
         Board board = state.getBoard();
         output.append("\n===== BOARD =====\n")
-                .append("Each cell contains  3 chars: ")
-                .append("[base][zombie][sun].\n\n");
-
+                .append("Each cell contains  3 chars: ").append("[base][zombie][sun].\n\n");
         appendBoardColumnHeader(output, board);
-
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             output.append("Row ").append(lane + 1).append(": ");
             for (int column = 0; column < board.getColumnCount(); column++) {
                 Tile tile = board.getTile(lane, column);
-                output.append('[')
-                        .append(buildThreeCharacterCell(state, tile))
-                        .append("] ");
-            }
+                output.append('[').append(buildThreeCharacterCell(state, tile)).append("] ");}
             output.append('\n');
         }
-
         output.append("\nCell position 1 (base): ")
                 .append("P=land plant, F=frozen plant, A=aquatic plant, ")
                 .append("Y=plant on Lily Pad, G=normal grave, ")
@@ -1128,7 +1111,6 @@ public class GamingController {
                 .append("Examples: [PZS]=plant + zombie + grounded sun, ")
                 .append("[SZ.]=sun grave + zombie, ")
                 .append("[Q.S]=plant-food grave + grounded sun.\n");
-
         return success(output.toString());
     }
 
@@ -1140,8 +1122,7 @@ public class GamingController {
         } else {
             for (int i = 0; i < belt.size(); i++) {
                 if (i > 0) {
-                    output.append(" -> ");
-                }
+                    output.append(" -> ");}
                 output.append(belt.get(i).name());
             }
         }
