@@ -108,43 +108,103 @@ public class GamingController {
         if (tile == null) {
             return failure("Coordinates are outside the map.\n");
         }
+
+        PlantChoice choice = resolvePlantChoice(plantType);
+        Result choiceFailure = validatePlantChoice(choice);
+        if (choiceFailure != null) {
+            return choiceFailure;
+        }
+        return placePlantForLevel(game, state, tile, choice, x, y);
+    }
+
+    private PlantChoice resolvePlantChoice(String plantType) {
         PlantData imitaterTarget = parseImitaterTarget(plantType);
         PlantData selected = imitaterTarget == null
                 ? PlantRegistry.getByName(plantType)
                 : PlantRegistry.getById(IMITATER_ID);
-        if (selected == null) {
+        return new PlantChoice(selected, imitaterTarget);
+    }
+
+    private Result validatePlantChoice(PlantChoice choice) {
+        if (choice.selected() == null) {
             return failure("Unknown plant.\n");
         }
-        if (selected.id() == IMITATER_ID && imitaterTarget == null) {
+        if (choice.selected().id() == IMITATER_ID
+                && choice.imitaterTarget() == null) {
             return failure(
                     "Use Imitater:<plant name> to choose what Imitater copies.\n"
             );
         }
+        return null;
+    }
+
+    private Result placePlantForLevel(
+            Game game,
+            GameState state,
+            Tile tile,
+            PlantChoice choice,
+            int x,
+            int y
+    ) {
+        PlantData selected = choice.selected();
         if (game.isConveyorBeltLevel()) {
-            if (!game.hasConveyorPlant(selected)) {
-                return failure(selected.name() + " is not currently on the conveyor belt.\n");
-            }
-            if (!tile.isOccupiable()) {
-                return tileOccupationFailure(tile);
-            }
-            return createAndPlaceConveyorPlant(game, state, tile, selected, x, y);
+            return placeConveyorSelection(game, state, tile, selected, x, y);
         }
         if (!game.getSelectedPlantsForThisGame().contains(selected)) {
             return failure("This plant is not selected for this level.\n");
         }
-        if (imitaterTarget != null) {
-            if (!game.getSelectedPlantsForThisGame().contains(imitaterTarget)) {
+        if (choice.imitaterTarget() != null) {
+            if (!game.getSelectedPlantsForThisGame()
+                    .contains(choice.imitaterTarget())) {
                 return failure("The copied plant must also be selected for this level.\n");
             }
             return placeImitaterCopy(
                     state,
                     tile,
                     selected,
-                    imitaterTarget,
+                    choice.imitaterTarget(),
                     x,
                     y
             );
         }
+        return placeRegularSelection(game, state, tile, selected, x, y);
+    }
+
+    private Result placeConveyorSelection(
+            Game game,
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
+        if (!game.hasConveyorPlant(selected)) {
+            return failure(
+                    selected.name()
+                            + " is not currently on the conveyor belt.\n"
+            );
+        }
+        if (!tile.isOccupiable()) {
+            return tileOccupationFailure(tile);
+        }
+        return createAndPlaceConveyorPlant(
+                game,
+                state,
+                tile,
+                selected,
+                    x,
+                    y
+            );
+        }
+
+    private Result placeRegularSelection(
+            Game game,
+            GameState state,
+            Tile tile,
+            PlantData selected,
+            int x,
+            int y
+    ) {
         if (selected.id() == HOT_POTATO_ID) {
             return placeHotPotato(state, tile, selected, x, y);
         }
@@ -170,6 +230,12 @@ public class GamingController {
             return tileOccupationFailure(tile);
         }
         return createAndPlacePlant(state, tile, selected, x, y);
+    }
+
+    private record PlantChoice(
+            PlantData selected,
+            PlantData imitaterTarget
+    ) {
     }
     private Result placePlantOnWater(GameState state, Tile tile, PlantData selected, int x, int y) {
         if (!isLilyPad(selected) && canStackSelectedPlant(selected, tile)) {
@@ -304,6 +370,21 @@ public class GamingController {
         if (cooldown != null) {
             return cooldown;
         }
+
+        Plant copy = createImitaterCopyForUser(target);
+        try {
+            placeImitaterCopyOnTile(state, tile, target, copy);
+            state.startPlantCooldown(copy);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(exception.getMessage() + ".\n");
+        }
+        return success(
+                "Imitater copied " + target.name() + " at ("
+                        + x + ", " + y + ").\n"
+        );
+    }
+
+    private Plant createImitaterCopyForUser(PlantData target) {
         User user = App.getInstance().getLoggedInUser();
         int imitaterLevel = user == null ? 1
                 : PlantRepository.loadPlantLevels(user.getId())
@@ -311,12 +392,19 @@ public class GamingController {
         int targetLevel = user == null ? 1
                 : PlantRepository.loadPlantLevels(user.getId())
                 .getOrDefault(target.id(), 1);
-        Plant copy = Modifier.createImitaterCopy(
+        return Modifier.createImitaterCopy(
                 target,
                 targetLevel,
                 imitaterLevel
         );
-        try {
+    }
+
+    private void placeImitaterCopyOnTile(
+            GameState state,
+            Tile tile,
+            PlantData target,
+            Plant copy
+    ) {
             if (target.id() == HOT_POTATO_ID) {
                 boolean hasFrozenPlant = tile.getPlants().stream()
                         .anyMatch(Plant::isFrozenByIce);
@@ -332,21 +420,16 @@ public class GamingController {
                 state.plantPumpkin(copy, tile);
             } else if (target.id() == LILY_PAD_ID) {
                 state.plantLilyPad(copy, tile);
+        } else if (tile.isWater() && copy.hasTag(PlantTag.WATER)) {
+            state.plantPlant(copy, tile);
             } else if (tile.isWater()
-                    && copy.hasTag(PlantTag.WATER)) {
-                state.plantPlant(copy, tile);
-            } else if (tile.isWater() && tile.hasLilyPad()
+                && tile.hasLilyPad()
                     && !tile.hasTopPlant()) {
                 state.plantOnLilyPad(copy, tile);
             } else {
                 state.plantPlant(copy, tile);
             }
-            state.startPlantCooldown(copy);
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            return failure(exception.getMessage() + ".\n");
-        }
-        return success("Imitater copied " + target.name() + " at ("
-                + x + ", " + y + ").\n");
+
     }
 
     private Result placeHotPotato(
@@ -1060,11 +1143,31 @@ public class GamingController {
         GameState state = activeState();
         if (state == null) {return failure("No active game found.\n");}
         StringBuilder output = new StringBuilder();
+        appendGameStatus(output, game, state);
+        appendMowerStatus(output, state);
+        appendBoardStatus(output, state);
+        appendMapLegend(output);
+        return success(output.toString());
+    }
+
+    private void appendGameStatus(
+            StringBuilder output,
+            Game game,
+            GameState state
+    ) {
         int wave = state.getZombieWaveManager() == null ? 0 : state.getZombieWaveManager().getCurrentWaveNumber();
         output.append("===== GAME STATUS =====\n").append("Wave: ").append(wave).append('\n')
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
+        appendLevelStatus(output, game, state);
+    }
+
+    private void appendLevelStatus(
+            StringBuilder output,
+            Game game,
+            GameState state
+    ) {
         if (game.isPreparingPlantWhatYouGet()) {
             output.append("PREPARATION - no recharge; use 'start zombie waves'.\n");
         } else if (game.isPlantWhatYouGetLevel()) {
@@ -1080,13 +1183,26 @@ public class GamingController {
             output.append("Dead Line: before column ").append(state.getDeadlineColumn()).append(".\n");
         }
         if (game.isConveyorBeltLevel()) {
-            appendConveyorSummary(output, game);}
+            appendConveyorSummary(output, game);
+        }
+    }
+
+    private void appendMowerStatus(
+            StringBuilder output,
+            GameState state
+    ) {
                 output.append("\n===== LAWN MOWERS =====\n");
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
             Mower mower = state.getLawnMowers()[lane];
             output.append("Row ").append(lane + 1).append(": ")
                     .append(mower.isDestroyed() ? "USED" : "AVAILABLE").append('\n');
         }
+    }
+
+    private void appendBoardStatus(
+            StringBuilder output,
+            GameState state
+    ) {
         Board board = state.getBoard();
         output.append("\n===== BOARD =====\n")
                 .append("Each cell contains  3 chars: ").append("[base][zombie][sun].\n\n");
@@ -1098,6 +1214,9 @@ public class GamingController {
                 output.append('[').append(buildThreeCharacterCell(state, tile)).append("] ");}
             output.append('\n');
         }
+    }
+
+    private void appendMapLegend(StringBuilder output) {
         output.append("\nCell position 1 (base): ")
                 .append("P=land plant, F=frozen plant, A=aquatic plant, ")
                 .append("Y=plant on Lily Pad, G=normal grave, ")
@@ -1111,7 +1230,7 @@ public class GamingController {
                 .append("Examples: [PZS]=plant + zombie + grounded sun, ")
                 .append("[SZ.]=sun grave + zombie, ")
                 .append("[Q.S]=plant-food grave + grounded sun.\n");
-        return success(output.toString());
+
     }
 
     private void appendConveyorSummary(StringBuilder output, Game game) {

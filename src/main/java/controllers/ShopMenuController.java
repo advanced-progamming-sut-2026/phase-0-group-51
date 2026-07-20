@@ -108,66 +108,144 @@ public class ShopMenuController {
     public Result shopBuy(String itemId, String count, String plantType) {
     User user = currentUser();
         if (user == null) {
-            return loginRequired();}
+            return loginRequired();
+        }
+
+        Result inputFailure = validatePurchaseInput(itemId, count);
+        if (inputFailure != null) {
+            return inputFailure;
+        }
+        ShopItem item = shop.getItemById(validation.getId());
+        if (item == null) {
+            return new Result(false, "Item not found.\n", null);
+        }
+
+        PurchasePreparation preparation = preparePlantTargets(
+                user,
+                item,
+                plantType
+        );
+        if (preparation.failure() != null) {
+            return preparation.failure();
+        }
+
+        int totalPrice = calculateTotalPrice(user, item);
+        ShopPurchaseRepository.PurchaseResult result =
+                purchaseRepository.purchasePermanentItem(
+                        user.getId(),
+                        item.getType(),
+                        item.getCurrency(),
+                        totalPrice,
+                        validation.getCount(),
+                        preparation.selectedPlantId(),
+                        preparation.randomPlantIds()
+                );
+        return finishPermanentPurchase(user, item, result);
+    }
+
+    private Result validatePurchaseInput(String itemId, String count) {
         if (!validation.isCountValid(count)) {
             return new Result(false, "Please enter a valid positive number.\n", null);}
         if (!validation.isIdValid(itemId)) {
-            return new Result(false, "Please enter a valid item id.\n", null);}
-    ShopItem item = shop.getItemById(validation.getId());
-        if (item == null) {
-            return new Result(false, "Item not found.\n", null);}
+            return new Result(
+                    false,
+                    "Please enter a valid item id.\n",
+                    null
+            );
+        }
+        return null;
+    }
 
-        Integer selectedPlantId = null;
+    private PurchasePreparation preparePlantTargets(
+            User user,
+            ShopItem item,
+            String plantType
+    ) {
     if (item.getType() == ShopItemType.SEED_PACKET_SELECTED) {
+            return prepareSelectedPlantTarget(user, plantType);
+        }
+        if (item.getType() == ShopItemType.SEED_PACKET_RANDOM) {
+            return prepareRandomPlantTargets(user);
+        }
+        return new PurchasePreparation(null, null, null);
+    }
+
+    private PurchasePreparation prepareSelectedPlantTarget(
+            User user,
+            String plantType
+    ) {
             if (plantType == null || plantType.isBlank()) {
-                return new Result(false, "Please enter plant type.\n", null);}
+            return purchasePreparationFailure("Please enter plant type.\n");
+        }
             if (!validation.isPlantTypeValid(plantType)) {
-                return new Result(false, "Plant not found.\n", null);}
-            selectedPlantId = validation.getData().id();
+            return purchasePreparationFailure("Plant not found.\n");
+        }
+        int plantId = validation.getData().id();
             Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
-            if (!unlocked.contains(selectedPlantId)) {
-                return new Result(
-                        false, "The selected plant is not unlocked.\n", null
+        if (!unlocked.contains(plantId)) {
+            return purchasePreparationFailure(
+                    "The selected plant is not unlocked.\n"
                 );
             }
+        return new PurchasePreparation(plantId, null, null);
         }
 
-        List<Integer> randomPlantIds = null;
-        if (item.getType() == ShopItemType.SEED_PACKET_RANDOM) {
+    private PurchasePreparation prepareRandomPlantTargets(User user) {
       Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
             if (unlocked.isEmpty()) {
-                return new Result(
-                        false, "You do not have any unlocked plants for random Seed Packets.\n", null
+            return purchasePreparationFailure(
+                    "You do not have any unlocked plants for random "
+                            + "Seed Packets.\n"
                 );
             }
             List<Integer> pool = new ArrayList<>(unlocked);
-            randomPlantIds = new ArrayList<>();
+        List<Integer> randomPlantIds = new ArrayList<>();
             for (int index = 0; index < validation.getCount(); index++) {
                 randomPlantIds.add(pool.get(random.nextInt(pool.size())));
             }
+        return new PurchasePreparation(null, randomPlantIds, null);
+    }
+
+    private PurchasePreparation purchasePreparationFailure(String message) {
+        return new PurchasePreparation(
+                null,
+                null,
+                new Result(false, message, null)
+        );
         }
 
-        int totalPrice;
+    private int calculateTotalPrice(User user, ShopItem item) {
         if (item.getCurrency() == Currency.COIN) {
             validation.isCoinEnough(user, item);
-            totalPrice = validation.getTotalCoinsNeeded();
-    } else {
+            return validation.getTotalCoinsNeeded();
+        }
             validation.isGemEnough(user, item);
-            totalPrice = validation.getTotalGemsNeeded();
+        return validation.getTotalGemsNeeded();
       }
 
-        ShopPurchaseRepository.PurchaseResult result =
-                purchaseRepository.purchasePermanentItem(
-                        user.getId(), item.getType(), item.getCurrency(), totalPrice, validation.getCount(), selectedPlantId, randomPlantIds
-                );
-
+    private Result finishPermanentPurchase(
+            User user,
+            ShopItem item,
+            ShopPurchaseRepository.PurchaseResult result
+    ) {
         if (result.status() != ShopPurchaseRepository.PurchaseStatus.SUCCESS) {
             return purchaseFailure(result.status());}
         applyBalances(user, result);
         if (item.getType() == ShopItemType.POT) {
             user.setGreenHouse(GreenHouseRepository.load(user.getId()));
   }
-        return new Result(true, "Purchase completed successfully.\n", null);
+        return new Result(
+                true,
+                "Purchase completed successfully.\n",
+                null
+        );
+    }
+
+    private record PurchasePreparation(
+            Integer selectedPlantId,
+            List<Integer> randomPlantIds,
+            Result failure
+    ) {
     }
 
   public Result buyDailyOffer() {

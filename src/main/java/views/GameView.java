@@ -13,6 +13,13 @@ public class GameView implements AppMenu {
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
+        if (handleGameActions(line) || handleGameInformation(line)) {
+            return;
+        }
+        invalidCommand();
+    }
+
+    private boolean handleGameActions(String line) {
         if (GameCommands.SHOW_SUN_AMOUNT_REGEX.matches(line)) {
             print(controller.showSunAmount());
         } else if (GameCommands.CHEAT_ADD_SUN_REGEX.matches(line)) {
@@ -26,18 +33,21 @@ public class GameView implements AppMenu {
         }  else if (GameCommands.START_ZOMBIE_WAVES_REGEX.matches(line)) {
             print(controller.startZombieWaves());
         }  else if (GameCommands.PLANT_PLANT_REGEX.matches(line)) {
-            Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(line);
-            int[] coordinates = parseCoordinates(matcher);
-            if (coordinates != null) {
-                print(controller.plantPlant(matcher.group("type").trim(), coordinates[0], coordinates[1]));
-            }
+            handlePlantCommand(line);
         } else if (GameCommands.PLUCK_PLANT_REGEX.matches(line)) {
             handleCoordinates(GameCommands.PLUCK_PLANT_REGEX.getMatcher(line), controller::pluckPlant);
         } else if (GameCommands.FEED_PLANT_REGEX.matches(line)) {
             handleCoordinates(GameCommands.FEED_PLANT_REGEX.getMatcher(line), controller::feedPlant);
         } else if (GameCommands.CHEAT_ADD_PLANT_FOOD_REGEX.matches(line)) {
             print(controller.cheatAddPlantFood());
-        } else if (GameCommands.SHOW_TILE_STATUS_REGEX.matches(line)) {
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean handleGameInformation(String line) {
+        if (GameCommands.SHOW_TILE_STATUS_REGEX.matches(line)) {
             handleCoordinates(GameCommands.SHOW_TILE_STATUS_REGEX.getMatcher(line), controller::showTileStatus);
         } else if (GameCommands.SHOW_PLANT_STATUS_REGEX.matches(line)) {
             print(controller.showPlantStatus());
@@ -50,11 +60,7 @@ public class GameView implements AppMenu {
         } else if (GameCommands.RELEASE_NUKE_REGEX.matches(line)) {
             print(controller.releaseNuke());
         } else if (GameCommands.CHEAT_SPAWN_ZOMBIE.matches(line)) {
-            Matcher matcher = GameCommands.CHEAT_SPAWN_ZOMBIE.getMatcher(line);
-            int[] coordinates = parseCoordinates(matcher);
-            if (coordinates != null) {
-                print(controller.spawnZombie(matcher.group("zombieType").trim(), coordinates[0], coordinates[1]));
-            }
+            handleSpawnZombieCommand(line);
         } else if (GameCommands.SHOW_SCORE_REGEX.matches(line)) {
             print(controller.showScore());
         } else if (GameCommands.SHOW_SCORING_RULES_REGEX.matches(line)) {
@@ -64,7 +70,32 @@ public class GameView implements AppMenu {
         } else if (GameCommands.CURRENT_MENU_REGEX.matches(line)) {
             System.out.println("You are now in the game menu.");
         } else {
-            invalidCommand();
+            return false;
+        }
+        return true;
+    }
+
+    private void handlePlantCommand(String line) {
+        Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(line);
+        int[] coordinates = parseCoordinates(matcher);
+        if (coordinates != null) {
+            print(controller.plantPlant(
+                    matcher.group("type").trim(),
+                    coordinates[0],
+                    coordinates[1]
+            ));
+        }
+    }
+
+    private void handleSpawnZombieCommand(String line) {
+        Matcher matcher = GameCommands.CHEAT_SPAWN_ZOMBIE.getMatcher(line);
+        int[] coordinates = parseCoordinates(matcher);
+        if (coordinates != null) {
+            print(controller.spawnZombie(
+                    matcher.group("zombieType").trim(),
+                    coordinates[0],
+                    coordinates[1]
+            ));
         }
     }
 

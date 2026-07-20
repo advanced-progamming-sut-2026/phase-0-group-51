@@ -5,7 +5,47 @@ import models.minigames.MinigameType;
 import java.sql.*;
 
 public class MinigameProgressRepository {
-    public record Progress(int highestUnlockedStage, int highestCompletedStage) {
+    private static final int FIRST_STAGE = 1;
+    private static final int LAST_STAGE = 3;
+
+    private static final String SELECT_PROGRESS_SQL = """
+            SELECT highest_unlocked_stage, highest_completed_stage
+            FROM user_minigame_progress
+            WHERE user_id = ? AND minigame_type = ?
+            """;
+
+    private static final String UPSERT_PROGRESS_SQL = """
+            INSERT INTO user_minigame_progress (
+                user_id,
+                minigame_type,
+                highest_unlocked_stage,
+                highest_completed_stage
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, minigame_type)
+            DO UPDATE SET
+                highest_unlocked_stage =
+                    excluded.highest_unlocked_stage,
+                highest_completed_stage =
+                    excluded.highest_completed_stage
+            """;
+
+    private static final String INCREMENT_MINIGAME_COUNTER_SQL = """
+            UPDATE users
+            SET mini_games_played =
+                COALESCE(mini_games_played, 0) + 1
+            WHERE id = ?
+            """;
+
+    private static final String READ_MINIGAME_COUNTER_SQL = """
+            SELECT mini_games_played
+            FROM users
+            WHERE id = ?
+            """;
+
+    public record Progress(
+            int highestUnlockedStage,
+            int highestCompletedStage
+    ) {
     }
 
     public record Completion(
@@ -14,6 +54,15 @@ public class MinigameProgressRepository {
             int newlyUnlockedStage,
             boolean minigameNewlyCompleted,
             int miniGamesPlayed
+    ) {
+    }
+
+    private record CompletionUpdate(
+            boolean newlyCompletedStage,
+            int newCompletedStage,
+            int newUnlockedStage,
+            int newlyUnlockedStage,
+            boolean minigameNewlyCompleted
     ) {
     }
 
@@ -29,7 +78,9 @@ public class MinigameProgressRepository {
                     highest_unlocked_stage INTEGER NOT NULL DEFAULT 1,
                     highest_completed_stage INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY (user_id, minigame_type),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    FOREIGN KEY (user_id)
+                        REFERENCES users(id)
+                        ON DELETE CASCADE
                 )
                 """;
 
@@ -41,159 +92,312 @@ public class MinigameProgressRepository {
         }
     }
 
-    public Progress getProgress(int userId, MinigameType type) {
-        String sql = """
-                SELECT highest_unlocked_stage, highest_completed_stage
-                FROM user_minigame_progress
-                WHERE user_id = ? AND minigame_type = ?
-                """;
-
-        try (Connection connection = DataBaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, userId);
-            statement.setString(2, type.name());
-
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return new Progress(
-                            resultSet.getInt("highest_unlocked_stage"),
-                            resultSet.getInt("highest_completed_stage")
-                    );
-                }
-            }
+    public Progress getProgress(
+            int userId,
+            MinigameType type
+    ) {
+        try (Connection connection = DataBaseManager.getConnection()) {
+            return readProgress(connection, userId, type);
         } catch (SQLException exception) {
             exception.printStackTrace();
+            return new Progress(FIRST_STAGE, 0);
         }
-
-        // No row means a fresh minigame: stage 1 is open and nothing is completed.
-        return new Progress(1, 0);
     }
 
-    public boolean isStageUnlocked(int userId, MinigameType type, int stageNumber) {
-        if (stageNumber < 1 || stageNumber > 3) {
+    public boolean isStageUnlocked(
+            int userId,
+            MinigameType type,
+            int stageNumber
+    ) {
+        if (!isValidStage(stageNumber)) {
             return false;
         }
-        return stageNumber <= getProgress(userId, type).highestUnlockedStage();
+
+        Progress progress = getProgress(userId, type);
+
+        return stageNumber <= progress.highestUnlockedStage();
     }
 
-    public Completion completeStage(int userId, MinigameType type, int stageNumber) {
-        if (stageNumber < 1 || stageNumber > 3) {
-            return new Completion(false, false, 0, false, -1);
+    public Completion completeStage(
+            int userId,
+            MinigameType type,
+            int stageNumber
+    ) {
+        if (!isValidStage(stageNumber)) {
+            return completionFailure();
         }
-
-        String selectSql = """
-                SELECT highest_unlocked_stage, highest_completed_stage
-                FROM user_minigame_progress
-                WHERE user_id = ? AND minigame_type = ?
-                """;
-        String upsertSql = """
-                INSERT INTO user_minigame_progress (
-                    user_id,
-                    minigame_type,
-                    highest_unlocked_stage,
-                    highest_completed_stage
-                ) VALUES (?, ?, ?, ?)
-                ON CONFLICT(user_id, minigame_type)
-                DO UPDATE SET
-                    highest_unlocked_stage = excluded.highest_unlocked_stage,
-                    highest_completed_stage = excluded.highest_completed_stage
-                """;
-        String incrementCounterSql = """
-                UPDATE users
-                SET mini_games_played = COALESCE(mini_games_played, 0) + 1
-                WHERE id = ?
-                """;
-        String readCounterSql = """
-                SELECT mini_games_played FROM users WHERE id = ?
-                """;
 
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
 
             try {
-                int oldUnlocked = 1;
-                int oldCompleted = 0;
-
-                try (PreparedStatement select = connection.prepareStatement(selectSql)) {
-                    select.setInt(1, userId);
-                    select.setString(2, type.name());
-                    try (ResultSet resultSet = select.executeQuery()) {
-                        if (resultSet.next()) {
-                            oldUnlocked = resultSet.getInt("highest_unlocked_stage");
-                            oldCompleted = resultSet.getInt("highest_completed_stage");
-                        }
-                    }
-                }
-
-                if (stageNumber > oldUnlocked) {
-                    connection.rollback();
-                    return new Completion(false, false, 0, false, -1);
-                }
-
-                boolean newlyCompletedStage = stageNumber > oldCompleted;
-                int newCompleted = Math.max(oldCompleted, stageNumber);
-                int newUnlocked = oldUnlocked;
-
-                if (newlyCompletedStage && stageNumber < 3) {
-                    newUnlocked = Math.max(oldUnlocked, stageNumber + 1);
-                }
-
-                int newlyUnlockedStage = newUnlocked > oldUnlocked ? newUnlocked : 0;
-                boolean minigameNewlyCompleted = stageNumber == 3 && oldCompleted < 3;
-
-                try (PreparedStatement upsert = connection.prepareStatement(upsertSql)) {
-                    upsert.setInt(1, userId);
-                    upsert.setString(2, type.name());
-                    upsert.setInt(3, newUnlocked);
-                    upsert.setInt(4, newCompleted);
-                    upsert.executeUpdate();
-                }
-
-                int miniGamesPlayed = -1;
-                if (minigameNewlyCompleted) {
-                    try (PreparedStatement statement = connection.prepareStatement(
-                            incrementCounterSql
-                    )) {
-                        statement.setInt(1, userId);
-                        if (statement.executeUpdate() != 1) {
-                            throw new SQLException(
-                                    "Could not update the completed-minigame counter."
-                            );
-                        }
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement(
-                            readCounterSql
-                    )) {
-                        statement.setInt(1, userId);
-                        try (ResultSet resultSet = statement.executeQuery()) {
-                            if (!resultSet.next()) {
-                                throw new SQLException(
-                                        "Could not read the completed-minigame counter."
-                                );
-                            }
-                            miniGamesPlayed = resultSet.getInt("mini_games_played");
-                        }
-                    }
-                }
-
-                connection.commit();
-                return new Completion(
-                        true,
-                        newlyCompletedStage,
-                        newlyUnlockedStage,
-                        minigameNewlyCompleted,
-                        miniGamesPlayed
+                return completeStageInTransaction(
+                        connection,
+                        userId,
+                        type,
+                        stageNumber
                 );
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
-                return new Completion(false, false, 0, false, -1);
+                return completionFailure();
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return new Completion(false, false, 0, false, -1);
+            return completionFailure();
         }
     }
-}
+
+    private Completion completeStageInTransaction(
+            Connection connection,
+            int userId,
+            MinigameType type,
+            int stageNumber
+    ) throws SQLException {
+        Progress oldProgress =
+                readProgress(connection, userId, type);
+
+        if (stageNumber > oldProgress.highestUnlockedStage()) {
+            connection.rollback();
+            return completionFailure();
+        }
+
+        CompletionUpdate update =
+                calculateCompletionUpdate(
+                        oldProgress,
+                        stageNumber
+                );
+
+        saveProgress(
+                connection,
+                userId,
+                type,
+                update
+        );
+
+        int miniGamesPlayed =
+                readUpdatedMinigameCount(
+                        connection,
+                        userId,
+                        update
+                );
+
+        connection.commit();
+
+        return createSuccessfulCompletion(
+                update,
+                miniGamesPlayed
+        );
+    }
+
+    private Progress readProgress(
+            Connection connection,
+            int userId,
+            MinigameType type
+    ) throws SQLException {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(
+                             SELECT_PROGRESS_SQL
+                     )) {
+            statement.setInt(1, userId);
+            statement.setString(2, type.name());
+
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return new Progress(FIRST_STAGE, 0);
+                }
+
+                return new Progress(
+                        resultSet.getInt(
+                                "highest_unlocked_stage"
+                        ),
+                        resultSet.getInt(
+                                "highest_completed_stage"
+                        )
+                );
+            }
+        }
+    }
+
+    private CompletionUpdate calculateCompletionUpdate(
+            Progress oldProgress,
+            int stageNumber
+    ) {
+        boolean newlyCompleted =
+                stageNumber
+                        > oldProgress.highestCompletedStage();
+
+        int newCompleted = Math.max(
+                oldProgress.highestCompletedStage(),
+                stageNumber
+        );
+
+        int newUnlocked = calculateNewUnlockedStage(
+                oldProgress,
+                stageNumber,
+                newlyCompleted
+        );
+
+        int newlyUnlocked =
+                newUnlocked
+                        > oldProgress.highestUnlockedStage()
+                        ? newUnlocked
+                        : 0;
+
+        boolean minigameNewlyCompleted =
+                stageNumber == LAST_STAGE
+                        && oldProgress.highestCompletedStage()
+                        < LAST_STAGE;
+
+        return new CompletionUpdate(
+                newlyCompleted,
+                newCompleted,
+                newUnlocked,
+                newlyUnlocked,
+                minigameNewlyCompleted
+        );
+    }
+
+    private int calculateNewUnlockedStage(
+            Progress oldProgress,
+            int stageNumber,
+            boolean newlyCompleted
+    ) {
+        int newUnlocked =
+                oldProgress.highestUnlockedStage();
+
+        if (newlyCompleted && stageNumber < LAST_STAGE) {
+            newUnlocked = Math.max(
+                    newUnlocked,
+                    stageNumber + 1
+            );
+        }
+
+        return newUnlocked;
+    }
+
+    private void saveProgress(
+            Connection connection,
+            int userId,
+            MinigameType type,
+            CompletionUpdate update
+    ) throws SQLException {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(
+                             UPSERT_PROGRESS_SQL
+                     )) {
+            statement.setInt(1, userId);
+            statement.setString(2, type.name());
+            statement.setInt(
+                    3,
+                    update.newUnlockedStage()
+            );
+            statement.setInt(
+                    4,
+                    update.newCompletedStage()
+            );
+            statement.executeUpdate();
+        }
+    }
+
+    private int readUpdatedMinigameCount(
+            Connection connection,
+            int userId,
+            CompletionUpdate update
+    ) throws SQLException {
+        if (!update.minigameNewlyCompleted()) {
+            return -1;
+        }
+
+        return incrementAndReadMinigameCounter(
+                connection,
+                userId
+        );
+    }
+
+    private int incrementAndReadMinigameCounter(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        incrementMinigameCounter(connection, userId);
+
+        return readMinigameCounter(connection, userId);
+    }
+
+    private void incrementMinigameCounter(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(
+                             INCREMENT_MINIGAME_COUNTER_SQL
+                     )) {
+            statement.setInt(1, userId);
+
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "Could not update the "
+                                + "completed-minigame counter."
+                );
+            }
+        }
+    }
+
+    private int readMinigameCounter(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement =
+                     connection.prepareStatement(
+                             READ_MINIGAME_COUNTER_SQL
+                     )) {
+            statement.setInt(1, userId);
+
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException(
+                            "Could not read the "
+                                    + "completed-minigame counter."
+                    );
+                }
+
+                return resultSet.getInt(
+                        "mini_games_played"
+                );
+            }
+        }
+    }
+
+    private Completion createSuccessfulCompletion(
+            CompletionUpdate update,
+            int miniGamesPlayed
+    ) {
+        return new Completion(
+                true,
+                update.newlyCompletedStage(),
+                update.newlyUnlockedStage(),
+                update.minigameNewlyCompleted(),
+                miniGamesPlayed
+        );
+    }
+
+    private Completion completionFailure() {
+        return new Completion(
+                false,
+                false,
+                0,
+                false,
+                -1
+        );
+    }
+
+    private boolean isValidStage(int stageNumber) {
+        return stageNumber >= FIRST_STAGE
+                && stageNumber <= LAST_STAGE;
+    }
+    }
+
