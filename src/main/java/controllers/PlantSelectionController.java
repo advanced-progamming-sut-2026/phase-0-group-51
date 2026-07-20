@@ -196,7 +196,18 @@ public Result boostPlant(String plantType){
 }
 public Result startGame(){
     Game currentGame = App.getInstance().getCurrentGame();
-    if (currentGame == null) {return new Result(false, "No level is selected.", null);}
+        if (currentGame == null) {
+            return new Result(false, "No level is selected.", null);
+        }
+
+        Result validationFailure = validateGameStart(currentGame);
+        if (validationFailure != null) {
+            return validationFailure;
+        }
+        return loadAndStartGame(currentGame);
+    }
+
+    private Result validateGameStart(Game currentGame) {
     if (currentGame.getSelectedLevel().type()
             == LevelType.LOVE_YOUR_PLANTS) {
         return new Result(
@@ -231,7 +242,10 @@ public Result startGame(){
                     null
             );
         }
+        return validateSelectedPlants(currentGame);
+    }
 
+    private Result validateSelectedPlants(Game currentGame) {
     if (currentGame.getSelectedPlantsForThisGame().stream()
             .anyMatch(this::isForbiddenForCurrentLevel)) {
         return new Result(
@@ -247,7 +261,10 @@ public Result startGame(){
                     null
             );
     }
+        return null;
+    }
 
+    private Result loadAndStartGame(Game currentGame) {
         try {
      currentGame.loadLevel();
      currentGame.start();

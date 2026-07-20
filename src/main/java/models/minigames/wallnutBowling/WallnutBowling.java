@@ -137,7 +137,8 @@ public class WallnutBowling extends Game {
         }
         WallnutType type = conveyorBelt.removeFirst();
         RollingWallnut wallnut = new RollingWallnut(
-                type, x - 1.0, y - 1.0, DEFAULT_NORMAL_ZOMBIE_HEALTH, DEFAULT_CHERRY_BOMB_DAMAGE, wallnutSpeedTilesPerSecond
+                type, x - 1.0, y - 1.0, DEFAULT_NORMAL_ZOMBIE_HEALTH, DEFAULT_CHERRY_BOMB_DAMAGE,
+                wallnutSpeedTilesPerSecond
         );
         rollingWallnuts.add(wallnut);
         getGameState().logEvent(type.getName() + " started rolling from ("
