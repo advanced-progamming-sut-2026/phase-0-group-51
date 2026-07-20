@@ -7,13 +7,14 @@ import models.games.GameState;
 import models.sun.Sun;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+
 @Getter
 public class SunStealBehavior implements PersistableBehavior {
     private final int maxAmount;
     private final int intervalTicks;
     private int totalStolen = 0;
+    private int cooldownTicks = 0;
 
     public SunStealBehavior(int maxAmount, int intervalTicks) {
         this.maxAmount = maxAmount;
@@ -26,27 +27,47 @@ public class SunStealBehavior implements PersistableBehavior {
 
     @Override
     public void onTick(Zombie zombie, GameState gs) {
-        if (isFull()) return;
+        if (isFull()) {
+            return;
+        }
+        if (cooldownTicks > 0) {
+            cooldownTicks--;
+            return;
+        }
 
         Board board = gs.getBoard();
-        List<Sun> activeSuns = new ArrayList<>(board.getActiveSuns());
 
-        for (Sun sun : activeSuns) {
-            if (isFull()) break;
-
-            totalStolen += sun.getAmount();
-            board.removeSun(sun);
+        Sun target = null;
+        float bestDistance = Float.MAX_VALUE;
+        for (Sun sun : new ArrayList<>(board.getActiveSuns())) {
+            float distance = Math.abs(sun.getX() - zombie.getX())
+                + Math.abs(sun.getLane() - zombie.getLane()) * 2f;
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                target = sun;
+            }
         }
+        if (target == null) {
+            return;
+        }
+
+        totalStolen += target.getAmount();
+        board.removeSun(target);
+        gs.logEvent("Zombie " + zombie.getAlias() + " stole the sun at position ("
+            + ((int) Math.floor(target.getX()) + 1) + ", " + (target.getLane() + 1)
+            + ")! Kill it to get your sun back.\n");
+        cooldownTicks = intervalTicks;
     }
 
     @Override
     public void onDeath(Zombie zombie, GameState gs) {
         if (totalStolen > 0) {
             gs.increaseSunBalance(totalStolen);
+            gs.logEvent("Zombie " + zombie.getAlias() + " died and dropped "
+                + totalStolen + " stolen sun.\n");
             totalStolen = 0;
         }
     }
-
 
     @Override
     public String behaviorType() {
@@ -55,8 +76,8 @@ public class SunStealBehavior implements PersistableBehavior {
 
     @Override
     public void applyToStatement(Map<String, Object> cols) {
-        cols.put("max_amount", getMaxAmount());
-        cols.put("steal_interval", getIntervalTicks());
+        cols.put("max_amount", maxAmount);
+        cols.put("steal_interval", intervalTicks);
     }
 
     @Override
