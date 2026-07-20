@@ -232,13 +232,12 @@ public class GameMenuController {
         App.getInstance().setCurrentMenu(Menu.LEADERBOARD_MENU);
     }
 
-    // for testing chapter progression
+
     public Result cheatUnlockLevel(String chapterName, int levelNumber) {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
             return new Result(false, "You must log in before using this cheat.\n", null);
         }
-
         int chapterIndex = findChapterIndex(chapterName);
         if (chapterIndex == -1) {
             return new Result(
@@ -248,7 +247,6 @@ public class GameMenuController {
                     null
             );
         }
-
         ChapterTheme chapter = ADVENTURE_CHAPTERS[chapterIndex];
         int levelCount = chapter.getLevels().size();
         if (levelNumber < 1 || levelNumber > levelCount) {
@@ -258,12 +256,10 @@ public class GameMenuController {
                     null
             );
         }
-
         ProgressRepository progressRepository = new ProgressRepository();
         int[] currentProgress = progressRepository.getCurrentProgress(user.getId());
         int currentChapterIndex = currentProgress[0] - 1;
         int currentLevelNumber = currentProgress[1];
-
         boolean alreadyUnlocked = chapterIndex < currentChapterIndex
                 || (chapterIndex == currentChapterIndex
                 && levelNumber <= currentLevelNumber);
@@ -275,22 +271,13 @@ public class GameMenuController {
                     null
             );
         }
-
-        boolean saved = progressRepository.saveProgress(
-                user.getId(),
-                chapterIndex + 1,
-                levelNumber
-        );
+        boolean saved = progressRepository.saveProgress(user.getId(), chapterIndex + 1, levelNumber);
         if (!saved) {
             return new Result(false, "Could not save the cheated progress.\n", null);
         }
-
         return new Result(
-                true,
-                "CHEAT: Adventure progress unlocked through "
-                        + chapter.getName() + " Level " + levelNumber + ".\n",
-                null
-        );
+                true, "CHEAT: Adventure progress unlocked through "
+                        + chapter.getName() + " Level " + levelNumber + ".\n", null);
     }
 
     public Result cheatAdd(int amount, String kind) {

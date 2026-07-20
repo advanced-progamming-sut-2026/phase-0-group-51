@@ -181,48 +181,36 @@ public record Level(
         allowedZombies = allowedZombies == null
                 ? List.of()
                 : List.copyOf(allowedZombies);
-
         frostbiteConfig = frostbiteConfig == null
                 ? FrostbiteLevelConfig.none()
                 : frostbiteConfig;
-
         saveOurSeedsConfig = saveOurSeedsConfig == null
                 ? SaveOurSeedsConfig.none()
                 : saveOurSeedsConfig;
-
         timedBattleConfig = timedBattleConfig == null
                 ? TimedBattleConfig.none()
                 : timedBattleConfig;
-
         if (type == LevelType.SAVE_OUR_SEEDS
                 && !saveOurSeedsConfig.isConfigured()) {
-            throw new IllegalArgumentException(
-                    "A Save Our Seeds level requires protected plants."
-            );
+            throw new IllegalArgumentException("A Save Our Seeds level requires protected plants.");
         }
 
         if (type == LevelType.DEAD_LINE
                 && deadlineColumn < 1) {
             throw new IllegalArgumentException(
-                    "A Dead Line level requires "
-                            + "a positive deadline column."
-            );
+                    "A Dead Line level requires " + "a positive deadline column.");
         }
 
         if (type == LevelType.LOVE_YOUR_PLANTS
                 && plantLossLimit < 1) {
             throw new IllegalArgumentException(
-                    "A Plants You Love level requires "
-                            + "a positive plant-loss limit."
-            );
+                    "A Plants You Love level requires " + "a positive plant-loss limit.");
         }
 
         if (type == LevelType.TIMED_BATTLE
                 && !timedBattleConfig.isEnabled()) {
             throw new IllegalArgumentException(
-                    "A Timed Battle level requires "
-                            + "at least one objective."
-            );
+                    "A Timed Battle level requires " + "at least one objective.");
         }
 
         if (type != LevelType.TIMED_BATTLE
