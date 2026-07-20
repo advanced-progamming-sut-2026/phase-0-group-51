@@ -207,3 +207,26 @@ CREATE TABLE IF NOT EXISTS zombie_behavior_template (
 
 CREATE INDEX IF NOT EXISTS idx_behavior_zombie
     ON zombie_behavior_template(zombie_alias, chain_order);
+
+CREATE TABLE IF NOT EXISTS user_completed_levels (
+    user_id INTEGER NOT NULL,
+    chapter_index INTEGER NOT NULL,
+    level_index INTEGER NOT NULL,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, chapter_index, level_index),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+INSERT OR IGNORE INTO user_completed_levels(user_id, chapter_index, level_index)
+SELECT up.user_id, chapters.chapter_index, levels.level_index
+FROM user_progress up
+CROSS JOIN (
+    SELECT 1 AS chapter_index UNION ALL SELECT 2 UNION ALL
+    SELECT 3 UNION ALL SELECT 4
+) chapters
+CROSS JOIN (
+    SELECT 1 AS level_index UNION ALL SELECT 2 UNION ALL
+    SELECT 3 UNION ALL SELECT 4
+) levels
+WHERE ((chapters.chapter_index - 1) * 4 + levels.level_index)
+      < ((up.chapter_index - 1) * 4 + up.level_index);
