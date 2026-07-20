@@ -27,12 +27,15 @@ public enum LevelType {
     SAVE_OUR_SEEDS{
         @Override
         public void initialize(GameState state) {
-            // TODO: Add protected starting plants and fail the level when one is destroyed.
-            return;
+            state.configureSaveOurSeeds(
+                    state.getCurrentLevel().saveOurSeedsConfig()
+            );
         }
         @Override
         public boolean isFinished(GameState state) {
-            return state.getZombieWaveManager().isLevelCleared();
+            return !state.hasLostProtectedPlant()
+                    && state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
         }
     },
 
@@ -50,20 +53,29 @@ public enum LevelType {
         @Override
         public void initialize(GameState state) {}
         @Override
-        public boolean isFinished(GameState state) {}
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
+        }
     },
-//    LOCKED_PLANTS{
-//        @Override
-//        public void initialize(GameState state) {}
-//        @Override
-//        public boolean isFinished(GameState state) {}
-//    },
-//    TIMED_BATTLE{
-//        @Override
-//        public void initialize(GameState state) {}
-//        @Override
-//        public boolean isFinished(GameState state) {}
-//    },
+    LOCKED_PLANTS{
+        @Override
+        public void initialize(GameState state) {}
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
+        }
+    },
+    TIMED_BATTLE{
+        @Override
+        public void initialize(GameState state) {}
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
+        }
+    },
     DEAD_LINE {
         @Override
         public void initialize(GameState state) {

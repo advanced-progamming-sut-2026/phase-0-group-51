@@ -155,6 +155,16 @@ public Result startGame(){
      currentGame.loadLevel();
      currentGame.start();
     App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
+    if (currentGame.getGameState().isSaveOurSeedsActive()) {
+        return new Result(
+                true,
+                "Save Our Seeds started. "
+                        + currentGame.getGameState().getSaveOurSeedsStatus()
+                        + " Losing any protected plant loses the level immediately. "
+                        + "Use 'show map' to see the warning rows and E markers.",
+                null
+        );
+    }
     if (currentGame.isPreparingPlantWhatYouGet()) {
         return new Result(
                 true,

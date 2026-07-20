@@ -300,6 +300,7 @@ public class Plant {
         gameState.getQuestTracker().recordPlantLost(this);
         plantType.onDeath(this, gameState);
         gameState.logEvent("Plant " + name + " at (" + (posX + 1) + ", " + (posY + 1) + ") is destroyed.\n");
+        gameState.onPlantDestroyed(this);
         gameState.getBoard().removePlant(this);
     }
     public int getDamage() {

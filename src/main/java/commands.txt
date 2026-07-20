@@ -18,6 +18,7 @@ menu leaderboard
 menu coin-wallet
 menu gem-wallet
 menu cheat add <n> <coin/diamond>
+menu cheat unlock -c <chapter-name> -l <level-number>
 
 menu settings change-difficulty -l <difficulty_level>
 

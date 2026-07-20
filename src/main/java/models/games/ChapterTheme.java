@@ -4,6 +4,7 @@ import lombok.Getter;
 import models.Zombie.ZombieType;
 import models.games.frostbite.FrostbiteLevelConfig;
 import models.games.frostbite.IceFloorDirection;
+import models.games.saveourseeds.SaveOurSeedsConfig;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +33,8 @@ public enum ChapterTheme {
                                     ZombieType.TOMB_RAISER
                             )
                     ),
-                    new Level(2, LevelType.NORMAL, 3, 1500f),
+                    new Level(2, LevelType.SAVE_OUR_SEEDS, 3, 1500f,
+                            100, ancientEgyptSaveOurSeeds()),
                     new Level(3, LevelType.CONVEYOR_BELT, 4, 1500f),
                     new Level(4, LevelType.BOSS, 5, 2000f)
             ),
@@ -128,6 +130,15 @@ public enum ChapterTheme {
 
     private static List<ZombieType> allZombies() {
         return Collections.unmodifiableList(Arrays.asList(ZombieType.values()));
+    }
+
+    private static SaveOurSeedsConfig ancientEgyptSaveOurSeeds() {
+        return SaveOurSeedsConfig.randomPlants(
+                1,
+                3,
+                2,
+                2
+        );
     }
 
     private static FrostbiteLevelConfig frostbiteLevelOne() {

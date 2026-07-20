@@ -295,7 +295,8 @@ public class Game{
         for (Zombie zombie : zombies) {
             zombie.onTick(gameState);
         }
-        if (gameState.checkDeadlineLoseCondition()) {
+        if (gameState.checkSaveOurSeedsLoseCondition()
+                || gameState.checkDeadlineLoseCondition()) {
             finishAsLoss();
             return;
         }

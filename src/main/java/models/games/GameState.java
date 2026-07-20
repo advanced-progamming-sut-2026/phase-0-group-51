@@ -2,10 +2,12 @@ package models.games;
 
 import Data.database.NewsRepository;
 import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.Plant.Plant;
+import models.Plant.PlantFactory;
 import models.User;
 import models.Zombie.Zombie;
 import models.Board.Board;
@@ -13,10 +15,17 @@ import models.Board.Tile;
 import models.items.Mower;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
+import models.games.saveourseeds.SaveOurSeedsConfig;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -41,6 +50,10 @@ public class GameState {
     private Consumer<String> eventLogger;
     private int deadlineColumn = -1;
     private boolean deadlineBreached;
+    private final Set<Plant> protectedPlants = Collections.newSetFromMap(
+            new IdentityHashMap<>()
+    );
+    private boolean protectedPlantLost;
     boolean mowerEnabled =true;
     public void logEvent(String message) {
         if (eventLogger != null) {
@@ -61,7 +74,7 @@ public class GameState {
         }
     }
     public boolean checkLoseCondition() {
-        if (checkDeadlineLoseCondition()) {
+        if (checkSaveOurSeedsLoseCondition() || checkDeadlineLoseCondition()) {
             return true;
         }
         if (!mowerEnabled) {
@@ -79,6 +92,196 @@ public class GameState {
             }
         }
         return false;
+    }
+
+    public void configureSaveOurSeeds(SaveOurSeedsConfig config) {
+        if (config == null || !config.isConfigured()) {
+            throw new IllegalArgumentException(
+                    "Save Our Seeds requires at least one protected plant."
+            );
+        }
+
+        protectedPlants.clear();
+        protectedPlantLost = false;
+
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
+                resolveProtectedPlantPlacements(config);
+
+        for (SaveOurSeedsConfig.ProtectedPlantPlacement placement
+                : placements) {
+            Tile tile = board.getTileAtUserCoordinates(
+                    placement.column() - 1,
+                    placement.row() - 1
+            );
+            if (tile == null) {
+                throw new IllegalArgumentException(
+                        "Protected plant coordinates are outside the board: ("
+                                + placement.column() + ", "
+                                + placement.row() + ")."
+                );
+            }
+            PlantData data = PlantRegistry.getById(placement.plantId());
+            if (data == null) {
+                throw new IllegalArgumentException(
+                        "Unknown protected plant id: " + placement.plantId()
+                );
+            }
+
+            Plant plant = PlantFactory.create(data, placement.level());
+            validatePlantPlacement(plant, tile);
+            plant.setPosX(tile.getColumn());
+            plant.setPosY(tile.getLane());
+            protectedPlants.add(plant);
+            tile.setPlant(plant);
+            plant.getPlantType().onPlanted(plant, this);
+            activateEntryPlantFood(plant);
+
+            if (plant.isDead() || plant.isMarkedForRemoval()
+                    || board.getTileForPlant(plant) == null) {
+                protectedPlants.remove(plant);
+                board.removePlant(plant);
+                throw new IllegalArgumentException(
+                        data.name() + " cannot be used as a protected starting plant."
+                );
+            }
+        }
+    }
+
+    private List<SaveOurSeedsConfig.ProtectedPlantPlacement>
+    resolveProtectedPlantPlacements(SaveOurSeedsConfig config) {
+        if (!config.usesRandomPlacement()) {
+            return config.protectedPlants();
+        }
+
+        SaveOurSeedsConfig.RandomPlacementRule rule =
+                config.randomPlacementRule();
+        int maximumColumn = board.getColumnCount()
+                - rule.excludedRightColumns();
+        if (rule.minimumColumn() > maximumColumn) {
+            throw new IllegalArgumentException(
+                    "No columns remain for random protected-plant placement."
+            );
+        }
+        if (rule.distinctRows() && rule.count() > board.getLaneCount()) {
+            throw new IllegalArgumentException(
+                    "Not enough rows for distinct protected-plant placement."
+            );
+        }
+
+        List<Tile> candidates = new ArrayList<>();
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+            for (int column = rule.minimumColumn() - 1;
+                    column < maximumColumn;
+                    column++) {
+                Tile tile = board.getTile(lane, column);
+                if (tile != null && tile.isOccupiable()) {
+                    candidates.add(tile);
+                }
+            }
+        }
+        Collections.shuffle(candidates, new Random());
+
+        List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements =
+                new ArrayList<>();
+        Set<Integer> usedRows = new HashSet<>();
+        for (Tile tile : candidates) {
+            if (rule.distinctRows() && !usedRows.add(tile.getLane())) {
+                continue;
+            }
+            placements.add(new SaveOurSeedsConfig.ProtectedPlantPlacement(
+                    rule.plantId(),
+                    tile.getColumn() + 1,
+                    tile.getLane() + 1,
+                    rule.level()
+            ));
+            if (placements.size() == rule.count()) {
+                break;
+            }
+        }
+
+        if (placements.size() < rule.count()) {
+            throw new IllegalArgumentException(
+                    "Not enough eligible tiles for random protected plants."
+            );
+        }
+        return List.copyOf(placements);
+    }
+
+    public boolean isSaveOurSeedsActive() {
+        return currentLevel != null
+                && currentLevel.type() == LevelType.SAVE_OUR_SEEDS;
+    }
+
+    public boolean isProtectedPlant(Plant plant) {
+        return plant != null && protectedPlants.contains(plant);
+    }
+
+    public boolean isProtectedRow(int zeroBasedLane) {
+        for (Plant plant : protectedPlants) {
+            if (plant.getPosY() == zeroBasedLane) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasLostProtectedPlant() {
+        return protectedPlantLost;
+    }
+
+    public boolean checkSaveOurSeedsLoseCondition() {
+        if (!isSaveOurSeedsActive()) {
+            return false;
+        }
+        if (!protectedPlantLost) {
+            for (Plant plant : protectedPlants) {
+                if (plant.isDead()
+                        || plant.isMarkedForRemoval()
+                        || board.getTileForPlant(plant) == null) {
+                    onPlantDestroyed(plant);
+                    break;
+                }
+            }
+        }
+        return protectedPlantLost;
+    }
+
+    public void onPlantDestroyed(Plant plant) {
+        if (!isProtectedPlant(plant) || protectedPlantLost) {
+            return;
+        }
+        protectedPlantLost = true;
+        logEvent(
+                "SAVE OUR SEEDS FAILED: protected " + plant.getName()
+                        + " at (" + (plant.getPosX() + 1) + ", "
+                        + (plant.getPosY() + 1)
+                        + ") was destroyed. You lose immediately.\n"
+        );
+    }
+
+    public String getSaveOurSeedsStatus() {
+        if (!isSaveOurSeedsActive()) {
+            return "";
+        }
+        List<Plant> ordered = protectedPlants.stream()
+                .sorted(
+                        Comparator.comparingInt(Plant::getPosY)
+                                .thenComparingInt(Plant::getPosX)
+                )
+                .toList();
+        long surviving = ordered.stream()
+                .filter(plant -> !plant.isDead()
+                        && !plant.isMarkedForRemoval()
+                        && board.getTileForPlant(plant) != null)
+                .count();
+        String locations = ordered.stream()
+                .map(plant -> plant.getName() + " ("
+                        + (plant.getPosX() + 1) + ", "
+                        + (plant.getPosY() + 1) + ")")
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("none");
+        return "Save Our Seeds: " + surviving + "/" + ordered.size()
+                + " protected plants alive. Protect: " + locations + ".";
     }
 
     public void configureDeadline(int userFacingColumn) {
@@ -338,6 +541,11 @@ public class GameState {
     public void pluckPlant(Plant plant, Tile tile){
         if (plant == null || tile == null || tile.getPlant() != plant) {
             throw new IllegalArgumentException("Plant is not on this tile");
+        }
+        if (isProtectedPlant(plant)) {
+            throw new IllegalStateException(
+                    "Protected plants cannot be plucked in Save Our Seeds"
+            );
         }
         tile.removePlant();
         plant.setMarkedForRemoval(true);
