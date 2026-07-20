@@ -98,8 +98,7 @@ start wallnut bowling -s <level number>
 start Zombotany -s <level number>
 start IZombie -s <level number>
 start Beghouled -s <level number>
---------
-Vasebreaker minigame:
+--------Vasebreaker minigame:
 break vase -l (<x>, <y>)
 pick seed packet -l (<x>, <y>)
 plant packet -t <plantType> -l (<x>, <y>)
@@ -107,8 +106,7 @@ advance time -t <count> ticks
 show vasebreaker status
 menu show current
 menu exit
---------
-Wall-nut Bowling minigame:
+--------Wall-nut Bowling minigame:
 roll wallnut -l (<x>, <y>)
 advance time -t <count> ticks
 show conveyor
@@ -129,5 +127,14 @@ plant plant -t <type> -l (<x>, <y>)
 advance time -t <count> ticks
 show zombotany status
 show map
+menu show current
+menu exit
+-------Beghouled minigame:
+swap plants -f (<x1>, <y1>) -t (<x2>, <y2>)
+upgrade beghouled -f <from-plant> -t <to-plant>
+show beghouled map
+show beghouled status
+show beghouled upgrades
+advance time -t <count> ticks
 menu show current
 menu exit

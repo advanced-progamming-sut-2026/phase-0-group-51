@@ -1,12 +1,9 @@
 package models.games;
 
-import Data.database.NewsRepository;
 import Data.loader.ZombieRegistry;
 import lombok.Getter;
 import lombok.Setter;
-import models.App;
 import models.Board.Tile;
-import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.items.Wave;
@@ -14,6 +11,7 @@ import models.quests.QuestKillSourceType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.function.IntConsumer;
 
@@ -26,7 +24,8 @@ public class ZombieWaveManager {
     private final int totalWaves;
     private final float baseDifficulty;        // wave 1
     private final Random random;
-
+    private final boolean endless;
+    private final float maxDifficulty;
     private boolean started;
     private boolean tornadoFinalWave = false;
     private IntConsumer onWaveStart = null;    //(graves, water level, icy wind)
@@ -37,22 +36,55 @@ public class ZombieWaveManager {
     private int firstWaveDelayTicks = 0;
 
     public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases,
-                             int totalWaves, float baseDifficulty) {
-        this(gs, allowedAliases, totalWaves, baseDifficulty, true, new Random());
+            int totalWaves, float baseDifficulty
+    ) {
+        this(gs, allowedAliases, totalWaves, baseDifficulty, true, new Random(), false, Float.MAX_VALUE
+        );
     }
 
-    public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases,
-                             int totalWaves, float baseDifficulty,
-                             boolean autoStart, Random random) {
-        this.gs = gs;
-        this.allowedAliases = allowedAliases;
+    public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases, int totalWaves,
+            float baseDifficulty, boolean autoStart, Random random
+    ) {
+        this(gs, allowedAliases, totalWaves, baseDifficulty, autoStart, random, false, Float.MAX_VALUE);
+    }
+
+    private ZombieWaveManager(
+            GameState gs, List<ZombieType> allowedAliases, int totalWaves, float baseDifficulty, boolean autoStart,
+            Random random,
+            boolean endless,
+            float maxDifficulty
+    ) {
+        this.gs = Objects.requireNonNull(gs, "GameState cannot be null.");
+        this.allowedAliases = List.copyOf(
+                Objects.requireNonNull(allowedAliases, "Allowed zombies cannot be null."));
+        this.random = Objects.requireNonNull(random, "Random cannot be null.");
+        if (allowedAliases.isEmpty()) {
+            throw new IllegalArgumentException("Allowed zombies cannot be empty.");
+        }
+        if (!endless && totalWaves <= 0) {
+            throw new IllegalArgumentException("Total waves must be positive.");
+        }
+        if (baseDifficulty <= 0) {
+            throw new IllegalArgumentException("Base difficulty must be positive.");
+        }
+
+        if (maxDifficulty < baseDifficulty) {
+            throw new IllegalArgumentException("Maximum difficulty cannot be less than base difficulty.");
+        }
+
         this.totalWaves = totalWaves;
         this.baseDifficulty = baseDifficulty;
-        this.random = random;
         this.started = autoStart;
+        this.endless = endless;
+        this.maxDifficulty = maxDifficulty;
     }
 
-
+    public static ZombieWaveManager endless(GameState state,
+            List<ZombieType> allowedZombies, float baseDifficulty, float maxDifficulty, Random random) {
+        return new ZombieWaveManager(
+                state, allowedZombies, Integer.MAX_VALUE, baseDifficulty, true, random, true,
+                maxDifficulty);
+    }
     public void start() {
         started = true;
     }
@@ -82,14 +114,10 @@ public class ZombieWaveManager {
     }
 
     public boolean allWavesSent() {
-        return waves.size() >= totalWaves;
-    }
+        return !endless && waves.size() >= totalWaves;}
 
-    //player wins
     public boolean isLevelCleared() {
-        if (!allWavesSent()) {
-            return false;
-        }
+        if (endless || !allWavesSent()) {return false;}
         for (Zombie zombie : gs.getZombiesInTheGame()) {
             if (!zombie.isDead()) {
                 return false;
@@ -106,28 +134,27 @@ public class ZombieWaveManager {
 
     private void startNextWave() {
         int number = waves.size() + 1;
-        boolean finalWave = number == totalWaves;
-
+        boolean finalWave = !endless && number == totalWaves;
         if (number == 1) {
             currentDifficulty = baseDifficulty;
             gs.getQuestTracker().recordFirstWaveStart(gs.getTickCounter());
         } else if (finalWave) {
-            currentDifficulty *= 2f;    //super-wave
+            currentDifficulty *= 2f;
         } else {
-            currentDifficulty *= 1.25f;
+            currentDifficulty = Math.min(maxDifficulty, currentDifficulty * 1.25f);
         }
 
-        if (finalWave) {
+        if (endless) {
+            gs.logEvent("Endless wave " + number + " started.\n");
+        } else if (finalWave) {
             gs.logEvent("The final wave has come.\n");
         } else {
             gs.logEvent("Wave " + number + " started.\n");
         }
-
         currentWave = new Wave(number, currentDifficulty, finalWave);
         waves.add(currentWave);
         if (onWaveStart != null) {
-            onWaveStart.accept(number);
-        }
+            onWaveStart.accept(number);}
         spawnZombies(currentWave);
     }
 
@@ -155,9 +182,6 @@ public class ZombieWaveManager {
             zombie.setLane(lane);
             zombie.setX(Math.max(0f, x));
             gs.addZombie(zombie);
-            User user = App.getInstance().getLoggedInUser();
-            if (user != null) {new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());
-            }
             wave.addZombie(zombie);
             remaining -= zombie.getWavePointCost();
 
@@ -165,6 +189,12 @@ public class ZombieWaveManager {
                 + " spawned at wave " + wave.getWaveNumber()
                 + " in lane " + (lane + 1)
                 + " which cost " + zombie.getWavePointCost() + ".\n");
+        }
+        if (wave.getZombies().isEmpty()) {
+            throw new IllegalStateException(
+                    "Wave " + wave.getWaveNumber() + " could not spawn any zombie. " + "Its difficulty budget is "
+                            + wave.getDifficulty() + "."
+            );
         }
     }
 
@@ -214,9 +244,6 @@ public class ZombieWaveManager {
         if (currentWave != null) {
             currentWave.addZombie(zombie);
         }
-        User user = App.getInstance().getLoggedInUser();
-        if (user != null) {new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());}
-
         gs.logEvent(
                 "Necromancy summoned "
                         + zombie.getAlias()

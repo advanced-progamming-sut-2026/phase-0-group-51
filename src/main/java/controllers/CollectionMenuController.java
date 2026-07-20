@@ -2,6 +2,7 @@ package controllers;
 
 import Data.database.NewsRepository;
 import Data.database.PlantRepository;
+import Data.database.PlantRepository.PurchaseResult;
 import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;

@@ -1,9 +1,7 @@
 package models.enums;
 
 import views.*;
-import views.miniGames.IZombieMenu;
-import views.miniGames.VaseBreakerMenu;
-import views.miniGames.WallnutBowllingMenu;
+import views.miniGames.*;
 
 import java.util.Scanner;
 import java.util.function.Supplier;
@@ -27,6 +25,8 @@ public enum Menu {
     VASE_BREAKER(VaseBreakerMenu::new),
     WALLNUT_BOWLING(WallnutBowllingMenu::new),
     IZOMBIE(IZombieMenu::new),
+    BEGHOULDED(BeghouledMenu::new),
+    ZOMBOTANY(ZombotanyMenu::new),
     EXIT_MENU(ExitMenu::new);
 
     private final Supplier<AppMenu> menuFactory;

@@ -1,9 +1,6 @@
 package controllers;
 
-import Data.database.DailyOfferRepository;
-import Data.database.GreenHouseRepository;
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
+import Data.database.*;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import controllers.validation.ShopMenuValidation;

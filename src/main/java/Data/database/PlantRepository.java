@@ -7,6 +7,21 @@ import java.util.Map;
 import java.util.Set;
 
 public class PlantRepository {
+
+    public enum PurchaseStatus {
+        SUCCESS,
+        ALREADY_UNLOCKED,
+        NOT_ENOUGH_COINS,
+        USER_NOT_FOUND,
+        DATABASE_ERROR
+    }
+
+    public record PurchaseResult(
+            PurchaseStatus status,
+            int remainingCoins
+    ) {
+    }
+
    public enum UpgradeStatus {
         SUCCESS,
         USER_NOT_FOUND,
@@ -186,6 +201,142 @@ public class PlantRepository {
         }
 
         return map;
+    }
+
+
+    public static PurchaseResult tryPurchasePlant(
+            int userId,
+            int plantId,
+            int purchaseCost
+    ) {
+        if (purchaseCost < 0) {
+            throw new IllegalArgumentException("Purchase cost cannot be negative.");
+        }
+
+        String findUserSql = "SELECT coins FROM users WHERE id = ?";
+        String findUnlockedPlantSql = """
+                SELECT 1
+                FROM user_unlocked_plants
+                WHERE user_id = ? AND plant_id = ?
+                """;
+        String updateCoinsSql = """
+                UPDATE users
+                SET coins = ?
+                WHERE id = ?
+                """;
+        String unlockPlantSql = """
+                INSERT INTO user_unlocked_plants (user_id, plant_id)
+                VALUES (?, ?)
+                """;
+        String createPlantStateSql = """
+                INSERT OR IGNORE INTO user_plants (
+                    user_id, plant_id, plant_level, seed_packets
+                ) VALUES (?, ?, 1, 0)
+                """;
+
+        try (Connection connection = DataBaseManager.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                int currentCoins;
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(findUserSql)) {
+                    statement.setInt(1, userId);
+
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            connection.rollback();
+                            return new PurchaseResult(
+                                    PurchaseStatus.USER_NOT_FOUND,
+                                    0
+                            );
+                        }
+
+                        currentCoins = resultSet.getInt("coins");
+                    }
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(findUnlockedPlantSql)) {
+                    statement.setInt(1, userId);
+                    statement.setInt(2, plantId);
+
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (resultSet.next()) {
+                            connection.rollback();
+                            return new PurchaseResult(
+                                    PurchaseStatus.ALREADY_UNLOCKED,
+                                    currentCoins
+                            );
+                        }
+                    }
+                }
+
+                if (currentCoins < purchaseCost) {
+                    connection.rollback();
+                    return new PurchaseResult(
+                            PurchaseStatus.NOT_ENOUGH_COINS,
+                            currentCoins
+                    );
+                }
+
+                int remainingCoins = currentCoins - purchaseCost;
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(updateCoinsSql)) {
+                    statement.setInt(1, remainingCoins);
+                    statement.setInt(2, userId);
+
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException(
+                                "Failed to update the user's coin balance."
+                        );
+                    }
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(unlockPlantSql)) {
+                    statement.setInt(1, userId);
+                    statement.setInt(2, plantId);
+                    statement.executeUpdate();
+                }
+
+                try (PreparedStatement statement =
+                             connection.prepareStatement(createPlantStateSql)) {
+                    statement.setInt(1, userId);
+                    statement.setInt(2, plantId);
+                    statement.executeUpdate();
+                }
+
+                connection.commit();
+
+                return new PurchaseResult(
+                        PurchaseStatus.SUCCESS,
+                        remainingCoins
+                );
+
+            } catch (SQLException exception) {
+                connection.rollback();
+                exception.printStackTrace();
+
+                return new PurchaseResult(
+                        PurchaseStatus.DATABASE_ERROR,
+                        0
+                );
+
+            } finally {
+                connection.setAutoCommit(true);
+            }
+
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+
+            return new PurchaseResult(
+                    PurchaseStatus.DATABASE_ERROR,
+                    0
+            );
+        }
     }
 
     public static UpgradeResult tryUpgradePlant(
