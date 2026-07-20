@@ -315,12 +315,17 @@ public class Game{
         for (Zombie zombie : zombies) {
             zombie.onTick(gameState);
         }
-        if (gameState.checkDeadlineLoseCondition()) {
+        if (gameState.checkSaveOurSeedsLoseCondition()
+                || gameState.checkDeadlineLoseCondition()) {
             finishAsLoss();
             return;
         }
         gameState.tickMowers();
         gameState.getBoard().tickSuns(gameState);
+        if (gameState.checkTimedBattleLoseCondition()) {
+            finishAsLoss();
+            return;
+        }
         if (gameState.getCurrentLevel().type().isFinished(gameState)) {
             gameState.setFinished(true);
             gameState.setWon(true);

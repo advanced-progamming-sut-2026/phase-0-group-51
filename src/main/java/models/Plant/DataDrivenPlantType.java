@@ -15,9 +15,6 @@ import models.sun.SunType;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Data-driven fallback for plants that do not yet have a dedicated enum implementation.
- */
 public final class DataDrivenPlantType implements PlantType {
     private final PlantData data;
 
@@ -289,6 +286,7 @@ public final class DataDrivenPlantType implements PlantType {
                 Integer.MAX_VALUE,
                 plant
         ));
+        state.recordTimedBattleSunProduced(producedAmount);
         state.logEvent("plant " + plant.getName() + " produced a sun at ("
                 + (plant.getPosX() + 1) + ", " + (plant.getPosY() + 1) + ")\n");
     }

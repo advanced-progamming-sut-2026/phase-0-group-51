@@ -155,6 +155,7 @@ public enum WallNut implements PlantType {
         );
         sun.setGrounded(true);
         state.getBoard().spawnSun(sun);
+        state.recordTimedBattleSunProduced(amount);
         state.logEvent(plant.getName() + " spawned a collectible "
                 + amount + "-sun object after being bitten.\n");
     }

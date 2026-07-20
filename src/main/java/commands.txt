@@ -18,6 +18,7 @@ menu leaderboard
 menu coin-wallet
 menu gem-wallet
 menu cheat add <n> <coin/diamond>
+menu cheat unlock -c <chapter-name> -l <level-number>
 
 menu settings change-difficulty -l <difficulty_level>
 
@@ -45,6 +46,7 @@ show available plants
 add plant -t <type>
 remove plant -t <type>
 boost plant -t <type>
+cheat unlock-all-plants
 start game
 
 advance time -t <count> ticks
