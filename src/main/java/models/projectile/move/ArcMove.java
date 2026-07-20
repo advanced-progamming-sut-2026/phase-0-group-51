@@ -11,7 +11,7 @@ public class ArcMove implements MovingStrategy {
     public void move(Projectile projectile, double speed) {
         Double targetX = projectile.getTargetX();
         Double targetY = projectile.getTargetY();
-        if (targetX == null || targetY == null) return; // built without a target shouldn't happen via Projectile.targeted(...)
+        if (targetX == null || targetY == null) return;
 
         double dx = targetX - projectile.getPosX();
         double dy = targetY - projectile.getPosY();

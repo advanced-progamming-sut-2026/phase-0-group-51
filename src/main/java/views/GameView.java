@@ -13,7 +13,6 @@ public class GameView implements AppMenu {
     @Override
     public void check(Scanner scanner) {
         String line = scanner.nextLine().trim();
-
         if (GameCommands.SHOW_SUN_AMOUNT_REGEX.matches(line)) {
             print(controller.showSunAmount());
         } else if (GameCommands.CHEAT_ADD_SUN_REGEX.matches(line)) {
@@ -30,11 +29,7 @@ public class GameView implements AppMenu {
             Matcher matcher = GameCommands.PLANT_PLANT_REGEX.getMatcher(line);
             int[] coordinates = parseCoordinates(matcher);
             if (coordinates != null) {
-                print(controller.plantPlant(
-                        matcher.group("type").trim(),
-                        coordinates[0],
-                        coordinates[1]
-                ));
+                print(controller.plantPlant(matcher.group("type").trim(), coordinates[0], coordinates[1]));
             }
         } else if (GameCommands.PLUCK_PLANT_REGEX.matches(line)) {
             handleCoordinates(GameCommands.PLUCK_PLANT_REGEX.getMatcher(line), controller::pluckPlant);
@@ -58,11 +53,7 @@ public class GameView implements AppMenu {
             Matcher matcher = GameCommands.CHEAT_SPAWN_ZOMBIE.getMatcher(line);
             int[] coordinates = parseCoordinates(matcher);
             if (coordinates != null) {
-                print(controller.spawnZombie(
-                        matcher.group("zombieType").trim(),
-                        coordinates[0],
-                        coordinates[1]
-                ));
+                print(controller.spawnZombie(matcher.group("zombieType").trim(), coordinates[0], coordinates[1]));
             }
         } else if (GameCommands.SHOW_SCORE_REGEX.matches(line)) {
             print(controller.showScore());

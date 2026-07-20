@@ -14,9 +14,7 @@ public class ScoringRepository {
     private static final int SCORING_CHAPTER_INDEX = -1;
 
     public int saveDailyBest(User user, LocalDate date, int score, boolean won) {
-        if (user == null) {
-            throw new IllegalArgumentException("User is required.");
-        }
+        if (user == null) {throw new IllegalArgumentException("User is required.");}
         LocalDate safeDate = Objects.requireNonNull(date, "Date is required.");
         int safeScore = Math.max(0, score);
         int dateKey = ScoringRules.dateKey(safeDate);
@@ -58,12 +56,9 @@ public class ScoringRepository {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
-            throw new IllegalStateException("Could not save the scoring-game result.", exception);
-        }
-        user.setMostMeowPoint(Math.max(user.getMostMeowPoint(), safeScore)
-        );
-        user.setMaxPoint(Math.max(user.getMaxPoint(), safeScore)
-        );
+            throw new IllegalStateException("Could not save the scoring-game result.", exception);}
+        user.setMostMeowPoint(Math.max(user.getMostMeowPoint(), safeScore));
+        user.setMaxPoint(Math.max(user.getMaxPoint(), safeScore));
         user.setGamesPlayed(user.getGamesPlayed() + 1);
         return getDailyBest(user.getId(), safeDate);
     }

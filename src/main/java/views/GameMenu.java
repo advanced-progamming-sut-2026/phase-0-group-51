@@ -21,6 +21,8 @@ public class GameMenu implements AppMenu{
             handleEnterChapter(line);
         }else if (GameMenuCommands.ENTER_LEVEL_REGEX.matches(line)) {
             handleEnterLevel(line);
+        } else if (GameMenuCommands.LOCKED_PLANTS_MODE_REGEX.matches(line)) {
+            handleLockedPlantsMode(line);
         } else if (GameMenuCommands.GREENHOUSE_REGEX.matches(line)) {
             controller.handleGreenhouse();
         } else if (GameMenuCommands.TRAVEL_LOG_REGEX.matches(line)) {
@@ -62,6 +64,12 @@ public class GameMenu implements AppMenu{
         Result result = controller.enterLevel(parseInteger(matcher, "levelNumber"));
         System.out.println(result.message());
     }
+    private void handleLockedPlantsMode(String input) {
+        String mode = GameMenuCommands.LOCKED_PLANTS_MODE_REGEX.getGroup(input, "mode");
+        Result result = controller.chooseLockedPlantsMode(mode);
+        System.out.println(result.message());
+    }
+
     private void handleCheatUnlockLevel(String input) {
         Matcher matcher = GameMenuCommands.CHEAT_UNLOCK_LEVEL_REGEX.getMatcher(input);
         if (matcher == null) {

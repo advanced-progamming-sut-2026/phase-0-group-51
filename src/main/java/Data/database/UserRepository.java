@@ -8,22 +8,18 @@ public class UserRepository {
 
         public boolean register(User user) {
         String userSql = """
-                INSERT INTO users (
-                    username, email, password_hash, gender, nickname,
-                    security_question, answer
+                INSERT INTO users ( username, email, password_hash, gender, nickname, security_question, answer
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         String progressSql = """
                 INSERT INTO user_progress(user_id, chapter_index, level_index)
                 VALUES (?, 1, 1)
                 """;
-
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement statement = connection.prepareStatement(
-                        userSql, Statement.RETURN_GENERATED_KEYS
-                )) {
+                        userSql, Statement.RETURN_GENERATED_KEYS)) {
                     statement.setString(1, user.getUsername());
                     statement.setString(2, user.getEmail());
                     statement.setString(3, user.getPasswordHash());
@@ -31,25 +27,16 @@ public class UserRepository {
                     statement.setString(5, user.getNickname());
                     statement.setInt(6, user.getSecurityQuestion());
                     statement.setString(7, user.getAnswer());
-
                     if (statement.executeUpdate() != 1) {
-                        throw new SQLException("The user row was not created.");
-                    }
+                        throw new SQLException("The user row was not created.");}
                     try (ResultSet resultSet = statement.getGeneratedKeys()) {
                         if (!resultSet.next()) {
-                            throw new SQLException("The generated user id was not returned.");
-                }
-                        user.setId(resultSet.getInt(1));
-                    }
-                }
-
+                            throw new SQLException("The generated user id was not returned.");}
+                        user.setId(resultSet.getInt(1));}}
                 try (PreparedStatement statement = connection.prepareStatement(progressSql)) {
                     statement.setInt(1, user.getId());
                     if (statement.executeUpdate() != 1) {
-                        throw new SQLException("The initial progress row was not created.");
-                    }
-                }
-
+                        throw new SQLException("The initial progress row was not created.");}}
                 GreenHouseRepository.insertInitialPots(connection, user.getId());
                 connection.commit();
                 return true;
@@ -73,12 +60,10 @@ public class UserRepository {
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, username);
             try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next();
-            }
+                return resultSet.next();}
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return false;
-        }
+            return false;}
     }
     public boolean emailExists(String email) {
         String sql = "SELECT 1 FROM users WHERE email = ?";
@@ -86,12 +71,10 @@ public class UserRepository {
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, email);
             try (ResultSet resultSet = statement.executeQuery()) {
-                return resultSet.next();
-            }
+                return resultSet.next();}
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return false;
-        }
+            return false;}
     }
 
     public boolean emailExistsForAnotherUser(String email, int userId) {

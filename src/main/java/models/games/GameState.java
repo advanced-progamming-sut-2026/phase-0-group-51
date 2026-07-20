@@ -62,6 +62,8 @@ public class GameState {
     private int timedBattleSunProduced;
     private boolean timedBattleFailed;
     boolean mowerEnabled =true;
+    private int plantLossLimit = -1;
+    private boolean plantLossLimitReached;
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
@@ -81,7 +83,7 @@ public class GameState {
         }
     }
     public boolean checkLoseCondition() {
-        if (checkSaveOurSeedsLoseCondition() || checkDeadlineLoseCondition()) {
+        if (checkDeadlineLoseCondition() || checkPlantLossLoseCondition() || checkSaveOurSeedsLoseCondition()) {
             return true;
         }
         if (!mowerEnabled) {
@@ -490,6 +492,39 @@ public class GameState {
                 z.killInstantly(this, QuestKillSourceType.MOWER);
             }
         }
+    }
+    public void configurePlantLossLimit(int limit) {
+        if (limit < 1) {
+            throw new IllegalArgumentException("Plant-loss limit must be positive.");
+        }
+        plantLossLimit = limit;
+        plantLossLimitReached = false;
+        logEvent("Plants You Love started. You lose when "
+                        + plantLossLimit + " plants are destroyed.\n");
+    }
+
+    public boolean hasPlantLossLimit() {
+        return plantLossLimit > 0;
+    }
+
+    public boolean checkPlantLossLoseCondition() {
+        if (!hasPlantLossLimit()) {
+            return false;
+        }
+
+        if (plantLossLimitReached) {
+            return true;
+        }
+        int plantsLost = questTracker.getPlantsLost();
+        if (plantsLost < plantLossLimit) {
+            return false;
+        }
+        plantLossLimitReached = true;
+        logEvent(
+                "You lost " + plantsLost + " plants out of the allowed " + plantLossLimit + "; LOSER!!!\n"
+        );
+
+        return true;
     }
     public void addTick(int tick){
         this.tickCounter += tick;

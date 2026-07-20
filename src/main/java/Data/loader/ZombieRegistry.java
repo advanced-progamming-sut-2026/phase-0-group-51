@@ -10,7 +10,7 @@ import java.util.Map;
 
 
 public class ZombieRegistry {
-    private static final Map<String, Zombie> templates = new LinkedHashMap<>();
+    private static final Map<String, Zombie> TEMPLATES = new LinkedHashMap<>();
 
     public ZombieRegistry(ZombieRepository repository) throws SQLException {
         init(repository.loadAllZombies());
@@ -35,16 +35,16 @@ public class ZombieRegistry {
     }
 
     public static void init(Map<String, Zombie> loaded) {
-        templates.clear();
-        templates.putAll(loaded);
+        TEMPLATES.clear();
+        TEMPLATES.putAll(loaded);
     }
 
     public static Zombie getTemplate(String alias) {
-        return templates.get(alias);
+        return TEMPLATES.get(alias);
     }
 
     public static Zombie spawn(String alias) {
-        Zombie template = templates.get(alias);
+        Zombie template = TEMPLATES.get(alias);
         if (template == null) {
             throw new IllegalArgumentException("Unknown zombie alias: " + alias);
         }
@@ -52,6 +52,6 @@ public class ZombieRegistry {
     }
 
     public static Map<String, Zombie> getTemplates() {
-        return Collections.unmodifiableMap(templates);
+        return Collections.unmodifiableMap(TEMPLATES);
     }
 }

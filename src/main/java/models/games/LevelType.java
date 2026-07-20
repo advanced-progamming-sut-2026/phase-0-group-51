@@ -39,6 +39,19 @@ public enum LevelType {
         }
     },
 
+    LOCKED_PLANTS {
+        @Override
+        public void initialize(GameState state) {
+            state.logEvent("Locked Plants level started.\n");
+        }
+
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
+        }
+    },
+
     NIGHT_OPS{
         @Override
         public void initialize(GameState state) {
@@ -114,6 +127,17 @@ public enum LevelType {
         @Override
         public boolean isFinished(GameState state) {
             return state.getZombieWaveManager().isLevelCleared();
+        }
+    },
+    LOVE_YOUR_PLANTS{
+        @Override
+        public void initialize(GameState state) {
+            state.configurePlantLossLimit(state.getCurrentLevel().plantLossLimit());
+        }
+        @Override
+        public boolean isFinished(GameState state) {
+            return state.getZombieWaveManager() != null
+                    && state.getZombieWaveManager().isLevelCleared();
         }
     };
     public boolean usesPlantSelection() {return true;}

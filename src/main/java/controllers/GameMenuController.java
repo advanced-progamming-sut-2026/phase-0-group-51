@@ -13,6 +13,8 @@ import models.enums.Menu;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+import models.games.LevelType;
+import models.games.darkAges.LockedPlantsMode;
 
 import java.util.Set;
 
@@ -96,18 +98,14 @@ public class GameMenuController {
             return new Result(
                     false,
                     "Invalid level number.\n" + selectedChapter.getName()
-                            + " has levels 1 to " + numberOfLevels
-                            + ".\n",
-                    null
-            );
+                            + " has levels 1 to " + numberOfLevels + ".\n", null);
         }
         int[] currentProgress = normalizedProgress(App.loggedInUser);
         int unlockedChapterIndex = currentProgress[0] - 1;
         int unlockedLevelIndex = currentProgress[1] - 1;
         if (selectedChapterIndex > unlockedChapterIndex) {
             return new Result(
-                    false, "This chapter is locked for you.\n", null
-            );
+                    false, "This chapter is locked for you.\n", null);
         }
         int requestedLevelIndex = levelNumber - 1;
         if (selectedChapterIndex == unlockedChapterIndex && requestedLevelIndex > unlockedLevelIndex) {
@@ -116,8 +114,7 @@ public class GameMenuController {
                     "Level " + levelNumber + " is locked.\n"
                             + "Your highest unlocked level in "
                             + selectedChapter.getName() + " is Level " + (unlockedLevelIndex + 1) + ".\n",
-                    null
-            );
+                    null);
         }
         Level selectedLevel = selectedChapter.getLevels().get(requestedLevelIndex);
         unlockChapterOneLevelOnePlants(selectedChapterIndex, requestedLevelIndex);
@@ -125,13 +122,79 @@ public class GameMenuController {
         newGame.setCurrentChapterIndex(selectedChapterIndex);
         newGame.setCurrentLevelIndex(requestedLevelIndex);
         App.getInstance().setCurrentGame(newGame);
+        if (selectedLevel.type() == LevelType.LOCKED_PLANTS) {
+            return lockedPlantsModePrompt(selectedChapter, selectedLevel);
+        }
         if (!selectedLevel.type().usesPlantSelection()) {
             return startLevelDirectly(newGame, selectedChapter, selectedLevel);}
         App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
         return new Result(
                 true, "Entered " + selectedChapter.getName() + " Level "
-                        + levelNumber + ".\n" + "You are now in the Plant Selection Menu.\n", null);
+                        + levelNumber + ".\n" + "You are now in the Plant Selection Menu.\n", null
+        );
     }
+    private Result lockedPlantsModePrompt(ChapterTheme chapter, Level level) {
+        return new Result(
+                true,
+                "Entered " + chapter.getName() + " Level "
+                        + level.levelNumber() + ".\n"
+                        + "Choose one Locked Plants mode before plant selection:\n"
+                        + "1. Family Lock: one unlocked plant remains available "
+                        + "from each restricted family.\n"
+                        + "2. Forced Plants: all eight slots are filled and locked.\n",
+                null
+        );
+    }
+
+    public Result chooseLockedPlantsMode(String modeName) {
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null) {
+            return new Result(false, "Enter Dark Ages Level 2 before choosing a mode.\n", null);}
+        Level selectedLevel;
+        try {selectedLevel = game.getSelectedLevel();
+        } catch (IllegalStateException exception) {
+            return new Result(false, exception.getMessage() + "\n", null);
+        }
+
+        if (selectedLevel.type() != LevelType.LOCKED_PLANTS) {
+            return new Result(false, "The selected level is not a Locked Plants level.\n", null);
+        }
+
+        LockedPlantsMode mode = LockedPlantsMode.fromCommand(modeName);
+        if (mode == null) {
+            return new Result(false, "Invalid Locked Plants mode. Use 'family' or 'forced'.\n", null);
+        }
+        try {
+            game.chooseLockedPlantsMode(mode);
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage();
+            if (message == null || message.isBlank()) {
+                message = "The mode could not be prepared.";}
+            return new Result(
+                    false, "Could not prepare Locked Plants mode: " + message + "\n", null);
+        }
+        App.getInstance().setCurrentMenu(Menu.PlantSelection_Menu);
+        if (mode == LockedPlantsMode.FAMILY) {
+            return new Result(
+                    true,
+                    "Family Lock mode selected.\n" + "In the Shooter, Explosive, and Wall-nut families, "
+                            + "only one random unlocked plant from each family is available.\n"
+                            + "You are now in the Plant Selection Menu.\n",
+                    null
+            );
+    }
+
+        StringBuilder forcedPlants = new StringBuilder(
+                "Forced Plants mode selected. All eight slots are locked:\n"
+        );
+        for (PlantData plant : game.getSelectedPlantsForThisGame()) {
+            forcedPlants.append("- ").append(plant.name()).append("\n");
+        }
+        forcedPlants.append("Use 'start game' when you are ready.\n");
+
+        return new Result(true, forcedPlants.toString(), null);
+    }
+
     private Result startLevelDirectly(Game game, ChapterTheme theme, Level level) {
         try {
             game.loadLevel();

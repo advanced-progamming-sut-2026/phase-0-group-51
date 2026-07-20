@@ -44,7 +44,8 @@ public final class PlantLoader {
             if (mods != null) {
                 for (int j = 0; j < mods.length(); j++) {
                     JSONObject m = mods.getJSONObject(j);
-                    modifiers.add(new StatModifierData(m.getString("stat"), m.getString("operation"), m.getDouble("value")));
+                    modifiers.add(new StatModifierData(m.getString("stat"), m.getString("operation"),
+                            m.getDouble("value")));
                 }
             }
             result.add(new UpgradeData(up.getInt("level"), up.optString("description", ""), modifiers));

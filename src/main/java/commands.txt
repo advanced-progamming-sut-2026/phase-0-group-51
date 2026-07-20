@@ -12,6 +12,10 @@ menu logout
 
 menu enter chapter -c <chaptername>
 menu enter level -l <level-number>
+
+---------special level 2 season 4:
+choose locked-plants mode -m <family/forced>
+
 menu greenhouse
 menu travel-log
 menu leaderboard

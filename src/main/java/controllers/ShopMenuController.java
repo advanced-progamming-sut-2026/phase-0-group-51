@@ -108,35 +108,26 @@ public class ShopMenuController {
     public Result shopBuy(String itemId, String count, String plantType) {
     User user = currentUser();
         if (user == null) {
-            return loginRequired();
-        }
+            return loginRequired();}
         if (!validation.isCountValid(count)) {
-            return new Result(false, "Please enter a valid positive number.\n", null);
-        }
+            return new Result(false, "Please enter a valid positive number.\n", null);}
         if (!validation.isIdValid(itemId)) {
-            return new Result(false, "Please enter a valid item id.\n", null);
-        }
-
+            return new Result(false, "Please enter a valid item id.\n", null);}
     ShopItem item = shop.getItemById(validation.getId());
         if (item == null) {
-            return new Result(false, "Item not found.\n", null);
-        }
+            return new Result(false, "Item not found.\n", null);}
 
         Integer selectedPlantId = null;
     if (item.getType() == ShopItemType.SEED_PACKET_SELECTED) {
             if (plantType == null || plantType.isBlank()) {
-                return new Result(false, "Please enter plant type.\n", null);
-            }
+                return new Result(false, "Please enter plant type.\n", null);}
             if (!validation.isPlantTypeValid(plantType)) {
-                return new Result(false, "Plant not found.\n", null);
-            }
+                return new Result(false, "Plant not found.\n", null);}
             selectedPlantId = validation.getData().id();
             Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
             if (!unlocked.contains(selectedPlantId)) {
                 return new Result(
-                        false,
-                        "The selected plant is not unlocked.\n",
-                        null
+                        false, "The selected plant is not unlocked.\n", null
                 );
             }
         }
@@ -146,9 +137,7 @@ public class ShopMenuController {
       Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
             if (unlocked.isEmpty()) {
                 return new Result(
-                        false,
-                        "You do not have any unlocked plants for random Seed Packets.\n",
-                        null
+                        false, "You do not have any unlocked plants for random Seed Packets.\n", null
                 );
             }
             List<Integer> pool = new ArrayList<>(unlocked);
@@ -169,24 +158,15 @@ public class ShopMenuController {
 
         ShopPurchaseRepository.PurchaseResult result =
                 purchaseRepository.purchasePermanentItem(
-                        user.getId(),
-                        item.getType(),
-                        item.getCurrency(),
-                        totalPrice,
-                        validation.getCount(),
-                        selectedPlantId,
-                        randomPlantIds
+                        user.getId(), item.getType(), item.getCurrency(), totalPrice, validation.getCount(), selectedPlantId, randomPlantIds
                 );
 
         if (result.status() != ShopPurchaseRepository.PurchaseStatus.SUCCESS) {
-            return purchaseFailure(result.status());
-  }
-
+            return purchaseFailure(result.status());}
         applyBalances(user, result);
         if (item.getType() == ShopItemType.POT) {
             user.setGreenHouse(GreenHouseRepository.load(user.getId()));
   }
-
         return new Result(true, "Purchase completed successfully.\n", null);
     }
 
