@@ -375,12 +375,36 @@ public class GameState {
         return nearest;
     }
 
-    public Zombie findNearestHypnotizedZombieInRange(Zombie self, int lane, float x, int range) {
+    public Zombie findNearestHypnotizedZombieInRange(
+            Zombie self,
+            int lane,
+            float x,
+            int range
+    ) {
+        return findNearestHypnotizedZombieInRange(
+                self,
+                lane,
+                x,
+                (float) range
+        );
+    }
+
+    public Zombie findNearestHypnotizedZombieInRange(
+            Zombie self,
+            int lane,
+            float x,
+            float range
+    ) {
         Zombie nearest = null;
         float nearestDistance = Float.MAX_VALUE;
         for (Zombie other : zombiesInTheGame) {
-            if (other == self || !other.isHypnotized() || other.isDead()) continue;
-            if (other.getLane() != lane) continue;
+            if (other == self
+                    || !other.isHypnotized()
+                    || other.isDead()
+                    || other.getLane() != lane) {
+                continue;
+            }
+
             float distance = Math.abs(other.getX() - x);
             if (distance <= range && distance < nearestDistance) {
                 nearest = other;

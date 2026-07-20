@@ -66,6 +66,12 @@ public enum ElementType {
             if (target.getDirection() > 0) {
                 target.reverseDirection();
             }
+            System.out.printf(
+                    "[DEBUG][CAULIPOWER] %s was hypnotized at row %d, x=%.2f.%n",
+                    target.getAlias(),
+                    target.getLane() + 1,
+                    target.getX()
+            );
         }
     };
 

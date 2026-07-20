@@ -23,6 +23,11 @@ public class PlantSelectionMenu implements AppMenu{
         else if(PlantSelectionMenuCommands.BOOST_PLANT_REGEX.matches(line)){
             handleBoostPlant(line);
         }
+        // for testing the plants
+        else if (PlantSelectionMenuCommands.UNLOCK_ALL_PLANTS_CHEAT_REGEX.matches(line)) {
+            Result result = controller.unlockAllPlantsForTesting();
+            System.out.println(result.message());
+        }
         else if (PlantSelectionMenuCommands.SHOW_ALL_PLANT_REGEX.matches(line)) {
             Result result = controller.showAllPlants();
             System.out.println(result.message());

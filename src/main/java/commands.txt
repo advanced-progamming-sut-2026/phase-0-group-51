@@ -45,6 +45,7 @@ show available plants
 add plant -t <type>
 remove plant -t <type>
 boost plant -t <type>
+cheat unlock-all-plants
 start game
 
 advance time -t <count> ticks

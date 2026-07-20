@@ -46,7 +46,24 @@ public enum LevelType {
            return state.getZombieWaveManager() != null && state.getZombieWaveManager().isLevelCleared();
         }
     },
-
+    LOVE_YOUR_PLANTS{
+        @Override
+        public void initialize(GameState state) {}
+        @Override
+        public boolean isFinished(GameState state) {}
+    },
+//    LOCKED_PLANTS{
+//        @Override
+//        public void initialize(GameState state) {}
+//        @Override
+//        public boolean isFinished(GameState state) {}
+//    },
+//    TIMED_BATTLE{
+//        @Override
+//        public void initialize(GameState state) {}
+//        @Override
+//        public boolean isFinished(GameState state) {}
+//    },
     DEAD_LINE {
         @Override
         public void initialize(GameState state) {
