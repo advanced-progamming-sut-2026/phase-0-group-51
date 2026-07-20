@@ -12,6 +12,11 @@ public enum GameMenuCommands implements Commands{
     LEADERBOARD_REGEX("^menu\\s+leaderboard$"),
     COIN_WALLET_REGEX("^menu\\s+coin-wallet$"),
     GEM_WALLET_REGEX("^menu\\s+gem-wallet$"),
+    // for testing chapter progression
+    CHEAT_UNLOCK_LEVEL_REGEX(
+            "^menu\\s+cheat\\s+unlock\\s+-c\\s+(?<chapterName>.+?)"
+                    + "\\s+-l\\s+(?<levelNumber>\\d+)$"
+    ),
     CHEAT_ADD_REGEX("^menu\\s+cheat\\s+add\\s+(?<amount>\\d+)\\s+(?<kind>\\S+)$")
     ;
     private final String regex;

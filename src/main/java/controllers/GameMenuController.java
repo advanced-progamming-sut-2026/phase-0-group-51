@@ -232,6 +232,67 @@ public class GameMenuController {
         App.getInstance().setCurrentMenu(Menu.LEADERBOARD_MENU);
     }
 
+    // for testing chapter progression
+    public Result cheatUnlockLevel(String chapterName, int levelNumber) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return new Result(false, "You must log in before using this cheat.\n", null);
+        }
+
+        int chapterIndex = findChapterIndex(chapterName);
+        if (chapterIndex == -1) {
+            return new Result(
+                    false,
+                    "Chapter not found. Valid chapters are Ancient Egypt, "
+                            + "Frostbite Caves, Big Wave Beach, and Dark Ages.\n",
+                    null
+            );
+        }
+
+        ChapterTheme chapter = ADVENTURE_CHAPTERS[chapterIndex];
+        int levelCount = chapter.getLevels().size();
+        if (levelNumber < 1 || levelNumber > levelCount) {
+            return new Result(
+                    false,
+                    chapter.getName() + " has levels 1 to " + levelCount + ".\n",
+                    null
+            );
+        }
+
+        ProgressRepository progressRepository = new ProgressRepository();
+        int[] currentProgress = progressRepository.getCurrentProgress(user.getId());
+        int currentChapterIndex = currentProgress[0] - 1;
+        int currentLevelNumber = currentProgress[1];
+
+        boolean alreadyUnlocked = chapterIndex < currentChapterIndex
+                || (chapterIndex == currentChapterIndex
+                && levelNumber <= currentLevelNumber);
+        if (alreadyUnlocked) {
+            return new Result(
+                    true,
+                    "CHEAT: " + chapter.getName() + " Level " + levelNumber
+                            + " is already unlocked.\n",
+                    null
+            );
+        }
+
+        boolean saved = progressRepository.saveProgress(
+                user.getId(),
+                chapterIndex + 1,
+                levelNumber
+        );
+        if (!saved) {
+            return new Result(false, "Could not save the cheated progress.\n", null);
+        }
+
+        return new Result(
+                true,
+                "CHEAT: Adventure progress unlocked through "
+                        + chapter.getName() + " Level " + levelNumber + ".\n",
+                null
+        );
+    }
+
     public Result cheatAdd(int amount, String kind) {
         if(amount <= 0){
             return new Result(false, "Please enter a positive amount." , null);

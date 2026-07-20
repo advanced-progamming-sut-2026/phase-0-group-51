@@ -74,6 +74,27 @@ public class Board {
         }
         return null;
     }
+    public Plant findNearestPlantInRange(int lane, float fromX, float range) {
+        Plant nearestPlant = null;
+        float nearestDistance = Float.MAX_VALUE;
+
+        for (int col = 0; col < columnCount; col++) {
+            Tile tile = getTile(lane, col);
+            if (tile == null || !tile.hasPlant()) {
+                continue;
+            }
+
+            Plant plant = tile.getPlant();
+            float distance = fromX - plant.getPosX();
+            if (distance >= 0.0f
+                    && distance <= range
+                    && distance < nearestDistance) {
+                nearestPlant = plant;
+                nearestDistance = distance;
+            }
+        }
+        return nearestPlant;
+    }
     public List<Plant> getPlantsInLane(int lane) {
         List<Plant> result = new ArrayList<>();
         for (int col = 0; col < columnCount; col++) {

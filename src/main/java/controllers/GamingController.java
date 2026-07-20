@@ -83,6 +83,9 @@ public class GamingController {
                 .append(" ticks.\n");
         state.setEventLogger(output::append);
         game.forward(ticks);
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
 
         if (state.isFinished()) {
             Menu destination = game instanceof ScoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU;
@@ -601,8 +604,17 @@ public class GamingController {
         }
 
         Plant plant = tile.getPlant();
-        state.pluckPlant(plant, tile);
-        return success(plant.getName() + " was plucked from (" + x + ", " + y + ").\n");
+        if (state.isProtectedPlant(plant)) {
+            return failure(
+                    "This plant is protected in Save Our Seeds and cannot be plucked.\n"
+            );
+        }
+        int refundedSun = state.pluckPlant(plant, tile);
+        return success(
+                plant.getName() + " was plucked from (" + x + ", " + y + ").\n"
+                        + refundedSun + " suns were returned. You now have "
+                        + state.getSun() + " suns.\n"
+        );
     }
 
     public Result feedPlant(int x, int y) {
@@ -1065,6 +1077,13 @@ public class GamingController {
                 .append("Sun: ").append(state.getSun()).append('\n')
                 .append("Plant food: ").append(state.getPlantFoodCount()).append('\n')
                 .append("Tick: ").append(state.getTickCounter()).append("\n");
+        if (state.isTimedBattleActive()) {
+            output.append(state.timedBattleStatusLine());
+        }
+        if (state.isSaveOurSeedsActive()) {
+            output.append(state.getSaveOurSeedsStatus()).append('\n')
+                    .append("WARNING: rows marked with ! contain protected plants.\n");
+        }
         if (game.isPreparingPlantWhatYouGet()) {
             output.append("PREPARATION - no recharge; use 'start zombie waves'.\n");
         } else if (game.isPlantWhatYouGetLevel()) {
@@ -1092,14 +1111,15 @@ public class GamingController {
                 .append("Each cell contains  3 chars: ").append("[base][zombie][sun].\n\n");
         appendBoardColumnHeader(output, board);
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("Row ").append(lane + 1).append(": ");
+            output.append(state.isProtectedRow(lane) ? "! Row " : "  Row ")
+                    .append(lane + 1).append(": ");
             for (int column = 0; column < board.getColumnCount(); column++) {
                 Tile tile = board.getTile(lane, column);
                 output.append('[').append(buildThreeCharacterCell(state, tile)).append("] ");}
             output.append('\n');
         }
         output.append("\nCell position 1 (base): ")
-                .append("P=land plant, F=frozen plant, A=aquatic plant, ")
+                .append("E=protected plant, P=land plant, F=frozen plant, A=aquatic plant, ")
                 .append("Y=plant on Lily Pad, G=normal grave, ")
                 .append("S=sun grave, Q=plant-food grave, I=ice block, ")
                 .append("C=crater, U=ice floor up, D=ice floor down, ")
@@ -1140,7 +1160,7 @@ public class GamingController {
     }
 
     private String buildThreeCharacterCell(GameState state, Tile tile) {
-        char base = getBaseMapSymbol(tile);
+        char base = getBaseMapSymbol(state, tile);
         char zombie = getZombiesAtTile(
                 state, tile.getLane(), tile.getColumn()
         ).isEmpty() ? '.' : 'Z';
@@ -1150,8 +1170,11 @@ public class GamingController {
         return new String(new char[]{base, zombie, sun});
     }
 
-    private char getBaseMapSymbol(Tile tile) {
+    private char getBaseMapSymbol(GameState state, Tile tile) {
         if (tile.hasTopPlant()) {
+            if (state.isProtectedPlant(tile.getTopPlant())) {
+                return 'E';
+            }
             if (tile.getTopPlant().isFrozenByIce()) {
                 return 'F';
             }

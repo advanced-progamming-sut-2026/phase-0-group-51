@@ -33,6 +33,9 @@ public class GameMenu implements AppMenu{
             System.out.println("You have "+ App.loggedInUser.getCoins()+ "coins.");
         } else if (GameMenuCommands.GEM_WALLET_REGEX.matches(line)) {
             System.out.println("You have "+ App.loggedInUser.getGems()+ "gems.");
+        // for testing chapter progression
+        } else if (GameMenuCommands.CHEAT_UNLOCK_LEVEL_REGEX.matches(line)) {
+            handleCheatUnlockLevel(line);
         } else if (GameMenuCommands.CHEAT_ADD_REGEX.matches(line)) {
             handleCheatAdd(line);
         } else if (GameMenuCommands.ENTER_MENU_REGEX.matches(line)) {
@@ -67,6 +70,17 @@ public class GameMenu implements AppMenu{
         System.out.println(result.message());
     }
 
+    private void handleCheatUnlockLevel(String input) {
+        Matcher matcher = GameMenuCommands.CHEAT_UNLOCK_LEVEL_REGEX.getMatcher(input);
+        if (matcher == null) {
+            invalidCommand();
+            return;
+        }
+        String chapterName = matcher.group("chapterName");
+        int levelNumber = parseInteger(matcher, "levelNumber");
+        Result result = controller.cheatUnlockLevel(chapterName, levelNumber);
+        System.out.println(result.message());
+    }
     public void handleCheatAdd(String input){
         int amount = Integer.parseInt(GameMenuCommands.CHEAT_ADD_REGEX.getGroup(input, "amount"));
         String kind = GameMenuCommands.CHEAT_ADD_REGEX.getGroup(input, "kind");

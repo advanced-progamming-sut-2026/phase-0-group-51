@@ -6,6 +6,8 @@ public enum PlantSelectionMenuCommands implements Commands {
     ADD_PLANT_REGEX("^\\s*add\\s+plant\\s+-t\\s+(?<type>.+?)\\s*$"),
     REMOVE_PLANT_REGEX("^\\s*remove\\s+plant\\s+-t\\s+(?<type>.+?)\\s*$"),
     BOOST_PLANT_REGEX("^\\s*boost\\s+plant\\s+-t\\s+(?<type>.+?)\\s*$"),
+    // for testing the plants
+    UNLOCK_ALL_PLANTS_CHEAT_REGEX("^\\s*cheat\\s+unlock-all-plants\\s*$"),
     START_GAME_REGEX("^\\s*start\\s+game\\s*$"),
     EXIT_MENU_REGEX(Commands.EXIT_MENU_REGEX),
     CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX);

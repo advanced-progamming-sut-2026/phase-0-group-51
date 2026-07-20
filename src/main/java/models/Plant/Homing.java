@@ -120,6 +120,13 @@ public enum Homing implements PlantType {
             zombie.reverseDirection();
         }
         state.logEvent(plant.getName() + " hypnotized " + zombie.getAlias() + ".\n");
+        System.out.printf(
+                "[DEBUG][CAULIPOWER] %s hypnotized %s at row %d, x=%.2f.%n",
+                plant.getName(),
+                zombie.getAlias(),
+                zombie.getLane() + 1,
+                zombie.getX()
+        );
     }
 
     private static void strikeOne(Plant plant, GameState state) {

@@ -147,6 +147,7 @@ public enum SunProducer implements PlantType {
         );
         sun.setGrounded(true);
         state.getBoard().spawnSun(sun);
+        state.recordTimedBattleSunProduced(amount);
         state.logEvent(plant.getName()
                 + " produced a collectible sun worth "
                 + amount + " at ("
@@ -177,6 +178,7 @@ public enum SunProducer implements PlantType {
                 Integer.MAX_VALUE,
                 plant
         ));
+        state.recordTimedBattleSunProduced(amount);
         state.logEvent(plant.getName() + " produced a sun at ("
                 + (plant.getPosX() + 1) + ", "
                 + (plant.getPosY() + 1) + ")\n");
@@ -186,8 +188,6 @@ public enum SunProducer implements PlantType {
             Plant plant,
             GameState state
     ) {
-        // The JSON modifier SETs DOUBLE_SUN_CHANCE to 1 and does not provide
-        // a probability. Treat the completed upgrade as guaranteed double sun.
         return plant.getPlantStat().doubleSunChance();
     }
 

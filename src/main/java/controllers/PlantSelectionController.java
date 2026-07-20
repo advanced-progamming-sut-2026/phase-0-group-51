@@ -141,6 +141,39 @@ public Result removePlant(String plantType){
     }
     return new Result(true, "Plant removed successfully.", null);
 }
+// for testing all plants
+public Result unlockAllPlantsForTesting() {
+    User user = App.getInstance().getLoggedInUser();
+    if (user == null) {
+        return new Result(false, "You must be logged in.", null);
+    }
+
+    Set<Integer> unlockedBefore = PlantRepository.loadUnlockedPlants(user.getId());
+    for (PlantData plant : PlantRegistry.getAll()) {
+        if (!unlockedBefore.contains(plant.id())) {
+            PlantRepository.unlockPlant(user.getId(), plant.id());
+        }
+    }
+
+    Set<Integer> unlockedAfter = PlantRepository.loadUnlockedPlants(user.getId());
+    int newlyUnlocked = unlockedAfter.size() - unlockedBefore.size();
+    if (newlyUnlocked == 0) {
+        return new Result(
+                true,
+                "CHEAT: All plants are already unlocked for testing.",
+                null
+        );
+    }
+
+    return new Result(
+            true,
+            "CHEAT: " + newlyUnlocked
+                    + " plants were unlocked for testing. All registered plants "
+                    + "are now available in plant selection.",
+            null
+    );
+}
+
 public Result boostPlant(String plantType){
     PlantData plant = PlantRegistry.getByName(plantType);
     if (plant == null) {
@@ -227,6 +260,24 @@ public Result startGame(){
         }
 
     App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
+    if (currentGame.getGameState().isTimedBattleActive()) {
+        return new Result(
+                true,
+                "Timed Battle started. Complete both objectives before time runs out.\n"
+                        + currentGame.getGameState().timedBattleStatusLine(),
+                null
+        );
+    }
+    if (currentGame.getGameState().isSaveOurSeedsActive()) {
+        return new Result(
+                true,
+                "Save Our Seeds started. "
+                        + currentGame.getGameState().getSaveOurSeedsStatus()
+                        + " Losing any protected plant loses the level immediately. "
+                        + "Use 'show map' to see the warning rows and E markers.",
+                null
+        );
+    }
     if (currentGame.isPreparingPlantWhatYouGet()) {
         return new Result(
                 true,
