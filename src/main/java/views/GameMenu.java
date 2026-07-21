@@ -30,9 +30,9 @@ public class GameMenu implements AppMenu{
         } else if (GameMenuCommands.LEADERBOARD_REGEX.matches(line)) {
             controller.leaderboard();
         } else if (GameMenuCommands.COIN_WALLET_REGEX.matches(line)) {
-            System.out.println("You have "+ App.loggedInUser.getCoins()+ "coins.");
+            System.out.println("You have "+ App.loggedInUser.getCoins()+ " coins.");
         } else if (GameMenuCommands.GEM_WALLET_REGEX.matches(line)) {
-            System.out.println("You have "+ App.loggedInUser.getGems()+ "gems.");
+            System.out.println("You have "+ App.loggedInUser.getGems()+ " gems.");
         // for testing chapter progression
         } else if (GameMenuCommands.CHEAT_UNLOCK_LEVEL_REGEX.matches(line)) {
             handleCheatUnlockLevel(line);

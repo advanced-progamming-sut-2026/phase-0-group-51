@@ -26,6 +26,8 @@ public class IZombieMenu implements AppMenu {
         } else if (IZombieCommands.SHOW_STATUS.matches(input)) {
             Result result = controller.showStatus();
             System.out.println(result.message());
+        } else if (IZombieCommands.COLLECT_LOOT.matches(input)) {
+            handleCollectLoot(input);
         } else if (IZombieCommands.SHOW_MAP.matches(input)) {
             Result result = controller.showMap();
             System.out.println(result.message());
@@ -63,6 +65,15 @@ public class IZombieMenu implements AppMenu {
         }
         Result result = controller.placeZombie(zombieName, coordinates[0], coordinates[1]);
         System.out.println(result.message());
+    }
+
+    private void handleCollectLoot(String input) {
+        Matcher matcher = IZombieCommands.COLLECT_LOOT.getMatcher(input);
+        int[] coordinates = parseCoordinates(matcher);
+        if (coordinates != null) {
+            Result result = controller.collectLoot(coordinates[0], coordinates[1]);
+            System.out.println(result.message());
+        }
     }
 
     private void handleAdvanceTime(String input) {

@@ -116,6 +116,7 @@ public class Beghouled extends Game {
         state.getBoard().tickPlants(state);
         state.getBoard().tickProjectiles(state);
         tickZombiesAndCreateCraters();
+        state.getBoard().tickLoots(state);
         state.tickMowers();
         state.getBoard().tickSuns(state);
         if (state.checkLoseCondition()) {
@@ -596,7 +597,9 @@ public class Beghouled extends Game {
             return;
         }
         for (Zombie zombie : new ArrayList<>(state.getZombiesInTheGame())) {
-            zombie.killInstantly(state, QuestKillSourceType.OTHER);
+            zombie.killInstantlyWithoutLoot(
+                state, QuestKillSourceType.OTHER
+            );
         }
         state.setFinished(true);
         state.setWon(true);

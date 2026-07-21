@@ -196,11 +196,25 @@ public class Zombie {
     }
 
     public void killInstantly(GameState gs, QuestKillSourceType sourceType) {
+        killInstantly(gs, sourceType, true);
+    }
+
+    public void killInstantlyWithoutLoot(
+            GameState gs, QuestKillSourceType sourceType
+    ) {
+        killInstantly(gs, sourceType, false);
+    }
+
+    private void killInstantly(
+            GameState gs,
+            QuestKillSourceType sourceType,
+            boolean allowLoot
+    ) {
         if (dead) {
             return;
         }
         hitpoints = 0;
-        die(gs, sourceType, null);
+        die(gs, sourceType, null, allowLoot);
     }
 
     public void applyPoison(GameState gs, float damagePerSecond, float durationSeconds) {
@@ -347,6 +361,15 @@ public class Zombie {
 
     private static final double LOOT_DROP_CHANCE = 0.10;
     private void die(GameState gs, QuestKillSourceType sourceType, Plant sourcePlant) {
+        die(gs, sourceType, sourcePlant, true);
+    }
+
+    private void die(
+            GameState gs,
+            QuestKillSourceType sourceType,
+            Plant sourcePlant,
+            boolean allowLoot
+    ) {
         if (dead) {
             return;
         }
@@ -366,7 +389,7 @@ public class Zombie {
             gs.logEvent("The glowing zombie dropped a plant food; you have "
                 + gs.getPlantFoodCount() + " plant foods now.\n");
         }
-        if (Math.random() < LOOT_DROP_CHANCE) {
+        if (allowLoot && Math.random() < LOOT_DROP_CHANCE) {
             dropLoot(gs);
         }
         for (ZombieBehavior behavior : behaviors) {
@@ -384,7 +407,9 @@ public class Zombie {
         state.logEvent(
                 "A zombie dropped a " + loot.getDisplayName()
                         + " at (" + (loot.getColumn() + 1) + ", "
-                        + (loot.getLane() + 1) + "). \n");
+                        + (loot.getLane() + 1) + "). Use 'collect loot -l ("
+                        + (loot.getColumn() + 1) + ", "
+                        + (loot.getLane() + 1) + ")' before it expires.\n");
     }
 
     public Zombie copy() {

@@ -21,6 +21,8 @@ public class BeghouledMenu implements AppMenu {
             handleAdvanceTime(input);
         } else if (BeghouledCommands.SHOW_STATUS.matches(input)) {
             print(controller.showStatus());
+        } else if (BeghouledCommands.COLLECT_LOOT.matches(input)) {
+            handleCollectLoot(input);
         } else if (BeghouledCommands.SHOW_MAP.matches(input)) {
             print(controller.showMap());
         } else if (BeghouledCommands.SHOW_UPGRADES.matches(input)) {
@@ -62,6 +64,15 @@ public class BeghouledMenu implements AppMenu {
             print(controller.upgradePlants(fromPlant, toPlant));
         } catch (IllegalArgumentException | IllegalStateException exception) {
             invalidCommand();
+        }
+    }
+
+    private void handleCollectLoot(String input) {
+        Matcher matcher = BeghouledCommands.COLLECT_LOOT.getMatcher(input);
+        Integer x = parseInteger(matcher, "x");
+        Integer y = parseInteger(matcher, "y");
+        if (x != null && y != null) {
+            print(controller.collectLoot(x, y));
         }
     }
 

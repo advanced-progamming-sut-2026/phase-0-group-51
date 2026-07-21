@@ -11,6 +11,8 @@ public enum BeghouledCommands implements Commands {
     ),
     ADVANCE_TIME("(?i)^\\s*advance\\s+time\\s+(?:-t\\s+)?" + "(?<count>-?\\d+)(?:\\s+ticks)?\\s*$"),
     SHOW_STATUS("(?i)^\\s*show\\s+(?:beghouled\\s+)?status\\s*$"),
+    COLLECT_LOOT("(?i)^\\s*collect\\s+loot\\s+-l\\s*"
+        + "\\(\\s*(?<x>-?\\d+)\\s*,\\s*(?<y>-?\\d+)\\s*\\)\\s*$"),
     SHOW_MAP("(?i)^\\s*show\\s+(?:beghouled\\s+)?map\\s*$"),
     SHOW_UPGRADES("(?i)^\\s*show\\s+(?:beghouled\\s+)?upgrades\\s*$"),
     CURRENT_MENU("(?i)^\\s*(?:menu\\s+show\\s+current|show\\s+current\\s+menu)\\s*$"),

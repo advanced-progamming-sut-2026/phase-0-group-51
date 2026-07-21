@@ -3,6 +3,8 @@ package models.enums.commands.minigames;
 import models.enums.commands.Commands;
 
 public enum IZombieCommands implements Commands {
+    COLLECT_LOOT("(?i)^\\s*collect\\s+loot\\s+-l\\s*"
+            + "\\(\\s*(?<x>-?\\d+)\\s*,\\s*(?<y>-?\\d+)\\s*\\)\\s*$"),
     // place zombie -t <type> -l (<x>, <y>)   (also accepts: place zombie <type> <x> <y>)
     PLACE_ZOMBIE("(?i)^\\s*place\\s+zombie\\s+(?:-t\\s+)?(?<zombieName>.+?)\\s+"
         + "(?:-l\\s*)?\\(?\\s*(?<x>-?\\d+)\\s*(?:,\\s*|\\s+)(?<y>-?\\d+)\\s*\\)?\\s*$"),

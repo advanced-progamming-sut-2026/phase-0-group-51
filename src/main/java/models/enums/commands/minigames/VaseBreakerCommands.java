@@ -3,6 +3,8 @@ package models.enums.commands.minigames;
 import models.enums.commands.Commands;
 
 public enum VaseBreakerCommands implements Commands {
+    COLLECT_LOOT("(?i)^\\s*collect\\s+loot\\s+-l\\s*"
+            + "\\(\\s*(?<x>-?\\d+)\\s*,\\s*(?<y>-?\\d+)\\s*\\)\\s*$"),
     BREAK_VASE("^\\s*break\\s+vase\\s+-l\\s*\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
     PICK_SEED_PACKET("^\\s*pick\\s+seed\\s+packet\\s+-l\\s*\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
     PLANT_PACKET("^\\s*plant\\s+packet\\s+-t\\s+" + "(?<plantType>.+?)\\s+-l\\s*" +

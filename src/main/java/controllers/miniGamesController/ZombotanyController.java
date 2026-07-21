@@ -9,8 +9,11 @@ import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
+import models.games.TerminalMapRenderer;
 import models.minigames.MinigameType;
 import models.minigames.zombotany.Zombotany;
+
+import java.util.List;
 
 public class ZombotanyController extends GamingController {
 
@@ -122,6 +125,48 @@ public class ZombotanyController extends GamingController {
             }
         }
         return new Result(true, output.toString(), null);
+    }
+
+    @Override
+    public Result showMap() {
+        Zombotany game = activeGame();
+        if (game == null) {
+            return new Result(
+                false,
+                "No active Zombotany game found.\n",
+                null
+            );
+        }
+        GameState state = game.getGameState();
+
+        String map = TerminalMapRenderer.render(
+            "ZOMBOTANY MAP",
+            List.of(
+                "Stage: " + game.getStageNumber(),
+                "Sun: " + state.getSun(),
+                "Tick: " + state.getTickCounter(),
+                "Waves: " + game.getWavesSent()
+                    + "/" + game.getTotalWaves(),
+                "Zombies: " + game.getLivingZombieCount()
+            ),
+            "",
+            state.getBoard(),
+            tile -> buildFourCharacterCell(state, tile),
+            lane -> "Row " + (lane + 1),
+            lane -> zombotanyMowerStatus(state, lane),
+            -1
+        );
+
+        StringBuilder output = new StringBuilder(map);
+        appendMapLegend(output);
+        return new Result(true, output.toString(), null);
+    }
+
+    private String zombotanyMowerStatus(GameState state, int lane) {
+        return "Mower: "
+            + (state.getLawnMowers()[lane].isDestroyed()
+                ? "USED"
+                : "READY");
     }
 
     public Result showCurrentMenu() {

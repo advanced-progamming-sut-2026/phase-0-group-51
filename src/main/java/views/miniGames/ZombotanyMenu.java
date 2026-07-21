@@ -26,6 +26,8 @@ public class ZombotanyMenu implements AppMenu {
             System.out.println(controller.showPlants().message());
         } else if (ZombotanyCommands.SHOW_STATUS.matches(input)) {
             System.out.println(controller.showStatus().message());
+        } else if (ZombotanyCommands.COLLECT_LOOT.matches(input)) {
+            handleCollectLoot(input);
         } else if (ZombotanyCommands.SHOW_MAP.matches(input)) {
             System.out.println(controller.showMap().message());
         } else if (ZombotanyCommands.CURRENT_MENU.matches(input)) {
@@ -60,6 +62,21 @@ public class ZombotanyMenu implements AppMenu {
         }
         Result result = controller.placePlant(plantName, x, y);
         System.out.println(result.message());
+    }
+
+    private void handleCollectLoot(String input) {
+        Matcher matcher = ZombotanyCommands.COLLECT_LOOT.getMatcher(input);
+        if (matcher == null) {
+            invalidCommand();
+            return;
+        }
+        try {
+            int x = Integer.parseInt(matcher.group("x"));
+            int y = Integer.parseInt(matcher.group("y"));
+            System.out.println(controller.collectLoot(x, y).message());
+        } catch (RuntimeException exception) {
+            invalidCommand();
+        }
     }
 
     private void handleAdvanceTime(String input) {

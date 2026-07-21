@@ -24,6 +24,7 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ScoringGame;
+import models.games.TerminalMapRenderer;
 import models.games.ancientEgypt.Grave;
 import models.greenHouse.FlowerPot;
 import models.items.DroppedLoot;
@@ -1342,29 +1343,46 @@ public class GamingController {
             return failure("No active game found.\n");
         }
 
-        StringBuilder output = new StringBuilder();
-        appendGameStatus(output, game, state);
-        appendMowerStatus(output, state);
-        appendBoardStatus(output, state);
+        StringBuilder details = new StringBuilder();
+        appendLevelStatus(details, game, state);
+
+        String map = TerminalMapRenderer.render(
+                "GAME MAP",
+                gameMapMetrics(state),
+                details.toString(),
+                state.getBoard(),
+                tile -> buildFourCharacterCell(state, tile),
+                lane -> gameRowLabel(state, lane),
+                lane -> mowerStatus(state, lane),
+                -1
+        );
+
+        StringBuilder output = new StringBuilder(map);
         appendMapLegend(output);
         return success(output.toString());
     }
 
-    private void appendGameStatus(
-            StringBuilder output,
-            Game game,
-            GameState state
-    ) {
+    private List<String> gameMapMetrics(GameState state) {
         int wave = state.getZombieWaveManager() == null
                 ? 0
                 : state.getZombieWaveManager().getCurrentWaveNumber();
-        output.append("===== GAME STATUS =====\n")
-                .append("Wave: ").append(wave).append('\n')
-                .append("Sun: ").append(state.getSun()).append('\n')
-                .append("Plant food: ")
-                .append(state.getPlantFoodCount()).append('\n')
-                .append("Tick: ").append(state.getTickCounter()).append("\n");
-        appendLevelStatus(output, game, state);
+        return List.of(
+                "Wave: " + wave,
+                "Sun: " + state.getSun(),
+                "Plant Food: " + state.getPlantFoodCount(),
+                "Tick: " + state.getTickCounter()
+        );
+    }
+
+    private String gameRowLabel(GameState state, int lane) {
+        return state.isProtectedRow(lane)
+                ? "! Row " + (lane + 1)
+                : "Row " + (lane + 1);
+    }
+
+    private String mowerStatus(GameState state, int lane) {
+        Mower mower = state.getLawnMowers()[lane];
+        return "Mower: " + (mower.isDestroyed() ? "USED" : "READY");
     }
 
     private void appendLevelStatus(
@@ -1409,47 +1427,7 @@ public class GamingController {
         }
     }
 
-    private void appendMowerStatus(
-            StringBuilder output,
-            GameState state
-    ) {
-        output.append("\n===== LAWN MOWERS =====\n");
-        for (int lane = 0;
-             lane < state.getBoard().getLaneCount();
-             lane++) {
-            Mower mower = state.getLawnMowers()[lane];
-            output.append("Row ").append(lane + 1).append(": ")
-                    .append(mower.isDestroyed() ? "USED" : "AVAILABLE")
-                    .append('\n');
-        }
-    }
-
-    private void appendBoardStatus(
-            StringBuilder output,
-            GameState state
-    ) {
-        Board board = state.getBoard();
-        output.append("\n===== BOARD =====\n")
-                .append("Each cell contains 4 chars: ")
-                .append("[base][zombie][sun][loot].\n\n");
-        appendBoardColumnHeader(output, board);
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append(state.isProtectedRow(lane) ? "! Row " : "  Row ")
-                    .append(lane + 1)
-                    .append(": ");
-            for (int column = 0;
-                 column < board.getColumnCount();
-                 column++) {
-                Tile tile = board.getTile(lane, column);
-                output.append('[')
-                        .append(buildFourCharacterCell(state, tile))
-                        .append("] ");
-            }
-            output.append('\n');
-        }
-    }
-
-    private void appendMapLegend(StringBuilder output) {
+    protected void appendMapLegend(StringBuilder output) {
         output.append("\nCell position 1 (base): ")
                 .append(
                         "E=protected plant, P=land plant, "
@@ -1463,7 +1441,7 @@ public class GamingController {
                 .append("Cell position 2: Z=zombie, .=none\n")
                 .append("Cell position 3: S=collectible/grounded sun, ")
                 .append("s=falling sun, .=none\n")
-                .append("Cell position 4: C=coin, G=gem, O=pot, .=none\n")
+                .append("Cell position 4: C=coin, D=gem, O=pot, .=none\n")
                 .append("Examples: [PZS.]=plant + zombie + grounded sun, ")
                 .append("[.Z.C]=zombie + coin, ")
                 .append("[Q.SO]=plant-food grave + sun + pot.\n");
@@ -1495,7 +1473,7 @@ public class GamingController {
         output.append('\n');
     }
 
-    private String buildFourCharacterCell(GameState state, Tile tile) {
+    protected String buildFourCharacterCell(GameState state, Tile tile) {
         char base = getBaseMapSymbol(state, tile);
         char zombie = getZombiesAtTile(
                 state, tile.getLane(), tile.getColumn()
@@ -1634,7 +1612,7 @@ public class GamingController {
         return result;
     }
 
-    private char getLootMapSymbol(
+    protected char getLootMapSymbol(
             Board board,
             int lane,
             int column
@@ -1645,7 +1623,7 @@ public class GamingController {
         }
         return switch (loots.get(0).getType()) {
             case COIN -> 'C';
-            case GEM -> 'G';
+            case GEM -> 'D';
             case POT -> 'O';
         };
     }
@@ -1687,3 +1665,4 @@ public class GamingController {
         return success(scoringGame.showScoringRules());
     }
 }
+

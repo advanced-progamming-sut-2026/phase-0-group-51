@@ -25,6 +25,12 @@ public class WallnutBowllingMenu implements AppMenu {
             if (count != null) print(controller.advanceTime(count));
         } else if (WallnutBowlingCommands.SHOW_CONVEYOR.matches(input)) {
             print(controller.showConveyor());
+        } else if (WallnutBowlingCommands.COLLECT_LOOT.matches(input)) {
+            Matcher matcher = WallnutBowlingCommands.COLLECT_LOOT.getMatcher(input);
+            int[] coordinates = parseCoordinates(matcher);
+            if (coordinates != null) {
+                print(controller.collectLoot(coordinates[0], coordinates[1]));
+            }
         } else if (WallnutBowlingCommands.SHOW_MAP.matches(input)) {
             print(controller.showMap());
         } else if (WallnutBowlingCommands.SHOW_STATUS.matches(input)) {
