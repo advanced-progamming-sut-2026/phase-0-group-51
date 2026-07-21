@@ -3,6 +3,8 @@ package models.enums.commands.minigames;
 import models.enums.commands.Commands;
 
 public enum WallnutBowlingCommands implements Commands {
+    COLLECT_LOOT("(?i)^\\s*collect\\s+loot\\s+-l\\s*"
+            + "\\(\\s*(?<x>-?\\d+)\\s*,\\s*(?<y>-?\\d+)\\s*\\)\\s*$"),
     ROLL_WALLNUT("^\\s*roll\\s+wallnut\\s+-l\\s*"
         + "\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
     ADVANCE_TIME("^\\s*advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks\\s*$"),

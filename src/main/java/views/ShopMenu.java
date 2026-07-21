@@ -39,9 +39,9 @@ public class ShopMenu implements AppMenu{
     }
     public void handleShopBuy(String input){
         Matcher matcher = ShopMenuCommands.SHOP_BUY_REGEX.getMatcher(input);
-        String itemId = matcher.group("item_id");
+        String itemId = matcher.group("id");
         String count = matcher.group("count");
-        String plantType = matcher.group("plant_type");
+        String plantType = matcher.group("type");
         if (plantType == null) plantType = "";
         Result result = controller.shopBuy(itemId,count,plantType);
         System.out.println(result.message());

@@ -3,6 +3,8 @@ package models.enums.commands.minigames;
 import models.enums.commands.Commands;
 
 public enum ZombotanyCommands implements Commands {
+    COLLECT_LOOT("(?i)^\\s*collect\\s+loot\\s+-l\\s*"
+            + "\\(\\s*(?<x>-?\\d+)\\s*,\\s*(?<y>-?\\d+)\\s*\\)\\s*$"),
     //plant plant -t <type> -l (<x>, <y>)   (also accepts: plant plant <type> <x> <y>)
     PLACE_PLANT("(?i)^\\s*(?:plant|place)\\s+plant\\s+(?:-t\\s+)?(?<plantName>.+?)\\s+"
         + "(?:-l\\s*)?\\(?\\s*(?<x>-?\\d+)\\s*(?:,\\s*|\\s+)(?<y>-?\\d+)\\s*\\)?\\s*$"),

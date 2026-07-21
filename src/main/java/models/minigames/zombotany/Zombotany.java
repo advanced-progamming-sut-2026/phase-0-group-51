@@ -2,6 +2,7 @@ package models.minigames.zombotany;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import lombok.Getter;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Plant.Plant;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-
+@Getter
 public class Zombotany extends Game {
 
     public static final int START_SUN = 150;
@@ -112,6 +113,7 @@ public class Zombotany extends Game {
         for (Zombie zombie : new ArrayList<>(state.getZombiesInTheGame())) {
             zombie.onTick(state);
         }
+        state.getBoard().tickLoots(state);
         dropSkySun();
         maybeStartWave();
         state.tickMowers();
@@ -187,18 +189,6 @@ public class Zombotany extends Game {
         }
         return (int) getGameState().getZombiesInTheGame().stream()
             .filter(zombie -> !zombie.isDead()).count();
-    }
-
-    public int getStageNumber() {
-        return stageNumber;
-    }
-
-    public int getWavesSent() {
-        return wavesSent;
-    }
-
-    public int getTotalWaves() {
-        return totalWaves;
     }
 
     public List<Zombie> getTemplates() {
@@ -278,7 +268,7 @@ public class Zombotany extends Game {
                 return template.copy();
             }
         }
-        return affordable.get(affordable.size() - 1).copy();
+        return affordable.getLast().copy();
     }
 
     private void checkZombiesReachedHouse() {

@@ -116,6 +116,7 @@ public class IZombie extends Game {
             new ArrayList<>(state.getZombiesInTheGame())) {
             zombie.onTick(state);
         }
+        state.getBoard().tickLoots(state);
         produceSun();
         updateBrains();
         endState();

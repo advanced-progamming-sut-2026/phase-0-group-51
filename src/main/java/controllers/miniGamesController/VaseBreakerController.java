@@ -5,6 +5,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.games.GameState;
 import models.App;
+import models.games.TerminalMapRenderer;
 import models.minigames.MinigameType;
 import models.minigames.vaseBreaker.Brain;
 import models.minigames.vaseBreaker.Vase;
@@ -18,6 +19,7 @@ import models.Zombie.Zombie;
 
 import java.text.DecimalFormat;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 public class VaseBreakerController extends GamingController {
@@ -385,34 +387,53 @@ public class VaseBreakerController extends GamingController {
             return failure("No active Vasebreaker game found.\n");
         }
         GameState state = game.getGameState();
-        Board board = state.getBoard();
-        StringBuilder output = new StringBuilder();
-        output.append("===== GAME STATUS =====\n")
-            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
-            .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
-            .append("Sun: ").append(state.getSun()).append('\n')
-            .append("Tick: ").append(state.getTickCounter()).append('\n')
-            .append("Remaining vases: ").append(game.getRemainingVaseCount()).append('\n')
-            .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n');
-        output.append("\n===== BOARD =====\n")
-            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
-        appendBoardColumnHeader(output, board);
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("  Row ").append(lane + 1).append(": ");
-            for (int column = 0; column < board.getColumnCount(); column++) {
-                Tile tile = board.getTile(lane, column);
-                String cell = buildThreeCharacterCell(state, tile);
-                if (game.hasUnbrokenVaseAt(column + 1, lane + 1)) {
-                    cell = 'V' + cell.substring(1);
+
+        String map = TerminalMapRenderer.render(
+            "VASEBREAKER MAP",
+            List.of(
+                "Stage: " + game.getStage().getStageNumber(),
+                "Difficulty: " + game.getStage().getDifficulty(),
+                "Sun: " + state.getSun(),
+                "Tick: " + state.getTickCounter(),
+                "Vases: " + game.getRemainingVaseCount(),
+                "Zombies: " + game.getLivingZombieCount(),
+                "Seed Packets: " + game.getDroppedSeedPackets().size()
+            ),
+            "",
+            state.getBoard(),
+            tile -> buildVaseMapCell(game, state, tile),
+            lane -> "Row " + (lane + 1),
+            lane -> vaseBrainStatus(game, lane),
+            -1
+        );
+
+        return success(
+            map
+                + "\nCell: [base][zombie][sun][loot]\n"
+                + "Base: V=vase, P=plant, F=frozen plant, .=empty\n"
+                + "Objects: Z=zombie, S=grounded sun, s=falling sun\n"
+                + "Loot: C=coin, D=gem, O=pot, .=none\n"
+        );
+    }
+
+    private String buildVaseMapCell(
+        VaseBreaker game,
+        GameState state,
+        Tile tile
+    ) {
+                String cell = buildFourCharacterCell(state, tile);
+        if (game.hasUnbrokenVaseAt(
+            tile.getColumn() + 1,
+            tile.getLane() + 1
+        )) {
+            return 'V' + cell.substring(1);
                 }
-                output.append('[').append(cell).append("] ");
+        return cell;
             }
-            output.append('\n');
-        }
-        output.append("\nCell position 1 (base): V=unbroken vase, P=plant, F=frozen plant, .=empty\n")
-            .append("Cell position 2: Z=zombie, .=none\n")
-            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n");
-        return success(output.toString());
+
+    private String vaseBrainStatus(VaseBreaker game, int lane) {
+        Brain brain = game.getBrains().get(lane);
+        return "Brain: " + (brain.isEaten() ? "EATEN" : "SAFE");
     }
 
     private VaseBreaker activeGame() {

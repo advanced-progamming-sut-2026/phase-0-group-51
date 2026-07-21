@@ -106,6 +106,7 @@ public class WallnutBowling extends Game {
         for (Zombie zombie : new ArrayList<>(state.getZombiesInTheGame())) {
             zombie.onTick(state);
         }
+        state.getBoard().tickLoots(state);
         state.tickMowers();
         checkEndState();
     }

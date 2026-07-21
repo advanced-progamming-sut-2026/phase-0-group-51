@@ -9,9 +9,11 @@ import models.Result;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
+import models.games.TerminalMapRenderer;
 import models.minigames.MinigameType;
 import models.minigames.beghouled.Beghouled;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
@@ -196,43 +198,73 @@ public class BeghouledController extends GamingController {
             );
         }
         GameState state = game.getGameState();
-        Board board = state.getBoard();
-        Map<String, String> plantLegend = new TreeMap<>();
-        for (Plant plant : board.getAllPlants()) {
-            plantLegend.put(getBeghouledPlantCode(plant), plant.getName());
-        }
-        StringBuilder output = new StringBuilder();
-        output.append("===== GAME STATUS =====\n")
-            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
-            .append("Matches: ").append(game.getCompletedMatches()).append('/').append(game.getTargetMatches()).append('\n')
-            .append("Sun: ").append(state.getSun()).append('\n')
-            .append("Wave: ").append(game.getWaveNumber()).append('\n')
-            .append("Tick: ").append(state.getTickCounter()).append('\n');
-        output.append("\n===== BOARD =====\n")
-            .append("Each cell contains 3 chars: [plant(2)][zombie].\n\n");
-        appendBoardColumnHeader(output, board);
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("  Row ").append(lane + 1).append(": ");
-            for (int column = 0; column < board.getColumnCount(); column++) {
-                Tile tile = board.getTile(lane, column);
-                String plantCode;
-                if (tile.isCrater()) {
-                    plantCode = "##";
-                } else {
-                    plantCode = getBeghouledPlantCode(tile.getTopPlant());
-                }
-                char zombieCode = tile.hasZombie(state) ? 'Z' : '.';
-                output.append('[').append(plantCode).append(zombieCode).append("] ");
-            }
-            output.append('\n');
-        }
-        output.append("\nCell positions 1-2 (plant): ## = crater, .. = empty");
+        Map<String, String> plantLegend = buildBeghouledLegend(state);
+
+        String map = TerminalMapRenderer.render(
+            "BEGHOULDED MAP",
+            List.of(
+                "Stage: " + game.getStage().getStageNumber(),
+                "Matches: " + game.getCompletedMatches()
+                    + "/" + game.getTargetMatches(),
+                "Sun: " + state.getSun(),
+                "Wave: " + game.getWaveNumber(),
+                "Tick: " + state.getTickCounter(),
+                "Zombies: " + game.getLivingZombieCount()
+            ),
+            "",
+            state.getBoard(),
+            tile -> buildBeghouledMapCell(state, tile),
+            lane -> "Row " + (lane + 1),
+            lane -> beghouledMowerStatus(state, lane),
+            -1
+        );
+
+        StringBuilder output = new StringBuilder(map);
+        output.append("\nCell: [plant(2)][zombie][loot]\n")
+            .append("Plant: ##=crater, ..=empty");
         for (Map.Entry<String, String> entry : plantLegend.entrySet()) {
-            output.append(", ").append(entry.getKey()).append(" = ").append(entry.getValue());
+            output.append(", ")
+                .append(entry.getKey())
+                .append('=')
+                .append(entry.getValue());
         }
-        output.append('\n').append("Cell position 3: Z=zombie, .=none\n");
+        output.append('\n')
+            .append("Zombie: Z=zombie, .=none\n")
+            .append("Loot: C=coin, D=gem, O=pot, .=none\n");
         return success(output.toString());
     }
+
+    private Map<String, String> buildBeghouledLegend(GameState state) {
+        Map<String, String> legend = new TreeMap<>();
+        for (Plant plant : state.getBoard().getAllPlants()) {
+            legend.put(getBeghouledPlantCode(plant), plant.getName());
+        }
+        return legend;
+    }
+
+    private String buildBeghouledMapCell(
+        GameState state,
+        Tile tile
+    ) {
+        String plantCode = tile.isCrater()
+            ? "##"
+            : getBeghouledPlantCode(tile.getTopPlant());
+        char zombieCode = tile.hasZombie(state) ? 'Z' : '.';
+        char lootCode = getLootMapSymbol(
+            state.getBoard(),
+            tile.getLane(),
+            tile.getColumn()
+        );
+        return plantCode + zombieCode + lootCode;
+    }
+
+    private String beghouledMowerStatus(GameState state, int lane) {
+        return "Mower: "
+            + (state.getLawnMowers()[lane].isDestroyed()
+                ? "USED"
+                : "READY");
+    }
+
     public Result showCurrentMenu() {
         return success("You are now in the Beghouled minigame.\n");
     }

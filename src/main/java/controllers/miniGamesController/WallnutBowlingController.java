@@ -10,6 +10,7 @@ import models.Result;
 import models.Zombie.Zombie;
 import models.enums.Menu;
 import models.games.Game;
+import models.games.TerminalMapRenderer;
 import models.games.ZombieWaveManager;
 import models.minigames.MinigameType;
 import models.minigames.wallnutBowling.RollingWallnut;
@@ -230,40 +231,58 @@ public class WallnutBowlingController extends GamingController {
             return failure("No active Wall-nut Bowling game found.\n");
         }
         GameState state = game.getGameState();
-        Board board = state.getBoard();
         ZombieWaveManager waveManager = state.getZombieWaveManager();
-        StringBuilder output = new StringBuilder();
-        output.append("===== GAME STATUS =====\n")
-            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
-            .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
-            .append("Tick: ").append(state.getTickCounter()).append('\n')
-            .append("Wave: ").append(waveManager.getCurrentWaveNumber())
-            .append('/').append(waveManager.getTotalWaves()).append('\n')
-            .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n')
-            .append("Red line: after column ").append(game.getRedLineColumn()).append('\n');
-        output.append("\n===== BOARD =====\n")
-            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
-        appendBoardColumnHeader(output, board);
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("  Row ").append(lane + 1).append(": ");
-            for (int column = 0; column < board.getColumnCount(); column++) {
-                if (column == game.getRedLineColumn()) {
-                    output.append("|| ");
+
+        String map = TerminalMapRenderer.render(
+            "WALL-NUT BOWLING MAP",
+            List.of(
+                "Stage: " + game.getStage().getStageNumber(),
+                "Difficulty: " + game.getStage().getDifficulty(),
+                "Tick: " + state.getTickCounter(),
+                "Wave: " + waveManager.getCurrentWaveNumber()
+                    + "/" + waveManager.getTotalWaves(),
+                "Zombies: " + game.getLivingZombieCount(),
+                "Red Line: after column " + game.getRedLineColumn()
+            ),
+            "",
+            state.getBoard(),
+            tile -> buildWallnutMapCell(game, state, tile),
+            lane -> "Row " + (lane + 1),
+            lane -> wallnutMowerStatus(state, lane),
+            game.getRedLineColumn()
+        );
+
+        return success(
+            map
+                + "\nCell: [base][zombie][sun][loot]\n"
+                + "Base: O=rolling wallnut, P=plant, .=empty\n"
+                + "Objects: Z=zombie, S=grounded sun, s=falling sun\n"
+                + "Loot: C=coin, D=gem, O=pot, .=none\n"
+                + "|| = red line\n"
+        );
                 }
-                Tile tile = board.getTile(lane, column);
-                String cell = buildThreeCharacterCell(state, tile);
-                if (hasRollingWallnutAt(game, lane, column)) {
-                    cell = 'O' + cell.substring(1);
+
+    private String buildWallnutMapCell(
+        WallnutBowling game,
+        GameState state,
+        Tile tile
+    ) {
+                String cell = buildFourCharacterCell(state, tile);
+        if (hasRollingWallnutAt(
+            game,
+            tile.getLane(),
+            tile.getColumn()
+        )) {
+            return 'O' + cell.substring(1);
                 }
-                output.append('[').append(cell).append("] ");
+        return cell;
             }
-            output.append('\n');
-        }
-        output.append("\nCell position 1 (base): O=rolling wallnut, P=plant, .=empty\n")
-            .append("Cell position 2: Z=zombie, .=none\n")
-            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n")
-            .append("||=red line\n");
-        return success(output.toString());
+
+    private String wallnutMowerStatus(GameState state, int lane) {
+        return "Mower: "
+            + (state.getLawnMowers()[lane].isDestroyed()
+                ? "USED"
+                : "READY");
     }
 
     private boolean hasRollingWallnutAt(WallnutBowling game, int lane, int column) {

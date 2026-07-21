@@ -10,12 +10,14 @@ import models.Zombie.ZombieType;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
+import models.games.TerminalMapRenderer;
 import models.minigames.MinigameType;
 import models.minigames.iZombie.IZombie;
 import models.minigames.vaseBreaker.Brain;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class IZombieController extends GamingController {
@@ -146,33 +148,40 @@ public class IZombieController extends GamingController {
             return failure("No active I, Zombie game found.\n");
         }
         GameState state = game.getGameState();
-        Board board = state.getBoard();
-        StringBuilder output = new StringBuilder();
-        output.append("===== GAME STATUS =====\n")
-            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
-            .append("Sun: ").append(state.getSun()).append('\n')
-            .append("Tick: ").append(state.getTickCounter()).append('\n')
-            .append("Remaining brains: ").append(game.getRemainingBrainCount()).append('\n');
-        output.append("\n===== BOARD =====\n")
-            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
-        appendBoardColumnHeader(output, board);
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("  Row ").append(lane + 1).append(": ")
-                .append(game.getBrains().get(lane).isEaten() ? "( ) " : "(O) ");
-            for (int column = 0; column < board.getColumnCount(); column++) {
-                if (column == IZombie.RED_LINE_COLUMN) {
-                    output.append("|| ");
-                }
-                Tile tile = board.getTile(lane, column);
-                output.append('[').append(buildIZombieCell(state, tile)).append("] ");
+
+        String map = TerminalMapRenderer.render(
+            "I, ZOMBIE MAP",
+            List.of(
+                "Stage: " + game.getStage().getStageNumber(),
+                "Sun: " + state.getSun(),
+                "Tick: " + state.getTickCounter(),
+                "Brains: " + game.getRemainingBrainCount(),
+                "Zombies: " + game.getLivingZombieCount(),
+                "Red Line: before column "
+                    + (IZombie.RED_LINE_COLUMN + 1)
+            ),
+            "",
+            state.getBoard(),
+            tile -> buildIZombieCell(state, tile),
+            lane -> "Row " + (lane + 1),
+            lane -> iZombieBrainStatus(game, lane),
+            IZombie.RED_LINE_COLUMN
+        );
+
+        return success(
+            map
+                + "\nCell: [base][zombie][sun][loot]\n"
+                + "Base: P=plant, F=frozen plant, .=empty\n"
+                + "Zombie: Z=normal, S=sun producer, .=none\n"
+                + "Sun: S=grounded, s=falling, .=none\n"
+                + "Loot: C=coin, D=gem, O=pot, .=none\n"
+                + "|| = red line\n"
+        );
             }
-            output.append('\n');
-        }
-        output.append("\nCell position 1 (base): P=plant, F=frozen plant, .=empty\n")
-            .append("Cell position 2: Z=zombie, S=sun-producer zombie, .=none\n")
-            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n")
-            .append("(O)=brain, ( )=eaten brain, ||=red line\n");
-        return success(output.toString());
+
+    private String iZombieBrainStatus(IZombie game, int lane) {
+        Brain brain = game.getBrains().get(lane);
+        return "Brain: " + (brain.isEaten() ? "EATEN" : "SAFE");
     }
 
     private String buildIZombieCell(GameState state, Tile tile) {
@@ -187,8 +196,13 @@ public class IZombieController extends GamingController {
                 zombieChar = 'Z';
             }
         }
-        char sun = getSunMapSymbol(state.getBoard(), tile.getLane(), tile.getColumn());
-        return new String(new char[]{base, zombieChar, sun});
+        char sun = getSunMapSymbol(
+            state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        char loot = getLootMapSymbol(
+            state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        return new String(new char[]{base, zombieChar, sun, loot});
     }
 
     private long tileKey(int lane, int column) {
