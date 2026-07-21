@@ -25,6 +25,8 @@ public class WallnutBowllingMenu implements AppMenu {
             if (count != null) print(controller.advanceTime(count));
         } else if (WallnutBowlingCommands.SHOW_CONVEYOR.matches(input)) {
             print(controller.showConveyor());
+        } else if (WallnutBowlingCommands.SHOW_MAP.matches(input)) {
+            print(controller.showMap());
         } else if (WallnutBowlingCommands.SHOW_STATUS.matches(input)) {
             print(controller.showStatus());
         } else if (WallnutBowlingCommands.CURRENT_MENU.matches(input)) {

@@ -45,6 +45,7 @@ public class GamingController {
     private static final int IMITATER_ID = 56;
     private static final int HOT_POTATO_ID = 59;
     private static final int GRAVE_BUSTER_ID = 60;
+
     private Result success(String message) {
         return new Result(true, message, null);
     }
@@ -885,6 +886,7 @@ public class GamingController {
                 .append(" seconds).\n");
         return success(output.toString());
     }
+
     public Result showPlantStatus() {
         Game game = App.getInstance().getCurrentGame();
         if (game == null || game.getGameState() == null) {
@@ -1485,7 +1487,7 @@ public class GamingController {
                 .append(" ticks\n");
     }
 
-    private void appendBoardColumnHeader(StringBuilder output, Board board) {
+    protected void appendBoardColumnHeader(StringBuilder output, Board board) {
         output.append("       ");
         for (int column = 0; column < board.getColumnCount(); column++) {
             output.append(String.format(Locale.ROOT, "%-7d", column + 1));
@@ -1507,7 +1509,18 @@ public class GamingController {
         return new String(new char[]{base, zombie, sun, loot});
     }
 
-    private char getBaseMapSymbol(GameState state, Tile tile) {
+    protected String buildThreeCharacterCell(GameState state, Tile tile) {
+        char base = getBaseMapSymbol(state, tile);
+        char zombie = getZombiesAtTile(
+                state, tile.getLane(), tile.getColumn()
+        ).isEmpty() ? '.' : 'Z';
+        char sun = getSunMapSymbol(
+                state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        return new String(new char[]{base, zombie, sun});
+    }
+
+    protected char getBaseMapSymbol(GameState state, Tile tile) {
         if (tile.hasTopPlant()) {
             return getPlantMapSymbol(state, tile);
         }
@@ -1547,7 +1560,6 @@ public class GamingController {
         return '.';
     }
 
-
     private char getPlantMapSymbol(GameState state, Tile tile) {
         if (state.isProtectedPlant(tile.getTopPlant())) {
             return 'E';
@@ -1561,7 +1573,7 @@ public class GamingController {
         return tile.isWater() ? 'A' : 'P';
     }
 
-    private List<Zombie> getZombiesAtTile(
+    protected List<Zombie> getZombiesAtTile(
             GameState state, int lane, int column
     ) {
         List<Zombie> result = new ArrayList<>();
@@ -1638,7 +1650,7 @@ public class GamingController {
         };
     }
 
-    private char getSunMapSymbol(
+    protected char getSunMapSymbol(
             Board board, int lane, int column
     ) {
         List<Sun> suns = getSunsAtTile(board, lane, column);
@@ -1656,6 +1668,7 @@ public class GamingController {
     private boolean scoringGameIsActive() {
         return App.getInstance().getCurrentGame() instanceof ScoringGame;
     }
+
     public Result showScore() {
         Game game = App.getInstance().getCurrentGame();
         if (!(game instanceof ScoringGame scoringGame)) {
@@ -1672,4 +1685,5 @@ public class GamingController {
             return failure("This command is only available in the Scoring Game.\n");
         }
         return success(scoringGame.showScoringRules());
-    }}
+    }
+}

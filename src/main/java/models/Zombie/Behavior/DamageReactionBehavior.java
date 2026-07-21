@@ -45,13 +45,19 @@ public class DamageReactionBehavior implements PersistableBehavior {
             }
         }
 
+        if (type == DamageReactionType.REFLECT_PROJECTILE
+            && spinning
+            && !hasIncomingStraightProjectile(zombie, gs)) {
+            stopSpin(zombie);
+        }
+
     }
 
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         switch (type) {
             case REFLECT_PROJECTILE -> {
-                //TODO
+                startSpin(zombie);
             }
             case SUBMERGE_DODGE -> {
                 // Snorkel
@@ -76,6 +82,23 @@ public class DamageReactionBehavior implements PersistableBehavior {
             }
         }
         return rawDamage;
+    }
+
+    private boolean hasIncomingStraightProjectile(Zombie zombie, GameState gs) {
+        for (Projectile projectile : gs.getBoard().getProjectiles()) {
+            if (projectile.isMarkedForRemoval()
+                || projectile.isReflected()
+                || !projectile.isStraightShot()) {
+                continue;
+            }
+            if ((int) Math.round(projectile.getPosY()) != zombie.getLane()) {
+                continue;
+            }
+            if (projectile.getDirX() > 0 && projectile.getPosX() <= zombie.getX()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void startSpin(Zombie zombie) {
