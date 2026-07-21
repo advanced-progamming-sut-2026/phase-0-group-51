@@ -1,6 +1,9 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import models.Board.Board;
+import models.Board.Tile;
+import models.games.GameState;
 import models.App;
 import models.minigames.MinigameType;
 import models.minigames.vaseBreaker.Brain;
@@ -20,7 +23,7 @@ import java.util.Map;
 public class VaseBreakerController extends GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
     private final MinigameProgressService progressService =
-            new MinigameProgressService();
+        new MinigameProgressService();
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(  MinigameType.VASEBREAKER, stageNumber);
         if (!access.success()) {
@@ -32,12 +35,12 @@ public class VaseBreakerController extends GamingController {
             App.getInstance().setCurrentGame(game);
             App.getInstance().setCurrentMenu(Menu.VASE_BREAKER);
             return success(
-                    "Vasebreaker level " + stageNumber + " started.\n" + "Break all vases and defeat every zombie.\n"
-                            + "Do not let a zombie eat a brain.\n"
+                "Vasebreaker level " + stageNumber + " started.\n" + "Break all vases and defeat every zombie.\n"
+                    + "Do not let a zombie eat a brain.\n"
             );
         } catch (RuntimeException exception) {
             return failure(
-                    "Could not start Vasebreaker: \n"
+                "Could not start Vasebreaker: \n"
             );
         }
     }
@@ -49,21 +52,21 @@ public class VaseBreakerController extends GamingController {
             return failure("No active Vasebreaker game found.\n");}
         try {
             VaseBreaker.BreakOutcome outcome =
-                    game.breakVase(x, y);
+                game.breakVase(x, y);
 
             String message = switch (outcome.contentType()) {
                 case EMPTY ->
-                        "The vase at (" + x + ", " + y + ") was empty.\n";
+                    "The vase at (" + x + ", " + y + ") was empty.\n";
 
                 case SEED_PACKET ->
-                        "The vase at (" + x + ", " + y + ") dropped a " + outcome.contentName() + " seed packet.\n"
-                                + "It will disappear in " + game.packetLifetimeTicks() + " ticks.\n";
+                    "The vase at (" + x + ", " + y + ") dropped a " + outcome.contentName() + " seed packet.\n"
+                        + "It will disappear in " + game.packetLifetimeTicks() + " ticks.\n";
 
                 case ZOMBIE ->
-                        "The vase at (" + x + ", " + y + ") released " + outcome.contentName() + ".\n";
+                    "The vase at (" + x + ", " + y + ") released " + outcome.contentName() + ".\n";
 
                 case GARGANTUAR ->
-                        "The Gargantuar vase at (" + x + ", " + y + ") released " + outcome.contentName() + "!\n";
+                    "The Gargantuar vase at (" + x + ", " + y + ") released " + outcome.contentName() + "!\n";
             };
 
             return resultAfterPossibleFinish(game, message);
@@ -81,15 +84,15 @@ public class VaseBreakerController extends GamingController {
             String plantName = game.pickUpSeedPacket(x, y);
             int currentAmount = game.getPacketInventory().getOrDefault(plantName, 0);
             return success(
-                    "Picked up the "
-                            + plantName
-                            + " seed packet at ("
-                            + x + ", " + y + ").\n"
-                            + "You now have "
-                            + currentAmount
-                            + " "
-                            + plantName
-                            + " packet(s).\n"
+                "Picked up the "
+                    + plantName
+                    + " seed packet at ("
+                    + x + ", " + y + ").\n"
+                    + "You now have "
+                    + currentAmount
+                    + " "
+                    + plantName
+                    + " packet(s).\n"
             );
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure("failure in pick " + "\n");
@@ -97,9 +100,9 @@ public class VaseBreakerController extends GamingController {
     }
 
     public Result plantPacket(
-            String plantType,
-            int x,
-            int y
+        String plantType,
+        int x,
+        int y
     ) {
         VaseBreaker game = activeGame();
 
@@ -143,14 +146,14 @@ public class VaseBreakerController extends GamingController {
         }
         StringBuilder output = new StringBuilder();
         output.append("Game advanced by ")
-                .append(tickCount)
-                .append(" ticks.\n");
+            .append(tickCount)
+            .append(" ticks.\n");
 
         output.append(events);
 
         return resultAfterPossibleFinish(
-                game,
-                output.toString()
+            game,
+            output.toString()
         );
     }
 
@@ -164,24 +167,24 @@ public class VaseBreakerController extends GamingController {
         StringBuilder output = new StringBuilder();
         output.append("===== VASEBREAKER STATUS =====\n");
         output.append("Stage: ")
-                .append(game.getStage().getStageNumber())
-                .append('\n');
+            .append(game.getStage().getStageNumber())
+            .append('\n');
 
         output.append("Difficulty: ")
-                .append(game.getStage().getDifficulty())
-                .append('\n');
+            .append(game.getStage().getDifficulty())
+            .append('\n');
 
         output.append("Current tick: ")
-                .append(currentTick)
-                .append('\n');
+            .append(currentTick)
+            .append('\n');
 
         output.append("Remaining vases: ")
-                .append(game.getRemainingVaseCount())
-                .append('\n');
+            .append(game.getRemainingVaseCount())
+            .append('\n');
 
         output.append("Living zombies: ")
-                .append(game.getLivingZombieCount())
-                .append("\n\n");
+            .append(game.getLivingZombieCount())
+            .append("\n\n");
 
         appendBrainStatus(output, game);
         appendVaseStatus(output, game);
@@ -192,52 +195,52 @@ public class VaseBreakerController extends GamingController {
     }
 
     private void appendBrainStatus(
-            StringBuilder output,
-            VaseBreaker game
+        StringBuilder output,
+        VaseBreaker game
     ) {
         output.append("===== BRAINS =====\n");
 
         for (Brain brain : game.getBrains()) {
             output.append("Row ")
-                    .append(brain.getRow())
-                    .append(": ")
-                    .append(
-                            brain.isEaten()
-                                    ? "EATEN"
-                                    : "SAFE"
-                    )
-                    .append('\n');
+                .append(brain.getRow())
+                .append(": ")
+                .append(
+                    brain.isEaten()
+                        ? "EATEN"
+                        : "SAFE"
+                )
+                .append('\n');
         }
 
         output.append('\n');
     }
 
     private void appendVaseStatus(
-            StringBuilder output,
-            VaseBreaker game
+        StringBuilder output,
+        VaseBreaker game
     ) {
         output.append("===== UNBROKEN VASES =====\n");
 
         boolean found = false;
 
         for (Vase vase : game.getVases()
-                .stream()
-                .filter(candidate -> !candidate.isBroken())
-                .sorted(
-                        Comparator.comparingInt(Vase::getY)
-                                .thenComparingInt(Vase::getX)
-                )
-                .toList()) {
+            .stream()
+            .filter(candidate -> !candidate.isBroken())
+            .sorted(
+                Comparator.comparingInt(Vase::getY)
+                    .thenComparingInt(Vase::getX)
+            )
+            .toList()) {
 
             found = true;
 
             output.append("(")
-                    .append(vase.getX())
-                    .append(", ")
-                    .append(vase.getY())
-                    .append("): ")
-                    .append(visibleVaseName(vase))
-                    .append('\n');
+                .append(vase.getX())
+                .append(", ")
+                .append(vase.getY())
+                .append("): ")
+                .append(visibleVaseName(vase))
+                .append('\n');
         }
 
         if (!found) {
@@ -248,9 +251,9 @@ public class VaseBreakerController extends GamingController {
     }
 
     private void appendDroppedPackets(
-            StringBuilder output,
-            VaseBreaker game,
-            int currentTick
+        StringBuilder output,
+        VaseBreaker game,
+        int currentTick
     ) {
         output.append("===== DROPPED SEED PACKETS =====\n");
 
@@ -260,26 +263,26 @@ public class VaseBreakerController extends GamingController {
         }
 
         for (DroppedSeedPacket packet
-                : game.getDroppedSeedPackets()) {
+            : game.getDroppedSeedPackets()) {
 
             output.append(packet.getPlantName())
-                    .append(" at (")
-                    .append(packet.getX())
-                    .append(", ")
-                    .append(packet.getY())
-                    .append("), expires in ")
-                    .append(
-                            packet.ticksRemaining(currentTick)
-                    )
-                    .append(" ticks\n");
+                .append(" at (")
+                .append(packet.getX())
+                .append(", ")
+                .append(packet.getY())
+                .append("), expires in ")
+                .append(
+                    packet.ticksRemaining(currentTick)
+                )
+                .append(" ticks\n");
         }
 
         output.append('\n');
     }
 
     private void appendPacketInventory(
-            StringBuilder output,
-            VaseBreaker game
+        StringBuilder output,
+        VaseBreaker game
     ) {
         output.append("===== PACKET INVENTORY =====\n");
 
@@ -289,52 +292,52 @@ public class VaseBreakerController extends GamingController {
         }
 
         for (Map.Entry<String, Integer> entry
-                : game.getPacketInventory().entrySet()) {
+            : game.getPacketInventory().entrySet()) {
 
             output.append(entry.getKey())
-                    .append(": ")
-                    .append(entry.getValue())
-                    .append('\n');
+                .append(": ")
+                .append(entry.getValue())
+                .append('\n');
         }
 
         output.append('\n');
     }
 
     private void appendZombieStatus(
-            StringBuilder output,
-            VaseBreaker game
+        StringBuilder output,
+        VaseBreaker game
     ) {
         output.append("===== ZOMBIES =====\n");
 
         boolean found = false;
 
         for (Zombie zombie
-                : game.getGameState()
-                .getZombiesInTheGame()
-                .stream()
-                .filter(candidate -> !candidate.isDead())
-                .sorted(
-                        Comparator.comparingInt(Zombie::getLane)
-                                .thenComparingDouble(Zombie::getX)
-                )
-                .toList()) {
+            : game.getGameState()
+            .getZombiesInTheGame()
+            .stream()
+            .filter(candidate -> !candidate.isDead())
+            .sorted(
+                Comparator.comparingInt(Zombie::getLane)
+                    .thenComparingDouble(Zombie::getX)
+            )
+            .toList()) {
 
             found = true;
 
             output.append(zombie.getAlias())
-                    .append(" at (")
-                    .append(
-                            COORDINATE_FORMAT.format(
-                                    zombie.getX() + 1
-                            )
+                .append(" at (")
+                .append(
+                    COORDINATE_FORMAT.format(
+                        zombie.getX() + 1
                     )
-                    .append(", ")
-                    .append(zombie.getLane() + 1)
-                    .append("), health: ")
-                    .append(zombie.getHitpoints())
-                    .append('/')
-                    .append(zombie.getMaxHitpoints())
-                    .append('\n');
+                )
+                .append(", ")
+                .append(zombie.getLane() + 1)
+                .append("), health: ")
+                .append(zombie.getHitpoints())
+                .append('/')
+                .append(zombie.getMaxHitpoints())
+                .append('\n');
         }
 
         if (!found) {
@@ -358,22 +361,58 @@ public class VaseBreakerController extends GamingController {
         int stageNumber = game.getStage().getStageNumber();
         App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(
-                Menu.TRAVELLOG_MENU
+            Menu.TRAVELLOG_MENU
         );
 
         String ending;
         if (won) {
             String progressMessage = progressService.recordWin(
-                    MinigameType.VASEBREAKER, stageNumber
+                MinigameType.VASEBREAKER, stageNumber
             );
             ending =
-                    "You completed Vasebreaker stage " + stageNumber
-                            + " and returned to the Travel Log.\n"
-                            + progressMessage;
+                "You completed Vasebreaker stage " + stageNumber
+                    + " and returned to the Travel Log.\n"
+                    + progressMessage;
         } else {
             ending = "You lost Vasebreaker stage " + stageNumber + " and returned to the Travel Log.\n";
         }
         return success(message + ending);
+    }
+
+    public Result showMap() {
+        VaseBreaker game = activeGame();
+        if (game == null) {
+            return failure("No active Vasebreaker game found.\n");
+        }
+        GameState state = game.getGameState();
+        Board board = state.getBoard();
+        StringBuilder output = new StringBuilder();
+        output.append("===== GAME STATUS =====\n")
+            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
+            .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
+            .append("Sun: ").append(state.getSun()).append('\n')
+            .append("Tick: ").append(state.getTickCounter()).append('\n')
+            .append("Remaining vases: ").append(game.getRemainingVaseCount()).append('\n')
+            .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n');
+        output.append("\n===== BOARD =====\n")
+            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
+        appendBoardColumnHeader(output, board);
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+            output.append("  Row ").append(lane + 1).append(": ");
+            for (int column = 0; column < board.getColumnCount(); column++) {
+                Tile tile = board.getTile(lane, column);
+                String cell = buildThreeCharacterCell(state, tile);
+                if (game.hasUnbrokenVaseAt(column + 1, lane + 1)) {
+                    cell = 'V' + cell.substring(1);
+                }
+                output.append('[').append(cell).append("] ");
+            }
+            output.append('\n');
+        }
+        output.append("\nCell position 1 (base): V=unbroken vase, P=plant, F=frozen plant, .=empty\n")
+            .append("Cell position 2: Z=zombie, .=none\n")
+            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n");
+        return success(output.toString());
     }
 
     private VaseBreaker activeGame() {
@@ -394,7 +433,7 @@ public class VaseBreakerController extends GamingController {
 
     public Result showCurrentMenu(){
         return new Result(true
-                ,"You are now in the vase breaker minigame.\n",null);
+            ,"You are now in the vase breaker minigame.\n",null);
     }
     public Result exitMenu(){
         VaseBreaker game = activeGame();
@@ -405,8 +444,8 @@ public class VaseBreakerController extends GamingController {
         App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(Menu.TRAVELLOG_MENU);
         return success(
-                "You left the Vasebreaker level" + game.getStage().getStageNumber() +
-                        " and returned to the Travel Log.\n"
+            "You left the Vasebreaker level" + game.getStage().getStageNumber() +
+                " and returned to the Travel Log.\n"
         );
     }
 

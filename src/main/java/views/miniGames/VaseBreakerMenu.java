@@ -24,6 +24,9 @@ public class VaseBreakerMenu implements AppMenu {
             handlePlantPacket(input);
         } else if (VaseBreakerCommands.ADVANCE_TIME.matches(input)) {
             handleAdvanceTime(input);
+        } else if (VaseBreakerCommands.SHOW_MAP.matches(input)) {
+            Result result = controller.showMap();
+            System.out.println(result.message());
         } else if (VaseBreakerCommands.SHOW_STATUS.matches(input)) {
             Result result = controller.showStatus();
             System.out.println(result.message());
@@ -109,7 +112,7 @@ public class VaseBreakerMenu implements AppMenu {
         }
         try {
             return Integer.parseInt(
-                    matcher.group(groupName)
+                matcher.group(groupName)
             );
         } catch (IllegalArgumentException | IllegalStateException exception) {
             invalidCommand();

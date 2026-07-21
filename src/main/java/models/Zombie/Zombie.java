@@ -38,7 +38,6 @@ public class Zombie {
     private final float baseEatDps;
     private final float wavePointCost;
     private final int weight;
-
     private int lane;
     private float x;
     private int direction = 1; // 1 = walking normal, -1 = reversed

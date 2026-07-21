@@ -23,6 +23,8 @@ public class PushObjectBehavior implements PersistableBehavior {
     private int breakLane;
     private float breakColumn;
 
+    private final java.util.List<Zombie> pushedFrozenZombies = new java.util.ArrayList<>();
+
     public PushObjectBehavior(PushType type, int objectHitpoints, int objectCount) {
         this(type, objectHitpoints, objectCount, null, 0);
     }
@@ -47,6 +49,10 @@ public class PushObjectBehavior implements PersistableBehavior {
         if (!hasObject()) {
             return;
         }
+        if (type == PushType.ICE_BLOCK) {
+            tickIceBlocks(zombie, gs);
+            return;
+        }
         Board board = gs.getBoard();
         int lane = zombie.getLane();
         int col = (int) zombie.getX();
@@ -63,7 +69,7 @@ public class PushObjectBehavior implements PersistableBehavior {
 
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
-        if (!hasObject() || element == ElementType.POISON) {
+        if (type == PushType.ICE_BLOCK || !hasObject() || element == ElementType.POISON) {
             return rawDamage;
         }
         int remainingDamage = rawDamage;
@@ -107,8 +113,72 @@ public class PushObjectBehavior implements PersistableBehavior {
         }
     }
 
+    private void tickIceBlocks(Zombie zombie, GameState gs) {
+        Board board = gs.getBoard();
+        int lane = zombie.getLane();
+
+        pushedFrozenZombies.removeIf(block ->
+            block.isDead() || !block.hasIceShell() || block.getLane() != lane);
+
+        adoptFrozenZombiesAhead(zombie, board, lane, gs);
+
+        for (int i = 0; i < pushedFrozenZombies.size(); i++) {
+            Zombie block = pushedFrozenZombies.get(i);
+            float targetX = Math.max(0f, zombie.getX() - 1f - i);
+            int previousColumn = (int) block.getX();
+            block.setX(targetX);
+            int newColumn = (int) targetX;
+            if (newColumn != previousColumn) {
+                crushEverythingOnTile(zombie, board, lane, newColumn, gs);
+            }
+        }
+    }
+
+    private void adoptFrozenZombiesAhead(Zombie zombie, Board board, int lane, GameState gs) {
+        if (pushedFrozenZombies.size() >= objectsRemaining) {
+            return;
+        }
+        for (Zombie other : new java.util.ArrayList<>(board.getZombies())) {
+            if (other == zombie
+                || other.isDead()
+                || !other.hasIceShell()
+                || other.getLane() != lane
+                || pushedFrozenZombies.contains(other)) {
+                continue;
+            }
+            double frontEdge = zombie.getX() - 1.0 - pushedFrozenZombies.size();
+            if (other.getX() <= zombie.getX() && other.getX() >= frontEdge - 0.5) {
+                pushedFrozenZombies.add(other);
+                gs.logEvent(zombie.getAlias() + " started pushing the frozen "
+                    + other.getAlias() + " forward!\n");
+                if (pushedFrozenZombies.size() >= objectsRemaining) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private void crushEverythingOnTile(Zombie zombie, Board board, int lane, int column, GameState gs) {
+        if (column < 0) {
+            return;
+        }
+        Plant crushed = board.findNearestPlantInRange(lane, column, 0);
+        if (crushed != null) {
+            gs.logEvent("The pushed ice block crushed " + crushed.getName()
+                + " at (" + (column + 1) + ", " + (lane + 1) + ")!\n");
+            crushed.takeDamage(crushed.getCurrentHP(), gs);
+        }
+        Zombie hypnotized = gs.findNearestHypnotizedZombieInRange(zombie, lane, column, 0);
+        if (hypnotized != null) {
+            hypnotized.killInstantly(gs);
+        }
+    }
+
     @Override
     public boolean suppressesDefaultEating(Zombie zombie) {
+        if (type == PushType.ICE_BLOCK) {
+            return !pushedFrozenZombies.isEmpty();
+        }
         return hasObject();
     }
 

@@ -1,6 +1,9 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import models.Board.Board;
+import models.Board.Tile;
+import models.games.GameState;
 import models.App;
 import models.Plant.WallNut;
 import models.Result;
@@ -21,7 +24,7 @@ import java.util.stream.Collectors;
 public class WallnutBowlingController extends GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
     private final MinigameProgressService progressService =
-            new MinigameProgressService();
+        new MinigameProgressService();
 
     private String safeMessage(RuntimeException exception) {
         String message = exception.getMessage();
@@ -37,7 +40,7 @@ public class WallnutBowlingController extends GamingController {
     }
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(
-                MinigameType.WALLNUT_BOWLING, stageNumber
+            MinigameType.WALLNUT_BOWLING, stageNumber
         );
         if (!access.success()) {
             return access;
@@ -48,14 +51,14 @@ public class WallnutBowlingController extends GamingController {
             App.getInstance().setCurrentGame(game);
             App.getInstance().setCurrentMenu(Menu.WALLNUT_BOWLING);
             return success(
-                    "Wall-nut Bowling stage " + stageNumber + " started.\n"
-                            + "The first walnut is already on the conveyor belt.\n"
-                            + "Plant only in columns 1 through " + game.getRedLineColumn()
-                            + ", before the red line.\n"
+                "Wall-nut Bowling stage " + stageNumber + " started.\n"
+                    + "The first walnut is already on the conveyor belt.\n"
+                    + "Plant only in columns 1 through " + game.getRedLineColumn()
+                    + ", before the red line.\n"
             );
         } catch (RuntimeException exception) {
             return failure("Could not start Wall-nut Bowling: "
-                    + safeMessage(exception) + "\n");
+                + safeMessage(exception) + "\n");
         }
     }
 
@@ -67,7 +70,7 @@ public class WallnutBowlingController extends GamingController {
         try {
             RollingWallnut wallnut = game.rollNextWallnut(x, y);
             return success(wallnut.getWallnutType().getName()
-                    + " was released at (" + x + ", " + y + ").\n");
+                + " was released at (" + x + ", " + y + ").\n");
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(safeMessage(exception) + "\n");
         }
@@ -102,11 +105,11 @@ public class WallnutBowlingController extends GamingController {
         }
         List<WallnutType> belt = game.getConveyorBelt();
         String contents = belt.isEmpty() ? "empty" : belt.stream()
-                .map(WallnutType::getName)
-                .collect(Collectors.joining(" -> "));
+                                                     .map(WallnutType::getName)
+                                                     .collect(Collectors.joining(" -> "));
         int ticksRemaining = Math.max(0, game.getNextConveyorDeliveryTick() - game.getGameState().getTickCounter());
         return success("Conveyor: " + contents + "\n"
-                + "Next delivery in " + ticksRemaining + " ticks.\n");
+            + "Next delivery in " + ticksRemaining + " ticks.\n");
     }
 
     public Result showStatus() {
@@ -117,14 +120,14 @@ public class WallnutBowlingController extends GamingController {
         ZombieWaveManager waveManager = game.getGameState().getZombieWaveManager();
         StringBuilder output = new StringBuilder();
         output.append("===== WALL-NUT BOWLING STATUS =====\n")
-                .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
-                .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
-                .append("Current tick: ").append(game.getGameState().getTickCounter()).append('\n')
-                .append("Red line: after column ").append(game.getRedLineColumn()).append('\n')
-                .append("Wave: ").append(waveManager.getCurrentWaveNumber())
-                .append('/').append(waveManager.getTotalWaves()).append('\n')
-                .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n')
-                .append("Active walnuts: ").append(game.getRollingWallnuts().size()).append("\n\n");
+            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
+            .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
+            .append("Current tick: ").append(game.getGameState().getTickCounter()).append('\n')
+            .append("Red line: after column ").append(game.getRedLineColumn()).append('\n')
+            .append("Wave: ").append(waveManager.getCurrentWaveNumber())
+            .append('/').append(waveManager.getTotalWaves()).append('\n')
+            .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n')
+            .append("Active walnuts: ").append(game.getRollingWallnuts().size()).append("\n\n");
 
         appendConveyor(output, game);
         appendRollingWallnuts(output, game);
@@ -141,9 +144,9 @@ public class WallnutBowlingController extends GamingController {
         int position = 1;
         for (WallnutType type : game.getConveyorBelt()) {
             output.append(position++)
-                    .append(". ")
-                    .append(type.getName())
-                    .append('\n');
+                .append(". ")
+                .append(type.getName())
+                .append('\n');
         }
         output.append('\n');
     }
@@ -156,17 +159,17 @@ public class WallnutBowlingController extends GamingController {
         }
         for (RollingWallnut wallnut : game.getRollingWallnuts()) {
             output.append(wallnut.getWallnutType().getName())
-                    .append(" at (")
-                    .append(COORDINATE_FORMAT.format(wallnut.getX() + 1))
-                    .append(", ")
-                    .append(COORDINATE_FORMAT.format(wallnut.getY() + 1))
-                    .append("), direction: (")
-                    .append(COORDINATE_FORMAT.format(wallnut.getDirectionX()))
-                    .append(", ")
-                    .append(COORDINATE_FORMAT.format(wallnut.getDirectionY()))
-                    .append("), zombie hits: ")
-                    .append(wallnut.getZombieHitCount())
-                    .append('\n');
+                .append(" at (")
+                .append(COORDINATE_FORMAT.format(wallnut.getX() + 1))
+                .append(", ")
+                .append(COORDINATE_FORMAT.format(wallnut.getY() + 1))
+                .append("), direction: (")
+                .append(COORDINATE_FORMAT.format(wallnut.getDirectionX()))
+                .append(", ")
+                .append(COORDINATE_FORMAT.format(wallnut.getDirectionY()))
+                .append("), zombie hits: ")
+                .append(wallnut.getZombieHitCount())
+                .append('\n');
         }
         output.append('\n');
     }
@@ -174,25 +177,25 @@ public class WallnutBowlingController extends GamingController {
     private void appendZombies(StringBuilder output, WallnutBowling game) {
         output.append("===== ZOMBIES =====\n");
         List<Zombie> zombies = game.getGameState().getZombiesInTheGame().stream()
-                .filter(zombie -> !zombie.isDead())
-                .sorted(Comparator.comparingInt(Zombie::getLane)
-                        .thenComparingDouble(Zombie::getX))
-                .toList();
+            .filter(zombie -> !zombie.isDead())
+            .sorted(Comparator.comparingInt(Zombie::getLane)
+                .thenComparingDouble(Zombie::getX))
+            .toList();
         if (zombies.isEmpty()) {
             output.append("none\n");
             return;
         }
         for (Zombie zombie : zombies) {
             output.append(zombie.getAlias())
-                    .append(" at (")
-                    .append(COORDINATE_FORMAT.format(zombie.getX() + 1))
-                    .append(", ")
-                    .append(zombie.getLane() + 1)
-                    .append("), health: ")
-                    .append(zombie.getHitpoints())
-                    .append('/')
-                    .append(zombie.getMaxHitpoints())
-                    .append('\n');
+                .append(" at (")
+                .append(COORDINATE_FORMAT.format(zombie.getX() + 1))
+                .append(", ")
+                .append(zombie.getLane() + 1)
+                .append("), health: ")
+                .append(zombie.getHitpoints())
+                .append('/')
+                .append(zombie.getMaxHitpoints())
+                .append('\n');
         }
     }
 
@@ -209,16 +212,71 @@ public class WallnutBowlingController extends GamingController {
         String ending;
         if (won) {
             String progressMessage = progressService.recordWin(
-                    MinigameType.WALLNUT_BOWLING, stageNumber
+                MinigameType.WALLNUT_BOWLING, stageNumber
             );
             ending = "You completed Wall-nut Bowling stage " + stageNumber
                 + " and returned to the Travel Log.\n"
-                    + progressMessage;
+                + progressMessage;
         } else {
             ending = "You lost Wall-nut Bowling stage " + stageNumber
                 + " and returned to the Travel Log.\n";
         }
         return success(message + ending);
+    }
+
+    public Result showMap() {
+        WallnutBowling game = activeGame();
+        if (game == null) {
+            return failure("No active Wall-nut Bowling game found.\n");
+        }
+        GameState state = game.getGameState();
+        Board board = state.getBoard();
+        ZombieWaveManager waveManager = state.getZombieWaveManager();
+        StringBuilder output = new StringBuilder();
+        output.append("===== GAME STATUS =====\n")
+            .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
+            .append("Difficulty: ").append(game.getStage().getDifficulty()).append('\n')
+            .append("Tick: ").append(state.getTickCounter()).append('\n')
+            .append("Wave: ").append(waveManager.getCurrentWaveNumber())
+            .append('/').append(waveManager.getTotalWaves()).append('\n')
+            .append("Living zombies: ").append(game.getLivingZombieCount()).append('\n')
+            .append("Red line: after column ").append(game.getRedLineColumn()).append('\n');
+        output.append("\n===== BOARD =====\n")
+            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
+        appendBoardColumnHeader(output, board);
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+            output.append("  Row ").append(lane + 1).append(": ");
+            for (int column = 0; column < board.getColumnCount(); column++) {
+                if (column == game.getRedLineColumn()) {
+                    output.append("|| ");
+                }
+                Tile tile = board.getTile(lane, column);
+                String cell = buildThreeCharacterCell(state, tile);
+                if (hasRollingWallnutAt(game, lane, column)) {
+                    cell = 'O' + cell.substring(1);
+                }
+                output.append('[').append(cell).append("] ");
+            }
+            output.append('\n');
+        }
+        output.append("\nCell position 1 (base): O=rolling wallnut, P=plant, .=empty\n")
+            .append("Cell position 2: Z=zombie, .=none\n")
+            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n")
+            .append("||=red line\n");
+        return success(output.toString());
+    }
+
+    private boolean hasRollingWallnutAt(WallnutBowling game, int lane, int column) {
+        for (RollingWallnut wallnut : game.getRollingWallnuts()) {
+            if (wallnut.isRemoved()) {
+                continue;
+            }
+            if ((int) Math.floor(wallnut.getY()) == lane
+                && (int) Math.floor(wallnut.getX()) == column) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private WallnutBowling activeGame() {
@@ -238,8 +296,8 @@ public class WallnutBowlingController extends GamingController {
             return success("You returned to the Travel Log.\n");
         }
         return success("You left Wall-nut Bowling stage "
-                + game.getStage().getStageNumber()
-                + " and returned to the Travel Log.\n");
+            + game.getStage().getStageNumber()
+            + " and returned to the Travel Log.\n");
     }
 
 }

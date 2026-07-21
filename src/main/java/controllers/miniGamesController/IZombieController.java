@@ -148,46 +148,47 @@ public class IZombieController extends GamingController {
         GameState state = game.getGameState();
         Board board = state.getBoard();
         StringBuilder output = new StringBuilder();
-        output.append("===== I, ZOMBIE MAP =====\n")
+        output.append("===== GAME STATUS =====\n")
             .append("Stage: ").append(game.getStage().getStageNumber()).append('\n')
             .append("Sun: ").append(state.getSun()).append('\n')
             .append("Tick: ").append(state.getTickCounter()).append('\n')
-            .append("Remaining brains: ").append(game.getRemainingBrainCount()).append("\n\n");
-        Map<Long, Character> zombieSymbols = new HashMap<>();
-        for (Zombie zombie : state.getZombiesInTheGame()) {
-            if (zombie.isDead()) continue;
-            long key = tileKey(zombie.getLane(), zombie.getColumn());
-            char symbol = IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias()) ? 'S' : 'Z';
-            Character existing = zombieSymbols.get(key);
-            if (existing == null || existing == 'S') {
-                zombieSymbols.put(key, symbol);}
-        }
+            .append("Remaining brains: ").append(game.getRemainingBrainCount()).append('\n');
+        output.append("\n===== BOARD =====\n")
+            .append("Each cell contains 3 chars: [base][zombie][sun].\n\n");
+        appendBoardColumnHeader(output, board);
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            output.append("Row ").append(lane + 1).append(": ")
-                .append(game.getBrains().get(lane).isEaten() ? "[ ] " : "[O] ");
+            output.append("  Row ").append(lane + 1).append(": ")
+                .append(game.getBrains().get(lane).isEaten() ? "( ) " : "(O) ");
             for (int column = 0; column < board.getColumnCount(); column++) {
                 if (column == IZombie.RED_LINE_COLUMN) {
                     output.append("|| ");
                 }
                 Tile tile = board.getTile(lane, column);
-                Character zombieSymbol = zombieSymbols.get(tileKey(lane, column));
-                char symbol = '.';
-                if (tile.hasPlant() && zombieSymbol != null) {
-                    symbol = 'B';
-                } else if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) {
-                    symbol = 'F';
-                } else if (tile.hasPlant()) {
-                    symbol = 'P';
-                } else if (zombieSymbol != null) {
-                    symbol = zombieSymbol;
-                }
-                output.append('[').append(symbol).append("] ");
+                output.append('[').append(buildIZombieCell(state, tile)).append("] ");
             }
             output.append('\n');
         }
-        output.append("Legend: O=brain, P=plant, F=frozen plant, Z=zombie, S=sun producer, ")
-            .append("B=plant & zombie, .=empty, ||=red line\n");
+        output.append("\nCell position 1 (base): P=plant, F=frozen plant, .=empty\n")
+            .append("Cell position 2: Z=zombie, S=sun-producer zombie, .=none\n")
+            .append("Cell position 3: S=collectible/grounded sun, s=falling sun, .=none\n")
+            .append("(O)=brain, ( )=eaten brain, ||=red line\n");
         return success(output.toString());
+    }
+
+    private String buildIZombieCell(GameState state, Tile tile) {
+        char base = getBaseMapSymbol(state, tile);
+        char zombieChar = '.';
+        for (Zombie zombie : getZombiesAtTile(state, tile.getLane(), tile.getColumn())) {
+            if (IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias())) {
+                if (zombieChar == '.') {
+                    zombieChar = 'S';
+                }
+            } else {
+                zombieChar = 'Z';
+            }
+        }
+        char sun = getSunMapSymbol(state.getBoard(), tile.getLane(), tile.getColumn());
+        return new String(new char[]{base, zombieChar, sun});
     }
 
     private long tileKey(int lane, int column) {
