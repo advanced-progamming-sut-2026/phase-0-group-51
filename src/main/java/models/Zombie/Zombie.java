@@ -13,6 +13,7 @@ import models.Zombie.Behavior.ZombieBehavior;
 import models.enums.LootType;
 import models.games.GameState;
 import models.greenHouse.FlowerPot;
+import models.items.DroppedLoot;
 import models.projectile.ElementType;
 import models.quests.QuestKillSourceType;
 
@@ -375,45 +376,16 @@ public class Zombie {
         gs.removeZombie(this);
     }
 
-    private void dropLoot(GameState gs) {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            return;
-        }
+    private void dropLoot(GameState state) {
         LootType[] options = {LootType.COIN, LootType.GEM, LootType.POT};
-        LootType lootType = options[(int) (Math.random() * options.length)];
-        UserRepository.LootResult result = new UserRepository().applyZombieLoot(user.getId(), lootType);
-        if (!result.saved()) {
-            return;
-        }
-        String item;
-        switch (lootType) {
-            case COIN -> {
-                user.setCoins(result.total());
-                item = "coin";
-            }
-            case GEM -> {
-                user.setGems(result.total());
-                item = "diamond";
-            }
-            case POT -> {
-                if (user.getGreenHouse() == null) {
-                    user.setGreenHouse(GreenHouseRepository.load(user.getId()));
-                }
-
-                if (user.getGreenHouse() != null) {
-                    FlowerPot pot = user.getGreenHouse().getPot(result.unlockedRow(), result.unlockedColumn());
-                    if (pot != null) {
-                        pot.setUnlocked(true);
-                    }
-                }
-                item = "pot";
-            }
-            default ->
-                    throw new IllegalStateException("Unexpected loot type: " + lootType);}
-        gs.logEvent(
-                "A zombie dropped a " + item + "; you have " + result.total() + " " + item + "s now.\n"
-        );
+        LootType type = options[(int) (Math.random() * options.length)];
+        float lootX = Math.max(0.0f, Math.min(x, state.getBoard().getColumnCount() - 0.01f));
+        DroppedLoot loot = new DroppedLoot(type, lootX, lane, state.getTicksPerSecond());
+        state.getBoard().spawnLoot(loot);
+        state.logEvent(
+                "A zombie dropped a " + loot.getDisplayName()
+                        + " at (" + (loot.getColumn() + 1) + ", "
+                        + (loot.getLane() + 1) + "). \n");
     }
 
     public Zombie copy() {

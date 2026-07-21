@@ -27,6 +27,8 @@ public class GameView implements AppMenu {
             print(controller.cheatAddSun(parseInteger(matcher, "count")));
         } else if (GameCommands.PLANT_COLLECT_SUN_REGEX.matches(line)) {
             handleCoordinates(GameCommands.PLANT_COLLECT_SUN_REGEX.getMatcher(line), controller::collectSun);
+        } else if (GameCommands.COLLECT_LOOT_REGEX.matches(line)) {
+            handleCoordinates(GameCommands.COLLECT_LOOT_REGEX.getMatcher(line), controller::collectLoot);
         } else if (GameCommands.ADVANCE_TIME_REGEX.matches(line)) {
             Matcher matcher = GameCommands.ADVANCE_TIME_REGEX.getMatcher(line);
             print(controller.advanceTime(parseInteger(matcher, "count")));

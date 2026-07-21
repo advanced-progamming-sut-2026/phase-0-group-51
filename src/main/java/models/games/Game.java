@@ -245,6 +245,7 @@ public class Game{
     public void loadLevel(){
         ChapterTheme theme = chapters.get(currentChapterIndex);
         Level level = theme.getLevels().get(currentLevelIndex);
+        validateLockedPlantsSelection(level);
         Board board = new Board();
         this.zombieWavesManuallyStarted = false;
         this.gameState = new GameState(board, theme);
@@ -342,7 +343,7 @@ public class Game{
         applyAncientEgyptFeatures(theme, board, waveManager);
         applyFrostbiteFeatures(theme, level, waveManager);
         applyBigWaveBeachFeatures(theme, level, board, waveManager);
-        applyDarkAgesFeatures(theme, board, waveManager);
+        applyDarkAgesFeatures(theme,level, board, waveManager);
     }
 
     private void applyAncientEgyptFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
@@ -367,11 +368,13 @@ public class Game{
         feature.initialize();
     }
 
-    private void applyDarkAgesFeatures(ChapterTheme theme, Board board, ZombieWaveManager waveManager) {
+    private void applyDarkAgesFeatures(ChapterTheme theme,Level level, Board board, ZombieWaveManager waveManager) {
         if (theme != ChapterTheme.DARK_AGES) {
             return;
         }
-        skySunSpawner = null;
+        if (level.type() != LevelType.LOCKED_PLANTS && level.type() != LevelType.LOVE_YOUR_PLANTS) {
+            skySunSpawner = null;
+        }
 
         if (theme.getChapterFeatures().contains(ChapterFeature.GRAVE)) {
             for (int i = 0; i < 4; i++) {
@@ -492,6 +495,7 @@ public class Game{
         }
         gameState.tickMowers();
         gameState.getBoard().tickSuns(gameState);
+        gameState.getBoard().tickLoots(gameState);
         if (gameState.checkTimedBattleLoseCondition()) {
             finishAsLoss();
             return;
