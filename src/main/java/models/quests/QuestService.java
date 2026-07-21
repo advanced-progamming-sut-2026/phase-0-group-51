@@ -196,7 +196,7 @@ public final class QuestService {
                     ? target : 0;
             case EXPLOSIVE_PLANTS_USED -> tracker.getExplosivePlantsUsed() >= target
                     ? target : 0;
-            case FINISH_SYMMETRIC -> tracker.isSymmetric(state.getBoard()) ? target : 0;
+            case FINISH_SYMMETRIC -> won && tracker.isSymmetric(state.getBoard()) ? target : 0;
             case ONLY_FAMILY_KILLS -> tracker.getNonPlantKills() == 0
                     && tracker.onlyPlantKillersFromFamily(parameter)
                     ? target : 0;
@@ -250,7 +250,6 @@ public final class QuestService {
                 if (!repository.markClaimed(connection, user.getId(), questId)) {
                     throw new IllegalStateException("Quest reward was already claimed.");
                 }
-                connection.commit();
                 connection.commit();
                 return reward;
             } catch (RuntimeException | SQLException exception) {
@@ -316,7 +315,7 @@ public final class QuestService {
             case "@KILLING_PLANT" -> randomKillingPlant(userId);
             case "@ROW" -> Integer.toString(random.nextInt(5) + 1);
             case "@COLUMN" -> Integer.toString(random.nextInt(9) + 1);
-            case "@CROSS" -> Integer.toString(random.nextInt(5) + 1);
+            case "@CROSS" -> randomCross();
             default -> randomOption(options);
         };
     }
@@ -327,6 +326,12 @@ public final class QuestService {
                 ChapterTheme.BIG_WAVE_BEACH,
                 ChapterTheme.DARK_AGES);
         return chapters.get(random.nextInt(chapters.size())).name();
+    }
+    private String randomCross() {
+        int row = random.nextInt(5) + 1;
+        int column = random.nextInt(9) + 1;
+
+        return row + "," + column;
     }
     private String randomKillingPlant(int userId) {
         List<PlantData> allKillingPlants = PlantRegistry.getAll().stream()
@@ -364,7 +369,7 @@ public final class QuestService {
         }
 
         return switch (options.trim().toUpperCase(Locale.ROOT)) {
-            case "@CROSS" -> !parameter.trim().matches("[1-5]");
+            case "@CROSS" -> !parameter.trim().matches("[1-5]\\s*,\\s*[1-9]");
             case "@KILLING_PLANT" -> {
                 PlantData plant = PlantRegistry.getByName(parameter);
                 yield plant == null || plant.damage() <= 0;

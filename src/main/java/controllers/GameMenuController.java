@@ -177,7 +177,9 @@ public class GameMenuController {
         if (mode == LockedPlantsMode.FAMILY) {
             return new Result(
                     true,
-                    "Family Lock mode selected.\n" + "In the Shooter, Explosive, and Wall-nut families, "
+                    "Family Lock mode selected.\n"
+                            + "In the Sun Producer, Shooter, Explosive, Wall-nut, "
+                            + "and Strike-through families, only one random unlocked "
                             + "only one random unlocked plant from each family is available.\n"
                             + "You are now in the Plant Selection Menu.\n",
                     null

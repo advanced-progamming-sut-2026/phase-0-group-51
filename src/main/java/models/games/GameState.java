@@ -305,20 +305,16 @@ public class GameState {
 
     public boolean isTimedBattleKillObjectiveComplete() {
         return !timedBattleConfig.requiresZombieKills()
-                || timedBattleZombieKills
-                >= timedBattleConfig.zombieKillTarget();
+                || timedBattleZombieKills >= timedBattleConfig.zombieKillTarget();
     }
 
     public boolean isTimedBattleSunObjectiveComplete() {
         return !timedBattleConfig.requiresSunProduction()
-                || timedBattleSunProduced
-                >= timedBattleConfig.sunProductionTarget();
+                || timedBattleSunProduced >= timedBattleConfig.sunProductionTarget();
     }
 
     public boolean isTimedBattleComplete() {
-        return isTimedBattleActive()
-                && isTimedBattleKillObjectiveComplete()
-                && isTimedBattleSunObjectiveComplete();
+        return isTimedBattleActive() && isTimedBattleKillObjectiveComplete() && isTimedBattleSunObjectiveComplete();
     }
 
     public boolean checkTimedBattleLoseCondition() {
@@ -344,12 +340,9 @@ public class GameState {
             QuestKillSourceType sourceType
     ) {
         if (!isTimedBattleActive()
-                || !timedBattleConfig.requiresZombieKills()
-                || zombie == null
-                || zombie.isHypnotized()
-                || !zombie.isQuestEligible()
-                || sourceType == QuestKillSourceType.CHEAT
-                || isTimedBattleKillObjectiveComplete()) {
+                || !timedBattleConfig.requiresZombieKills() || zombie == null
+                || zombie.isHypnotized() || !zombie.isQuestEligible()
+                || sourceType == QuestKillSourceType.CHEAT || isTimedBattleKillObjectiveComplete()) {
             return;
         }
         timedBattleZombieKills = Math.min(
@@ -361,9 +354,7 @@ public class GameState {
 
     public void recordTimedBattleSunProduced(int amount) {
         if (!isTimedBattleActive()
-                || !timedBattleConfig.requiresSunProduction()
-                || amount <= 0
-                || isTimedBattleSunObjectiveComplete()) {
+                || !timedBattleConfig.requiresSunProduction() || amount <= 0 || isTimedBattleSunObjectiveComplete()) {
             return;
         }
         timedBattleSunProduced = Math.min(
@@ -505,7 +496,6 @@ public class GameState {
     public void addTick(int tick){
         this.tickCounter += tick;
     }
-    public void spawnWave(){}
     public void spawnBoss(){}
     public void increaseSunBalance(int amount) {
         this.sun += amount;

@@ -59,6 +59,7 @@ season3:
 start zombie waves
 
 collect sun -l (<x>, <y>)
+collect loot -l (<x>, <y>)
 show sun amount
 cheat add -n <count> suns
 release the nuke
@@ -142,5 +143,7 @@ show beghouled map
 show beghouled status
 show beghouled upgrades
 advance time -t <count> ticks
+menu show current
+menu exit
 menu show current
 menu exit

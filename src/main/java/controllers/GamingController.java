@@ -1,7 +1,9 @@
 package controllers;
 
+import Data.database.GreenHouseRepository;
 import Data.database.PlantBoostRepository;
 import Data.database.PlantRepository;
+import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import Data.loader.ZombieRegistry;
@@ -17,11 +19,14 @@ import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.enums.LootType;
 import models.enums.Menu;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ScoringGame;
 import models.games.ancientEgypt.Grave;
+import models.greenHouse.FlowerPot;
+import models.items.DroppedLoot;
 import models.items.Mower;
 import models.quests.QuestService;
 import models.sun.Sun;
@@ -934,6 +939,7 @@ public class GamingController {
         appendTilePlant(output, tile);
         appendTileZombies(output, tile, state);
         appendTileSuns(output, tile, state);
+        appendTileLoot(output, tile, state);
         return success(output.toString());
     }
 
@@ -1053,6 +1059,33 @@ public class GamingController {
         }
     }
 
+    private void appendTileLoot(
+            StringBuilder output,
+            Tile tile,
+            GameState state
+    ) {
+        List<DroppedLoot> loots = getLootAtTile(
+                state.getBoard(),
+                tile.getLane(),
+                tile.getColumn()
+        );
+        if (loots.isEmpty()) {
+            output.append("loot: none\n");
+            return;
+        }
+        output.append("loot:\n");
+        for (DroppedLoot loot : loots) {
+            output.append("  ")
+                    .append(loot.getDisplayName())
+                    .append(" - expires in ")
+                    .append(formatSeconds(
+                            loot.getRemainingTicks(),
+                            state.getTicksPerSecond()
+                    ))
+                    .append(" seconds\n");
+        }
+    }
+
     public Result showSunAmount() {
         GameState state = activeState();
         if (state == null) {
@@ -1106,6 +1139,110 @@ public class GamingController {
         QuestService.getInstance().recordSunCollected(
                 App.getInstance().getLoggedInUser(), collectedAmount);
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
+    }
+
+    public Result collectLoot(int x, int y) {
+        GameState state = activeState();
+        if (state == null) {
+            return failure("No active game found.\n");
+        }
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must be logged in to collect loot.\n");
+        }
+        int column = x - 1;
+        int lane = y - 1;
+        if (state.getBoard().getTileAtUserCoordinates(column, lane) == null) {
+            return failure("Coordinates are outside the map.\n");
+        }
+        DroppedLoot loot = findLootAt(state.getBoard(), lane, column);
+        if (loot == null) {
+            return failure("No loot found at given coordinates.\n");
+        }
+
+        int previousTotal = currentLootTotal(user, loot.getType());
+        UserRepository.LootResult result = new UserRepository()
+                .applyZombieLoot(user.getId(), loot.getType());
+        if (!result.saved()) {
+            return failure("Loot could not be saved; it remains on the ground.\n");
+        }
+
+        state.getBoard().collectLoot(loot);
+        String reward = applyCollectedLoot(user, loot.getType(), result, previousTotal);
+        return success(reward);
+    }
+
+    private DroppedLoot findLootAt(Board board, int lane, int column) {
+        for (DroppedLoot loot : board.getActiveLoots()) {
+            if (loot.getLane() == lane && loot.getColumn() == column) {
+                return loot;
+            }
+        }
+        return null;
+    }
+
+    private int currentLootTotal(User user, LootType type) {
+        return switch (type) {
+            case COIN -> user.getCoins();
+            case GEM -> user.getGems();
+            case POT -> 0;
+        };
+    }
+
+    private String applyCollectedLoot(
+            User user,
+            LootType type,
+            UserRepository.LootResult result,
+            int previousTotal
+    ) {
+        return switch (type) {
+            case COIN -> applyCoinLoot(user, result, previousTotal);
+            case GEM -> applyGemLoot(user, result, previousTotal);
+            case POT -> applyPotLoot(user, result);
+        };
+    }
+
+    private String applyCoinLoot(
+            User user,
+            UserRepository.LootResult result,
+            int previousTotal
+    ) {
+        user.setCoins(result.total());
+        int collected = Math.max(0, result.total() - previousTotal);
+        return "Collected " + collected + " coins; you have "
+                + result.total() + " coins now.\n";
+    }
+
+    private String applyGemLoot(
+            User user,
+            UserRepository.LootResult result,
+            int previousTotal
+    ) {
+        user.setGems(result.total());
+        int collected = Math.max(0, result.total() - previousTotal);
+        return "Collected " + collected + " gem; you have "
+                + result.total() + " gems now.\n";
+    }
+
+    private String applyPotLoot(
+            User user,
+            UserRepository.LootResult result
+    ) {
+        if (user.getGreenHouse() == null) {
+            user.setGreenHouse(GreenHouseRepository.load(user.getId()));
+        }
+        if (user.getGreenHouse() != null) {
+            FlowerPot pot = user.getGreenHouse().getPot(
+                    result.unlockedRow(),
+                    result.unlockedColumn()
+            );
+            if (pot != null) {
+                pot.setUnlocked(true);
+            }
+        }
+        return "Collected a pot; greenhouse pot ("
+                + result.unlockedColumn() + ", "
+                + result.unlockedRow() + ") was unlocked.\n";
     }
 
     public Result startZombieWaves() {
@@ -1291,8 +1428,8 @@ public class GamingController {
     ) {
         Board board = state.getBoard();
         output.append("\n===== BOARD =====\n")
-                .append("Each cell contains  3 chars: ")
-                .append("[base][zombie][sun].\n\n");
+                .append("Each cell contains 4 chars: ")
+                .append("[base][zombie][sun][loot].\n\n");
         appendBoardColumnHeader(output, board);
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             output.append(state.isProtectedRow(lane) ? "! Row " : "  Row ")
@@ -1303,7 +1440,7 @@ public class GamingController {
                  column++) {
                 Tile tile = board.getTile(lane, column);
                 output.append('[')
-                        .append(buildThreeCharacterCell(state, tile))
+                        .append(buildFourCharacterCell(state, tile))
                         .append("] ");
             }
             output.append('\n');
@@ -1324,9 +1461,10 @@ public class GamingController {
                 .append("Cell position 2: Z=zombie, .=none\n")
                 .append("Cell position 3: S=collectible/grounded sun, ")
                 .append("s=falling sun, .=none\n")
-                .append("Examples: [PZS]=plant + zombie + grounded sun, ")
-                .append("[SZ.]=sun grave + zombie, ")
-                .append("[Q.S]=plant-food grave + grounded sun.\n");
+                .append("Cell position 4: C=coin, G=gem, O=pot, .=none\n")
+                .append("Examples: [PZS.]=plant + zombie + grounded sun, ")
+                .append("[.Z.C]=zombie + coin, ")
+                .append("[Q.SO]=plant-food grave + sun + pot.\n");
     }
 
     private void appendConveyorSummary(StringBuilder output, Game game) {
@@ -1350,12 +1488,12 @@ public class GamingController {
     private void appendBoardColumnHeader(StringBuilder output, Board board) {
         output.append("       ");
         for (int column = 0; column < board.getColumnCount(); column++) {
-            output.append(String.format(Locale.ROOT, "%-6d", column + 1));
+            output.append(String.format(Locale.ROOT, "%-7d", column + 1));
         }
         output.append('\n');
     }
 
-    private String buildThreeCharacterCell(GameState state, Tile tile) {
+    private String buildFourCharacterCell(GameState state, Tile tile) {
         char base = getBaseMapSymbol(state, tile);
         char zombie = getZombiesAtTile(
                 state, tile.getLane(), tile.getColumn()
@@ -1363,7 +1501,10 @@ public class GamingController {
         char sun = getSunMapSymbol(
                 state.getBoard(), tile.getLane(), tile.getColumn()
         );
-        return new String(new char[]{base, zombie, sun});
+        char loot = getLootMapSymbol(
+                state.getBoard(), tile.getLane(), tile.getColumn()
+        );
+        return new String(new char[]{base, zombie, sun, loot});
     }
 
     private char getBaseMapSymbol(GameState state, Tile tile) {
@@ -1462,6 +1603,39 @@ public class GamingController {
             }
         }
         return result;
+    }
+
+    private List<DroppedLoot> getLootAtTile(
+            Board board,
+            int lane,
+            int column
+    ) {
+        List<DroppedLoot> result = new ArrayList<>();
+        if (board == null) {
+            return result;
+        }
+        for (DroppedLoot loot : board.getActiveLoots()) {
+            if (loot.getLane() == lane && loot.getColumn() == column) {
+                result.add(loot);
+            }
+        }
+        return result;
+    }
+
+    private char getLootMapSymbol(
+            Board board,
+            int lane,
+            int column
+    ) {
+        List<DroppedLoot> loots = getLootAtTile(board, lane, column);
+        if (loots.isEmpty()) {
+            return '.';
+        }
+        return switch (loots.get(0).getType()) {
+            case COIN -> 'C';
+            case GEM -> 'G';
+            case POT -> 'O';
+        };
     }
 
     private char getSunMapSymbol(
