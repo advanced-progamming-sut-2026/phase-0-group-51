@@ -41,6 +41,13 @@ public final class PlantFactory {
     }
 
     private static Plant createBasePlant(PlantData data) {
+        if (data.id() <= 35) {
+            return createPlantFromFirstGroup(data);
+        }
+        return createPlantFromSecondGroup(data);
+    }
+
+    private static Plant createPlantFromFirstGroup(PlantData data) {
         return switch (data.id()) {
             case 1 -> SunProducer.SUNFLOWER.create();
             case 2 -> SunProducer.TWIN_SUNFLOWER.create();
@@ -77,6 +84,12 @@ public final class PlantFactory {
             case 33 -> Explosive.SQUASH.create();
             case 34 -> Explosive.GRAPESHOT.create();
             case 35 -> Explosive.JALAPENO.create();
+            default -> createDataDrivenPlant(data);
+        };
+    }
+
+    private static Plant createPlantFromSecondGroup(PlantData data) {
+        return switch (data.id()) {
             case 36 -> Explosive.DOOM_SHROOM.create();
             case 37 -> Explosive.TANGLE_KELP.create();
             case 38 -> Explosive.ICEBERG_LETTUCE.create();
@@ -139,3 +152,5 @@ public final class PlantFactory {
         );
     }
 }
+
+

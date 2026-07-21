@@ -8,6 +8,7 @@ import models.Zombie.Zombie;
 import models.games.GameState;
 import models.games.ancientEgypt.Grave;
 import models.games.frostbite.IceFloorDirection;
+import models.items.DroppedLoot;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.sun.Sun;
@@ -22,6 +23,7 @@ public class Board {
     private final int columnCount = 9;
     private final Tile[][] tiles = new Tile[laneCount][columnCount];
     private final List<Sun> suns = new ArrayList<>();
+    private final List<DroppedLoot> loots = new ArrayList<>();
     private final List<Projectile> projectiles = new ArrayList<>();
     private Set<Zombie> zombies;
     private Random random = new Random();
@@ -230,6 +232,45 @@ public class Board {
     }
     public void spawnSun(Sun sun) {
         suns.add(sun);
+    }
+
+    public void spawnLoot(DroppedLoot loot) {
+        if (loot != null && loot.isActive()) {
+            loots.add(loot);
+        }
+    }
+
+    public List<DroppedLoot> getActiveLoots() {
+        List<DroppedLoot> activeLoots = new ArrayList<>();
+        for (DroppedLoot loot : loots) {
+            if (loot.isActive()) {
+                activeLoots.add(loot);
+            }
+        }
+        return activeLoots;
+    }
+
+    public boolean collectLoot(DroppedLoot loot) {
+        if (loot == null || !loots.contains(loot) || !loot.collect()) {
+            return false;
+        }
+        loots.remove(loot);
+        return true;
+    }
+
+    public void tickLoots(GameState state) {
+        Iterator<DroppedLoot> iterator = loots.iterator();
+        while (iterator.hasNext()) {
+            DroppedLoot loot = iterator.next();
+            loot.tick();
+            if (loot.isExpired()) {
+                state.logEvent(
+                        "The " + loot.getDisplayName() + " at (" + (loot.getColumn() + 1) + ", " + (loot.getLane() + 1) + ") expired.\n");
+                iterator.remove();
+            } else if (loot.isCollected()) {
+                iterator.remove();
+            }
+        }
     }
     public Tile placeGraveOnRandomTile() {
         List<Tile> eligible = new ArrayList<>();

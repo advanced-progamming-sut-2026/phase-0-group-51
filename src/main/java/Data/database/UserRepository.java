@@ -5,6 +5,37 @@ import models.enums.LootType;
 import java.sql.*;
 
 public class UserRepository {
+    private static final String ADD_LOOT_COINS_SQL = """
+            UPDATE users SET coins = COALESCE(coins, 0) + 50 WHERE id = ?
+            """;
+    private static final String ADD_LOOT_GEMS_SQL = """
+            UPDATE users SET gems = COALESCE(gems, 0) + 1 WHERE id = ?
+            """;
+    private static final String READ_LOOT_COINS_SQL =
+            "SELECT coins AS total FROM users WHERE id = ?";
+    private static final String READ_LOOT_GEMS_SQL =
+            "SELECT gems AS total FROM users WHERE id = ?";
+    private static final String FIND_LOCKED_POT_SQL = """
+            SELECT row, "column"
+            FROM greenhouse_pots
+            WHERE user_id = ? AND unlocked = 0
+            ORDER BY row, "column"
+            LIMIT 1
+            """;
+    private static final String UNLOCK_LOOT_POT_SQL = """
+            UPDATE greenhouse_pots
+            SET unlocked = 1
+            WHERE user_id = ? AND row = ? AND "column" = ? AND unlocked = 0
+            """;
+    private static final String COUNT_UNLOCKED_POTS_SQL = """
+            SELECT COUNT(*) AS total
+            FROM greenhouse_pots
+            WHERE user_id = ? AND unlocked = 1
+            """;
+
+    private record PotCoordinates(int row, int column) {
+    }
+
 
         public boolean register(User user) {
         String userSql = """
@@ -342,104 +373,163 @@ public class UserRepository {
     }
 
     public LootResult applyZombieLoot(int userId, LootType lootType) {
-        String updateCoinsSql = """
-                UPDATE users SET coins = COALESCE(coins, 0) + 50 WHERE id = ?
-                """;
-        String updateGemsSql = """
-                UPDATE users SET gems = COALESCE(gems, 0) + 1 WHERE id = ?
-                """;
-        String selectBalanceSql = lootType == LootType.COIN
-                ? "SELECT coins AS total FROM users WHERE id = ?"
-                : "SELECT gems AS total FROM users WHERE id = ?";
-        String selectPotSql = """
-                SELECT row, "column"
-                FROM greenhouse_pots
-                WHERE user_id = ? AND unlocked = 0
-                ORDER BY row, "column"
-                LIMIT 1
-                """;
-        String unlockPotSql = """
-                UPDATE greenhouse_pots
-                SET unlocked = 1
-                WHERE user_id = ? AND row = ? AND "column" = ? AND unlocked = 0
-                """;
-        String countPotsSql = """
-                SELECT COUNT(*) AS total
-                FROM greenhouse_pots
-                WHERE user_id = ? AND unlocked = 1
-                """;
 
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                if (lootType == LootType.POT) {
-                    int row;
-                    int column;
-                    try (PreparedStatement statement = connection.prepareStatement(selectPotSql)) {
-                        statement.setInt(1, userId);
-                        try (ResultSet resultSet = statement.executeQuery()) {
-                            if (!resultSet.next()) {
-                                connection.rollback();
-                                return new LootResult(false, 0, 0, 0);
-                            }
-                            row = resultSet.getInt("row");
-                            column = resultSet.getInt("column");
-                        }
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement(unlockPotSql)) {
-                        statement.setInt(1, userId);
-                        statement.setInt(2, row);
-                        statement.setInt(3, column);
-                        if (statement.executeUpdate() != 1) {
-                            throw new SQLException("Could not unlock the dropped flower pot.");
-                        }
-                    }
-                    int total;
-                    try (PreparedStatement statement = connection.prepareStatement(countPotsSql)) {
-                        statement.setInt(1, userId);
-                        try (ResultSet resultSet = statement.executeQuery()) {
-                            if (!resultSet.next()) {
-                                throw new SQLException("Could not count the unlocked flower pots.");
-                            }
-                            total = resultSet.getInt("total");
-                        }
-                    }
-                    connection.commit();
-                    return new LootResult(true, total, row, column);
-                }
-
-                String updateSql = lootType == LootType.COIN
-                        ? updateCoinsSql : updateGemsSql;
-                try (PreparedStatement statement = connection.prepareStatement(updateSql)) {
-                    statement.setInt(1, userId);
-                    if (statement.executeUpdate() != 1) {
-                        throw new SQLException("Could not save the zombie loot.");
-                    }
-                }
-                int total;
-                try (PreparedStatement statement = connection.prepareStatement(selectBalanceSql)) {
-                    statement.setInt(1, userId);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            throw new SQLException("Could not read the updated loot balance.");
-                        }
-                        total = resultSet.getInt("total");
-                    }
-                }
-                connection.commit();
-                return new LootResult(true, total, 0, 0);
+                return applyZombieLootInTransaction(
+                        connection,
+                        userId,
+                        lootType
+                );
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
-                return new LootResult(false, 0, 0, 0);
+                return lootFailure();
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return new LootResult(false, 0, 0, 0);
+            return lootFailure();
         }
     }
+
+    private LootResult applyZombieLootInTransaction(
+            Connection connection,
+            int userId,
+            LootType lootType
+    ) throws SQLException {
+                if (lootType == LootType.POT) {
+            return applyPotLoot(connection, userId);
+        }
+        return applyCurrencyLoot(connection, userId, lootType);
+    }
+
+    private LootResult applyPotLoot(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        PotCoordinates coordinates = findNextLockedPot(connection, userId);
+        if (coordinates == null) {
+            connection.rollback();
+            return lootFailure();
+        }
+        unlockLootPot(connection, userId, coordinates);
+        int total = countUnlockedPots(connection, userId);
+        connection.commit();
+        return new LootResult(
+                true,
+                total,
+                coordinates.row(),
+                coordinates.column()
+        );
+    }
+
+    private PotCoordinates findNextLockedPot(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                FIND_LOCKED_POT_SQL
+        )) {
+                        statement.setInt(1, userId);
+                        try (ResultSet resultSet = statement.executeQuery()) {
+                            if (!resultSet.next()) {
+                    return null;
+                            }
+                return new PotCoordinates(
+                        resultSet.getInt("row"),
+                        resultSet.getInt("column")
+                );
+                        }
+                    }
+    }
+
+    private void unlockLootPot(
+            Connection connection,
+            int userId,
+            PotCoordinates coordinates
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UNLOCK_LOOT_POT_SQL
+        )) {
+                        statement.setInt(1, userId);
+            statement.setInt(2, coordinates.row());
+            statement.setInt(3, coordinates.column());
+                        if (statement.executeUpdate() != 1) {
+                            throw new SQLException("Could not unlock the dropped flower pot.");
+                        }
+                    }
+    }
+
+    private int countUnlockedPots(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                COUNT_UNLOCKED_POTS_SQL
+        )) {
+                        statement.setInt(1, userId);
+                        try (ResultSet resultSet = statement.executeQuery()) {
+                            if (!resultSet.next()) {
+                                throw new SQLException("Could not count the unlocked flower pots.");
+                            }
+                return resultSet.getInt("total");
+                        }
+                    }
+    }
+
+    private LootResult applyCurrencyLoot(
+            Connection connection,
+            int userId,
+            LootType lootType
+    ) throws SQLException {
+        incrementLootBalance(connection, userId, lootType);
+        int total = readLootBalance(connection, userId, lootType);
+                    connection.commit();
+        return new LootResult(true, total, 0, 0);
+                }
+
+    private void incrementLootBalance(
+            Connection connection,
+            int userId,
+            LootType lootType
+    ) throws SQLException {
+        String sql = lootType == LootType.COIN
+                ? ADD_LOOT_COINS_SQL
+                : ADD_LOOT_GEMS_SQL;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, userId);
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("Could not save the zombie loot.");
+                    }
+                }
+    }
+
+    private int readLootBalance(
+            Connection connection,
+            int userId,
+            LootType lootType
+    ) throws SQLException {
+        String sql = lootType == LootType.COIN
+                ? READ_LOOT_COINS_SQL
+                : READ_LOOT_GEMS_SQL;
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setInt(1, userId);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                            throw new SQLException("Could not read the updated loot balance.");
+                        }
+                return resultSet.getInt("total");
+                    }
+                }
+    }
+
+    private LootResult lootFailure() {
+            return new LootResult(false, 0, 0, 0);
+        }
+
     public record LootResult(
             boolean saved,
             int total,

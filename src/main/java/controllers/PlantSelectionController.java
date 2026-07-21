@@ -196,15 +196,18 @@ public Result boostPlant(String plantType){
 }
 public Result startGame(){
     Game currentGame = App.getInstance().getCurrentGame();
-    if (currentGame == null) {return new Result(false, "No level is selected.", null);}
-    if (currentGame.getSelectedLevel().type()
-            == LevelType.LOVE_YOUR_PLANTS) {
-        return new Result(
-                true, "Game started successfully.\n"
-                        + "Special rule: you lose when " + currentGame.getSelectedLevel().plantLossLimit()
-                        + " plants are destroyed or eaten.\n", null
-        );
+        if (currentGame == null) {
+            return new Result(false, "No level is selected.", null);
+        }
+
+        Result validationFailure = validateGameStart(currentGame);
+        if (validationFailure != null) {
+            return validationFailure;
+        }
+        return loadAndStartGame(currentGame);
     }
+
+    private Result validateGameStart(Game currentGame) {
         if (currentGame.isLockedPlantsLevel()
                 && !currentGame.hasChosenLockedPlantsMode()) {
             return new Result(
@@ -231,7 +234,10 @@ public Result startGame(){
                     null
             );
         }
+        return validateSelectedPlants(currentGame);
+    }
 
+    private Result validateSelectedPlants(Game currentGame) {
     if (currentGame.getSelectedPlantsForThisGame().stream()
             .anyMatch(this::isForbiddenForCurrentLevel)) {
         return new Result(
@@ -247,10 +253,19 @@ public Result startGame(){
                     null
             );
     }
+        return null;
+    }
 
+    private Result loadAndStartGame(Game currentGame) {
         try {
      currentGame.loadLevel();
      currentGame.start();
+            if (currentGame.getSelectedLevel().type() == LevelType.LOVE_YOUR_PLANTS) {
+                return new Result(
+                        true, "Game started successfully.\n"
+                        + "Special rule: you lose when " + currentGame.getSelectedLevel().plantLossLimit()
+                        + " plants are destroyed or eaten.\n", null);
+            }
         } catch (RuntimeException exception) {
             String message = exception.getMessage();
             if (message == null || message.isBlank()) {
@@ -258,7 +273,6 @@ public Result startGame(){
             }
             return new Result(false, message, null);
         }
-
     App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
     if (currentGame.getGameState().isTimedBattleActive()) {
         return new Result(
@@ -362,9 +376,8 @@ private boolean isForbiddenForCurrentLevel(PlantData plant) {
 private boolean isSunProducer(PlantData plant) {
     String category = plant.category() == null ? ""
             : plant.category().replaceAll("[^A-Za-z]", "").toLowerCase();
-    return category.equals("sunproducer")
-            || plant.tags().contains(PlantTag.SUN)
-            || (plant.id() >= 1 && plant.id() <= 5);
+    return category.equals("sunproducer") || plant.tags().contains(PlantTag.SUN) ||
+            (plant.id() >= 1 && plant.id() <= 5);
 }
 
 

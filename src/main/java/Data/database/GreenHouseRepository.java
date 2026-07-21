@@ -7,6 +7,43 @@ import java.sql.*;
 import java.time.LocalDateTime;
 
 public class GreenHouseRepository {
+    private static final String SELECT_COLLECT_POT_SQL = """
+            SELECT unlocked, plant_id
+            FROM greenhouse_pots
+            WHERE user_id = ? AND row = ? AND "column" = ?
+            """;
+    private static final String ADD_MARIGOLD_COINS_SQL = """
+            UPDATE users
+            SET coins = COALESCE(coins, 0) + 500
+            WHERE id = ?
+            """;
+    private static final String SELECT_COINS_SQL =
+            "SELECT coins FROM users WHERE id = ?";
+    private static final String ADD_BOOST_SQL = """
+            INSERT OR IGNORE INTO plant_boosts(user_id, plant_id)
+            VALUES (?, ?)
+            """;
+    private static final String CLEAR_POT_SQL = """
+            UPDATE greenhouse_pots
+            SET plant_id = NULL, planted_at = NULL
+            WHERE user_id = ? AND row = ? AND "column" = ?
+              AND plant_id = ?
+            """;
+    private static final String SELECT_GROW_POT_SQL = """
+            SELECT u.gems, p.unlocked, p.plant_id
+            FROM users u
+            JOIN greenhouse_pots p ON p.user_id = u.id
+            WHERE u.id = ? AND p.row = ? AND p."column" = ?
+            """;
+    private static final String UPDATE_GEMS_SQL =
+            "UPDATE users SET gems = ? WHERE id = ?";
+    private static final String UPDATE_GROW_POT_SQL = """
+            UPDATE greenhouse_pots
+            SET planted_at = ?
+            WHERE user_id = ? AND row = ? AND "column" = ?
+              AND plant_id IS NOT NULL
+            """;
+
     public enum CollectStatus {
         SUCCESS,
         POT_NOT_FOUND,
@@ -28,6 +65,16 @@ public class GreenHouseRepository {
     }
 
     public record GrowResult(GrowStatus status, int newGemBalance) {
+    }
+
+    private record PotState(boolean unlocked, Integer plantId) {
+    }
+
+    private record GrowPotState(
+            int gems,
+            boolean unlocked,
+            Integer plantId
+    ) {
     }
 
     public static void createForUser(int userId) {
@@ -88,15 +135,15 @@ public class GreenHouseRepository {
                 while (resultSet.next()) {
                     int row = resultSet.getInt("row");
                     int column = resultSet.getInt("column");
-                FlowerPot pot = greenHouse.getPot(row, column);
+                    FlowerPot pot = greenHouse.getPot(row, column);
                     pot.setUnlocked(resultSet.getBoolean("unlocked"));
                     int plantId = resultSet.getInt("plant_id");
                     pot.setPlantId(resultSet.wasNull() ? null : plantId);
                     String plantedAt = resultSet.getString("planted_at");
-                if (plantedAt != null) {
-                    pot.setPlantedAt(LocalDateTime.parse(plantedAt));
+                    if (plantedAt != null) {
+                        pot.setPlantedAt(LocalDateTime.parse(plantedAt));
+                    }
                 }
-            }
             }
         } catch (SQLException exception) {
             throw new IllegalStateException(
@@ -177,105 +224,182 @@ public class GreenHouseRepository {
             int column,
             int expectedPlantId
     ) {
-        String selectPotSql = """
-                SELECT unlocked, plant_id
-                FROM greenhouse_pots
-                WHERE user_id = ? AND row = ? AND "column" = ?
-                """;
-        String addCoinsSql = """
-                UPDATE users
-                SET coins = COALESCE(coins, 0) + 500
-                WHERE id = ?
-                """;
-        String selectCoinsSql = "SELECT coins FROM users WHERE id = ?";
-        String addBoostSql = """
-                INSERT OR IGNORE INTO plant_boosts(user_id, plant_id)
-                VALUES (?, ?)
-                """;
-        String clearPotSql = """
-                UPDATE greenhouse_pots
-                SET plant_id = NULL, planted_at = NULL
-                WHERE user_id = ? AND row = ? AND "column" = ?
-                  AND plant_id = ?
-                """;
-
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                Integer storedPlantId;
-                boolean unlocked;
-                try (PreparedStatement statement = connection.prepareStatement(selectPotSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, row);
-                    statement.setInt(3, column);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            connection.rollback();
-                            return new CollectResult(CollectStatus.POT_NOT_FOUND, 0);
-                        }
-                        unlocked = resultSet.getBoolean("unlocked");
-                        int value = resultSet.getInt("plant_id");
-                        storedPlantId = resultSet.wasNull() ? null : value;
-                    }
-                }
-
-                if (!unlocked) {
-                    connection.rollback();
-                    return new CollectResult(CollectStatus.POT_LOCKED, 0);
-                }
-                if (storedPlantId == null || storedPlantId != expectedPlantId) {
-                    connection.rollback();
-                    return new CollectResult(CollectStatus.POT_EMPTY, 0);
-                }
-
-                int newCoins = -1;
-                if (storedPlantId == FlowerPot.MARIGOLD_ID) {
-                    try (PreparedStatement statement = connection.prepareStatement(addCoinsSql)) {
-                        statement.setInt(1, userId);
-                        if (statement.executeUpdate() != 1) {
-                            throw new SQLException("User was not found while collecting Marigold.");
-                        }
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement(selectCoinsSql)) {
-                        statement.setInt(1, userId);
-                        try (ResultSet resultSet = statement.executeQuery()) {
-                            if (!resultSet.next()) {
-                                throw new SQLException("Could not read the updated coin balance.");
-                            }
-                            newCoins = resultSet.getInt("coins");
-                        }
-                    }
-                } else {
-                    try (PreparedStatement statement = connection.prepareStatement(addBoostSql)) {
-                        statement.setInt(1, userId);
-                        statement.setInt(2, storedPlantId);
-                        statement.executeUpdate();
-                    }
-                }
-
-                try (PreparedStatement statement = connection.prepareStatement(clearPotSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, row);
-                    statement.setInt(3, column);
-                    statement.setInt(4, storedPlantId);
-                    if (statement.executeUpdate() != 1) {
-                        throw new SQLException("The greenhouse pot changed before collection.");
-                    }
-                }
-
-                connection.commit();
-                return new CollectResult(CollectStatus.SUCCESS, newCoins);
+                return collectPotInTransaction(
+                        connection,
+                        userId,
+                        row,
+                        column,
+                        expectedPlantId
+                );
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
-                return new CollectResult(CollectStatus.DATABASE_ERROR, 0);
+                return collectDatabaseFailure();
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return new CollectResult(CollectStatus.DATABASE_ERROR, 0);
+            return collectDatabaseFailure();
         }
+    }
+
+    private static CollectResult collectPotInTransaction(
+            Connection connection,
+            int userId,
+            int row,
+            int column,
+            int expectedPlantId
+    ) throws SQLException {
+        PotState pot = readPot(connection, userId, row, column);
+        if (pot == null) {
+            return rollbackCollect(connection, CollectStatus.POT_NOT_FOUND);
+        }
+        if (!pot.unlocked()) {
+            return rollbackCollect(connection, CollectStatus.POT_LOCKED);
+        }
+        if (pot.plantId() == null
+                || pot.plantId() != expectedPlantId) {
+            return rollbackCollect(connection, CollectStatus.POT_EMPTY);
+        }
+
+        int newCoins = grantCollectionReward(
+                connection,
+                userId,
+                pot.plantId()
+        );
+        clearCollectedPot(
+                connection,
+                userId,
+                row,
+                column,
+                pot.plantId()
+        );
+        connection.commit();
+        return new CollectResult(CollectStatus.SUCCESS, newCoins);
+    }
+
+    private static PotState readPot(
+            Connection connection,
+            int userId,
+            int row,
+            int column
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                SELECT_COLLECT_POT_SQL
+        )) {
+            statement.setInt(1, userId);
+            statement.setInt(2, row);
+            statement.setInt(3, column);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+                boolean unlocked = resultSet.getBoolean("unlocked");
+                int value = resultSet.getInt("plant_id");
+                Integer plantId = resultSet.wasNull() ? null : value;
+                return new PotState(unlocked, plantId);
+            }
+        }
+    }
+
+    private static int grantCollectionReward(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        if (plantId == FlowerPot.MARIGOLD_ID) {
+            addMarigoldCoins(connection, userId);
+            return readCoinBalance(connection, userId);
+        }
+        addStoredBoost(connection, userId, plantId);
+        return -1;
+    }
+
+    private static void addMarigoldCoins(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                ADD_MARIGOLD_COINS_SQL
+        )) {
+            statement.setInt(1, userId);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "User was not found while collecting Marigold."
+                );
+            }
+        }
+    }
+
+    private static int readCoinBalance(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                SELECT_COINS_SQL
+        )) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException(
+                            "Could not read the updated coin balance."
+                    );
+                }
+                return resultSet.getInt("coins");
+            }
+        }
+    }
+
+    private static void addStoredBoost(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                ADD_BOOST_SQL
+        )) {
+            statement.setInt(1, userId);
+            statement.setInt(2, plantId);
+            statement.executeUpdate();
+        }
+    }
+
+    private static void clearCollectedPot(
+            Connection connection,
+            int userId,
+            int row,
+            int column,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                CLEAR_POT_SQL
+        )) {
+            statement.setInt(1, userId);
+            statement.setInt(2, row);
+            statement.setInt(3, column);
+            statement.setInt(4, plantId);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "The greenhouse pot changed before collection."
+                );
+            }
+        }
+    }
+
+    private static CollectResult rollbackCollect(
+            Connection connection,
+            CollectStatus status
+    ) throws SQLException {
+        connection.rollback();
+        return new CollectResult(status, 0);
+    }
+
+    private static CollectResult collectDatabaseFailure() {
+        return new CollectResult(CollectStatus.DATABASE_ERROR, 0);
     }
 
     public static GrowResult growPotInstantly(
@@ -285,86 +409,139 @@ public class GreenHouseRepository {
             int gemCost,
             LocalDateTime readyPlantedAt
     ) {
-        String selectSql = """
-                SELECT u.gems, p.unlocked, p.plant_id
-                FROM users u
-                JOIN greenhouse_pots p ON p.user_id = u.id
-                WHERE u.id = ? AND p.row = ? AND p."column" = ?
-                """;
-        String updateUserSql = "UPDATE users SET gems = ? WHERE id = ?";
-        String updatePotSql = """
-                UPDATE greenhouse_pots
-                SET planted_at = ?
-                WHERE user_id = ? AND row = ? AND "column" = ?
-                  AND plant_id IS NOT NULL
-                """;
-
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
             try {
-                int gems;
-                boolean unlocked;
-                Integer plantId;
-                try (PreparedStatement statement = connection.prepareStatement(selectSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, row);
-                    statement.setInt(3, column);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            connection.rollback();
-                            return new GrowResult(GrowStatus.POT_NOT_FOUND, 0);
-                        }
-                        gems = resultSet.getInt("gems");
-                        unlocked = resultSet.getBoolean("unlocked");
-                        int value = resultSet.getInt("plant_id");
-                        plantId = resultSet.wasNull() ? null : value;
-                    }
-                }
-
-                if (!unlocked) {
-                    connection.rollback();
-                    return new GrowResult(GrowStatus.POT_LOCKED, gems);
-                }
-                if (plantId == null) {
-                    connection.rollback();
-                    return new GrowResult(GrowStatus.POT_EMPTY, gems);
-                }
-                if (gems < gemCost) {
-                    connection.rollback();
-                    return new GrowResult(GrowStatus.NOT_ENOUGH_GEMS, gems);
-                }
-
-                int newGems = gems - gemCost;
-                try (PreparedStatement statement = connection.prepareStatement(updateUserSql)) {
-                    statement.setInt(1, newGems);
-                    statement.setInt(2, userId);
-                    if (statement.executeUpdate() != 1) {
-                        throw new SQLException("Could not update the gem balance.");
-                    }
-                }
-                try (PreparedStatement statement = connection.prepareStatement(updatePotSql)) {
-                    statement.setString(1, readyPlantedAt.toString());
-                    statement.setInt(2, userId);
-                    statement.setInt(3, row);
-                    statement.setInt(4, column);
-                    if (statement.executeUpdate() != 1) {
-                        throw new SQLException("Could not update the greenhouse pot.");
-                    }
-                }
-
-                connection.commit();
-                return new GrowResult(GrowStatus.SUCCESS, newGems);
+                return growPotInTransaction(
+                        connection,
+                        userId,
+                        row,
+                        column,
+                        gemCost,
+                        readyPlantedAt
+                );
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
-                return new GrowResult(GrowStatus.DATABASE_ERROR, 0);
+                return growDatabaseFailure();
             } finally {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException exception) {
             exception.printStackTrace();
-            return new GrowResult(GrowStatus.DATABASE_ERROR, 0);
+            return growDatabaseFailure();
         }
+    }
+
+    private static GrowResult growPotInTransaction(
+            Connection connection,
+            int userId,
+            int row,
+            int column,
+            int gemCost,
+            LocalDateTime readyPlantedAt
+    ) throws SQLException {
+        GrowPotState pot = readGrowPot(connection, userId, row, column);
+        if (pot == null) {
+            return rollbackGrow(connection, GrowStatus.POT_NOT_FOUND, 0);
+        }
+        if (!pot.unlocked()) {
+            return rollbackGrow(connection, GrowStatus.POT_LOCKED, pot.gems());
+        }
+        if (pot.plantId() == null) {
+            return rollbackGrow(connection, GrowStatus.POT_EMPTY, pot.gems());
+        }
+        if (pot.gems() < gemCost) {
+            return rollbackGrow(
+                    connection,
+                    GrowStatus.NOT_ENOUGH_GEMS,
+                    pot.gems()
+            );
+        }
+
+        int newGems = pot.gems() - gemCost;
+        updateGemBalance(connection, userId, newGems);
+        markPotReady(connection, userId, row, column, readyPlantedAt);
+        connection.commit();
+        return new GrowResult(GrowStatus.SUCCESS, newGems);
+    }
+
+    private static GrowPotState readGrowPot(
+            Connection connection,
+            int userId,
+            int row,
+            int column
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                SELECT_GROW_POT_SQL
+        )) {
+            statement.setInt(1, userId);
+            statement.setInt(2, row);
+            statement.setInt(3, column);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+                int value = resultSet.getInt("plant_id");
+                Integer plantId = resultSet.wasNull() ? null : value;
+                return new GrowPotState(
+                        resultSet.getInt("gems"),
+                        resultSet.getBoolean("unlocked"),
+                        plantId
+                );
+            }
+        }
+    }
+
+    private static void updateGemBalance(
+            Connection connection,
+            int userId,
+            int newGems
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UPDATE_GEMS_SQL
+        )) {
+            statement.setInt(1, newGems);
+            statement.setInt(2, userId);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException("Could not update the gem balance.");
+            }
+        }
+    }
+
+    private static void markPotReady(
+            Connection connection,
+            int userId,
+            int row,
+            int column,
+            LocalDateTime readyPlantedAt
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UPDATE_GROW_POT_SQL
+        )) {
+            statement.setString(1, readyPlantedAt.toString());
+            statement.setInt(2, userId);
+            statement.setInt(3, row);
+            statement.setInt(4, column);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "Could not update the greenhouse pot."
+                );
+            }
+        }
+    }
+
+    private static GrowResult rollbackGrow(
+            Connection connection,
+            GrowStatus status,
+            int gems
+    ) throws SQLException {
+        connection.rollback();
+        return new GrowResult(status, gems);
+    }
+
+    private static GrowResult growDatabaseFailure() {
+        return new GrowResult(GrowStatus.DATABASE_ERROR, 0);
     }
 
     public static boolean unlockPot(int userId, int row, int column) {

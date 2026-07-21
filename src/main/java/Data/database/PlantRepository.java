@@ -7,6 +7,44 @@ import java.util.Map;
 import java.util.Set;
 
 public class PlantRepository {
+    private static final String FIND_USER_COINS_SQL =
+            "SELECT coins FROM users WHERE id = ?";
+    private static final String FIND_UNLOCKED_PLANT_SQL = """
+            SELECT 1
+            FROM user_unlocked_plants
+            WHERE user_id = ? AND plant_id = ?
+            """;
+    private static final String UPDATE_PURCHASE_COINS_SQL = """
+            UPDATE users
+            SET coins = ?
+            WHERE id = ?
+            """;
+    private static final String UNLOCK_PURCHASED_PLANT_SQL = """
+            INSERT INTO user_unlocked_plants (user_id, plant_id)
+            VALUES (?, ?)
+            """;
+    private static final String CREATE_PLANT_STATE_SQL = """
+            INSERT OR IGNORE INTO user_plants (
+                user_id, plant_id, plant_level, seed_packets
+            ) VALUES (?, ?, 1, 0)
+            """;
+    private static final String FIND_PLANT_STATE_SQL = """
+            SELECT plant_level, seed_packets
+            FROM user_plants
+            WHERE user_id = ? AND plant_id = ?
+            """;
+    private static final String UPDATE_UPGRADE_COINS_SQL =
+            "UPDATE users SET coins = ? WHERE id = ?";
+    private static final String UPSERT_PLANT_STATE_SQL = """
+            INSERT INTO user_plants (
+                user_id, plant_id, plant_level, seed_packets
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, plant_id)
+            DO UPDATE SET
+                plant_level = excluded.plant_level,
+                seed_packets = excluded.seed_packets
+            """;
+
 
     public enum PurchaseStatus {
         SUCCESS,
@@ -38,6 +76,12 @@ public class PlantRepository {
             int newLevel,
             int remainingCoins,
             int remainingSeedPackets
+    ) {
+    }
+
+    private record PlantUpgradeState(
+            int level,
+            int seedPackets
     ) {
     }
 
@@ -213,78 +257,108 @@ public class PlantRepository {
             throw new IllegalArgumentException("Purchase cost cannot be negative.");
         }
 
-        String findUserSql = "SELECT coins FROM users WHERE id = ?";
-        String findUnlockedPlantSql = """
-                SELECT 1
-                FROM user_unlocked_plants
-                WHERE user_id = ? AND plant_id = ?
-                """;
-        String updateCoinsSql = """
-                UPDATE users
-                SET coins = ?
-                WHERE id = ?
-                """;
-        String unlockPlantSql = """
-                INSERT INTO user_unlocked_plants (user_id, plant_id)
-                VALUES (?, ?)
-                """;
-        String createPlantStateSql = """
-                INSERT OR IGNORE INTO user_plants (
-                    user_id, plant_id, plant_level, seed_packets
-                ) VALUES (?, ?, 1, 0)
-                """;
+
 
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
 
             try {
-                int currentCoins;
-
-                try (PreparedStatement statement =
-                             connection.prepareStatement(findUserSql)) {
-                    statement.setInt(1, userId);
-
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
+                return purchasePlantInTransaction(
+                        connection,
+                        userId,
+                        plantId,
+                        purchaseCost
+                );
+            } catch (SQLException exception) {
                             connection.rollback();
-                            return new PurchaseResult(
+                exception.printStackTrace();
+                return purchaseFailure(PurchaseStatus.DATABASE_ERROR);
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return purchaseFailure(PurchaseStatus.DATABASE_ERROR);
+        }
+    }
+
+    private static PurchaseResult purchasePlantInTransaction(
+            Connection connection,
+            int userId,
+            int plantId,
+            int purchaseCost
+    ) throws SQLException {
+        Integer currentCoins = readUserCoins(connection, userId);
+        if (currentCoins == null) {
+            return rollbackPurchase(
+                    connection,
                                     PurchaseStatus.USER_NOT_FOUND,
                                     0
                             );
                         }
-
-                        currentCoins = resultSet.getInt("coins");
-                    }
-                }
-
-                try (PreparedStatement statement =
-                             connection.prepareStatement(findUnlockedPlantSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, plantId);
-
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (resultSet.next()) {
-                            connection.rollback();
-                            return new PurchaseResult(
+        if (isPlantUnlocked(connection, userId, plantId)) {
+            return rollbackPurchase(
+                    connection,
                                     PurchaseStatus.ALREADY_UNLOCKED,
                                     currentCoins
                             );
                         }
-                    }
-                }
+
 
                 if (currentCoins < purchaseCost) {
-                    connection.rollback();
-                    return new PurchaseResult(
+            return rollbackPurchase(
+                    connection,
                             PurchaseStatus.NOT_ENOUGH_COINS,
                             currentCoins
                     );
                 }
 
                 int remainingCoins = currentCoins - purchaseCost;
+        updatePurchasedPlantCoins(connection, userId, remainingCoins);
+        insertUnlockedPlant(connection, userId, plantId);
+        insertPlantState(connection, userId, plantId);
+        connection.commit();
+        return new PurchaseResult(PurchaseStatus.SUCCESS, remainingCoins);
+    }
 
-                try (PreparedStatement statement =
-                             connection.prepareStatement(updateCoinsSql)) {
+    private static Integer readUserCoins(
+            Connection connection,
+            int userId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                FIND_USER_COINS_SQL
+        )) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() ? resultSet.getInt("coins") : null;
+            }
+        }
+    }
+
+    private static boolean isPlantUnlocked(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                FIND_UNLOCKED_PLANT_SQL
+        )) {
+            statement.setInt(1, userId);
+            statement.setInt(2, plantId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        }
+    }
+
+    private static void updatePurchasedPlantCoins(
+            Connection connection,
+            int userId,
+            int remainingCoins
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UPDATE_PURCHASE_COINS_SQL
+        )) {
                     statement.setInt(1, remainingCoins);
                     statement.setInt(2, userId);
 
@@ -294,49 +368,47 @@ public class PlantRepository {
                         );
                     }
                 }
+    }
 
-                try (PreparedStatement statement =
-                             connection.prepareStatement(unlockPlantSql)) {
+    private static void insertUnlockedPlant(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UNLOCK_PURCHASED_PLANT_SQL
+        )) {
                     statement.setInt(1, userId);
                     statement.setInt(2, plantId);
                     statement.executeUpdate();
                 }
+    }
 
-                try (PreparedStatement statement =
-                             connection.prepareStatement(createPlantStateSql)) {
+    private static void insertPlantState(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                CREATE_PLANT_STATE_SQL
+        )) {
                     statement.setInt(1, userId);
                     statement.setInt(2, plantId);
                     statement.executeUpdate();
                 }
+    }
 
-                connection.commit();
+    private static PurchaseResult rollbackPurchase(
+            Connection connection,
+            PurchaseStatus status,
+            int coins
+    ) throws SQLException {
+        connection.rollback();
+        return new PurchaseResult(status, coins);
+    }
 
-                return new PurchaseResult(
-                        PurchaseStatus.SUCCESS,
-                        remainingCoins
-                );
-
-            } catch (SQLException exception) {
-                connection.rollback();
-                exception.printStackTrace();
-
-                return new PurchaseResult(
-                        PurchaseStatus.DATABASE_ERROR,
-                        0
-                );
-
-            } finally {
-                connection.setAutoCommit(true);
-            }
-
-        } catch (SQLException exception) {
-            exception.printStackTrace();
-
-            return new PurchaseResult(
-                    PurchaseStatus.DATABASE_ERROR,
-                    0
-            );
-        }
+    private static PurchaseResult purchaseFailure(PurchaseStatus status) {
+        return new PurchaseResult(status, 0);
     }
 
     public static UpgradeResult tryUpgradePlant(
@@ -346,124 +418,18 @@ public class PlantRepository {
             int coinCost,
             int seedPacketCost
     ) {
-        String userSql = "SELECT coins FROM users WHERE id = ?";
-        String unlockedSql = """
-                SELECT 1 FROM user_unlocked_plants
-                WHERE user_id = ? AND plant_id = ?
-                """;
-        String plantSql = """
-                SELECT plant_level, seed_packets
-                FROM user_plants
-                WHERE user_id = ? AND plant_id = ?
-                """;
-        String updateCoinsSql = "UPDATE users SET coins = ? WHERE id = ?";
-        String upsertPlantSql = """
-                INSERT INTO user_plants (
-                    user_id, plant_id, plant_level, seed_packets
-                ) VALUES (?, ?, ?, ?)
-                ON CONFLICT(user_id, plant_id)
-                DO UPDATE SET
-                    plant_level = excluded.plant_level,
-                    seed_packets = excluded.seed_packets
-                """;
-
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
-
             try {
-                int coins;
-                try (PreparedStatement statement = connection.prepareStatement(userSql)) {
-                    statement.setInt(1, userId);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            connection.rollback();
-                            return failure(UpgradeStatus.USER_NOT_FOUND);
-                        }
-                        coins = resultSet.getInt("coins");
-                    }
-                }
-
-                try (PreparedStatement statement = connection.prepareStatement(unlockedSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, plantId);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            connection.rollback();
-                            return failure(UpgradeStatus.PLANT_NOT_UNLOCKED);
-                        }
-                    }
-                }
-
-                int currentLevel = 1;
-                int seedPackets = 0;
-                try (PreparedStatement statement = connection.prepareStatement(plantSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, plantId);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (resultSet.next()) {
-                            currentLevel = resultSet.getInt("plant_level");
-                            seedPackets = resultSet.getInt("seed_packets");
-                        }
-                    }
-                }
-
-                if (currentLevel >= maximumLevel) {
-                    connection.rollback();
-                    return new UpgradeResult(
-                            UpgradeStatus.MAX_LEVEL,
-                            currentLevel,
-                            currentLevel,
-                            coins,
-                            seedPackets
-                    );
-                }
-                if (coins < coinCost) {
-                    connection.rollback();
-                    return new UpgradeResult(
-                            UpgradeStatus.NOT_ENOUGH_COINS,
-                            currentLevel,
-                            currentLevel,
-                            coins,
-                            seedPackets
-                    );
-                }
-                if (seedPackets < seedPacketCost) {
-                    connection.rollback();
-                    return new UpgradeResult(
-                            UpgradeStatus.NOT_ENOUGH_SEED_PACKETS,
-                            currentLevel,
-                            currentLevel,
-                            coins,
-                            seedPackets
-                    );
-                }
-
-                int newLevel = currentLevel + 1;
-                int remainingCoins = coins - coinCost;
-                int remainingSeedPackets = seedPackets - seedPacketCost;
-
-                try (PreparedStatement statement = connection.prepareStatement(updateCoinsSql)) {
-                    statement.setInt(1, remainingCoins);
-                    statement.setInt(2, userId);
-                    statement.executeUpdate();
-                }
-
-                try (PreparedStatement statement = connection.prepareStatement(upsertPlantSql)) {
-                    statement.setInt(1, userId);
-                    statement.setInt(2, plantId);
-                    statement.setInt(3, newLevel);
-                    statement.setInt(4, remainingSeedPackets);
-                    statement.executeUpdate();
-                }
-
-                connection.commit();
-                return new UpgradeResult(
-                        UpgradeStatus.SUCCESS,
-                        currentLevel,
-                        newLevel,
-                        remainingCoins,
-                        remainingSeedPackets
+                return upgradePlantInTransaction(
+                        connection,
+                        userId,
+                        plantId,
+                        maximumLevel,
+                        coinCost,
+                        seedPacketCost
                 );
+
             } catch (SQLException exception) {
                 connection.rollback();
                 exception.printStackTrace();
@@ -471,10 +437,189 @@ public class PlantRepository {
             } finally {
                 connection.setAutoCommit(true);
             }
+
         } catch (SQLException exception) {
             exception.printStackTrace();
             return failure(UpgradeStatus.DATABASE_ERROR);
         }
+    }
+
+    private static UpgradeResult upgradePlantInTransaction(
+            Connection connection,
+            int userId,
+            int plantId,
+            int maximumLevel,
+            int coinCost,
+            int seedPacketCost
+    ) throws SQLException {
+        Integer coins = readUserCoins(connection, userId);
+        if (coins == null) {
+            return rollbackUpgrade(
+                    connection,
+                    failure(UpgradeStatus.USER_NOT_FOUND)
+            );
+        }
+        if (!isPlantUnlocked(connection, userId, plantId)) {
+            return rollbackUpgrade(
+                    connection,
+                    failure(UpgradeStatus.PLANT_NOT_UNLOCKED)
+            );
+        }
+
+        PlantUpgradeState state = readPlantUpgradeState(
+                connection,
+                userId,
+                plantId
+        );
+        UpgradeResult validation = validateUpgrade(
+                state,
+                coins,
+                maximumLevel,
+                coinCost,
+                seedPacketCost
+        );
+        if (validation != null) {
+            return rollbackUpgrade(connection, validation);
+                        }
+        return savePlantUpgrade(connection, userId, plantId, state, coins,
+                coinCost, seedPacketCost);
+                }
+
+    private static PlantUpgradeState readPlantUpgradeState(
+            Connection connection,
+            int userId,
+            int plantId
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                FIND_PLANT_STATE_SQL
+        )) {
+                    statement.setInt(1, userId);
+                    statement.setInt(2, plantId);
+                    try (ResultSet resultSet = statement.executeQuery()) {
+                        if (!resultSet.next()) {
+                    return new PlantUpgradeState(1, 0);
+                    }
+                return new PlantUpgradeState(
+                        resultSet.getInt("plant_level"),
+                        resultSet.getInt("seed_packets")
+                );
+                        }
+                    }
+                }
+
+    private static UpgradeResult validateUpgrade(
+            PlantUpgradeState state,
+            int coins,
+            int maximumLevel,
+            int coinCost,
+            int seedPacketCost
+    ) {
+        if (state.level() >= maximumLevel) {
+            return upgradeStatusResult(
+                            UpgradeStatus.MAX_LEVEL,
+                    state,
+                    coins
+                    );
+                }
+                if (coins < coinCost) {
+            return upgradeStatusResult(
+                            UpgradeStatus.NOT_ENOUGH_COINS,
+                    state,
+                    coins
+            );
+        }
+        if (state.seedPackets() < seedPacketCost) {
+            return upgradeStatusResult(
+                    UpgradeStatus.NOT_ENOUGH_SEED_PACKETS,
+                    state,
+                    coins
+                    );
+                }
+        return null;
+    }
+
+    private static UpgradeResult upgradeStatusResult(
+            UpgradeStatus status,
+            PlantUpgradeState state,
+            int coins
+    ) {
+                    return new UpgradeResult(
+                status,
+                state.level(),
+                state.level(),
+                            coins,
+                state.seedPackets()
+                    );
+                }
+
+    private static UpgradeResult savePlantUpgrade(
+            Connection connection,
+            int userId,
+            int plantId,
+            PlantUpgradeState state,
+            int coins,
+            int coinCost,
+            int seedPacketCost
+    ) throws SQLException {
+        int newLevel = state.level() + 1;
+                int remainingCoins = coins - coinCost;
+        int remainingPackets = state.seedPackets() - seedPacketCost;
+        updateUpgradeCoins(connection, userId, remainingCoins);
+        upsertPlantUpgrade(
+                connection,
+                userId,
+                plantId,
+                newLevel,
+                remainingPackets
+        );
+        connection.commit();
+        return new UpgradeResult(
+                UpgradeStatus.SUCCESS,
+                state.level(),
+                newLevel,
+                remainingCoins,
+                remainingPackets
+        );
+    }
+
+    private static void updateUpgradeCoins(
+            Connection connection,
+            int userId,
+            int remainingCoins
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UPDATE_UPGRADE_COINS_SQL
+        )) {
+                    statement.setInt(1, remainingCoins);
+                    statement.setInt(2, userId);
+                    statement.executeUpdate();
+                }
+    }
+
+    private static void upsertPlantUpgrade(
+            Connection connection,
+            int userId,
+            int plantId,
+            int newLevel,
+            int remainingPackets
+    ) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                UPSERT_PLANT_STATE_SQL
+        )) {
+                    statement.setInt(1, userId);
+                    statement.setInt(2, plantId);
+                    statement.setInt(3, newLevel);
+            statement.setInt(4, remainingPackets);
+                    statement.executeUpdate();
+                }
+    }
+
+    private static UpgradeResult rollbackUpgrade(
+            Connection connection,
+            UpgradeResult result
+    ) throws SQLException {
+                connection.rollback();
+        return result;
     }
 
     private static UpgradeResult failure(UpgradeStatus status) {
