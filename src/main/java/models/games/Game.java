@@ -38,6 +38,7 @@ public class Game{
     private int currentChapterIndex = 0;
     private int currentLevelIndex   = 0;
     private final List<PlantData> selectedPlantsForThisGame = new ArrayList<>();
+    private PlantData imitaterTarget;
     private GameState gameState;
     private SkySunSpawner skySunSpawner;
     private ConveyorBeltLevel conveyorBeltLevel;
@@ -122,6 +123,7 @@ public class Game{
         }
 
         selectedPlantsForThisGame.clear();
+        imitaterTarget = null;
         allowedPlantByLockedFamily.clear();
 
         if (mode == LockedPlantsMode.FAMILY) {

@@ -50,6 +50,7 @@ menu collection purchase-plant -p <plant_name>
 show all plants
 show available plants
 add plant -t <type>
+add plant -t Imitater:<copied plant name>
 remove plant -t <type>
 boost plant -t <type>
 cheat unlock-all-plants
@@ -75,7 +76,7 @@ show plants status
 show tile status -l (<x>, <y>)
 zombies info
 cheat spawn-zombie -t <zombie-type> -l <x, y>
-plant plant -t Imitater:<copied plant name> -l (<x>, <y>)
+plant plant -t Imitater -l (<x>, <y>)
 ------Meow point game-----
 show score
 show scoring rules
