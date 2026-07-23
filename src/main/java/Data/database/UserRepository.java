@@ -1,4 +1,6 @@
 package Data.database;
+
+import Data.loader.PlantRegistry;
 import models.User;
 import models.enums.LootType;
 
@@ -69,6 +71,11 @@ public class UserRepository {
                     if (statement.executeUpdate() != 1) {
                         throw new SQLException("The initial progress row was not created.");}}
                 GreenHouseRepository.insertInitialPots(connection, user.getId());
+                PlantRepository.unlockPlants(
+                        connection,
+                        user.getId(),
+                        PlantRegistry.getStarterPlantIds()
+                );
                 connection.commit();
                 return true;
             } catch (SQLException exception) {

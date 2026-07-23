@@ -16,6 +16,8 @@ import models.games.Level;
 import models.games.LevelType;
 import models.games.darkAges.LockedPlantsMode;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 public class GameMenuController {
@@ -26,9 +28,6 @@ public class GameMenuController {
             ChapterTheme.DARK_AGES
     };
     private int selectedChapterIndex = -1;
-    private static final int[] CHAPTER_ONE_LEVEL_ONE_PLANTS = {
-            1, 6, 7, 9, 25, 30, 44, 55
-    };
     private int findChapterIndex(String chapterName) {
         if (chapterName == null || chapterName.isBlank()) {
             return -1;
@@ -60,6 +59,11 @@ public class GameMenuController {
         }
         int[] currentProgress = normalizedProgress(App.loggedInUser);
         int unlockedChapterIndex = currentProgress[0] - 1;
+        unlockPlantsAvailableThroughProgress(
+                App.loggedInUser,
+                unlockedChapterIndex,
+                currentProgress[1]
+        );
         if (requestedChapterIndex > unlockedChapterIndex) {
             ChapterTheme highestUnlockedChapter = ADVENTURE_CHAPTERS[unlockedChapterIndex];
             return new Result(
@@ -103,6 +107,11 @@ public class GameMenuController {
         int[] currentProgress = normalizedProgress(App.loggedInUser);
         int unlockedChapterIndex = currentProgress[0] - 1;
         int unlockedLevelIndex = currentProgress[1] - 1;
+        unlockPlantsAvailableThroughProgress(
+                App.loggedInUser,
+                unlockedChapterIndex,
+                currentProgress[1]
+        );
         if (selectedChapterIndex > unlockedChapterIndex) {
             return new Result(
                     false, "This chapter is locked for you.\n", null);
@@ -117,7 +126,6 @@ public class GameMenuController {
                     null);
         }
         Level selectedLevel = selectedChapter.getLevels().get(requestedLevelIndex);
-        unlockChapterOneLevelOnePlants(selectedChapterIndex, requestedLevelIndex);
         Game newGame = new Game();
         newGame.setCurrentChapterIndex(selectedChapterIndex);
         newGame.setCurrentLevelIndex(requestedLevelIndex);
@@ -266,20 +274,40 @@ public class GameMenuController {
                 || (chapterIndex == currentChapterIndex
                 && levelNumber <= currentLevelNumber);
         if (alreadyUnlocked) {
+            int unlockedPlantCount = unlockPlantsAvailableThroughProgress(
+                    user,
+                    currentChapterIndex,
+                    currentLevelNumber
+            );
             return new Result(
                     true,
                     "CHEAT: " + chapter.getName() + " Level " + levelNumber
-                            + " is already unlocked.\n",
+                            + " is already unlocked.\n"
+                            + "Missing plant rewards restored: "
+                            + unlockedPlantCount + ".\n",
                     null
             );
         }
-        boolean saved = progressRepository.saveProgress(user.getId(), chapterIndex + 1, levelNumber);
+        boolean saved = progressRepository.saveProgress(
+                user.getId(),
+                chapterIndex + 1,
+                levelNumber
+        );
         if (!saved) {
             return new Result(false, "Could not save the cheated progress.\n", null);
         }
+        int unlockedPlantCount = unlockPlantsAvailableThroughProgress(
+                user,
+                chapterIndex,
+                levelNumber
+        );
         return new Result(
-                true, "CHEAT: Adventure progress unlocked through "
-                        + chapter.getName() + " Level " + levelNumber + ".\n", null);
+                true,
+                "CHEAT: Adventure progress unlocked through "
+                        + chapter.getName() + " Level " + levelNumber + ".\n"
+                        + "Plant rewards unlocked: " + unlockedPlantCount + ".\n",
+                null
+        );
     }
 
     public Result cheatAdd(int amount, String kind) {
@@ -310,21 +338,39 @@ public class GameMenuController {
             return new Result(false, "You can only go to the Collection menu!",null);
         }
     }
-    private void unlockChapterOneLevelOnePlants(int chapterIndex, int levelIndex) {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null || chapterIndex != 0 || levelIndex != 0) {
-            return;
-        }
-        Set<Integer> previouslyUnlocked = PlantRepository.loadUnlockedPlants(user.getId());
-        NewsRepository newsRepository = new NewsRepository();
-        for (int plantId : CHAPTER_ONE_LEVEL_ONE_PLANTS) {
-            if (previouslyUnlocked.contains(plantId)) {
-                continue;
+    private int unlockPlantsAvailableThroughProgress(
+            User user,
+            int targetChapterIndex,
+            int highestUnlockedLevel
+    ) {
+        List<Integer> plantIds = new ArrayList<>(PlantRegistry.getStarterPlantIds());
+        for (int chapterIndex = 0; chapterIndex <= targetChapterIndex; chapterIndex++) {
+            ChapterTheme chapter = ADVENTURE_CHAPTERS[chapterIndex];
+            plantIds.addAll(PlantRegistry.getChapterPlantIds(chapter));
+            int completedLevels = chapterIndex < targetChapterIndex
+                    ? chapter.getLevels().size()
+                    : Math.max(0, highestUnlockedLevel - 1);
+            for (int level = 1; level <= completedLevels; level++) {
+                plantIds.addAll(PlantRegistry.getLevelRewardPlantIds(chapter, level));
             }
-            PlantRepository.unlockPlant(user.getId(), plantId);
+        }
+        Set<Integer> newlyUnlocked = PlantRepository.unlockPlantsAndReturnNew(
+                user.getId(),
+                plantIds
+        );
+        createPlantUnlockNews(user, newlyUnlocked);
+        return newlyUnlocked.size();
+    }
+
+    private void createPlantUnlockNews(User user, Set<Integer> plantIds) {
+        NewsRepository newsRepository = new NewsRepository();
+        for (int plantId : plantIds) {
             PlantData plant = PlantRegistry.getById(plantId);
-            String plantName = plant == null ? "Plant #" + plantId : plant.name();
-            newsRepository.createNewsForUser(user.getId(),
+            String plantName = plant == null
+                    ? "Plant #" + plantId
+                    : plant.name();
+            newsRepository.createNewsForUser(
+                    user.getId(),
                     "New plant unlocked: " + plantName + "."
             );
         }

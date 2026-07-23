@@ -120,7 +120,14 @@ public class GamingController {
             return failure("Coordinates are outside the map.\n");
         }
 
-        PlantChoice choice = resolvePlantChoice(plantType);
+        if (isOldImitaterPlantingSyntax(plantType)) {
+            return failure(
+                    "Choose Imitater's copied plant in the Plant Selection Menu, "
+                            + "then plant it with -t Imitater.\n"
+            );
+        }
+
+        PlantChoice choice = resolvePlantChoice(game, plantType);
         Result choiceFailure = validatePlantChoice(choice);
         if (choiceFailure != null) {
             return choiceFailure;
@@ -128,11 +135,12 @@ public class GamingController {
         return placePlantForLevel(game, state, tile, choice, x, y);
     }
 
-    private PlantChoice resolvePlantChoice(String plantType) {
-        PlantData imitaterTarget = parseImitaterTarget(plantType);
-        PlantData selected = imitaterTarget == null
-                ? PlantRegistry.getByName(plantType)
-                : PlantRegistry.getById(IMITATER_ID);
+    private PlantChoice resolvePlantChoice(Game game, String plantType) {
+        PlantData selected = PlantRegistry.getByName(plantType);
+        PlantData imitaterTarget = selected != null
+                && selected.id() == IMITATER_ID
+                ? game.getImitaterTarget()
+                : null;
         return new PlantChoice(selected, imitaterTarget);
     }
 
@@ -142,9 +150,7 @@ public class GamingController {
         }
         if (choice.selected().id() == IMITATER_ID
                 && choice.imitaterTarget() == null) {
-            return failure(
-                    "Use Imitater:<plant name> to choose what Imitater copies.\n"
-            );
+            return failure("Choose what Imitater copies in the Plant Selection Menu first.\n");
         }
         return null;
     }
@@ -374,24 +380,10 @@ public class GamingController {
         return plant != null && plant.id() == LILY_PAD_ID;
     }
 
-    private PlantData parseImitaterTarget(String input) {
-        if (input == null) {
-            return null;
-        }
-        String prefix = "imitater:";
-        String normalized = input.trim();
-        if (!normalized.toLowerCase(Locale.ROOT).startsWith(prefix)) {
-            return null;
-        }
-        String copiedName = normalized.substring(prefix.length()).trim();
-        if (copiedName.isEmpty()) {
-            return null;
-        }
-        PlantData target = PlantRegistry.getByName(copiedName);
-        if (target == null || target.id() == IMITATER_ID) {
-            return null;
-        }
-        return target;
+    private boolean isOldImitaterPlantingSyntax(String input) {
+        return input != null
+                && input.trim().toLowerCase(Locale.ROOT)
+                .startsWith("imitater:");
     }
 
     private Result placeImitaterCopy(
@@ -458,12 +450,39 @@ public class GamingController {
             state.plantPumpkin(copy, tile);
         } else if (target.id() == LILY_PAD_ID) {
             state.plantLilyPad(copy, tile);
-        } else if (tile.isWater() && copy.hasTag(PlantTag.WATER)) {
-            state.plantPlant(copy, tile);
-        } else if (tile.isWater()
-                && tile.hasLilyPad()
-                && !tile.hasTopPlant()) {
-            state.plantOnLilyPad(copy, tile);
+        } else {
+            placeImitaterLikeTarget(state, tile, target, copy);
+        }
+    }
+
+    private void placeImitaterLikeTarget(
+            GameState state,
+            Tile tile,
+            PlantData target,
+            Plant copy
+    ) {
+        if (tile.isWater()) {
+            if (canStackSelectedPlant(target, tile)) {
+                state.stackPlant(copy, tile.getPlant());
+            } else if (copy.hasTag(PlantTag.WATER)) {
+                state.plantPlant(copy, tile);
+            } else if (tile.hasLilyPad() && !tile.hasTopPlant()) {
+                state.plantOnLilyPad(copy, tile);
+            } else {
+                throw new IllegalStateException(
+                        "A non-aquatic plant needs an empty Lily Pad on this water tile"
+                );
+            }
+            return;
+        }
+
+        if (target.tags().contains(PlantTag.WATER)) {
+            throw new IllegalStateException(
+                    target.name() + " can only be planted on water"
+            );
+        }
+        if (canStackSelectedPlant(target, tile)) {
+            state.stackPlant(copy, tile.getPlant());
         } else {
             state.plantPlant(copy, tile);
         }
@@ -904,11 +923,18 @@ public class GamingController {
 
         StringBuilder output = new StringBuilder("===== PLANT STATUS =====\n\n");
         for (PlantData data : game.getSelectedPlantsForThisGame()) {
-            Plant plant = PlantFactory.create(data, levels.getOrDefault(data.id(), 1));
+            Plant plant;
+            String displayName = data.name();
+            if (data.id() == IMITATER_ID && game.getImitaterTarget() != null) {
+                plant = createImitaterCopyForUser(game.getImitaterTarget());
+                displayName += " (copies " + game.getImitaterTarget().name() + ")";
+            } else {
+                plant = PlantFactory.create(data, levels.getOrDefault(data.id(), 1));
+            }
             int ticksLeft = Math.max(0,
                     state.getPlantCooldownEnd(data.id()) - state.getTickCounter());
             boolean enoughSun = state.getSun() >= plant.getPlantStat().cost();
-            output.append(data.name()).append(":\n")
+            output.append(displayName).append(":\n")
                     .append("  level: ").append(plant.getLevel()).append('\n')
                     .append("  sun cost: ").append(plant.getPlantStat().cost()).append('\n')
                     .append("  available: ")
