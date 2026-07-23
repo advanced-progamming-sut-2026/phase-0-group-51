@@ -1,8 +1,11 @@
 package Data.database;
 
 import java.sql.*;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -171,6 +174,53 @@ public class PlantRepository {
     public static void unlockPlants(int userId, int... plantIds) {
         for (int plantId : plantIds) {
             unlockPlant(userId, plantId);
+        }
+    }
+
+    public static Set<Integer> unlockPlantsAndReturnNew(
+            int userId,
+            Collection<Integer> plantIds
+    ) {
+        Set<Integer> previouslyUnlocked = loadUnlockedPlants(userId);
+        Set<Integer> newlyUnlocked = new LinkedHashSet<>();
+        for (int plantId : plantIds) {
+            if (previouslyUnlocked.contains(plantId)) {
+                continue;
+            }
+            unlockPlant(userId, plantId);
+            newlyUnlocked.add(plantId);
+        }
+        return Collections.unmodifiableSet(new LinkedHashSet<>(newlyUnlocked));
+    }
+
+    static void unlockPlants(
+            Connection connection,
+            int userId,
+            Collection<Integer> plantIds
+    ) throws SQLException {
+        String unlockSql = """
+                INSERT OR IGNORE INTO user_unlocked_plants (user_id, plant_id)
+                VALUES (?, ?)
+                """;
+        String stateSql = """
+                INSERT OR IGNORE INTO user_plants (
+                    user_id, plant_id, plant_level, seed_packets
+                ) VALUES (?, ?, 1, 0)
+                """;
+
+        try (PreparedStatement unlock = connection.prepareStatement(unlockSql);
+             PreparedStatement state = connection.prepareStatement(stateSql)) {
+            for (int plantId : plantIds) {
+                unlock.setInt(1, userId);
+                unlock.setInt(2, plantId);
+                unlock.addBatch();
+
+                state.setInt(1, userId);
+                state.setInt(2, plantId);
+                state.addBatch();
+            }
+            unlock.executeBatch();
+            state.executeBatch();
         }
     }
     public static int getSeedPackets(int userId,int plantId){

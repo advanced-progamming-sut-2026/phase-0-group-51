@@ -1,6 +1,9 @@
 package controllers;
 
+import Data.loader.PlantRegistry;
+
 import Data.database.GreenHouseRepository;
+import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import controllers.validation.SignUpValidation;
 import lombok.Getter;
@@ -33,6 +36,7 @@ public class LoginMenuController {
             }
             GreenHouse greenHouse = GreenHouseRepository.load(user.getId());
             user.setGreenHouse(greenHouse);
+            PlantRepository.unlockPlantsAndReturnNew(user.getId(), PlantRegistry.getStarterPlantIds());
             App.getInstance().setLoggedInUser(user);
             repository.setStayLoggedIn(user.getId(), stayLoggedIn);
             return new Result(true, "Login successful.\n", user);
