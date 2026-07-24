@@ -682,7 +682,7 @@ public class Projectile {
 
     private void hit(Zombie zombie, GameState state, int appliedDamage) {
         boolean protectedByIce = zombie.hasIceShell();
-        applyJesterSpinFromLobbedShot(zombie);
+        applyJesterSpinOnHit(zombie);
         zombie.takeDamage(appliedDamage, elementType, state, sourcePlant);
         if (!protectedByIce) {
             elementType.onHit(zombie, state, effectDurationTicks, sourcePlant);
@@ -691,17 +691,16 @@ public class Projectile {
         pierceRemaining--;
     }
 
-    private void applyJesterSpinFromLobbedShot(Zombie zombie) {
-        if (!movingStrategy.isTargeted()) {
-            return;
-        }
+    private void applyJesterSpinOnHit(Zombie zombie) {
         DamageReactionBehavior reaction = zombie.getBehavior(DamageReactionBehavior.class);
         if (reaction == null
             || reaction.getType() != DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE) {
             return;
         }
         if (reaction.isSpinning()) {
-            reaction.stopSpinFromLobbedShot(zombie);
+            if (movingStrategy.isTargeted()) {
+                reaction.stopSpinFromLobbedShot(zombie);
+            }
         } else {
             reaction.startSpinFromProjectile(zombie);
         }
@@ -722,10 +721,10 @@ public class Projectile {
         }
         DamageReactionBehavior reaction = zombie.getBehavior(DamageReactionBehavior.class);
         if (reaction == null
-            || reaction.getType() != DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE) {
+            || reaction.getType() != DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE
+            || !reaction.isSpinning()) {
             return false;
         }
-        reaction.startSpinFromProjectile(zombie);
         reflected = true;
         alreadyHit.add(zombie);
         state.logEvent("Jester " + zombie.getAlias()
