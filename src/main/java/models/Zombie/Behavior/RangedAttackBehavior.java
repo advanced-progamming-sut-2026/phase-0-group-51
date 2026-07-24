@@ -12,6 +12,8 @@ import java.util.Map;
 public class RangedAttackBehavior implements PersistableBehavior {
     private static final int DEFAULT_JUGGLE_DAMAGE = 20;
 
+    private static final int SNOWBALL_SPACING_TICKS = 10;
+
     private final RangedAttackType type;
     private final int intervalTicks;
     private final int range;
@@ -34,10 +36,10 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
     @Override
     public void onTick(Zombie zombie, GameState state) {
-       // if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
-           // tickSnowballBarrage(zombie, state);
-           // return;
-        //}
+        if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
+            tickSnowballBarrage(zombie, state);
+            return;
+        }
         if (--cooldown > 0) {
             return;
         }
@@ -47,11 +49,9 @@ public class RangedAttackBehavior implements PersistableBehavior {
         int col = zombie.getColumn();
         switch (type) {
             case SNOWBALL -> {
-                // IceAge hunter
-                Plant target = board.findNearestPlantInRange(lane, col, range);
-                if (target != null) {
-                    target.addFrostLevel(state, "Hunter snowball");
-                }
+                throwSnowball(zombie, board, state);
+                snowballsRemaining = Math.max(0, extraParam - 1);
+                snowballDelayTicks = SNOWBALL_SPACING_TICKS;
             }
             case OCTOPUS_NET -> {
                 // Octopus
@@ -78,6 +78,26 @@ public class RangedAttackBehavior implements PersistableBehavior {
             }
             default -> {
             }
+        }
+    }
+
+    private void tickSnowballBarrage(Zombie zombie, GameState state) {
+        if (--snowballDelayTicks > 0) {
+            return;
+        }
+        throwSnowball(zombie, state.getBoard(), state);
+        snowballsRemaining--;
+        snowballDelayTicks = SNOWBALL_SPACING_TICKS;
+        if (snowballsRemaining <= 0) {
+            cooldown = intervalTicks;
+        }
+    }
+
+    private void throwSnowball(Zombie zombie, Board board, GameState state) {
+        Plant target = board.findNearestPlantInRange(
+            zombie.getLane(), zombie.getColumn(), range);
+        if (target != null) {
+            target.addFrostLevel(state, "Hunter snowball");
         }
     }
 
