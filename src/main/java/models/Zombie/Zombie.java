@@ -90,6 +90,9 @@ public class Zombie {
     public void applySpeedScale(float scale) {
         this.speedMultiplier *= scale;
     }
+    public void restoreSpeedMultiplier(float multiplier) {
+        this.speedMultiplier = multiplier;
+    }
 
     public void applyDamageScale(float scale) {
         this.damageMultiplier *= scale;
@@ -152,8 +155,8 @@ public class Zombie {
     public boolean hasMetallicArmor() {
         for (ZombieBehavior behavior : behaviors) {
             if (behavior instanceof ArmorBehavior armor
-                    && armor.getDefinition().isMetallic()
-                    && !armor.isGone()) {
+                && armor.getDefinition().isMetallic()
+                && !armor.isGone()) {
                 return true;
             }
         }
@@ -200,15 +203,15 @@ public class Zombie {
     }
 
     public void killInstantlyWithoutLoot(
-            GameState gs, QuestKillSourceType sourceType
+        GameState gs, QuestKillSourceType sourceType
     ) {
         killInstantly(gs, sourceType, false);
     }
 
     private void killInstantly(
-            GameState gs,
-            QuestKillSourceType sourceType,
-            boolean allowLoot
+        GameState gs,
+        QuestKillSourceType sourceType,
+        boolean allowLoot
     ) {
         if (dead) {
             return;
@@ -222,7 +225,7 @@ public class Zombie {
     }
 
     public void applyPoison(
-            GameState gs, float damagePerSecond, float durationSeconds, Plant sourcePlant
+        GameState gs, float damagePerSecond, float durationSeconds, Plant sourcePlant
     ) {
         this.poisonDPS = damagePerSecond;
         this.poisonTicksRemaining = durationSeconds * gs.getTicksPerSecond();
@@ -244,20 +247,20 @@ public class Zombie {
         }
         if (dead) return;
         boolean eatSuppressed = behaviors.stream()
-                .anyMatch(behavior -> behavior.suppressesDefaultEating(this));
+            .anyMatch(behavior -> behavior.suppressesDefaultEating(this));
         Zombie hypnotizedTarget = eatSuppressed
-                ? null
-                : gs.findNearestHypnotizedZombieInRange(
-                        this, lane, x, 0.65f);
+            ? null
+            : gs.findNearestHypnotizedZombieInRange(
+            this, lane, x, 0.65f);
         if (hypnotizedTarget != null) {
             attackOpposingZombie(hypnotizedTarget, gs);
             return;
         }
         Plant target = eatSuppressed
-                ? null
-                : gs.getBoard().findNearestPlantInRange(
-                        lane, x, EATING_DISTANCE
-                );
+            ? null
+            : gs.getBoard().findNearestPlantInRange(
+            lane, x, EATING_DISTANCE
+        );
         if (target != null) {
             eating = true;
             eatDamageAccumulator += (baseEatDps * damageMultiplier) / gs.getTicksPerSecond();
@@ -282,10 +285,10 @@ public class Zombie {
 
     private void tickHypnotized(GameState gs) {
         Zombie enemy = gs.findNearestHostileZombieInRange(
-                this,
-                lane,
-                x,
-                0.65f
+            this,
+            lane,
+            x,
+            0.65f
         );
         if (enemy != null) {
             attackOpposingZombie(enemy, gs);
@@ -295,19 +298,19 @@ public class Zombie {
         float chillFactor = isChilled() ? CHILL_SPEED_FACTOR : 1.0f;
         float previousX = x;
         x -= direction * (baseSpeed * speedMultiplier * chillFactor)
-                / gs.getTicksPerSecond();
+            / gs.getTicksPerSecond();
         gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
     }
 
     private void attackOpposingZombie(Zombie target, GameState state) {
         if (target == null
-                || target.isDead()
-                || target.isHypnotized() == hypnotized) {
+            || target.isDead()
+            || target.isHypnotized() == hypnotized) {
             return;
         }
         eating = true;
         eatDamageAccumulator += (baseEatDps * damageMultiplier)
-                / state.getTicksPerSecond();
+            / state.getTicksPerSecond();
         int wholeDamage = (int) eatDamageAccumulator;
         if (wholeDamage <= 0) {
             return;
@@ -315,23 +318,23 @@ public class Zombie {
         eatDamageAccumulator -= wholeDamage;
         int hitpointsBefore = target.getHitpoints();
         target.takeDamage(
-                wholeDamage,
-                ElementType.NORMAL,
-                state,
-                null
+            wholeDamage,
+            ElementType.NORMAL,
+            state,
+            null
         );
         System.out.printf(
-                "[DEBUG][ZOMBIE FIGHT] %s %s dealt %d raw damage to %s %s "
-                        + "at row %d, x=%.2f. HP: %d -> %d.%n",
-                hypnotized ? "Hypnotized" : "Normal",
-                getAlias(),
-                wholeDamage,
-                target.isHypnotized() ? "hypnotized" : "normal",
-                target.getAlias(),
-                target.getLane() + 1,
-                target.getX(),
-                hitpointsBefore,
-                target.getHitpoints()
+            "[DEBUG][ZOMBIE FIGHT] %s %s dealt %d raw damage to %s %s "
+                + "at row %d, x=%.2f. HP: %d -> %d.%n",
+            hypnotized ? "Hypnotized" : "Normal",
+            getAlias(),
+            wholeDamage,
+            target.isHypnotized() ? "hypnotized" : "normal",
+            target.getAlias(),
+            target.getLane() + 1,
+            target.getX(),
+            hitpointsBefore,
+            target.getHitpoints()
         );
     }
 
@@ -352,7 +355,7 @@ public class Zombie {
             if (hitpoints <= 0) {
                 hitpoints = 0;
                 die(gs, poisonSource == null ? QuestKillSourceType.OTHER
-                        : QuestKillSourceType.PLANT, poisonSource);
+                    : QuestKillSourceType.PLANT, poisonSource);
             }
         }
     }
@@ -365,19 +368,19 @@ public class Zombie {
     }
 
     private void die(
-            GameState gs,
-            QuestKillSourceType sourceType,
-            Plant sourcePlant,
-            boolean allowLoot
+        GameState gs,
+        QuestKillSourceType sourceType,
+        Plant sourcePlant,
+        boolean allowLoot
     ) {
         if (dead) {
             return;
         }
         dead = true;
         models.items.Mower mower = lane >= 0 && lane < gs.getLawnMowers().length
-                ? gs.getLawnMowers()[lane] : null;
+            ? gs.getLawnMowers()[lane] : null;
         gs.getQuestTracker().recordZombieKill(
-                this, sourceType, sourcePlant, gs.getTickCounter(), mower);
+            this, sourceType, sourcePlant, gs.getTickCounter(), mower);
         gs.recordTimedBattleZombieKill(this, sourceType);
         if (sourcePlant != null) {
             sourcePlant.getPlantType().onZombieKilled(sourcePlant, this, gs);
@@ -405,11 +408,11 @@ public class Zombie {
         DroppedLoot loot = new DroppedLoot(type, lootX, lane, state.getTicksPerSecond());
         state.getBoard().spawnLoot(loot);
         state.logEvent(
-                "A zombie dropped a " + loot.getDisplayName()
-                        + " at (" + (loot.getColumn() + 1) + ", "
-                        + (loot.getLane() + 1) + "). Use 'collect loot -l ("
-                        + (loot.getColumn() + 1) + ", "
-                        + (loot.getLane() + 1) + ")' before it expires.\n");
+            "A zombie dropped a " + loot.getDisplayName()
+                + " at (" + (loot.getColumn() + 1) + ", "
+                + (loot.getLane() + 1) + "). Use 'collect loot -l ("
+                + (loot.getColumn() + 1) + ", "
+                + (loot.getLane() + 1) + ")' before it expires.\n");
     }
 
     public Zombie copy() {
