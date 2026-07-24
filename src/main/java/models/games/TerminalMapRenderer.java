@@ -11,6 +11,10 @@ public class TerminalMapRenderer {
     private static final int CELL_WIDTH = 8;
     private static final int CELL_CONTENT_LENGTH = 4;
 
+    private static final String GREEN = "\u001B[32m";
+    private static final String YELLOW = "\u001B[33m";
+    private static final String RESET = "\u001B[0m";
+
     private TerminalMapRenderer() {
     }
 
@@ -193,7 +197,12 @@ public class TerminalMapRenderer {
             );
             Tile tile = board.getTile(lane, column);
             String cell = normalizeCell(cellFormatter.format(tile));
-            output.append(String.format(Locale.ROOT, " %-6s|", cell));
+            String paddedCell = String.format(Locale.ROOT, " %-6s|", cell);
+            paddedCell = paddedCell
+                    .replace("P", GREEN + "P" + RESET)
+                    .replace("S", YELLOW + "S" + RESET)
+                    .replace("s", YELLOW + "s" + RESET);
+            output.append(paddedCell);
         }
 
         if (rowSuffixFormatter != null) {

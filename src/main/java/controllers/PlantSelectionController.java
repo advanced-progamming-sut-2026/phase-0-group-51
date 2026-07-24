@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Set;
 
 public class PlantSelectionController {
+    private static final int IMITATER_ID = 56;
+    private static final String IMITATER_PREFIX = "Imitater:";
+
     private final UserRepository userRepository;
     public PlantSelectionController() {
         this.userRepository = new UserRepository();
@@ -74,7 +77,22 @@ public class PlantSelectionController {
     public Result addPlant(String plantType){
         Game game = App.getInstance().getCurrentGame();
         if (game == null) return new Result(false, "No level is selected.", null);
-        PlantData plant = PlantRegistry.getByName(plantType);
+        boolean imitaterRequest = isImitaterRequest(plantType);
+        PlantData imitaterTarget = imitaterRequest
+                ? parseImitaterTarget(plantType)
+                : null;
+        PlantData plant = imitaterRequest
+                ? PlantRegistry.getById(IMITATER_ID)
+                : PlantRegistry.getByName(plantType);
+
+        if (imitaterRequest && imitaterTarget == null) {
+            return new Result(
+                    false,
+                    "Use add plant -t Imitater:<plant name> and choose a valid "
+                            + "non-Imitater plant to copy.",
+                    null
+            );
+        }
         if (plant == null) {
             return new Result(false, "Plant does not exist.", null);
         }
@@ -108,12 +126,37 @@ public class PlantSelectionController {
         }
         List<PlantData> selected = game.getSelectedPlantsForThisGame();
         if (selected.contains(plant)) {
+            if (plant.id() == IMITATER_ID && game.getImitaterTarget() != null) {
+                return new Result(
+                        false,
+                        "Imitater is already selected and copies "
+                                + game.getImitaterTarget().name() + ".",
+                        null
+                );
+            }
             return new Result(false, "Plant already selected.", null);
+        }
+        if (imitaterRequest && !selected.contains(imitaterTarget)) {
+            return new Result(
+                    false,
+                    "Select " + imitaterTarget.name()
+                            + " first, then add Imitater to create the second card.",
+                    null
+            );
         }
         if (selected.size() >= 8) {
             return new Result(false, "Plant selection is full.", null);
         }
         selected.add(plant);
+        if (imitaterRequest) {
+            game.setImitaterTarget(imitaterTarget);
+            return new Result(
+                    true,
+                    "Imitater added successfully and will copy "
+                            + imitaterTarget.name() + ".",
+                    null
+            );
+        }
         return new Result(true, "Plant added successfully.", null);
     }
 public Result removePlant(String plantType){
@@ -122,7 +165,9 @@ public Result removePlant(String plantType){
             return new Result(false, "No level is selected.", null);
         }
 
-    PlantData plant = PlantRegistry.getByName(plantType);
+    PlantData plant = isImitaterRequest(plantType)
+            ? PlantRegistry.getById(IMITATER_ID)
+            : PlantRegistry.getByName(plantType);
     if (plant == null) {
         return new Result(false, "Plant does not exist.", null);
     }
@@ -136,8 +181,22 @@ public Result removePlant(String plantType){
         }
 
         List<PlantData> selected = game.getSelectedPlantsForThisGame();
+    PlantData imitaterTarget = game.getImitaterTarget();
+    PlantData imitater = PlantRegistry.getById(IMITATER_ID);
+    if (imitaterTarget != null
+            && imitaterTarget.equals(plant)
+            && selected.contains(imitater)) {
+        return new Result(
+                false,
+                "Remove Imitater before removing the plant it copies.",
+                null
+        );
+    }
     if (!selected.remove(plant)) {
         return new Result(false, "Plant is not selected.", null);
+    }
+    if (plant.id() == IMITATER_ID) {
+        game.setImitaterTarget(null);
     }
     return new Result(true, "Plant removed successfully.", null);
 }
@@ -253,6 +312,18 @@ public Result startGame(){
                     null
             );
     }
+    PlantData imitater = PlantRegistry.getById(IMITATER_ID);
+    if (currentGame.getSelectedPlantsForThisGame().contains(imitater)) {
+        PlantData target = currentGame.getImitaterTarget();
+        if (target == null
+                || !currentGame.getSelectedPlantsForThisGame().contains(target)) {
+            return new Result(
+                    false,
+                    "Imitater must have one selected plant to copy before the game starts.",
+                    null
+            );
+        }
+    }
         return null;
     }
 
@@ -334,6 +405,11 @@ public void exitMenu(){
         if (game == null) {
             return "";
         }
+        if (plant.id() == IMITATER_ID
+                && game.getSelectedPlantsForThisGame().contains(plant)
+                && game.getImitaterTarget() != null) {
+            return " [selected; copies " + game.getImitaterTarget().name() + "]";
+        }
         if (game.isForcedLoadoutMode()) {
             return game.isForcedLockedPlant(plant)
                     ? " [forced]"
@@ -350,6 +426,46 @@ public void exitMenu(){
             return " [family choice]";
         }
         return "";
+}
+
+private boolean isImitaterRequest(String input) {
+    if (input == null) {
+        return false;
+    }
+    String normalized = input.trim();
+    return normalized.equalsIgnoreCase("Imitater")
+            || normalized.regionMatches(
+                    true,
+                    0,
+                    IMITATER_PREFIX,
+                    0,
+                    IMITATER_PREFIX.length()
+            );
+}
+
+private PlantData parseImitaterTarget(String input) {
+    if (input == null) {
+        return null;
+    }
+    String normalized = input.trim();
+    if (!normalized.regionMatches(
+            true,
+            0,
+            IMITATER_PREFIX,
+            0,
+            IMITATER_PREFIX.length()
+    )) {
+        return null;
+    }
+    String copiedName = normalized.substring(IMITATER_PREFIX.length()).trim();
+    if (copiedName.isEmpty()) {
+        return null;
+    }
+    PlantData target = PlantRegistry.getByName(copiedName);
+    if (target == null || target.id() == IMITATER_ID) {
+        return null;
+    }
+    return target;
 }
 
 private boolean isForbiddenForCurrentLevel(PlantData plant) {

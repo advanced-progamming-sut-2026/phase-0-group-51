@@ -1,7 +1,10 @@
 package models;
 
+import Data.loader.PlantRegistry;
+
 import Data.database.DataBaseManager;
 import Data.database.GreenHouseRepository;
+import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import Data.loader.PlantLoader;
 import Data.loader.QuestLoader;
@@ -34,6 +37,10 @@ public class App {
         }
         rememberedUser.setGreenHouse(GreenHouseRepository.load(
                 rememberedUser.getId())
+        );
+        PlantRepository.unlockPlantsAndReturnNew(
+                rememberedUser.getId(),
+                PlantRegistry.getStarterPlantIds()
         );
 
         loggedInUser = rememberedUser;

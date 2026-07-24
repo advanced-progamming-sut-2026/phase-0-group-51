@@ -5,6 +5,12 @@ public enum CollectionMenuCommands implements Commands{
     CURRENT_MENU_REGEX(Commands.CURRENT_MENU_REGEX),
     ENTER_MENU_REGEX(Commands.ENTER_MENU_REGEX),
     SHOW_ALL_PLANTS_REGEX("^menu\\s+collection\\s+show-all-plants$"),
+    SHOW_ADVENTURE_PLANTS_REGEX(
+            "^menu\\s+collection\\s+show-adventure-plants$"
+    ),
+    SHOW_PURCHASABLE_PLANTS_REGEX(
+            "^menu\\s+collection\\s+show-purchasable-plants$"
+    ),
     SHOW_PLANTS_REGEX("^menu\\s+collection\\s+show-plants$"),
     SHOW_ZOMBIES_REGEX("^menu\\s+collection\\s+show-zombies$"),
     SHOW_ALL_ZOMBIES_REGEX("^menu\\s+collection\\s+show-all-zombies$"),

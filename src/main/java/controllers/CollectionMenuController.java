@@ -24,22 +24,49 @@ public class CollectionMenuController {
             return failure("You must log in before viewing the collection.\n");
         }
 
-        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
-        Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
-        Map<Integer, Integer> seedPackets = PlantRepository.loadSeedPackets(user.getId());
-        List<PlantData> plants = sortedPlants();
-
         StringBuilder output = new StringBuilder("====== ALL PLANTS ======\n");
-        for (PlantData plant : plants) {
-            boolean isUnlocked = unlocked.contains(plant.id());
-            output.append(printPlant(
-                    plant,
-                    levels.getOrDefault(plant.id(), 1),
-                    seedPackets.getOrDefault(plant.id(), 0),
-                    isUnlocked
-            )).append('\n');
-        }
+        appendPlantGroup(
+                output,
+                user,
+                "ADVENTURE PLANTS",
+                PlantRegistry.getAdventurePlantIds()
+        );
+        appendPlantGroup(
+                output,
+                user,
+                "PURCHASE-ONLY PLANTS",
+                PlantRegistry.getPurchasablePlantIds()
+        );
+        return success(output.toString());
+    }
 
+    public Result showAdventurePlants() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before viewing the collection.\n");
+        }
+        StringBuilder output = new StringBuilder();
+        appendPlantGroup(
+                output,
+                user,
+                "ADVENTURE PLANTS",
+                PlantRegistry.getAdventurePlantIds()
+        );
+        return success(output.toString());
+    }
+
+    public Result showPurchasablePlants() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must log in before viewing the collection.\n");
+        }
+        StringBuilder output = new StringBuilder();
+        appendPlantGroup(
+                output,
+                user,
+                "PURCHASE-ONLY PLANTS",
+                PlantRegistry.getPurchasablePlantIds()
+        );
         return success(output.toString());
     }
 
@@ -124,8 +151,16 @@ public class CollectionMenuController {
         }
 
 
+        PlantRegistry.UnlockRule unlockRule = PlantRegistry.getUnlockRule(plant.id());
+        if (!unlockRule.isPurchasable()) {
+            return failure(
+                    "You cannot purchase " + plant.name()
+                            + " because it will get unlocked through the Adventure. "
+                            + unlockRule.description() + ".\n"
+            );
+        }
 
-        int purchaseCost = 2000;
+        int purchaseCost = unlockRule.purchaseCost();
         PlantRepository.PurchaseResult result = PlantRepository.tryPurchasePlant(
                 user.getId(), plant.id(), purchaseCost
             );
@@ -312,6 +347,33 @@ public class CollectionMenuController {
         return success(output.toString());
     }
 
+    private void appendPlantGroup(
+            StringBuilder output,
+            User user,
+            String heading,
+            Collection<Integer> plantIds
+    ) {
+        Set<Integer> includedIds = new HashSet<>(plantIds);
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(user.getId());
+        Map<Integer, Integer> levels = PlantRepository.loadPlantLevels(user.getId());
+        Map<Integer, Integer> seedPackets = PlantRepository.loadSeedPackets(
+                user.getId()
+        );
+
+        output.append("====== ").append(heading).append(" ======\n");
+        for (PlantData plant : sortedPlants()) {
+            if (!includedIds.contains(plant.id())) {
+                continue;
+            }
+            output.append(printPlant(
+                    plant,
+                    levels.getOrDefault(plant.id(), 1),
+                    seedPackets.getOrDefault(plant.id(), 0),
+                    unlocked.contains(plant.id())
+            )).append('\n');
+        }
+    }
+
     private List<PlantData> sortedPlants() {
         List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
         plants.sort(Comparator.comparingInt(PlantData::id));
@@ -332,7 +394,9 @@ public class CollectionMenuController {
                 + " | Cost: " + plant.cost()
                 + " | Dmg: " + plant.damage()
                 + " | HP: " + plant.baseHp()
-                + " | Tags: " + plant.tags();
+                + " | Tags: " + plant.tags()
+                + " | Unlock: "
+                + PlantRegistry.getUnlockRule(plant.id()).description();
     }
 
     private List<Zombie> sortedZombieTemplates() {

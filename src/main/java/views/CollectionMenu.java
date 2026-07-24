@@ -16,6 +16,12 @@ public class CollectionMenu implements AppMenu{
         } else if (CollectionMenuCommands.SHOW_ALL_PLANTS_REGEX.matches(line)) {
             Result result = controller.showAllPlants();
             System.out.println(result.message());
+        } else if (CollectionMenuCommands.SHOW_ADVENTURE_PLANTS_REGEX.matches(line)) {
+            Result result = controller.showAdventurePlants();
+            System.out.println(result.message());
+        } else if (CollectionMenuCommands.SHOW_PURCHASABLE_PLANTS_REGEX.matches(line)) {
+            Result result = controller.showPurchasablePlants();
+            System.out.println(result.message());
         } else if (CollectionMenuCommands.SHOW_PLANTS_REGEX.matches(line)) {
             Result result = controller.showPlants();
             System.out.println(result.message());
