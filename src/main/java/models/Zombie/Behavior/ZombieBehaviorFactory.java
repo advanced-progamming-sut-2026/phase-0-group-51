@@ -11,6 +11,7 @@ import java.util.Map;
 
 public class ZombieBehaviorFactory {
     private static final int TICKS_PER_SECOND = 10;
+    private static final int HUNTER_SNOWBALL_INTERVAL_TICKS = TICKS_PER_SECOND;
 
     public static ZombieBehavior fromResultSet(ResultSet rs) throws SQLException {
         String type = rs.getString("behavior_type");
@@ -129,22 +130,22 @@ public class ZombieBehaviorFactory {
     public static List<ZombieBehavior> fromJson(
         String alias,
         String objclass,
-            JsonNode data,
+        JsonNode data,
         Map<String, ArmorDefinition> armorRegistry) {
 
         List<ZombieBehavior> behaviors = new ArrayList<>();
         if (addGeneralBehavior(
-                alias, objclass, data, armorRegistry, behaviors
+            alias, objclass, data, armorRegistry, behaviors
         )) {
             return behaviors;
         }
         if (addAncientOrFrostbiteBehavior(
-                objclass, data, behaviors
+            objclass, data, behaviors
         )) {
             return behaviors;
         }
         if (addBeachOrDarkBehavior(
-                objclass, data, armorRegistry, behaviors
+            objclass, data, armorRegistry, behaviors
         )) {
             return behaviors;
         }
@@ -152,33 +153,33 @@ public class ZombieBehaviorFactory {
             return behaviors;
         }
         System.out.println(
-                "[ZombieBehaviorFactory] Unknown objclass: " + objclass
+            "[ZombieBehaviorFactory] Unknown objclass: " + objclass
         );
         return behaviors;
     }
 
     private static boolean addGeneralBehavior(
-            String alias,
-            String objclass,
-            JsonNode data,
-            Map<String, ArmorDefinition> armorRegistry,
-            List<ZombieBehavior> behaviors
+        String alias,
+        String objclass,
+        JsonNode data,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors
     ) {
         switch (objclass) {
             case "ZombiePropertySheet" -> addPropertySheetBehavior(
-                    alias, data, armorRegistry, behaviors
+                alias, data, armorRegistry, behaviors
             );
             case "ZombieNewspaperProps" -> addNewspaperBehavior(
-                    data, armorRegistry, behaviors
+                data, armorRegistry, behaviors
             );
             case "ZombieGargantuarProps" -> addGargantuarBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieRaProps" -> behaviors.add(
-                    new SunStealBehavior(
-                            data.path("MaxClaimedSunCurrency").asInt(250),
-                            20
-                    )
+                new SunStealBehavior(
+                    data.path("MaxClaimedSunCurrency").asInt(250),
+                    20
+                )
             );
             default -> {
                 return false;
@@ -188,160 +189,160 @@ public class ZombieBehaviorFactory {
     }
 
     private static void addPropertySheetBehavior(
-            String alias,
-            JsonNode data,
-            Map<String, ArmorDefinition> armorRegistry,
-            List<ZombieBehavior> behaviors
+        String alias,
+        JsonNode data,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors
     ) {
-                if (alias.equals("ZombieDarkArmor3")) {
+        if (alias.equals("ZombieDarkArmor3")) {
             addArmorByAlias(
-                    "CrownDefault@ArmorTypes",
-                    armorRegistry,
-                    behaviors
+                "CrownDefault@ArmorTypes",
+                armorRegistry,
+                behaviors
             );
-                    addArmorByAlias("ShoulderArmorDefault@ArmorTypes", armorRegistry, behaviors);
-                } else {
+            addArmorByAlias("ShoulderArmorDefault@ArmorTypes", armorRegistry, behaviors);
+        } else {
             resolveArmorProps(data, armorRegistry, behaviors);
-                }
-                if (alias.equals("ZombieDarkImpDragon")) {
-                    // Imp dragon: immune to fire projectiles
-                    behaviors.add(new DamageReactionBehavior(
-                        DamageReactionBehavior.DamageReactionType.FIRE_IMMUNE));
-                }
-            }
+        }
+        if (alias.equals("ZombieDarkImpDragon")) {
+            // Imp dragon: immune to fire projectiles
+            behaviors.add(new DamageReactionBehavior(
+                DamageReactionBehavior.DamageReactionType.FIRE_IMMUNE));
+        }
+    }
 
     private static void addNewspaperBehavior(
-            JsonNode data,
-            Map<String, ArmorDefinition> armorRegistry,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors
     ) {
         resolveArmorProps(data, armorRegistry, behaviors);
-                behaviors.add(new DamageReactionBehavior(
-                    DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE,
-                (float) data.path("EnragedSpeedScale").asDouble(4.0),
-                (float) data.path("EnragedDamageScale").asDouble(4.0)
-                ));
-            }
+        behaviors.add(new DamageReactionBehavior(
+            DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE,
+            (float) data.path("EnragedSpeedScale").asDouble(4.0),
+            (float) data.path("EnragedDamageScale").asDouble(4.0)
+        ));
+    }
 
     private static void addGargantuarBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         int hitpoints = data.path("Hitpoints").asInt(3600);
-                float  throwPercent = 0.5f;
+        float  throwPercent = 0.5f;
         JsonNode layers = data.path("HealthThresholdToImpAmmoLayers");
         if (layers.isArray() && !layers.isEmpty()) {
             throwPercent = (float) layers.get(0)
-                    .path("HealthPercentThrowImp")
-                    .asDouble(0.5);
+                .path("HealthPercentThrowImp")
+                .asDouble(0.5);
         }
-                behaviors.add(new ImpThrowBehavior(
-                ImpThrowBehavior.SummonType.IMP_THROW,
-                "ZombieImp",
-                1,
-                (int) (hitpoints * throwPercent)
+        behaviors.add(new ImpThrowBehavior(
+            ImpThrowBehavior.SummonType.IMP_THROW,
+            "ZombieImp",
+            1,
+            (int) (hitpoints * throwPercent)
         ));
-                behaviors.add(new InstantKillBehavior(1.0f, true, 0f, true));
-            }
+        behaviors.add(new InstantKillBehavior(1.0f, true, 0f, true));
+    }
 
     private static boolean addAncientOrFrostbiteBehavior(
-            String objclass,
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        String objclass,
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         switch (objclass) {
             case "ZombieExplorerProps" -> addExplorerBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieTombRaiserProps" -> addTombRaiserBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieIceAgeDodoProps" -> addDodoBehavior(behaviors);
             case "ZombieIceAgeHunterProps" -> addHunterBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieIceAgeTroglobiteProps" -> addTroglobiteBehavior(
-                    data, behaviors
+                data, behaviors
             );
             default -> {
                 return false;
             }
         }
         return true;
-            }
+    }
 
     private static void addExplorerBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new TorchBehavior(
-                Math.max(0, data.path("MaxTorchReach").asInt(1) - 1)
+        behaviors.add(new TorchBehavior(
+            Math.max(0, data.path("MaxTorchReach").asInt(1) - 1)
         ));
     }
 
     private static void addTombRaiserBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         int interval = (int) (
-                data.path("TimeBetweenRaisings").asDouble(6)
-                        * TICKS_PER_SECOND
+            data.path("TimeBetweenRaisings").asDouble(6)
+                * TICKS_PER_SECOND
         );
-                behaviors.add(new WorldEffectBehavior(
-                    WorldEffectBehavior.WorldEffectType.SPAWN_TOMB,
-                interval,
-                data.path("NumberOfTombsToSpawn").asInt(2)
+        behaviors.add(new WorldEffectBehavior(
+            WorldEffectBehavior.WorldEffectType.SPAWN_TOMB,
+            interval,
+            data.path("NumberOfTombsToSpawn").asInt(2)
         ));
-            }
+    }
 
     private static void addDodoBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new MovementBehavior(
-                    MovementBehavior.MovementType.FLY_OVER,
-                MovementBehavior.DODO_FLY_OVER_PLANTS
+        behaviors.add(new MovementBehavior(
+            MovementBehavior.MovementType.FLY_OVER,
+            MovementBehavior.DODO_FLY_OVER_PLANTS
         ));
     }
 
     private static void addHunterBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.SNOWBALL,
-                    30,
-                data.path("FarAttackRange").asInt(4),
-                data.path("SnowballsPerBarrage").asInt(3)
-                ));
+        behaviors.add(new RangedAttackBehavior(
+            RangedAttackBehavior.RangedAttackType.SNOWBALL,
+            HUNTER_SNOWBALL_INTERVAL_TICKS,
+            data.path("FarAttackRange").asInt(4),
+            data.path("SnowballsPerBarrage").asInt(3)
+        ));
     }
 
     private static void addTroglobiteBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new PushObjectBehavior(
-                    PushObjectBehavior.PushType.ICE_BLOCK,
-                    600,
-                data.path("NumberOfIceblocksToSpawnWith").asInt(3)
+        behaviors.add(new PushObjectBehavior(
+            PushObjectBehavior.PushType.ICE_BLOCK,
+            600,
+            data.path("NumberOfIceblocksToSpawnWith").asInt(3)
         ));
     }
 
     private static boolean addBeachOrDarkBehavior(
-            String objclass,
-            JsonNode data,
-            Map<String, ArmorDefinition> armorRegistry,
-            List<ZombieBehavior> behaviors
+        String objclass,
+        JsonNode data,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors
     ) {
         switch (objclass) {
             case "ZombieBeachFishermanProps" -> addFishermanBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieBeachOctopusProps" -> addOctopusBehavior(behaviors);
             case "ZombieBeachSnorkelProps" -> addSnorkelBehavior(behaviors);
             case "ZombieDarkJugglerProps" -> addJugglerBehavior(behaviors);
             case "ZombieDarkWizardProps" -> addWizardBehavior(behaviors);
             case "ZombieDarkKingProps" -> addDarkKingBehavior(
-                    data, armorRegistry, behaviors
+                data, armorRegistry, behaviors
             );
             default -> {
                 return false;
@@ -351,196 +352,196 @@ public class ZombieBehaviorFactory {
     }
 
     private static void addFishermanBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         int interval = (int) (
-                data.path("DelayBetweenCasting").asDouble(2.5)
-                        * TICKS_PER_SECOND
+            data.path("DelayBetweenCasting").asDouble(2.5)
+                * TICKS_PER_SECOND
         );
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.HOOK_PULL,
-                interval,
-                data.path("CastingAreaMaxRange").asInt(8)
-                ));
+        behaviors.add(new RangedAttackBehavior(
+            RangedAttackBehavior.RangedAttackType.HOOK_PULL,
+            interval,
+            data.path("CastingAreaMaxRange").asInt(8)
+        ));
     }
 
     private static void addOctopusBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new RangedAttackBehavior(
-                RangedAttackBehavior.RangedAttackType.OCTOPUS_NET,
-                40,
-                3
+        behaviors.add(new RangedAttackBehavior(
+            RangedAttackBehavior.RangedAttackType.OCTOPUS_NET,
+            40,
+            3
         ));
     }
 
     private static void addSnorkelBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new MovementBehavior(MovementBehavior.MovementType.UNDERGROUND));
-                behaviors.add(new DamageReactionBehavior(
-                    DamageReactionBehavior.DamageReactionType.SUBMERGE_DODGE));
-            }
+        behaviors.add(new MovementBehavior(MovementBehavior.MovementType.UNDERGROUND));
+        behaviors.add(new DamageReactionBehavior(
+            DamageReactionBehavior.DamageReactionType.SUBMERGE_DODGE));
+    }
 
     private static void addJugglerBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.JUGGLE_BALL, 35, 5, 20));
-                behaviors.add(new DamageReactionBehavior(
-                    DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE,
-                1.5f
+        behaviors.add(new RangedAttackBehavior(
+            RangedAttackBehavior.RangedAttackType.JUGGLE_BALL, 35, 5, 20));
+        behaviors.add(new DamageReactionBehavior(
+            DamageReactionBehavior.DamageReactionType.REFLECT_PROJECTILE,
+            1.5f
         ));
-            }
+    }
 
     private static void addWizardBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new TransformBehavior(
-                TransformBehavior.TransformType.SHEEP_TRANSFORM,
-                60,
-                4
+        behaviors.add(new TransformBehavior(
+            TransformBehavior.TransformType.SHEEP_TRANSFORM,
+            60,
+            4
         ));
     }
 
     private static void addDarkKingBehavior(
-            JsonNode data,
-            Map<String, ArmorDefinition> armorRegistry,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        Map<String, ArmorDefinition> armorRegistry,
+        List<ZombieBehavior> behaviors
     ) {
         int interval = (int) (
-                data.path("DelayBetweenKnightings").asDouble(2.5)
-                        * TICKS_PER_SECOND
+            data.path("DelayBetweenKnightings").asDouble(2.5)
+                * TICKS_PER_SECOND
         );
         int area = data.path("KnightingAreaX").asInt(4);
-                List<ArmorDefinition> knightArmors = new ArrayList<>();
-                ArmorDefinition crown    = armorRegistry.get("CrownDefault@ArmorTypes");
-                ArmorDefinition shoulder = armorRegistry.get("ShoulderArmorDefault@ArmorTypes");
+        List<ArmorDefinition> knightArmors = new ArrayList<>();
+        ArmorDefinition crown    = armorRegistry.get("CrownDefault@ArmorTypes");
+        ArmorDefinition shoulder = armorRegistry.get("ShoulderArmorDefault@ArmorTypes");
         if (crown != null) {
             knightArmors.add(crown);
         }
         if (shoulder != null) {
             knightArmors.add(shoulder);
         }
-                behaviors.add(new AuraBehavior(
-                AuraBehavior.AuraType.KNIGHT_NEARBY,
-                area,
-                interval,
-                knightArmors
+        behaviors.add(new AuraBehavior(
+            AuraBehavior.AuraType.KNIGHT_NEARBY,
+            area,
+            interval,
+            knightArmors
         ));
     }
 
     private static boolean addRemainingBehavior(
-            String objclass,
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        String objclass,
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         switch (objclass) {
             case "ZombieCrystalSkullProps" -> addCrystalSkullBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieProspectorProps" -> addProspectorBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombiePianoProps" -> addPianoBehavior(data, behaviors);
             case "ZombieModernAllStarProps" -> addAllStarBehavior(
-                    data, behaviors
+                data, behaviors
             );
             case "ZombieLostCityJaneProps" -> addJaneBehavior(behaviors);
             case "ZombieArcadeProps" -> addArcadeBehavior(behaviors);
             case "ZombieBarrelRollerProps" -> addBarrelBehavior(behaviors);
             case "ZombieTurquoiseProps" -> behaviors.add(
-                    new TurquoiseLaserBehavior(4, 5, 25)
+                new TurquoiseLaserBehavior(4, 5, 25)
             );
             default -> {
                 return false;
             }
         }
         return true;
-            }
+    }
 
     private static void addCrystalSkullBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         int cooldown = (int) (
-                data.path("LaserCooldownTime").asDouble(5)
-                        * TICKS_PER_SECOND
+            data.path("LaserCooldownTime").asDouble(5)
+                * TICKS_PER_SECOND
         );
-                behaviors.add(new RangedAttackBehavior(
-                    RangedAttackBehavior.RangedAttackType.LASER_BEAM,
-                cooldown,
-                data.path("LaserBeamLength").asInt(999),
-                data.path("LaserBeamDamage").asInt(4001)
-                ));
+        behaviors.add(new RangedAttackBehavior(
+            RangedAttackBehavior.RangedAttackType.LASER_BEAM,
+            cooldown,
+            data.path("LaserBeamLength").asInt(999),
+            data.path("LaserBeamDamage").asInt(4001)
+        ));
 
 
-            }
+    }
 
     private static void addProspectorBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
         behaviors.add(new MovementBehavior(
-                MovementBehavior.MovementType.PROSPECTOR_JUMP
+            MovementBehavior.MovementType.PROSPECTOR_JUMP
         ));
         int delay = (int) (
-                data.path("LaunchCountdown").asDouble(10)
-                        * TICKS_PER_SECOND
+            data.path("LaunchCountdown").asDouble(10)
+                * TICKS_PER_SECOND
         );
         behaviors.add(new DynamiteBehavior(delay));
     }
 
     private static void addPianoBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new MovementBehavior(
-                    MovementBehavior.MovementType.PIANO_CRUSH,
-                (float) data.path("FastMoveSpeed").asDouble(0.4)
+        behaviors.add(new MovementBehavior(
+            MovementBehavior.MovementType.PIANO_CRUSH,
+            (float) data.path("FastMoveSpeed").asDouble(0.4)
         ));
-                behaviors.add(new WorldEffectBehavior(
-                    WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 30, 1));
-            }
+        behaviors.add(new WorldEffectBehavior(
+            WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 30, 1));
+    }
 
     private static void addAllStarBehavior(
-            JsonNode data,
-            List<ZombieBehavior> behaviors
+        JsonNode data,
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new InstantKillBehavior(
-                    0.3f, true,
-                (float) data.path("RunningSpeedScale").asDouble(2.5)
+        behaviors.add(new InstantKillBehavior(
+            0.3f, true,
+            (float) data.path("RunningSpeedScale").asDouble(2.5)
         ));
     }
 
     private static void addJaneBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new DamageReactionBehavior(
-                DamageReactionBehavior.DamageReactionType.DEFLECT_LOBBER
+        behaviors.add(new DamageReactionBehavior(
+            DamageReactionBehavior.DamageReactionType.DEFLECT_LOBBER
         ));
     }
 
     private static void addArcadeBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new PushObjectBehavior(
-                PushObjectBehavior.PushType.ARCADE_MACHINE,
-                1100,
-                1
+        behaviors.add(new PushObjectBehavior(
+            PushObjectBehavior.PushType.ARCADE_MACHINE,
+            1100,
+            1
         ));
     }
 
     private static void addBarrelBehavior(
-            List<ZombieBehavior> behaviors
+        List<ZombieBehavior> behaviors
     ) {
-                behaviors.add(new PushObjectBehavior(
-                PushObjectBehavior.PushType.BARREL,
-                1100,
-                1,
-                "ZombieImp",
-                2
+        behaviors.add(new PushObjectBehavior(
+            PushObjectBehavior.PushType.BARREL,
+            1100,
+            1,
+            "ZombieImp",
+            2
         ));
     }
 

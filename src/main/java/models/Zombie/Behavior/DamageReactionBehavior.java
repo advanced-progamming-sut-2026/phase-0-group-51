@@ -6,7 +6,6 @@ import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
-import models.projectile.Projectile;
 import java.util.Map;
 
 @Getter
@@ -18,6 +17,7 @@ public class DamageReactionBehavior implements PersistableBehavior {
     private boolean raged = false;
 
     private boolean spinning = false;
+    private float preSpinMultiplier = 1.0f;
 
     public DamageReactionBehavior(DamageReactionType type) {
         this(type, 1.0f, 1.0f);
@@ -45,30 +45,22 @@ public class DamageReactionBehavior implements PersistableBehavior {
             }
         }
 
-        if (type == DamageReactionType.REFLECT_PROJECTILE
-            && spinning
-            && !hasIncomingStraightProjectile(zombie, gs)) {
-            stopSpin(zombie);
-        }
-
     }
 
     @Override
     public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
         switch (type) {
-            case REFLECT_PROJECTILE -> {
-                startSpin(zombie);
-            }
             case SUBMERGE_DODGE -> {
                 // Snorkel
                 MovementBehavior movement = zombie.getBehavior(MovementBehavior.class);
-                if (movement != null && movement.isSubmerged() && !(plant.getPlantType() instanceof Lobber)) {
+                if (movement != null && movement.isSubmerged()
+                    && plant != null && !(plant.getPlantType() instanceof Lobber)) {
                     return 0;
                 }
             }
             case DEFLECT_LOBBER -> {
                 // Parasol
-                if (plant.getPlantType() instanceof Lobber) {
+                if (plant != null && plant.getPlantType() instanceof Lobber) {
                     return 0;
                 }
             }
@@ -84,26 +76,18 @@ public class DamageReactionBehavior implements PersistableBehavior {
         return rawDamage;
     }
 
-    private boolean hasIncomingStraightProjectile(Zombie zombie, GameState gs) {
-        for (Projectile projectile : gs.getBoard().getProjectiles()) {
-            if (projectile.isMarkedForRemoval()
-                || projectile.isReflected()
-                || !projectile.isStraightShot()) {
-                continue;
-            }
-            if ((int) Math.round(projectile.getPosY()) != zombie.getLane()) {
-                continue;
-            }
-            if (projectile.getDirX() > 0 && projectile.getPosX() <= zombie.getX()) {
-                return true;
-            }
-        }
-        return false;
+    public void startSpinFromProjectile(Zombie zombie) {
+        startSpin(zombie);
+    }
+
+    public void stopSpinFromLobbedShot(Zombie zombie) {
+        stopSpin(zombie);
     }
 
     private void startSpin(Zombie zombie) {
         if (!spinning) {
             spinning = true;
+            preSpinMultiplier = zombie.getSpeedMultiplier();
             zombie.applySpeedScale(param1);
         }
     }
@@ -111,7 +95,7 @@ public class DamageReactionBehavior implements PersistableBehavior {
     private void stopSpin(Zombie zombie) {
         if (spinning) {
             spinning = false;
-            zombie.applySpeedScale(1.0f / param1);
+            zombie.restoreSpeedMultiplier(preSpinMultiplier);
         }
     }
 
