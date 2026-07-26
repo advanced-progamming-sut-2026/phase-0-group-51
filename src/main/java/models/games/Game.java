@@ -496,6 +496,10 @@ public class Game{
             return;
         }
         gameState.tickMowers();
+        if (gameState.checkLoseCondition()) {
+            finishAsLoss();
+            return;
+        }
         gameState.getBoard().tickSuns(gameState);
         gameState.getBoard().tickLoots(gameState);
         if (gameState.checkTimedBattleLoseCondition()) {
