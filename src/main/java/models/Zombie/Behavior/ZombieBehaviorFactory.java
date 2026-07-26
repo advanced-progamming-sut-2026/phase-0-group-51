@@ -438,9 +438,8 @@ public class ZombieBehaviorFactory {
         List<ZombieBehavior> behaviors
     ) {
         switch (objclass) {
-            case "ZombieCrystalSkullProps" -> addCrystalSkullBehavior(
-                data, behaviors
-            );
+            case "ZombieCrystalSkullProps" -> behaviors.add(new TurquoiseLaserBehavior(4, 5, 25));
+
             case "ZombieProspectorProps" -> addProspectorBehavior(
                 data, behaviors
             );
@@ -451,32 +450,11 @@ public class ZombieBehaviorFactory {
             case "ZombieLostCityJaneProps" -> addJaneBehavior(behaviors);
             case "ZombieArcadeProps" -> addArcadeBehavior(behaviors);
             case "ZombieBarrelRollerProps" -> addBarrelBehavior(behaviors);
-            case "ZombieTurquoiseProps" -> behaviors.add(
-                new TurquoiseLaserBehavior(4, 5, 25)
-            );
             default -> {
                 return false;
             }
         }
         return true;
-    }
-
-    private static void addCrystalSkullBehavior(
-        JsonNode data,
-        List<ZombieBehavior> behaviors
-    ) {
-        int cooldown = (int) (
-            data.path("LaserCooldownTime").asDouble(5)
-                * TICKS_PER_SECOND
-        );
-        behaviors.add(new RangedAttackBehavior(
-            RangedAttackBehavior.RangedAttackType.LASER_BEAM,
-            cooldown,
-            data.path("LaserBeamLength").asInt(999),
-            data.path("LaserBeamDamage").asInt(4001)
-        ));
-
-
     }
 
     private static void addProspectorBehavior(

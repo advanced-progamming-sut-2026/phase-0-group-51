@@ -2331,6 +2331,11 @@
     }
   },
   {
+    "aliases": ["ZombieBarrelRoller"],
+    "objclass": "ZombieBarrelRollerProps",
+    "objdata": {}
+  },
+  {
     "aliases": [
       "ZombieArcade"
     ],

@@ -39,6 +39,9 @@ public class TransformBehavior implements PersistableBehavior {
         if (target != null && !target.isTransformed()) {
             target.setTransformed(true);
             transformedPlants.add(target);
+            gs.logEvent(zombie.getAlias() + " turned " + target.getName()
+                + " at (" + (target.getPosX() + 1) + ", " + (target.getPosY() + 1)
+                + ") into a cat.\n");
         }
     }
 
