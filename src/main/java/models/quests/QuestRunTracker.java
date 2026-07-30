@@ -2,6 +2,8 @@ package models.quests;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import lombok.Getter;
+import lombok.Setter;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Plant.Plant;
@@ -19,7 +21,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-/** Collects facts about one adventure run. It does not access the database. */
+@Getter
+@Setter
 public class QuestRunTracker {
     private int firstWaveStartTick = -1;
     private int plantsLost;
@@ -120,26 +123,6 @@ public class QuestRunTracker {
         }
     }
 
-    public int getPlantsLost() {
-        return plantsLost;
-    }
-
-    public int getTotalKills() {
-        return totalKills;
-    }
-
-    public int getPlantKills() {
-        return plantKills;
-    }
-
-    public int getNonPlantKills() {
-        return nonPlantKills;
-    }
-
-    public int getMowerKills() {
-        return mowerKills;
-    }
-
     public int getFastKills(int seconds, int ticksPerSecond) {
         if (firstWaveStartTick < 0 || seconds <= 0 || ticksPerSecond <= 0) {
             return 0;
@@ -152,14 +135,6 @@ public class QuestRunTracker {
             }
         }
         return count;
-    }
-
-    public int getExplosivePlantsUsed() {
-        return explosivePlantsUsed;
-    }
-
-    public int getFirstColumnKillsWithoutMower() {
-        return firstColumnKillsWithoutMower;
     }
 
     public int getKillsByPlantName(String plantName) {
@@ -201,7 +176,7 @@ public class QuestRunTracker {
         return chapter != null && chapter.getTimeOfTheDay() == TimeOfTheDay.DAY;
     }
 
-    /** Row 1 mirrors row 5 and row 2 mirrors row 4; the middle row is ignored. */
+
     public boolean isSymmetric(Board board) {
         if (board == null || countPlants(board) == 0) {
             return false;
@@ -217,7 +192,6 @@ public class QuestRunTracker {
         return true;
     }
 
-    /** The middle row is ignored; at least one off-middle plant must break mirror symmetry. */
     public boolean isAsymmetricExceptMiddle(Board board) {
         if (board == null) {
             return false;
@@ -226,8 +200,8 @@ public class QuestRunTracker {
         for (int upper = 0; upper < board.getLaneCount() / 2; upper++) {
             int lower = board.getLaneCount() - 1 - upper;
             for (int column = 0; column < board.getColumnCount(); column++) {
-                if (plantAt(board.getTile(upper, column)) != null
-                        || plantAt(board.getTile(lower, column)) != null) {
+                if (hasAnyPlant(board.getTile(upper, column))
+                        || hasAnyPlant(board.getTile(lower, column))) {
                     hasOffMiddlePlant = true;
                 }
             }
@@ -239,8 +213,9 @@ public class QuestRunTracker {
         int count = 0;
         for (int row = 0; row < board.getLaneCount(); row++) {
             for (int column = 0; column < board.getColumnCount(); column++) {
-                if (plantAt(board.getTile(row, column)) != null) {
-                    count++;
+                Tile tile = board.getTile(row, column);
+                if (tile != null) {
+                    count += tile.getPlants().size();
                 }
             }
         }
@@ -248,16 +223,23 @@ public class QuestRunTracker {
     }
 
     private boolean samePlant(Tile first, Tile second) {
-        Plant a = plantAt(first);
-        Plant b = plantAt(second);
-        if (a == null || b == null) {
-            return a == b;
+        if (first == null || second == null) {
+            return first == second;
         }
-        return a.getName().equalsIgnoreCase(b.getName());
+        return sameLayer(first.getPumpkinPlant(), second.getPumpkinPlant())
+                && sameLayer(first.getTopPlant(), second.getTopPlant())
+                && sameLayer(first.getLilyPadPlant(), second.getLilyPadPlant());
     }
 
-    private Plant plantAt(Tile tile) {
-        return tile == null ? null : tile.getPlant();
+    private boolean sameLayer(Plant first, Plant second) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+        return first.getName().equalsIgnoreCase(second.getName());
+    }
+
+    private boolean hasAnyPlant(Tile tile) {
+        return tile != null && tile.hasPlant();
     }
 
     private String plantFamily(Plant plant) {

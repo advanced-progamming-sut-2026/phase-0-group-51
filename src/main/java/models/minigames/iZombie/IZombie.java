@@ -102,7 +102,7 @@ public class IZombie extends Game {
 
     @Override
     public void start() {
-        // should be empty.
+
     }
 
     @Override

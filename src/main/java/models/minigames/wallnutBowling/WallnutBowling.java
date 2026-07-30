@@ -92,7 +92,7 @@ public class WallnutBowling extends Game {
     }
     @Override
     public void start() {
-     // bayad khali bashe
+
     }
 
     @Override

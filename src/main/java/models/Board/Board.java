@@ -265,7 +265,8 @@ public class Board {
             loot.tick();
             if (loot.isExpired()) {
                 state.logEvent(
-                        "The " + loot.getDisplayName() + " at (" + (loot.getColumn() + 1) + ", " + (loot.getLane() + 1) + ") expired.\n");
+                        "The " + loot.getDisplayName() + " at (" + (loot.getColumn() + 1) + ", " + (loot.getLane() + 1)
+                                + ") expired.\n");
                 iterator.remove();
             } else if (loot.isCollected()) {
                 iterator.remove();

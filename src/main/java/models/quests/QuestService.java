@@ -67,16 +67,22 @@ public final class QuestService {
     }
     private UserQuest repairAssignment(int userId, Quest quest, UserQuest old) {
         String parameter = old.getParameter();
-        if (parameterNeedsRepair(quest, parameter)) {
+        boolean parameterChanged = parameterNeedsRepair(quest, parameter);
+        if (parameterChanged) {
             parameter = chooseParameter(userId, quest);
         }
         int target = assignmentTarget(quest, parameter);
         int reward = assignmentReward(quest, parameter);
-        int progress = Math.min(Math.max(0, old.getProgress()), target);
+        int progress = parameterChanged
+                ? 0
+                : Math.min(Math.max(0, old.getProgress()), target);
+        boolean completed = !parameterChanged
+                && (old.isCompleted() || progress >= target);
+        boolean claimed = !parameterChanged && old.isClaimed();
+
         return new UserQuest(
                 userId, quest.getId(), progress, target, reward,
-                old.isCompleted() || progress >= target, old.isClaimed(),
-                old.getResetDate(), parameter);
+                completed, claimed, old.getResetDate(), parameter);
     }
     private int assignmentTarget(Quest quest, String parameter) {
         return switch (quest.getEventType()) {
@@ -328,10 +334,8 @@ public final class QuestService {
         return chapters.get(random.nextInt(chapters.size())).name();
     }
     private String randomCross() {
-        int row = random.nextInt(5) + 1;
-        int column = random.nextInt(9) + 1;
 
-        return row + "," + column;
+        return Integer.toString(random.nextInt(5) + 1);
     }
     private String randomKillingPlant(int userId) {
         List<PlantData> allKillingPlants = PlantRegistry.getAll().stream()
@@ -368,14 +372,36 @@ public final class QuestService {
             return true;
         }
 
-        return switch (options.trim().toUpperCase(Locale.ROOT)) {
-            case "@CROSS" -> !parameter.trim().matches("[1-5]\\s*,\\s*[1-9]");
+        String normalizedOptions = options.trim().toUpperCase(Locale.ROOT);
+        return switch (normalizedOptions) {
+            case "@CHAPTER" -> !isAdventureChapter(parameter);
+            case "@ROW", "@CROSS" -> !parameter.trim().matches("[1-5]");
+            case "@COLUMN" -> !parameter.trim().matches("[1-9]");
             case "@KILLING_PLANT" -> {
                 PlantData plant = PlantRegistry.getByName(parameter);
                 yield plant == null || plant.damage() <= 0;
             }
-            default -> false;
+            case "@FAMILY" -> false;
+            default -> !isListedOption(options, parameter);
         };
+    }
+
+    private boolean isAdventureChapter(String parameter) {
+        try {
+            return ChapterTheme.valueOf(parameter.trim().toUpperCase(Locale.ROOT))
+                    != ChapterTheme.MINIGAME;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private boolean isListedOption(String options, String parameter) {
+        for (String value : options.split("\\|")) {
+            if (value.trim().equalsIgnoreCase(parameter.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
     private String randomFamily(int userId, boolean killingOnly) {
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(userId);

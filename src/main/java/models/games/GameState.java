@@ -558,6 +558,8 @@ public class GameState {
         existing.setRefundableSunCost(
                 existing.getRefundableSunCost() + cost
         );
+        addition.setPosX(existing.getPosX());
+        addition.setPosY(existing.getPosY());
         questTracker.recordPlantPlaced(addition);
         addition.getPlantType().onStacked(existing, this);
     }
