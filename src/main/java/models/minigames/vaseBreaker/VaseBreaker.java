@@ -82,7 +82,7 @@ public class VaseBreaker extends Game {
     }
     @Override
     public void start() {
-        // should be empty.
+
     }
 
     @Override

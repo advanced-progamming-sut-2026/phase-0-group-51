@@ -176,7 +176,7 @@ public class QuestRunTracker {
         return chapter != null && chapter.getTimeOfTheDay() == TimeOfTheDay.DAY;
     }
 
-    /** Row 1 mirrors row 5 and row 2 mirrors row 4; the middle row is ignored. */
+
     public boolean isSymmetric(Board board) {
         if (board == null || countPlants(board) == 0) {
             return false;

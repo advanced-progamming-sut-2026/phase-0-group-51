@@ -2,6 +2,8 @@ package Data.loader;
 
 import Data.database.DataBaseManager;
 import Data.database.QuestDatabaseMigration;
+import models.games.ChapterTheme;
+import models.quests.QuestType;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 
@@ -110,19 +112,11 @@ public final class QuestLoader {
     ) {
         String rawOptions = nullableValue(record.get("parameter_options"));
 
-        /*
-         * A daily quest is stored once. Its complete list of possible values is
-         * kept in parameter_options, and QuestService selects one value for the
-         * user when that day's assignment is created.
-         */
+
         if (questType == QuestType.DAILY) {
             return Collections.singletonList(rawOptions);
         }
 
-        /*
-         * Main and Epic quests are permanent. Every possible value becomes a
-         * separate quest so all variants are visible and progress independently.
-         */
         return expandPermanentParameters(rawOptions);
     }
 
