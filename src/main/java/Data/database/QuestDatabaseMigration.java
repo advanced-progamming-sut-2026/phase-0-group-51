@@ -21,6 +21,7 @@ public final class QuestDatabaseMigration {
         addColumnIfMissing(connection, "quests", "event_type", "TEXT");
         addColumnIfMissing(connection, "quests", "parameter_options", "TEXT");
         addColumnIfMissing(connection, "quests", "active", "INTEGER NOT NULL DEFAULT 1");
+        addColumnIfMissing(connection, "quests", "sort_order", "INTEGER");
         addColumnIfMissing(connection, "user_quests", "claimed", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "user_quests", "parameter", "TEXT");
         addColumnIfMissing(connection, "user_quests", "target_amount", "INTEGER");
@@ -28,7 +29,7 @@ public final class QuestDatabaseMigration {
         addColumnIfMissing(connection, "user_quests", "completion_counted", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "users", "quest_daily_num", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing(connection, "users", "quest_non_daily_num", "INTEGER NOT NULL DEFAULT 0");
-
+        migrateOldCompletionCounters(connection);
     }
 
     private static void addColumnIfMissing(
@@ -58,13 +59,6 @@ public final class QuestDatabaseMigration {
     private static void migrateOldCompletionCounters(Connection connection)
             throws SQLException {
         try (Statement statement = connection.createStatement()) {
-
-            statement.executeUpdate("""
-                UPDATE user_quests
-                SET completion_counted = 1
-                WHERE claimed = 1
-                  AND completion_counted = 0
-                """);
 
             statement.executeUpdate("""
                 UPDATE users

@@ -22,7 +22,21 @@ import java.util.Optional;
 
 public class QuestsRepository {
     public List<Quest> getAllQuests() {
-        String sql = "SELECT * FROM quests WHERE active = 1 ORDER BY id";
+        String sql = """
+                SELECT *
+                FROM quests
+                WHERE active = 1
+                ORDER BY
+                    CASE priority
+                        WHEN 'CRITICAL' THEN 0
+                        WHEN 'HIGH' THEN 1
+                        WHEN 'MEDIUM' THEN 2
+                        WHEN 'LOW' THEN 3
+                        ELSE 4
+                    END,
+                    COALESCE(sort_order, id),
+                    id
+                """;
         List<Quest> result = new ArrayList<>();
         try (Connection connection = DataBaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -116,12 +130,16 @@ public class QuestsRepository {
                 FROM quests q
                 JOIN user_quests uq ON uq.quest_id = q.id
                 WHERE uq.user_id = ? AND q.active = 1 AND q.quest_type = ?
-                ORDER BY CASE q.priority
-                    WHEN 'CRITICAL' THEN 1
-                    WHEN 'HIGH' THEN 2
-                    WHEN 'AVERAGE' THEN 3
-                    WHEN 'MEDIUM' THEN 3
-                    WHEN 'LOW' THEN 4 ELSE 5 END, q.id
+                ORDER BY
+                    CASE q.priority
+                        WHEN 'CRITICAL' THEN 0
+                        WHEN 'HIGH' THEN 1
+                        WHEN 'MEDIUM' THEN 2
+                        WHEN 'LOW' THEN 3
+                        ELSE 4
+                    END,
+                    COALESCE(q.sort_order, q.id),
+                    q.id
                 """;
         List<QuestEntry> result = new ArrayList<>();
         try (Connection connection = DataBaseManager.getConnection();
