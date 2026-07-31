@@ -100,8 +100,7 @@ public class GameMenuController {
         int numberOfLevels = selectedChapter.getLevels().size();
         if (levelNumber < 1 || levelNumber > numberOfLevels) {
             return new Result(
-                    false,
-                    "Invalid level number.\n" + selectedChapter.getName()
+                    false, "Invalid level number.\n" + selectedChapter.getName()
                             + " has levels 1 to " + numberOfLevels + ".\n", null);
         }
         int[] currentProgress = normalizedProgress(App.loggedInUser);
@@ -251,62 +250,44 @@ public class GameMenuController {
         int chapterIndex = findChapterIndex(chapterName);
         if (chapterIndex == -1) {
             return new Result(
-                    false,
-                    "Chapter not found. Valid chapters are Ancient Egypt, "
-                            + "Frostbite Caves, Big Wave Beach, and Dark Ages.\n",
-                    null
+                    false, "Chapter not found. Valid chapters are Ancient Egypt, "
+                            + "Frostbite Caves, Big Wave Beach, and Dark Ages.\n", null
             );
         }
         ChapterTheme chapter = ADVENTURE_CHAPTERS[chapterIndex];
         int levelCount = chapter.getLevels().size();
         if (levelNumber < 1 || levelNumber > levelCount) {
             return new Result(
-                    false,
-                    chapter.getName() + " has levels 1 to " + levelCount + ".\n",
-                    null
-            );
+                    false, chapter.getName() + " has levels 1 to " + levelCount + ".\n", null);
         }
         ProgressRepository progressRepository = new ProgressRepository();
         int[] currentProgress = progressRepository.getCurrentProgress(user.getId());
         int currentChapterIndex = currentProgress[0] - 1;
         int currentLevelNumber = currentProgress[1];
-        boolean alreadyUnlocked = chapterIndex < currentChapterIndex
-                || (chapterIndex == currentChapterIndex
+        boolean alreadyUnlocked = chapterIndex < currentChapterIndex || (chapterIndex == currentChapterIndex
                 && levelNumber <= currentLevelNumber);
         if (alreadyUnlocked) {
             int unlockedPlantCount = unlockPlantsAvailableThroughProgress(
-                    user,
-                    currentChapterIndex,
-                    currentLevelNumber
-            );
+                    user, currentChapterIndex, currentLevelNumber);
             return new Result(
                     true,
-                    "CHEAT: " + chapter.getName() + " Level " + levelNumber
-                            + " is already unlocked.\n"
-                            + "Missing plant rewards restored: "
-                            + unlockedPlantCount + ".\n",
+                    "CHEAT: " + chapter.getName() + " Level " + levelNumber + " is already unlocked.\n"
+                            + "Missing plant rewards restored: " + unlockedPlantCount + ".\n",
                     null
             );
         }
-        boolean saved = progressRepository.saveProgress(
-                user.getId(),
-                chapterIndex + 1,
-                levelNumber
-        );
+        boolean saved = progressRepository.saveProgress(user.getId(), chapterIndex + 1, levelNumber);
         if (!saved) {
             return new Result(false, "Could not save the cheated progress.\n", null);
         }
         int unlockedPlantCount = unlockPlantsAvailableThroughProgress(
-                user,
-                chapterIndex,
-                levelNumber
+                user, chapterIndex, levelNumber
         );
         return new Result(
                 true,
                 "CHEAT: Adventure progress unlocked through "
                         + chapter.getName() + " Level " + levelNumber + ".\n"
-                        + "Plant rewards unlocked: " + unlockedPlantCount + ".\n",
-                null
+                        + "Plant rewards unlocked: " + unlockedPlantCount + ".\n", null
         );
     }
 
