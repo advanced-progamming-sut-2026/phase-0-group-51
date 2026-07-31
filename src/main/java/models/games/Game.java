@@ -580,10 +580,7 @@ public class Game{
         }
         user.setGamesPlayed(result.gamesPlayed());
         user.setLastWonGame("Chapter " + completedChapter + " Level " + completedLevel);
-        unlockPlantsAndAnnounce(
-                user,
-                PlantRegistry.getLevelRewardPlantIds(currentTheme, completedLevel)
-        );
+        unlockPlantsAndAnnounce(user, PlantRegistry.getLevelRewardPlantIds(currentTheme, completedLevel));
         if (!result.progressAdvanced()) {
             return;
         }
@@ -596,18 +593,13 @@ public class Game{
             );
             newsRepository.createNewsForUser(
                     user.getId(),
-                    "New chapter unlocked: "
-                            + unlockedTheme.getName()
-                            + ". Level 1 is now available."
+                    "New chapter unlocked: " + unlockedTheme.getName() + ". Level 1 is now available."
             );
         } else {
             newsRepository.createNewsForUser(
                     user.getId(),
                     "New level unlocked: "
-                            + unlockedTheme.getName()
-                            + " Level "
-                            + result.newLevel()
-                            + "."
+                            + unlockedTheme.getName() + " Level " + result.newLevel() + "."
             );
         }
     }

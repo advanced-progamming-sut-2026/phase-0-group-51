@@ -78,48 +78,28 @@ public class PlantSelectionController {
         Game game = App.getInstance().getCurrentGame();
         if (game == null) return new Result(false, "No level is selected.", null);
         boolean imitaterRequest = isImitaterRequest(plantType);
-        PlantData imitaterTarget = imitaterRequest
-                ? parseImitaterTarget(plantType)
-                : null;
-        PlantData plant = imitaterRequest
-                ? PlantRegistry.getById(IMITATER_ID)
-                : PlantRegistry.getByName(plantType);
-
+        PlantData imitaterTarget = imitaterRequest ? parseImitaterTarget(plantType) : null;
+        PlantData plant = imitaterRequest ? PlantRegistry.getById(IMITATER_ID) : PlantRegistry.getByName(plantType);
         if (imitaterRequest && imitaterTarget == null) {
             return new Result(
-                    false,
-                    "Use add plant -t Imitater:<plant name> and choose a valid "
-                            + "non-Imitater plant to copy.",
-                    null
-            );
-        }
-        if (plant == null) {
-            return new Result(false, "Plant does not exist.", null);
-        }
+                    false, "Use add plant -t Imitater:<plant name> and choose a valid "
+                    + "non-Imitater plant to copy.", null);}
+        if (plant == null) return new Result(false, "Plant does not exist.", null);
         if (game.isForcedLoadoutMode()) {
-            return new Result(
-                    false, "All eight plant slots are filled and locked in Forced Plants mode."
-                    , null);
-        }
-
+            return new Result(false, "All eight plant are filled and locked in Forced Plants mode."
+                    , null);}
         if (isForbiddenForCurrentLevel(plant)) {
             return new Result(
                     false, "Sun-producing and water-only plants cannot be selected "
-                            + "in the dry Plant What You Get level.", null
-            );
+                            + "in the dry Plant What You Get level.", null);
         }
         if (game.isPlantLockedByFamilyMode(plant)) {
             PlantData allowedPlant = game.getAllowedPlantForFamily(plant);
-            String allowedName = allowedPlant == null
-                    ? "another plant" : allowedPlant.name();
-            return new Result(
-                    false,
+            String allowedName = allowedPlant == null ? "another plant" : allowedPlant.name();
+            return new Result(false,
                     plant.name() + " is locked in Family Lock mode. Only "
-                            + allowedName + " is available from the " + plant.category() + " family.",
-                    null
-            );
+                            + allowedName + " is available from the " + plant.category() + " family.", null);
         }
-
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
         if (!unlocked.contains(plant.id())) {
             return new Result(false, "Plant is locked.", null);
@@ -127,35 +107,19 @@ public class PlantSelectionController {
         List<PlantData> selected = game.getSelectedPlantsForThisGame();
         if (selected.contains(plant)) {
             if (plant.id() == IMITATER_ID && game.getImitaterTarget() != null) {
-                return new Result(
-                        false,
+                return new Result(false,
                         "Imitater is already selected and copies "
-                                + game.getImitaterTarget().name() + ".",
-                        null
-                );
-            }
-            return new Result(false, "Plant already selected.", null);
-        }
+                                + game.getImitaterTarget().name() + ".", null);}
+            return new Result(false, "Plant already selected.", null);}
         if (imitaterRequest && !selected.contains(imitaterTarget)) {
-            return new Result(
-                    false,
-                    "Select " + imitaterTarget.name()
-                            + " first, then add Imitater to create the second card.",
-                    null
-            );
-        }
-        if (selected.size() >= 8) {
-            return new Result(false, "Plant selection is full.", null);
-        }
+            return new Result(false, "Select " + imitaterTarget.name()
+                            + " first, then add Imitater to create the second card.", null);}
+        if (selected.size() >= 8) {return new Result(false, "Plant selection is full.", null);}
         selected.add(plant);
         if (imitaterRequest) {
             game.setImitaterTarget(imitaterTarget);
-            return new Result(
-                    true,
-                    "Imitater added successfully and will copy "
-                            + imitaterTarget.name() + ".",
-                    null
-            );
+            return new Result(true,
+            "Imitater added successfully and will copy " + imitaterTarget.name() + ".", null);
         }
         return new Result(true, "Plant added successfully.", null);
     }
@@ -174,30 +138,25 @@ public Result removePlant(String plantType){
 
         if (game.isForcedLockedPlant(plant)) {
             return new Result(
-                    false,
-                    plant.name() + " is locked in a forced slot and cannot be removed.",
+                    false, plant.name() + " is locked in a forced slot and cannot be removed.",
                     null
             );
         }
-
-        List<PlantData> selected = game.getSelectedPlantsForThisGame();
+    List<PlantData> selected = game.getSelectedPlantsForThisGame();
     PlantData imitaterTarget = game.getImitaterTarget();
     PlantData imitater = PlantRegistry.getById(IMITATER_ID);
     if (imitaterTarget != null
             && imitaterTarget.equals(plant)
             && selected.contains(imitater)) {
-        return new Result(
-                false,
-                "Remove Imitater before removing the plant it copies.",
-                null
+        return new Result(false,
+                "Remove Imitater before removing the plant it copies.", null
         );
     }
     if (!selected.remove(plant)) {
         return new Result(false, "Plant is not selected.", null);
     }
     if (plant.id() == IMITATER_ID) {
-        game.setImitaterTarget(null);
-    }
+        game.setImitaterTarget(null);}
     return new Result(true, "Plant removed successfully.", null);
 }
 // for testing all plants

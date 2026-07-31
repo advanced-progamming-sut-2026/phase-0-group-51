@@ -150,21 +150,16 @@ public class CollectionMenuController {
             return failure("No plant named '" + cleanName(plantName) + "' was found.\n");
         }
 
-
         PlantRegistry.UnlockRule unlockRule = PlantRegistry.getUnlockRule(plant.id());
         if (!unlockRule.isPurchasable()) {
             return failure(
                     "You cannot purchase " + plant.name()
-                            + " because it will get unlocked through the Adventure. "
-                            + unlockRule.description() + ".\n"
+                            + " because it will get unlocked through the Adventure. " + unlockRule.description() + ".\n"
             );
         }
-
         int purchaseCost = unlockRule.purchaseCost();
         PlantRepository.PurchaseResult result = PlantRepository.tryPurchasePlant(
-                user.getId(), plant.id(), purchaseCost
-            );
-
+                user.getId(), plant.id(), purchaseCost);
         return switch (result.status()) {
             case SUCCESS -> {
                 user.setCoins(result.remainingCoins());

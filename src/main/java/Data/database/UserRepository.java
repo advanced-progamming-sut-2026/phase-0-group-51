@@ -42,12 +42,10 @@ public class UserRepository {
         public boolean register(User user) {
         String userSql = """
                 INSERT INTO users ( username, email, password_hash, gender, nickname, security_question, answer
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """;
+                ) VALUES (?, ?, ?, ?, ?, ?, ?) """;
         String progressSql = """
                 INSERT INTO user_progress(user_id, chapter_index, level_index)
-                VALUES (?, 1, 1)
-                """;
+                VALUES (?, 1, 1) """;
         try (Connection connection = DataBaseManager.getConnection()) {
             connection.setAutoCommit(false);
             try {
@@ -72,9 +70,7 @@ public class UserRepository {
                         throw new SQLException("The initial progress row was not created.");}}
                 GreenHouseRepository.insertInitialPots(connection, user.getId());
                 PlantRepository.unlockPlants(
-                        connection,
-                        user.getId(),
-                        PlantRegistry.getStarterPlantIds()
+                        connection, user.getId(), PlantRegistry.getStarterPlantIds()
                 );
                 connection.commit();
                 return true;
