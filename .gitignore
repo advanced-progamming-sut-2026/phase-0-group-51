@@ -1,2 +1,28 @@
+# macOS
 .DS_Store
+
+# Gradle generated files
+.gradle/
+build/
+
+# Maven generated files
 target/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Local machine configuration
+local.properties
+
+# Local database
+pvz_database.db
+
+# PVZ asset files
+assets/pvz2/
+pvz-assets/
+
+# Temporary archives
+.git.zip
+gradle.zip
