@@ -1,0 +1,112 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+
+    // libPVZ و pvz-skin از JitPack دریافت می‌شوند.
+    maven {
+        url = uri('https://jitpack.io')
+    }
+}
+
+ext {
+    gdxVersion = '1.12.1'
+    lombokVersion = '1.18.46'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // وابستگی‌های فعلی Maven پروژه
+    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.apache.commons:commons-csv:1.10.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+    implementation 'org.json:json:20250107'
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    // LibGDX core
+    implementation "com.badlogicgames.gdx:gdx:${gdxVersion}"
+
+    // نسخه Desktop با LWJGL3
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:${gdxVersion}"
+    runtimeOnly "com.badlogicgames.gdx:gdx-platform:${gdxVersion}:natives-desktop"
+
+    // فونت‌های FreeType مورد نیاز pvz-skin
+    implementation "com.badlogicgames.gdx:gdx-freetype:${gdxVersion}"
+    runtimeOnly "com.badlogicgames.gdx:gdx-freetype-platform:${gdxVersion}:natives-desktop"
+
+    // کتابخانه نمایش animationهای PVZ2
+    implementation 'com.github.pizpizi:libPVZ:v0.1.3'
+
+    // رابط کاربری PVZ2
+    implementation 'com.github.pizpizi:pvz-skin:v0.1.0'
+    implementation 'com.github.raeleus.TenPatch:tenpatch:5.2.3'
+
+}
+
+// آدرس assetها مخصوص هر لپ‌تاپ است و نباید commit شود.
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream {
+        localProperties.load(it)
+    }
+}
+
+def pvzAssetsPath =
+        localProperties.getProperty('pvz.assets')
+                ?: System.getenv('PVZ_ASSETS')
+                ?: rootProject.file('assets/pvz2').absolutePath
+
+application {
+    mainClass = 'graphics.DesktopLauncher'
+    applicationDefaultJvmArgs = [
+            '--enable-native-access=ALL-UNNAMED'
+    ]
+}
+
+// برنامه گرافیکی
+tasks.named('run', JavaExec) {
+    workingDir = rootDir
+    standardInput = System.in
+    systemProperty 'pvz.assets', pvzAssetsPath
+    if (System.getProperty('os.name')
+            .toLowerCase()
+            .contains('mac')) {
+        jvmArgs '-XstartOnFirstThread'
+    }
+
+}
+
+// رابط ترمینالی قدیمی همچنان قابل اجرا می‌ماند.
+tasks.register('runCli', JavaExec) {
+    group = 'application'
+    description = 'Runs the old command-line version'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Main'
+    workingDir = rootDir
+    standardInput = System.in
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
