@@ -145,10 +145,7 @@ public class Game{
 
         Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
         List<PlantData> unlockedPlants = unlockedIds.stream()
-                .map(PlantRegistry::getById)
-                .filter(Objects::nonNull)
-                .filter(plant -> !plant.tags().contains(PlantTag.WATER))
-                .filter(plant -> plant.id() != 58 && plant.id() != 59)
+                .map(PlantRegistry::getById).filter(Objects::nonNull).filter(plant -> !plant.tags().contains(PlantTag.WATER)).filter(plant -> plant.id() != 58 && plant.id() != 59)
                 .sorted(Comparator.comparingInt(PlantData::id))
                 .toList();
 

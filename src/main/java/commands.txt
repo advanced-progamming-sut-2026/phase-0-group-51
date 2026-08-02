@@ -47,6 +47,11 @@ menu collection upgrade-plant -p <plant_name>
 menu collection cheat-upgrade-plant -p <plant_name>
 menu collection purchase-plant -p <plant_name>
 
+show leaderboard
+sort leaderboard -b <column> -o <order>
+(username|progress|minigames|daily-quests|non-daily-quests|score)
+(asc/desc)
+
 show all plants
 show available plants
 add plant -t <type>
@@ -101,7 +106,7 @@ travel log page main
 travel log page epic
 travel log page minigame
 
-show quests
+
 claim quest -i <quest_id>
 start vasebreaker -s <level number>
 start wallnut bowling -s <level number>
