@@ -23,8 +23,8 @@ import java.util.*;
 @Getter
 @Setter
 public class Beghouled extends Game {
-    private static final int TICKS_PER_SECOND = 10;
-    private static final int FIRST_WAVE_DELAY_TICKS = 5 * TICKS_PER_SECOND;
+    private static final int ticks = 10;
+    private static final int FIRST_WAVE_DELAY_TICKS = 5 * ticks;
     private static final int MAX_WAVE_BUDGET = 3000;
     private static final int MAX_BOARD_CREATING_ATTEMPTS = 100;
     private static final int MAX_NEW_CASCADE_CHECK= 50;
