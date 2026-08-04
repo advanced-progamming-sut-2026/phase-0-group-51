@@ -10,7 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
-import views.graphical.ui.PauseMenuPopup;
+import views.graphical.ui.StartGameMenuPopup;
 
 public final class FirstScreen extends BaseScreen {
     private Stack root;
@@ -84,6 +84,22 @@ public final class FirstScreen extends BaseScreen {
 
         root.add(content);
         stage.addActor(root);
+
+        //test:
+        StartGameMenuPopup startPopup = new StartGameMenuPopup(
+                game,
+                "Spend no more than 3000 sun",
+                "Defeat 10 zombies in 5 seconds"
+        );
+
+        // Center the popup on the screen
+        startPopup.setPosition(
+                (PvzGame.VIRTUAL_WIDTH - startPopup.getWidth()) / 2f,
+                (PvzGame.VIRTUAL_HEIGHT - startPopup.getHeight()) / 2f
+        );
+
+        // Add it to the FirstScreen's stage so it renders on top
+        stage.addActor(startPopup);
     }
     @Override
     public void show(){
