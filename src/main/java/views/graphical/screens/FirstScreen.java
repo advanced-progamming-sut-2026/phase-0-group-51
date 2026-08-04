@@ -84,22 +84,6 @@ public final class FirstScreen extends BaseScreen {
 
         root.add(content);
         stage.addActor(root);
-
-        //test:
-        StartGameMenuPopup startPopup = new StartGameMenuPopup(
-                game,
-                "Spend no more than 3000 sun",
-                "Defeat 10 zombies in 5 seconds"
-        );
-
-        // Center the popup on the screen
-        startPopup.setPosition(
-                (PvzGame.VIRTUAL_WIDTH - startPopup.getWidth()) / 2f,
-                (PvzGame.VIRTUAL_HEIGHT - startPopup.getHeight()) / 2f
-        );
-
-        // Add it to the FirstScreen's stage so it renders on top
-        stage.addActor(startPopup);
     }
     @Override
     public void show(){
