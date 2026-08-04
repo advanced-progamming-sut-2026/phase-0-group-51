@@ -5,13 +5,19 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import lombok.Getter;
+import lombok.Setter;
+import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.BootScreen;
+import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
-
+@Getter
+@Setter
 public final class PvzGame extends Game {
 
     public static final float VIRTUAL_WIDTH = 1280f;
@@ -23,12 +29,25 @@ public final class PvzGame extends Game {
     private SpriteBatch batch;
     private Skin skin;
     private GlobalUiLayer globalUiLayer;
-
+    private TextureBank textureBank;
     @Override
     public void create() {
         batch = new SpriteBatch();
         skin = PvzSkin.get();
+        String assetsPath = System.getProperty("pvz.assets");
+        if (assetsPath == null || assetsPath.isBlank()) {
+            throw new IllegalStateException(
+                    "pvz.assets is not configured."
+            );
+        }
+        FileHandle assetsFolder = Gdx.files.absolute(assetsPath);
+        if (!assetsFolder.exists() || !assetsFolder.isDirectory()) {
+            throw new IllegalStateException(
+                    "Invalid PVZ assets directory: " + assetsPath
+            );
+        }
 
+        textureBank = new TextureBank("768", assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
                 skin
@@ -37,10 +56,7 @@ public final class PvzGame extends Game {
         Gdx.input.setInputProcessor(
                 inputMultiplexer
         );
-
-        showScreen(
-                new BootScreen(this)
-        );
+                showFirstMenu();
     }
 
     public void showScreen(BaseScreen nextScreen) {
@@ -189,5 +205,8 @@ public final class PvzGame extends Game {
             batch.dispose();
             batch = null;
         }
+    }
+    public void showFirstMenu(){
+        showScreen(new FirstScreen(this));
     }
 }
