@@ -1,0 +1,193 @@
+package graphics;
+
+import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import pvz.skin.PvzSkin;
+import views.graphical.screens.BaseScreen;
+import views.graphical.screens.BootScreen;
+import views.graphical.ui.GlobalUiLayer;
+
+public final class PvzGame extends Game {
+
+    public static final float VIRTUAL_WIDTH = 1280f;
+    public static final float VIRTUAL_HEIGHT = 720f;
+
+    private final InputMultiplexer inputMultiplexer =
+            new InputMultiplexer();
+
+    private SpriteBatch batch;
+    private Skin skin;
+    private GlobalUiLayer globalUiLayer;
+
+    @Override
+    public void create() {
+        batch = new SpriteBatch();
+        skin = PvzSkin.get();
+
+        globalUiLayer = new GlobalUiLayer(
+                this,
+                skin
+        );
+
+        Gdx.input.setInputProcessor(
+                inputMultiplexer
+        );
+
+        showScreen(
+                new BootScreen(this)
+        );
+    }
+
+    public void showScreen(BaseScreen nextScreen) {
+        if (nextScreen == null) {
+            throw new IllegalArgumentException(
+                    "nextScreen cannot be null"
+            );
+        }
+
+        Screen previousScreen = getScreen();
+
+        if (previousScreen == nextScreen) {
+            return;
+        }
+
+        setScreen(nextScreen);
+
+        configureInput(
+                nextScreen.getInputProcessor()
+        );
+
+        if (previousScreen != null) {
+            previousScreen.dispose();
+        }
+    }
+
+    private void configureInput(
+            InputProcessor screenInputProcessor
+    ) {
+        inputMultiplexer.clear();
+
+        if (globalUiLayer != null) {
+            inputMultiplexer.addProcessor(
+                    globalUiLayer.getInputProcessor()
+            );
+        }
+
+        if (screenInputProcessor != null) {
+            inputMultiplexer.addProcessor(
+                    screenInputProcessor
+            );
+        }
+    }
+
+    @Override
+    public void render() {
+        super.render();
+
+        if (globalUiLayer != null) {
+            globalUiLayer.render(
+                    Gdx.graphics.getDeltaTime()
+            );
+        }
+    }
+
+    @Override
+    public void resize(
+            int width,
+            int height
+    ) {
+        super.resize(width, height);
+
+        if (globalUiLayer != null) {
+            globalUiLayer.resize(
+                    width,
+                    height
+            );
+        }
+    }
+
+    public void showHud(
+            int coins,
+            int gems,
+            boolean showBackButton,
+            Runnable backAction
+    ) {
+        globalUiLayer.showHud(
+                coins,
+                gems,
+                showBackButton,
+                backAction
+        );
+    }
+
+    public void hideHud() {
+        globalUiLayer.hideHud();
+    }
+
+    public void updateCurrencies(
+            int coins,
+            int gems
+    ) {
+        globalUiLayer.updateCurrencies(
+                coins,
+                gems
+        );
+    }
+
+    public void notifyInfo(String message) {
+        globalUiLayer.notifyInfo(message);
+    }
+
+    public void notifyError(String message) {
+        globalUiLayer.notifyError(message);
+    }
+
+    public SpriteBatch getBatch() {
+        if (batch == null) {
+            throw new IllegalStateException(
+                    "SpriteBatch is not initialized yet."
+            );
+        }
+
+        return batch;
+    }
+
+    public Skin getSkin() {
+        if (skin == null) {
+            throw new IllegalStateException(
+                    "Skin is not initialized yet."
+            );
+        }
+
+        return skin;
+    }
+
+    @Override
+    public void dispose() {
+        Screen currentScreen = getScreen();
+
+        if (currentScreen != null) {
+            currentScreen.dispose();
+        }
+
+        if (globalUiLayer != null) {
+            globalUiLayer.dispose();
+            globalUiLayer = null;
+        }
+
+        if (skin != null) {
+            skin.dispose();
+            skin = null;
+        }
+
+        if (batch != null) {
+            batch.dispose();
+            batch = null;
+        }
+    }
+}
