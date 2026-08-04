@@ -4,7 +4,6 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
 
 public final class BootScreen extends BaseScreen {
-
     public BootScreen(PvzGame game) {
         super(game);
     }
