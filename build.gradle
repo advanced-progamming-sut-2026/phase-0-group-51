@@ -77,7 +77,7 @@ def pvzAssetsPath =
                 ?: rootProject.file('assets/pvz2').absolutePath
 
 application {
-    mainClass = 'graphics.DesktopLauncher'
+    mainClass = 'Main'
     applicationDefaultJvmArgs = [
             '--enable-native-access=ALL-UNNAMED'
     ]
@@ -97,14 +97,14 @@ tasks.named('run', JavaExec) {
 }
 
 // رابط ترمینالی قدیمی همچنان قابل اجرا می‌ماند.
-tasks.register('runCli', JavaExec) {
-    group = 'application'
-    description = 'Runs the old command-line version'
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'Main'
-    workingDir = rootDir
-    standardInput = System.in
-}
+//tasks.register('runCli', JavaExec) {
+//    group = 'application'
+//    description = 'Runs the old command-line version'
+//    classpath = sourceSets.main.runtimeClasspath
+//    mainClass = 'Main'
+//    workingDir = rootDir
+//    standardInput = System.in
+//}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
