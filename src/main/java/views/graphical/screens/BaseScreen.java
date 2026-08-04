@@ -5,15 +5,18 @@ import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import graphics.PvzGame;
 
 import java.util.Objects;
 
 public abstract class BaseScreen extends ScreenAdapter {
 
+
     protected final PvzGame game;
     protected final Stage stage;
     protected final Skin skin;
+    protected final FitViewport viewport;
 
     protected BaseScreen(PvzGame game) {
         this.game = Objects.requireNonNull(
@@ -22,11 +25,12 @@ public abstract class BaseScreen extends ScreenAdapter {
         );
         this.skin = game.getSkin();
 
+        viewport = new FitViewport(
+                PvzGame.VIRTUAL_WIDTH,
+                PvzGame.VIRTUAL_HEIGHT
+        );
         stage = new Stage(
-                new ExtendViewport(
-                        PvzGame.VIRTUAL_WIDTH,
-                        PvzGame.VIRTUAL_HEIGHT
-                ),
+                viewport,
                 game.getBatch()
         );
     }
@@ -45,11 +49,7 @@ public abstract class BaseScreen extends ScreenAdapter {
 
     @Override
     public void resize(int width, int height) {
-        stage.getViewport().update(
-                width,
-                height,
-                true
-        );
+        viewport.update(width, height, true);
     }
 
     @Override
