@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
+import views.graphical.ui.StartGameMenuPopup;
 
 public final class FirstScreen extends BaseScreen {
     private Stack root;
@@ -82,7 +83,8 @@ public final class FirstScreen extends BaseScreen {
                 .left();
 
         root.add(content);
-        stage.addActor(root);}
+        stage.addActor(root);
+    }
     @Override
     public void show(){
         game.hideHud();
