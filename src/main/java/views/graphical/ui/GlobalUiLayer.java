@@ -32,7 +32,7 @@ public final class GlobalUiLayer implements Disposable {
         );
 
         hud = new GlobalHud(skin);
-        notificationOverlay = new NotificationOverlay();
+        notificationOverlay = new NotificationOverlay(skin);
 
         stage.addActor(hud);
         stage.addActor(notificationOverlay);
