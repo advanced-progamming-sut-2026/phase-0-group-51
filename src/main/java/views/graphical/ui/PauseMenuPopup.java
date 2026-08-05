@@ -7,15 +7,13 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 
-public class PauseMenuPopup extends Table {
+public class PauseMenuPopup extends BorderedPanel {
 
     public PauseMenuPopup(PvzGame game) {
+        super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
         TextureRegion topperRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_WINDOWTOPPER");
         TextureRegion sunflowerRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SUNFLOWER_TOPPER");
         TextureRegion sliderKnob = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SLIDER_BOLT");
-
-        this.setBackground(game.getSkin().getDrawable("image_ui_if_bundle_reward1_bg_10"));
-        this.pad(20);
 
         Stack topDecoration = new Stack();
         Image topperImage = new Image(topperRegion);
@@ -58,10 +56,10 @@ public class PauseMenuPopup extends Table {
         buttonsTable.add(restartButton).padRight(10);
         buttonsTable.add(resumeButton);
 
-        this.add(topDecoration).align(Align.center).padTop(-50).row();
-        this.add(titleLabel).padTop(-400).row();
-        this.add(slidersTable).padBottom(30).row();
-        this.add(buttonsTable).align(Align.bottom).padBottom(-100);
+        this.getContent().add(topDecoration).align(Align.center).padTop(-50).row();
+        this.getContent().add(titleLabel).padTop(-400).row();
+        this.getContent().add(slidersTable).padBottom(30).row();
+        this.getContent().add(buttonsTable).align(Align.bottom).padBottom(-100);
 
         this.pack();
     }
