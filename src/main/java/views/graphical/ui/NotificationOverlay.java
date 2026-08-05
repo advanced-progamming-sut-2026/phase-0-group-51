@@ -12,7 +12,9 @@ import com.badlogic.gdx.utils.Align;
 
 public final class NotificationOverlay extends Table {
     private final Label messageLabel;
+    private Skin skin;
     public NotificationOverlay(Skin skin) {
+        this.skin = skin;
         setFillParent(true);
         top();
         setTouchable(Touchable.disabled);
