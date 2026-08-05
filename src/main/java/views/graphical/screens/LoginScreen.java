@@ -10,7 +10,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
+import controllers.LoginMenuController;
 import graphics.PvzGame;
+import models.Result;
+import views.graphical.ui.NotificationOverlay;
 
 public class LoginScreen extends BaseScreen {
     private Stack root;
@@ -19,7 +22,10 @@ public class LoginScreen extends BaseScreen {
     private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
     private static final String BACK_PRESSED = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
     private static final String LOGIN = "IMAGE_UI_GENERIC_VTB";
-
+    private final LoginMenuController controller = new LoginMenuController();
+    private TextField usernameField;
+    private TextField passwordField;
+    private NotificationOverlay notificationOverlay;
     public LoginScreen(PvzGame game) {
         super(game);
         buildUi();
@@ -42,10 +48,21 @@ public class LoginScreen extends BaseScreen {
 
         Table content = new Table();
         content.center().center();
-        content.add(createUsernameBox()).size(450f, 80f).padRight(50f).center().row();
-        content.add(createPassBox()).size(450f, 80f).padBottom(70f).padRight(50f).center().row();
-        content.add(createLoginButton().center());
-        root.add(backgroundImage);
+        usernameField = createUsernameBox();
+        passwordField = createPassBox();
+        TextButton loginButton = createLoginButton();
+
+        content.add(usernameField).size(450f, 80f).padRight(50f).center().row();
+        content.add(passwordField).size(450f, 80f).padBottom(20f).padRight(50f).center().row();
+        content.add(createStayLoggedIn()).padBottom(30f).row();
+        content.add(loginButton.center()).padBottom(15f).row();
+        loginButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                handleLogin();
+            }
+        });
+        content.add(createForgotPass()).width(150f);
         content.setWidth(450f);
         ImageButton backButton = createBackButton();
 
@@ -63,6 +80,9 @@ public class LoginScreen extends BaseScreen {
         root.add(backgroundImage);
         root.add(content);
         root.add(container);
+
+        notificationOverlay = new NotificationOverlay(game.getSkin());
+        root.add(notificationOverlay);
 
         stage.addActor(root);
     }
@@ -83,7 +103,16 @@ public class LoginScreen extends BaseScreen {
     public void hide() {
 
     }
-
+    private void handleLogin() {
+        String username = usernameField.getText().trim();
+        String password = passwordField.getText();
+        Result result = controller.login(username, password, false);
+        if (!result.success()) {
+            notificationOverlay.showError(result.message());
+            return;
+        }
+        notificationOverlay.showInfo(result.message());
+    }
     private ImageButton createBackButton() {
         TextureRegion normalRegion = game.getTextureBank().region(BACK);
         TextureRegion pressedRegion = game.getTextureBank().region(BACK_PRESSED);
@@ -97,9 +126,11 @@ public class LoginScreen extends BaseScreen {
     }
     private TextButton createLoginButton() {
         TextureRegion normalRegion = game.getTextureBank().region(LOGIN);
-        TextButton.TextButtonStyle style =
-                new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
-        style.up = new TextureRegionDrawable(normalRegion);
+        TextButton.TextButtonStyle style = new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
+        TextureRegionDrawable background = new TextureRegionDrawable(normalRegion);
+        style.up = background;
+        style.down = background.tint(new Color(1, 1, 1, 0.8f));
+        style.over = background.tint(new Color(1, 1, 1, 0.8f));
         return new TextButton("Login",style);
     }
 
@@ -138,5 +169,46 @@ public class LoginScreen extends BaseScreen {
         }
         return textField;
     }
+    private  TextButton createForgotPass(){
+        TextureRegion region = game.getTextureBank().region("IMAGE_UI_SEASONS_UNCOMPRESSED_RED_FLAG");
+        TextureRegion region2 = game.getTextureBank().region("IMAGE_UI_GENERIC_TIMER_RIBBON_RED");
+        TextureRegionDrawable background = new TextureRegionDrawable(region);
+        TextureRegionDrawable background2 = new TextureRegionDrawable(region2);
+        TextButton.TextButtonStyle style =
+                new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
+        style.up = background;
+        style.down = background2;
+        style.over = background2;
+        style.font.getData().setScale(0.7f);
+        return new TextButton("Forgot Password",style);
+    }
+    private CheckBox createStayLoggedIn(){
+        TextureRegion offRegion = game.getTextureBank().region("IMAGE_UI_ALMANAC_CHECKBOX_DISABLED_SHARP");
+        TextureRegion onRegion = game.getTextureBank().region("IMAGE_UI_ALMANAC_CHECKBOX_ENABLED_SHARP");
+        TextureRegionDrawable offDrawable = new TextureRegionDrawable(offRegion);
+        TextureRegionDrawable onDrawable = new TextureRegionDrawable(onRegion);
 
+        offDrawable.setMinSize(25f, 25f);
+        onDrawable.setMinSize(25f, 25f);
+
+        TextButton.TextButtonStyle textStyle = game.getSkin().get(TextButton.TextButtonStyle.class);
+        CheckBox.CheckBoxStyle style = new CheckBox.CheckBoxStyle();
+
+        style.checkboxOff = offDrawable;
+        style.checkboxOn = onDrawable;
+
+        style.checkboxOver = offDrawable;
+        style.checkboxOnOver = onDrawable;
+
+        style.checkboxOffDisabled = offDrawable;
+        style.checkboxOnDisabled = onDrawable;
+
+        style.font = textStyle.font;
+        style.font = game.getSkin().getFont(
+                "FBUSV8C5EI_2_outline"
+        );
+        style.fontColor = Color.WHITE;
+
+        return new CheckBox("Stay logged in", style);
+    }
 }
