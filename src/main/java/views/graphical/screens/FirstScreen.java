@@ -54,6 +54,12 @@ public final class FirstScreen extends BaseScreen {
                 Gdx.app.exit();
             }
         });
+        signIn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.showScreen(new LoginScreen(game));
+            }
+        });
         Table topRow = new Table();
         Table bottomRow = new Table();
 
@@ -72,7 +78,7 @@ public final class FirstScreen extends BaseScreen {
         bottomRow.add(signIn)
                 .width(220f)
                 .height(100f)
-                .padLeft(420f)
+                .padLeft(400f)
                 .padBottom(10f);
 
         content.add(topRow)
