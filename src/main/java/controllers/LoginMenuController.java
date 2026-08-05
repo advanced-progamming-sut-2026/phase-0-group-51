@@ -25,6 +25,12 @@ public class LoginMenuController {
         this.validation = new SignUpValidation();
         waitingForNewPassword=false; ;}
     public Result login(String username, String password, boolean stayLoggedIn) {
+        if(username.isEmpty()){
+            return new Result(false, "Please enter your username...\n", null);
+        }
+        if(password.isEmpty()){
+            return new Result(false, "Please enter your password...\n", null);
+        }
             User user = repository.getUserByUsername(username);
             if (user == null) {
                 return new Result(false, "Username does not exist.\n", null);}
@@ -43,6 +49,12 @@ public class LoginMenuController {
         }
 
     public Result forgetPassword(String username , String email){
+        if(username.isEmpty()){
+            return new Result(false, "Please enter your username...\n", null);
+        }
+        if(email.isEmpty()){
+            return new Result(false, "Please enter your email...\n", null);
+        }
         User user = repository.getUserByUsername(username);
         if(user == null){
             return new Result(false,"Username does not exist",null);
