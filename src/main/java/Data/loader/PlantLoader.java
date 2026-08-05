@@ -29,7 +29,7 @@ public final class PlantLoader {
                     obj.optString("baseAbility", ""), obj.optString("plantFoodEffect", ""),
                     obj.getDouble("actionInterval"), obj.getDouble("recharge"),
                     obj.optDouble("projectileSpeed", 0.5), obj.optString("lvl2", ""),
-                    obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades"))
+                    obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")), requiredString(obj, "cardAssetId")
             ));
         }
     }
@@ -71,5 +71,22 @@ public final class PlantLoader {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load " + path, e);
         }
+    }
+
+    private static String requiredString(
+            JSONObject obj,
+            String key
+    ) {
+        String value = obj.optString(key, "").trim();
+
+        if (value.isEmpty()) {
+            throw new IllegalStateException(
+                    "Plant '" + obj.optString("name", "unknown")
+                            + "' is missing required field '"
+                            + key + "'."
+            );
+        }
+
+        return value;
     }
 }
