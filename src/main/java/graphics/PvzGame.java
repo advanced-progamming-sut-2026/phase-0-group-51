@@ -6,7 +6,10 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import lombok.Getter;
 import lombok.Setter;
@@ -34,6 +37,7 @@ public final class PvzGame extends Game {
     public void create() {
         batch = new SpriteBatch();
         skin = PvzSkin.get();
+        applyLinearToSkin(skin);
         String assetsPath = System.getProperty("pvz.assets");
         if (assetsPath == null || assetsPath.isBlank()) {
             throw new IllegalStateException(
@@ -47,7 +51,7 @@ public final class PvzGame extends Game {
             );
         }
 
-        textureBank = new TextureBank("768", assetsFolder);
+        textureBank = new TextureBank("1200", assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
                 skin
@@ -208,5 +212,24 @@ public final class PvzGame extends Game {
     }
     public void showFirstMenu(){
         showScreen(new FirstScreen(this));
+    }
+    private void applyLinearToSkin(Skin skin) {
+        if (skin.getAtlas() != null) {
+            for (Texture texture : skin.getAtlas().getTextures()) {
+                texture.setFilter(
+                        Texture.TextureFilter.Linear,
+                        Texture.TextureFilter.Linear
+                );
+            }
+        }
+
+        for (BitmapFont font : skin.getAll(BitmapFont.class).values()) {
+            for (TextureRegion region : font.getRegions()) {
+                region.getTexture().setFilter(
+                        Texture.TextureFilter.Linear,
+                        Texture.TextureFilter.Linear
+                );
+            }
+        }
     }
 }
