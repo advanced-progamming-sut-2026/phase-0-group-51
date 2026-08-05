@@ -62,6 +62,12 @@ public final class FirstScreen extends BaseScreen {
                 game.showScreen(new LoginScreen(game));
             }
         });
+        newPlayer.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.showScreen(new SignupScreen(game));
+            }
+        });
         Table topRow = new Table();
         Table bottomRow = new Table();
 
