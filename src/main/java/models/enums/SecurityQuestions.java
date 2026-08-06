@@ -1,8 +1,10 @@
 package models.enums;
 
+import lombok.Generated;
 import lombok.Getter;
 @Getter
 public enum SecurityQuestions {
+    SELECT(0, "Select your security question"),
     Q1(1,"Once and for all: tea or coffee?"),
     Q2(2,"Be honest : your first-Semester rank?"),
     Q3(3,"The name of your celebrity crush?"),
@@ -37,5 +39,17 @@ public enum SecurityQuestions {
         }
         return "";
     }
+    @Generated
+    public String getQuestion() {
+        return this.question;
+    }
 
+    @Override
+    public String toString() {
+        if (this == SELECT) {
+            return question;
+        }
+
+        return num + ". " + question;
+    }
 }

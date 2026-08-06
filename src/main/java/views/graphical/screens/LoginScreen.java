@@ -13,6 +13,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import controllers.LoginMenuController;
 import graphics.PvzGame;
 import models.Result;
+import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
 
 public class LoginScreen extends BaseScreen {
@@ -51,7 +52,7 @@ public class LoginScreen extends BaseScreen {
         usernameField = createUsernameBox();
         passwordField = createPassBox();
         TextButton loginButton = createLoginButton();
-
+         TextButton forgotPass = createForgotPass();
         content.add(usernameField).size(450f, 80f).padRight(50f).center().row();
         content.add(passwordField).size(450f, 80f).padBottom(20f).padRight(50f).center().row();
         content.add(createStayLoggedIn()).padBottom(30f).row();
@@ -62,7 +63,7 @@ public class LoginScreen extends BaseScreen {
                 handleLogin();
             }
         });
-        content.add(createForgotPass()).width(150f);
+        content.add(forgotPass).width(150f);
         content.setWidth(450f);
         ImageButton backButton = createBackButton();
 
@@ -70,6 +71,17 @@ public class LoginScreen extends BaseScreen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 game.showScreen(new FirstScreen(game));
+            }
+        });
+        forgotPass.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Table modalLayer = new Table();
+                modalLayer.setFillParent(true);
+                ForgotPassPopup popup = new ForgotPassPopup(game, Color.valueOf("EB8634"),
+                        notificationOverlay, modalLayer::remove);
+                modalLayer.add(popup);
+                root.add(modalLayer);
             }
         });
         Container<ImageButton> container = new Container<>(backButton);

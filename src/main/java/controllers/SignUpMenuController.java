@@ -20,6 +20,9 @@ public class SignUpMenuController {
     this.repository=new UserRepository();
     this.isRegisterValid=true;}
     public Result setUsername (String username){
+        if(username.isEmpty()){
+            return new Result(false,"Please enter your username...",null);
+        }
         isRegisterValid=true;
         if(!validation.isUsernameValid(username)) {
             isRegisterValid = false;
@@ -33,6 +36,9 @@ public class SignUpMenuController {
         return new Result(true, "", null);
     }
     public Result setPassword (String pass){
+        if(pass.isEmpty()){
+            return new Result(false,"Please enter your password...",null);
+        }
         if(!validation.isPasswordValid(pass)){
             isRegisterValid = false;
             return new Result(false,
@@ -57,6 +63,9 @@ public class SignUpMenuController {
         return new Result(true, "", null);
     }
     public Result setPasswordConfirm (String passConfirm,String pass){
+        if(passConfirm.isEmpty()){
+            return new Result(false,"Please enter your password again...",null);
+        }
         if(!validation.are2passwordsSame(passConfirm, pass)) {
             isRegisterValid = false;
             return new Result(false,"Passwords do not match.Try again or return back.\n",null);
@@ -67,6 +76,9 @@ public class SignUpMenuController {
         return new Result(true, "", null);
     }
     public Result setNickname(String nickname){
+        if(nickname.isEmpty()){
+            return new Result(false,"Please enter your nickname...",null);
+        }
         if(!validation.isNicknameLengthValid(nickname)){
             isRegisterValid=false;
             return new Result(false,"Nickname length must be between 3 and 30 characters.\n",null);
@@ -75,6 +87,9 @@ public class SignUpMenuController {
         return new Result(true, "", null);
     }
     public Result setEmail(String email){
+        if(email.isEmpty()){
+            return new Result(false,"Please enter your email...",null);
+        }
         if (!validation.hasExactlyOneAtSign(email)){
             isRegisterValid = false;
             return new Result(false,"Email must contain exactly one @.\n",null); }
@@ -97,6 +112,9 @@ public class SignUpMenuController {
         return new Result(true, "", null);
     }
     public Result setGender(String gender){
+        if(gender.isEmpty()){
+            return new Result(false,"Please enter your gender...",null);
+        }
         if (!validation.isGenderValid(gender)){
             isRegisterValid = false;
             return new Result(false,"Please select a valid gender.\n",null);
