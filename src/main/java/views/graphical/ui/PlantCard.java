@@ -2,8 +2,14 @@ package views.graphical.ui;
 
 import Data.loader.PlantData;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.ui.Button;
+import com.badlogic.gdx.scenes.scene2d.ui.Container;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
@@ -15,6 +21,16 @@ public final class PlantCard extends Button {
     private static final String SELECTED_BACKGROUND = "IMAGE_UI_PACKETS_SELECTED";
     private static final String SELECTED_BORDER = "IMAGE_UI_PACKETS_SELECT";
     private static final String LOCK = "IMAGE_UI_CARDS_LOCK_MEDIUM_GOLD";
+
+    private static final float CARD_WIDTH = 115f;
+    private static final float CARD_HEIGHT = 70f;
+
+    private static final float FAMILY_TOP_PADDING = 0f;
+    private static final float FAMILY_LEFT_PADDING = 0f;
+
+    private static final float PROGRESS_WIDTH = 100f;
+    private static final float PROGRESS_HEIGHT = 3f;
+    private static final float PROGRESS_BOTTOM_PADDING = 0f;
 
     private static String familyFor(String category) {
         if (category == null || category.isBlank()) {
@@ -59,7 +75,8 @@ public final class PlantCard extends Button {
 
     private final Image stateBackground;
     private final Image selectedBorder;
-    private final Table lockLayer;
+    private final Container<Image> lockLayer;
+    private final ProgressBar progressBar;
 
     private boolean boosted;
     private boolean locked;
@@ -86,74 +103,114 @@ public final class PlantCard extends Button {
         Stack cardStack = new Stack();
         cardStack.setTouchable(Touchable.disabled);
 
-        stateBackground = createImage(READY_BACKGROUND,Scaling.none);
-        cardStack.add(stateBackground);
+        stateBackground = createImage(READY_BACKGROUND, Scaling.none);
 
         Image plantImage = createImage(data.plant().cardAssetId(), Scaling.none);
-        cardStack.add(plantImage);
 
-        Table informationLayer = createInformationLayer();
-
-        cardStack.add(informationLayer);
-
-        lockLayer = createLockLayer();
-        cardStack.add(lockLayer);
+        progressBar = createPacketProgressBar();
 
         selectedBorder = createImage(SELECTED_BORDER, Scaling.none);
 
-        cardStack.add(selectedBorder);
+        lockLayer = createLockLayer();
 
-        add(cardStack).grow();
+        cardStack.add(stateBackground);
+        cardStack.add(plantImage);
+        cardStack.add(selectedBorder);
+        cardStack.add(createInformationLayer());
+        cardStack.add(lockLayer);
+
+        add(cardStack).size(CARD_WIDTH, CARD_HEIGHT);
 
         refreshVisualState();
+
+        addListener(new ChangeListener() {
+            @Override
+            public void changed(
+                    ChangeEvent event,
+                    Actor actor
+            ) {
+                refreshVisualState();
+            }
+        });
     }
 
-    private Table createInformationLayer() {
-        Table overlay = new Table();
-        overlay.top();
+    private Stack createInformationLayer() {
+        Stack overlay = new Stack();
         overlay.setTouchable(Touchable.disabled);
 
-        String familyAsset = familyFor(data.plant().category());
+        Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.none);
 
-        Image familyLogo = createImage(familyAsset, Scaling.none);
+        Container<Image> familyLayer = new Container<>(familyLogo);
 
-        overlay.add(familyLogo).size(31f).top().left().padTop(5f).padLeft(5f);
-        overlay.add().expandX();
-        overlay.row();
-        overlay.add().colspan(2).expand().fill();
-        overlay.row();
-        ProgressBar progressBar = createPacketProgressBar();
-        overlay.add(progressBar).colspan(2).growX().height(10f).padLeft(10f).padRight(10f).padBottom(8f);
+        familyLayer.top().left();
+        familyLayer.padTop(-20);
+        familyLayer.padLeft(-20);
+        familyLayer.setTouchable(Touchable.disabled);
+
+        Container<ProgressBar> progressLayer =
+                new Container<>(progressBar);
+
+        progressLayer.bottom();
+        progressLayer.width(PROGRESS_WIDTH);
+        progressLayer.height(PROGRESS_HEIGHT);
+        progressLayer.padBottom(-10);
+        progressLayer.setTouchable(Touchable.disabled);
+
+        overlay.add(familyLayer);
+        overlay.add(progressLayer);
+
         return overlay;
     }
 
     private ProgressBar createPacketProgressBar() {
-        float maximum = Math.max(1, data.requiredSeedPackets());
+        float maximum = Math.max(
+                1f,
+                data.requiredSeedPackets()
+        );
 
-        ProgressBar progressBar = new ProgressBar(0f, maximum, 1f, false, game.getSkin(), "xp_green");
+        ProgressBar bar = new ProgressBar(
+                0f,
+                maximum,
+                1f,
+                false,
+                game.getSkin(),
+                "xp_green"
+        );
 
-        progressBar.setValue(Math.min(data.seedPackets(), maximum));
+        bar.setValue(
+                Math.min(
+                        data.seedPackets(),
+                        maximum
+                )
+        );
 
-        progressBar.setAnimateDuration(0f);
-        progressBar.setTouchable(Touchable.disabled);
-        progressBar.setVisible(data.unlocked());
+        bar.setAnimateDuration(0f);
+        bar.setTouchable(Touchable.disabled);
 
-        return progressBar;
+        return bar;
     }
 
-    private Table createLockLayer() {
-        Table layer = new Table();
+    private Container<Image> createLockLayer() {
+        Image lockImage = createImage(
+                LOCK,
+                Scaling.none
+        );
+
+        Container<Image> layer =
+                new Container<>(lockImage);
+
+        layer.center();
         layer.setTouchable(Touchable.disabled);
-
-        Image lockImage = createImage(LOCK, Scaling.none);
-
-        layer.add(lockImage).size(52f);
 
         return layer;
     }
 
-    private Image createImage(String assetId, Scaling scaling) {
-        TextureRegion region = game.getTextureBank().region(assetId);
+    private Image createImage(
+            String assetId,
+            Scaling scaling
+    ) {
+        TextureRegion region =
+                game.getTextureBank().region(assetId);
 
         if (region == null) {
             throw new IllegalStateException(
@@ -162,21 +219,14 @@ public final class PlantCard extends Button {
             );
         }
 
-        Image image = new Image(new TextureRegionDrawable(region));
+        Image image = new Image(
+                new TextureRegionDrawable(region)
+        );
 
         image.setScaling(scaling);
         image.setTouchable(Touchable.disabled);
 
         return image;
-    }
-
-    @Override
-    public void setChecked(boolean checked) {
-        super.setChecked(checked);
-
-        if (stateBackground != null) {
-            refreshVisualState();
-        }
     }
 
     public void setBoosted(boolean boosted) {
@@ -208,15 +258,36 @@ public final class PlantCard extends Button {
             backgroundAsset = READY_BACKGROUND;
         }
 
-        TextureRegion backgroundRegion = game.getTextureBank().region(backgroundAsset);
+        TextureRegion backgroundRegion =
+                game.getTextureBank().region(
+                        backgroundAsset
+                );
 
         if (backgroundRegion == null) {
-            throw new IllegalStateException("Card background was not found: " + backgroundAsset);
+            throw new IllegalStateException(
+                    "Card background was not found: "
+                            + backgroundAsset
+            );
         }
 
-        stateBackground.setDrawable(new TextureRegionDrawable(backgroundRegion));
+        stateBackground.setDrawable(
+                new TextureRegionDrawable(
+                        backgroundRegion
+                )
+        );
 
         selectedBorder.setVisible(isChecked());
         lockLayer.setVisible(locked);
+        progressBar.setVisible(!locked);
+    }
+
+    @Override
+    public float getPrefWidth() {
+        return CARD_WIDTH;
+    }
+
+    @Override
+    public float getPrefHeight() {
+        return CARD_HEIGHT;
     }
 }
