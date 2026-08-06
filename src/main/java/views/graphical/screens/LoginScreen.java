@@ -12,7 +12,9 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import controllers.LoginMenuController;
 import graphics.PvzGame;
+import models.App;
 import models.Result;
+import models.enums.Menu;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
 
@@ -123,7 +125,8 @@ public class LoginScreen extends BaseScreen {
             notificationOverlay.showError(result.message());
             return;
         }
-        notificationOverlay.showInfo(result.message());
+        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+        game.showScreen(new MainMenuScreen(game));
     }
     private ImageButton createBackButton() {
         TextureRegion normalRegion = game.getTextureBank().region(BACK);
