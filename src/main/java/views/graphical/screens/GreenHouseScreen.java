@@ -13,6 +13,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import controllers.GreenHouseMenuController;
 import graphics.PvzGame;
 import models.Result;
+import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
 
@@ -81,10 +82,10 @@ public class GreenHouseScreen extends BaseScreen{
                     game.showScreen(new FirstScreen(game));
                }
           });
-          backButton.addListener(new ChangeListener() {
+          collectionButton.addListener(new ChangeListener() {
                @Override
                public void changed(ChangeEvent event, Actor actor) {
-                    game.showScreen(new FirstScreen(game));
+                stage.addActor(new CollectionMenuTable(game, ()-> game.showScreen(new FirstScreen(game))));
                }
           });
 
