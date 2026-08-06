@@ -6,6 +6,7 @@
     "tags": [
       "DAY"
     ],
+    "cardAssetId": "IMAGE_UI_PACKETS_SUNFLOWER",
     "cost": 50,
     "baseHp": 300,
     "damage": 0,
@@ -61,6 +62,7 @@
     "tags": [
       "DAY"
     ],
+    "cardAssetId": "IMAGE_UI_PACKETS_TWINSUNFLOWER",
     "cost": 125,
     "baseHp": 300,
     "damage": 0,
@@ -118,6 +120,7 @@
       "WRAMP_UP",
       "NIGHT"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SUNSHROOM",
     "cost": 25,
     "baseHp": 300,
     "damage": 0,
@@ -171,6 +174,7 @@
     "name": "Primal Sunflower",
     "category": "SunProducer",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_PRIMALSUNFLOWER",
     "cost": 75,
     "baseHp": 300,
     "damage": 0,
@@ -224,6 +228,7 @@
     "name": "Gold Bloom",
     "category": "SunProducer",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_GOLDBLOOM",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -279,6 +284,7 @@
     "tags": [
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PEASHOOTER",
     "cost": 100,
     "baseHp": 300,
     "damage": 20,
@@ -334,6 +340,7 @@
     "tags": [
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_REPEATER",
     "cost": 200,
     "baseHp": 300,
     "damage": 20,
@@ -389,6 +396,7 @@
     "tags": [
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_THREEPEATER",
     "cost": 300,
     "baseHp": 300,
     "damage": 20,
@@ -445,6 +453,7 @@
       "ICE",
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SNOWPEA",
     "cost": 150,
     "baseHp": 300,
     "damage": 20,
@@ -498,6 +507,7 @@
     "name": "Rotobaga",
     "category": "Shooter",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_XSHOT",
     "cost": 150,
     "baseHp": 300,
     "damage": 10,
@@ -554,6 +564,7 @@
       "PEA",
       "STACK"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PEAPOD",
     "cost": 125,
     "baseHp": 300,
     "damage": 20,
@@ -609,6 +620,7 @@
     "tags": [
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SPLITPEA",
     "cost": 125,
     "baseHp": 300,
     "damage": 20,
@@ -664,6 +676,7 @@
     "tags": [
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_CITRON",
     "cost": 350,
     "baseHp": 300,
     "damage": 800,
@@ -720,6 +733,7 @@
       "MAGIC",
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_CAULIPOWER",
     "cost": 250,
     "baseHp": 300,
     "damage": 0,
@@ -775,6 +789,7 @@
     "tags": [
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_ELECTRICBLUEBERRY",
     "cost": 150,
     "baseHp": 300,
     "damage": 5000,
@@ -824,6 +839,7 @@
     "tags": [
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_BOWLINGBULB",
     "cost": 200,
     "baseHp": 300,
     "damage": 40,
@@ -877,6 +893,7 @@
     "name": "Cactus",
     "category": "Strike-through",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_CACTUS",
     "cost": 175,
     "baseHp": 300,
     "damage": 30,
@@ -933,6 +950,7 @@
       "FIRE",
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_FIREPEASHOOTER",
     "cost": 175,
     "baseHp": 300,
     "damage": 40,
@@ -986,6 +1004,7 @@
     "name": "Starfruit",
     "category": "Shooter",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_STARFRUIT",
     "cost": 150,
     "baseHp": 300,
     "damage": 20,
@@ -1041,6 +1060,7 @@
     "tags": [
       "POISON"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_POISONPEASHOOTER",
     "cost": 125,
     "baseHp": 300,
     "damage": 20,
@@ -1096,6 +1116,7 @@
     "tags": [
       "PEA"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_MEGAGATLING",
     "cost": 400,
     "baseHp": 300,
     "damage": 20,
@@ -1146,6 +1167,7 @@
       "SHROOM",
       "WATER"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SEASHROOM",
     "cost": 0,
     "baseHp": 300,
     "damage": 20,
@@ -1201,6 +1223,7 @@
     "tags": [
       "SHROOM"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PUFFSHROOM",
     "cost": 0,
     "baseHp": 300,
     "damage": 20,
@@ -1256,6 +1279,7 @@
     "tags": [
       "SHROOM"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_FUMESHROOM",
     "cost": 125,
     "baseHp": 300,
     "damage": 20,
@@ -1309,6 +1333,7 @@
     "name": "Cabbage-pult",
     "category": "Lobber",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_CABBAGEPULT",
     "cost": 100,
     "baseHp": 300,
     "damage": 40,
@@ -1362,6 +1387,7 @@
     "name": "Kernel-pult",
     "category": "Lobber",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_KERNELPULT",
     "cost": 100,
     "baseHp": 300,
     "damage": 20,
@@ -1411,6 +1437,7 @@
     "tags": [
       "AOE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_MELONPULT",
     "cost": 325,
     "baseHp": 300,
     "damage": 80,
@@ -1467,6 +1494,7 @@
       "ICE",
       "AOE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_WINTERMELON",
     "cost": 500,
     "baseHp": 300,
     "damage": 80,
@@ -1523,6 +1551,7 @@
       "FIRE",
       "AOE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PEPPERPULT",
     "cost": 200,
     "baseHp": 300,
     "damage": 50,
@@ -1579,6 +1608,7 @@
       "TRAP",
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_POTATOMINE",
     "cost": 25,
     "baseHp": 300,
     "damage": 1800,
@@ -1635,6 +1665,7 @@
       "TRAP",
       "CHARGE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PRIMALPOTATOMINE",
     "cost": 50,
     "baseHp": 300,
     "damage": 2400,
@@ -1688,6 +1719,7 @@
     "name": "Cherry Bomb",
     "category": "Explosive",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_CHERRY_BOMB",
     "cost": 150,
     "baseHp": 0,
     "damage": 1800,
@@ -1743,6 +1775,7 @@
     "tags": [
       "TRAP"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SQUASH",
     "cost": 50,
     "baseHp": 300,
     "damage": 1800,
@@ -1790,6 +1823,7 @@
     "name": "Grapeshot",
     "category": "Explosive",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_GRAPESHOT",
     "cost": 150,
     "baseHp": 0,
     "damage": 1800,
@@ -1839,6 +1873,7 @@
     "tags": [
       "FIRE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_JALAPENO",
     "cost": 125,
     "baseHp": 0,
     "damage": 1800,
@@ -1894,6 +1929,7 @@
     "tags": [
       "SHROOM"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_DOOMSHROOM",
     "cost": 125,
     "baseHp": 0,
     "damage": 1800,
@@ -1950,6 +1986,7 @@
       "TRAP",
       "WATER"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_TANGLEKELP",
     "cost": 25,
     "baseHp": 300,
     "damage": 0,
@@ -2006,6 +2043,7 @@
       "TRAP",
       "ICE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_ICEBURG",
     "cost": 0,
     "baseHp": 300,
     "damage": 0,
@@ -2059,6 +2097,7 @@
     "name": "Bonk Choy",
     "category": "Melee",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_BONKCHOY",
     "cost": 150,
     "baseHp": 300,
     "damage": 15,
@@ -2114,6 +2153,7 @@
     "tags": [
       "AOE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PHATBEET",
     "cost": 150,
     "baseHp": 300,
     "damage": 15,
@@ -2167,6 +2207,7 @@
     "name": "Chomper",
     "category": "Melee",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_CHOMPER",
     "cost": 150,
     "baseHp": 300,
     "damage": 0,
@@ -2222,6 +2263,7 @@
     "tags": [
       "FIRE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_WASABIWHIP",
     "cost": 150,
     "baseHp": 300,
     "damage": 40,
@@ -2278,6 +2320,7 @@
       "AOE",
       "WRAMP_UP"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_KIWIBEAST",
     "cost": 175,
     "baseHp": 300,
     "damage": 15,
@@ -2325,6 +2368,7 @@
     "name": "Wall-nut",
     "category": "Wall-nut",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_WALLNUT",
     "cost": 50,
     "baseHp": 4000,
     "damage": 0,
@@ -2378,6 +2422,7 @@
     "name": "Tall-nut",
     "category": "Wall-nut",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_TALLNUT",
     "cost": 125,
     "baseHp": 8000,
     "damage": 0,
@@ -2431,6 +2476,7 @@
     "name": "Endurian",
     "category": "Wall-nut",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_ENDURIAN",
     "cost": 100,
     "baseHp": 3000,
     "damage": 20,
@@ -2480,6 +2526,7 @@
     "tags": [
       "MOVEZOMBIES"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_GARLIC",
     "cost": 50,
     "baseHp": 300,
     "damage": 0,
@@ -2535,6 +2582,7 @@
     "tags": [
       "MOVEZOMBIES"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SWEETPOTATO",
     "cost": 150,
     "baseHp": 3000,
     "damage": 0,
@@ -2590,6 +2638,7 @@
     "tags": [
       "EXPLOSIVE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_EXPLODEONUT",
     "cost": 50,
     "baseHp": 4000,
     "damage": 1800,
@@ -2639,6 +2688,7 @@
     "tags": [
       "STACK"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_PUMPKIN",
     "cost": 150,
     "baseHp": 4000,
     "damage": 0,
@@ -2694,6 +2744,7 @@
     "tags": [
       "SUN"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_SUNBEAN",
     "cost": 50,
     "baseHp": 1000,
     "damage": 0,
@@ -2743,6 +2794,7 @@
     "tags": [
       "FIRE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_TORCHWOOD",
     "cost": 175,
     "baseHp": 300,
     "damage": 0,
@@ -2793,6 +2845,7 @@
       "SHROOM",
       "MAGIC"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_MAGNETSHROOM",
     "cost": 100,
     "baseHp": 300,
     "damage": 0,
@@ -2849,6 +2902,7 @@
       "SHROOM",
       "MAGIC"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_HYPNOSHROOM",
     "cost": 125,
     "baseHp": 300,
     "damage": 0,
@@ -2890,6 +2944,7 @@
     "name": "Cat-tail",
     "category": "Homing",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_AKEE",
     "cost": 175,
     "baseHp": 300,
     "damage": 15,
@@ -2943,6 +2998,7 @@
     "name": "Imitater",
     "category": "Modifier",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_IMITATER",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -2993,6 +3049,7 @@
       "SHROOM",
       "ICE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_ICESHROOM",
     "cost": 75,
     "baseHp": 0,
     "damage": 0,
@@ -3049,6 +3106,7 @@
       "WATER",
       "STACK"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_LILYPAD",
     "cost": 25,
     "baseHp": 300,
     "damage": 0,
@@ -3104,6 +3162,7 @@
     "tags": [
       "FIRE"
     ],
+    "cardAssetId":"IMAGE_UI_PACKETS_HOTPOTATO",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3145,6 +3204,7 @@
     "name": "Grave Buster",
     "category": "Explosive",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_GRAVEBUSTER",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3192,6 +3252,7 @@
     "name": "Enlighten-mint",
     "category": "SunProducer",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_ENLIGHTENMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3233,6 +3294,7 @@
     "name": "Appease-mint",
     "category": "Shooter",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_APPEASEMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3274,6 +3336,7 @@
     "name": "Arma-mint",
     "category": "Lobber",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_ARMAMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3315,6 +3378,7 @@
     "name": "Bombard-mint",
     "category": "Explosive",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_BOMBARDMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3356,6 +3420,7 @@
     "name": "Enforce-mint",
     "category": "Melee",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_ENFORCEMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3397,6 +3462,7 @@
     "name": "Reinforce-mint",
     "category": "Wall-nut",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_REINFORCEMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3438,6 +3504,7 @@
     "name": "Enchant-mint",
     "category": "Modifier",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_ENCHANTMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3479,6 +3546,7 @@
     "name": "Pierce-mint",
     "category": "Strike-through",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_SPEARMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
@@ -3520,6 +3588,7 @@
     "name": "catTail-mint",
     "category": "Homing",
     "tags": [],
+    "cardAssetId":"IMAGE_UI_PACKETS_CONTAINMINT",
     "cost": 0,
     "baseHp": 0,
     "damage": 0,
