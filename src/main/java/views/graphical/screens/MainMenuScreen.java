@@ -56,7 +56,12 @@ public class MainMenuScreen extends BaseScreen{
         backButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.showScreen(new MainMenuScreen(game));
+                if(controller.logout().success()){
+                    game.showScreen(new FirstScreen(game));
+                }
+                else{
+                    System.out.println(controller.logout().message()); // برای دیباگ گذاشتم(کنسول)
+                }
             }
         });
         collectionButton.addListener(new ChangeListener() {

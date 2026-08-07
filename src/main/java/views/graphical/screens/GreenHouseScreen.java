@@ -79,7 +79,7 @@ public class GreenHouseScreen extends BaseScreen{
           backButton.addListener(new ChangeListener() {
                @Override
                public void changed(ChangeEvent event, Actor actor) {
-                    game.showScreen(new FirstScreen(game));
+                    game.showScreen(new MainMenuScreen(game));
                }
           });
           collectionButton.addListener(new ChangeListener() {
