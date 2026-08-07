@@ -20,5 +20,6 @@ public record PlantData(
         String lvl2,
         String lvl3,
         String lvl4,
-        List<UpgradeData> upgrades
+        List<UpgradeData> upgrades,
+        String cardAssetId
 ) {}

@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import lombok.Getter;
 import lombok.Setter;
+import models.App;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
 import views.graphical.screens.BaseScreen;
@@ -50,6 +51,7 @@ public final class PvzGame extends Game {
                     "Invalid PVZ assets directory: " + assetsPath
             );
         }
+        App.getInstance();
 
         textureBank = new TextureBank("1200", assetsFolder);
         globalUiLayer = new GlobalUiLayer(

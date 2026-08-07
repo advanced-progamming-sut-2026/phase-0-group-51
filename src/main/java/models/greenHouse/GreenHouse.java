@@ -7,8 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class GreenHouse {
-    public static final int ROWS = 4;
-    public static final int COLUMNS = 5;
+    public static final int ROWS = 3;
+    public static final int COLUMNS = 4;
     private final FlowerPot[][] pots;
     public GreenHouse() {
         pots = new FlowerPot[ROWS][COLUMNS];

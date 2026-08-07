@@ -10,7 +10,7 @@ import graphics.PvzGame;
 public class PauseMenuPopup extends BorderedPanel {
 
     public PauseMenuPopup(PvzGame game) {
-        super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
+        super(game, com.badlogic.gdx.graphics.Color.valueOf("8F4909"));
         TextureRegion topperRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_WINDOWTOPPER");
         TextureRegion sunflowerRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SUNFLOWER_TOPPER");
         TextureRegion sliderKnob = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SLIDER_BOLT");

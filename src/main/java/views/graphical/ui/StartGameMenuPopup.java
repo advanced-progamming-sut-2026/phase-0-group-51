@@ -13,7 +13,7 @@ import graphics.PvzGame;
 
 public class StartGameMenuPopup extends BorderedPanel {
     public StartGameMenuPopup(PvzGame game, String... objects) {
-        super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
+        super(game, com.badlogic.gdx.graphics.Color.valueOf("8F4909"));
 
         TextureRegion circle = game.getTextureBank().region("IMAGE_UI_NIMBLE_RADIOEMPTY");
         TextureRegion greenTabRegion = game.getTextureBank().region("IMAGE_UI_GENERIC_GREENTAB_DOWN");
