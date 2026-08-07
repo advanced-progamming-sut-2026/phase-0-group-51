@@ -58,6 +58,10 @@ public final class PvzGame extends Game {
                 this,
                 skin
         );
+        globalUiLayer.resize(
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight()
+        );
 
         Gdx.input.setInputProcessor(
                 inputMultiplexer

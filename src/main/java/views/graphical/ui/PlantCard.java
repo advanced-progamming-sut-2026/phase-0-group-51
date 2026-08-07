@@ -138,13 +138,18 @@ public final class PlantCard extends Button {
         Stack overlay = new Stack();
         overlay.setTouchable(Touchable.disabled);
 
-        Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.none);
+        Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.fit);
+        float familyWidth =
+                familyLogo.getDrawable().getMinWidth() * 0.7f;
 
+        float familyHeight =
+                familyLogo.getDrawable().getMinHeight() * 0.7f;
         Container<Image> familyLayer = new Container<>(familyLogo);
 
         familyLayer.top().left();
-        familyLayer.padTop(-20);
-        familyLayer.padLeft(-20);
+        familyLayer.size(familyWidth, familyHeight);
+        familyLayer.padTop(-10);
+        familyLayer.padLeft(-10);
         familyLayer.setTouchable(Touchable.disabled);
 
         Container<ProgressBar> progressLayer =
