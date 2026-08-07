@@ -1,9 +1,11 @@
 package views.graphical.ui;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
@@ -13,43 +15,48 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 
-
 public class SettingsPopup extends BorderedPanel {
 
     private final PvzGame game;
 
-    private static final String CHILI_ON  = "IMAGE_UI_QUESTS_DIFFICULTY_TIER3_FILL";
-    private static final String CHILI_OFF = "IMAGE_UI_QUESTS_DIFFICULTY_BG";
+    private static final String CHILI_ON  = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_ICON_SMALL";
+    private static final String CHILI_OFF = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_HOLLOW_ICON_SMALL";
     private static final int CHILI_COUNT = 5;
 
     private final Table chilis = new Table();
+    private Drawable shadowOverlay;
 
     public SettingsPopup(PvzGame game) {
         super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
         this.game = game;
+
+        shadowOverlay = game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.75f));
 
         TextureRegion topperRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_WINDOWTOPPER");
         TextureRegion sunflowerRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SUNFLOWER_TOPPER");
         TextureRegion sliderKnob = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SLIDER_BOLT");
 
         Stack topDecoration = new Stack();
+
         Image topperImage = new Image(topperRegion);
-        Image sunflowerImage = new Image(sunflowerRegion);
         topperImage.setScaling(Scaling.none);
+
+        Image sunflowerImage = new Image(sunflowerRegion);
         sunflowerImage.setScaling(Scaling.none);
         Container<Image> sunflowerContainer = new Container<>(sunflowerImage);
         sunflowerContainer.align(Align.top | Align.center);
         sunflowerContainer.padTop(-25f);
-        topDecoration.add(topperImage);
-        topDecoration.add(sunflowerContainer);
 
-        TextureRegion greenTab = game.getTextureBank().region("IMAGE_UI_GENERIC_GREENTAB_DOWN");
         Table titleTable = new Table();
-        titleTable.setBackground(new TextureRegionDrawable(greenTab));
         titleTable.pad(10, 40, 10, 40);
-        Label titleLabel = new Label("Settings", game.getSkin().get("big", Label.LabelStyle.class));
-        titleLabel.setAlignment(Align.center);
-        titleTable.add(titleLabel);
+
+        Container<Table> titleContainer = new Container<>(titleTable);
+        titleContainer.align(Align.top | Align.center);
+        titleContainer.padTop(45f);
+
+        topDecoration.add(topperImage);
+        topDecoration.add(titleContainer);
+        topDecoration.add(sunflowerContainer);
 
         Slider.SliderStyle sliderStyle = new Slider.SliderStyle(
             game.getSkin().get("default-horizontal", Slider.SliderStyle.class));
@@ -113,13 +120,20 @@ public class SettingsPopup extends BorderedPanel {
         });
 
         this.getContent().add(topDecoration).align(Align.center).padTop(-50).row();
-        this.getContent().add(titleTable).center().padTop(-380).row();
         this.getContent().add(optionsTable).width(680f).padTop(15).padBottom(20).row();
         this.getContent().add(exitButton).padBottom(-70).align(Align.center);
 
         this.pack();
     }
 
+    @Override
+    public void draw(Batch batch, float parentAlpha) {
+        Stage s = getStage();
+        if (s != null && shadowOverlay != null) {
+            shadowOverlay.draw(batch, 0, 0, s.getWidth(), s.getHeight());
+        }
+        super.draw(batch, parentAlpha);
+    }
 
     private Table cell(Label lbl, Actor control, float controlWidth) {
         Table t = new Table();
@@ -162,11 +176,17 @@ public class SettingsPopup extends BorderedPanel {
 
             Actor chili;
             if (d != null) {
-                chili = new Image(d);
+                Image img = new Image(d);
+                img.setScaling(Scaling.fit);
+                chili = img;
             } else {
                 Label l = new Label(on ? "\u2588" : "\u2591",
                     game.getSkin().get("medium_outline", Label.LabelStyle.class));
-                l.setColor(game.getSkin().getColor(on ? "PlantFamilyPeppermint" : "Grey"));
+                try {
+                    l.setColor(game.getSkin().getColor(on ? "PlantFamilyPeppermint" : "Grey"));
+                } catch (Exception ex) {
+                    l.setColor(on ? Color.RED : Color.GRAY);
+                }
                 chili = l;
             }
 
@@ -181,7 +201,7 @@ public class SettingsPopup extends BorderedPanel {
                 }
             });
 
-            chilis.add(chili).size(30).padLeft(4);
+            chilis.add(chili).size(26).padLeft(4);
         }
     }
 

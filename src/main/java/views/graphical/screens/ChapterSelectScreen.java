@@ -15,12 +15,13 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
+import views.graphical.ui.SettingsPopup;
 
 import java.util.List;
 
 public class ChapterSelectScreen extends BaseScreen {
+    private SettingsPopup settingsPopup;
 
-    private Stack root;
     private Texture backgroundTexture;
     private Table content;
 
@@ -31,22 +32,13 @@ public class ChapterSelectScreen extends BaseScreen {
         ChapterTheme.DARK_AGES
     };
 
-    private static final float ISLAND_W = 260f;
-    private static final float ISLAND_H = 300f;
+    private static final float ISLAND_W = 310f;
+    private static final float ISLAND_H = 360f;
 
     private static final String GEM_ICON  = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL";
     private static final String COIN_ICON = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL";
-
     private static final String CHILI_ON  = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_ICON_SMALL";
     private static final String CHILI_OFF = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_HOLLOW_ICON_SMALL";
-
-    private static final String[][] TOP_LEFT_ICONS = {
-        {"IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL",       "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED",       "BACK"},
-        {"IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL",    "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED",    "BOOK"},
-        {"IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL",        "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED",        "POT"},
-        {"IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL", "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED", "GRN"},
-    };
-
 
     private String islandRegion(ChapterTheme chapter) {
         switch (chapter) {
@@ -66,22 +58,15 @@ public class ChapterSelectScreen extends BaseScreen {
     }
 
     private void buildUi() {
-        root = new Stack();
-        root.setFillParent(true);
-
-        backgroundTexture = new Texture(Gdx.files.internal("assets/backgrounds/adventure.png"));
+        backgroundTexture = new Texture(Gdx.files.internal("assets/backgrounds/adventure.jpeg"));
         backgroundTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-        Image backgroundImage = new Image(backgroundTexture);
-        backgroundImage.setFillParent(true);
-        backgroundImage.setTouchable(Touchable.disabled);
-        root.add(backgroundImage);
 
         content = new Table();
         content.setFillParent(true);
-        root.add(content);
+        content.setBackground(new TextureRegionDrawable(new TextureRegion(backgroundTexture)));
 
         rebuildContent();
-        stage.addActor(root);
+        stage.addActor(content);
     }
 
     private void rebuildContent() {
@@ -102,11 +87,9 @@ public class ChapterSelectScreen extends BaseScreen {
             final int steps = Math.abs(offset);
 
             if (offset == 0) {
-
                 islandsRow.add(buildCenterIsland(CHAPTERS[idx]))
                     .padLeft(20).padRight(20).top();
             } else if (idx >= 0 && idx < CHAPTERS.length) {
-
                 final int targetIdx = idx;
                 Actor side = buildDepthIsland(CHAPTERS[idx], steps);
                 side.addListener(new ClickListener() {
@@ -125,7 +108,6 @@ public class ChapterSelectScreen extends BaseScreen {
         }
 
         content.add(islandsRow).expand().center().row();
-
         content.add(buildPageDots()).padBottom(18);
     }
 
@@ -133,11 +115,29 @@ public class ChapterSelectScreen extends BaseScreen {
     private void goPrev() { selectedIndex = (selectedIndex - 1 + CHAPTERS.length) % CHAPTERS.length; rebuildContent(); }
 
     private Table buildTopLeftIcons() {
-        Table icons = new Table();
-        for (String[] entry : TOP_LEFT_ICONS) {
-            icons.add(gameIcon(entry[0], entry[1], entry[2])).size(52).padRight(6);
-        }
-        return icons;
+        Table mainArea = new Table();
+
+        Table topRow = new Table();
+        topRow.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED", "BACK")).size(52).padRight(6);
+
+        Actor settingsIcon = gameIcon("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL", "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED", "SETTING");
+        settingsIcon.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                toggleSettings();
+            }
+        });
+        topRow.add(settingsIcon).size(52).padRight(6);
+
+        topRow.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED", "BOOK")).size(52).padRight(6);
+        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL", "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED", "POT")).size(52).padRight(6);
+        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL", "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED", "CAN")).size(52);
+
+        Table bottomRow = new Table();
+        mainArea.add(topRow).left().row();
+        mainArea.add(bottomRow).left().padTop(5);
+
+        return mainArea;
     }
 
     private Actor gameIcon(String normalRegion, String selectedRegion, String fallbackLabel) {
@@ -159,28 +159,57 @@ public class ChapterSelectScreen extends BaseScreen {
         return ph;
     }
 
-    private static final String SHOP_ICON_NORMAL   = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL";
-    private static final String SHOP_ICON_SELECTED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED";
-
     private Table buildTopRight() {
         Table bar = new Table();
 
-        Drawable gem = safeRegion(GEM_ICON);
-        if (gem != null) bar.add(new Image(gem)).size(30).padRight(5);
-        bar.add(numberLabel("21")).padRight(8);
-
         Drawable coin = safeRegion(COIN_ICON);
-        if (coin != null) bar.add(new Image(coin)).size(30).padRight(5);
-        bar.add(numberLabel("770")).padRight(8);
+        if (coin != null) {
+            Image coinImg = new Image(coin);
+            coinImg.setScaling(Scaling.fit);
+            bar.add(coinImg).size(100, 40).padRight(15);
+        }
 
-        bar.add(gameIcon(SHOP_ICON_NORMAL, SHOP_ICON_SELECTED, "SHOP")).size(48);
+        Drawable gem = safeRegion(GEM_ICON);
+        if (gem != null) {
+            Image gemImg = new Image(gem);
+            gemImg.setScaling(Scaling.fit);
+            bar.add(gemImg).size(100, 40).padRight(15);
+        }
+
+        bar.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED", "SHOP")).size(60);
 
         return bar;
     }
 
-
     private Table buildCenterIsland(ChapterTheme chapter) {
+        boolean isUnlocked = (chapter == CHAPTERS[0]);
         Actor island = islandImage(chapter, ISLAND_W, ISLAND_H);
+
+        Stack stack = new Stack();
+        Table imgWrap = new Table();
+
+        if (!isUnlocked) {
+            island.setColor(0.15f, 0.15f, 0.15f, 1f);
+        }
+
+        imgWrap.add(island).size(ISLAND_W, ISLAND_H);
+        stack.add(imgWrap);
+
+        if (!isUnlocked) {
+            Table lockWrap = new Table();
+            Drawable lockDrawable = safeRegion("IMAGE_UI_CHOOSER_SLOT_LOCK_SMALL_SLOT_LOCK_SMALL_71X94");
+            if (lockDrawable != null) {
+                Image lock = new Image(lockDrawable);
+                lock.setScaling(Scaling.fit);
+                // با پدینگ پایین (80f) قفل به سمت بالا شیفت داده می‌شود تا به اسم برخورد نکند
+                lockWrap.add(lock).size(80, 106).center().padBottom(80f);
+            } else {
+                Label lockLbl = new Label("LOCKED", labelStyle("medium_outline"));
+                lockLbl.setColor(Color.RED);
+                lockWrap.add(lockLbl).center().padBottom(80f);
+            }
+            stack.add(lockWrap);
+        }
 
         Table info = new Table();
         info.bottom();
@@ -189,19 +218,19 @@ public class ChapterSelectScreen extends BaseScreen {
         title.setColor(Color.WHITE);
         info.add(title).padBottom(4).row();
 
-        info.add(buildDifficulty(chapterDifficulty(chapter))).padBottom(6).row();
+        if (isUnlocked) {
+            info.add(buildDifficulty(chapterDifficulty(chapter))).padBottom(6).row();
 
-        int total = chapter.levels.size();
-        int done = Math.min(2, total);
-        info.add(buildProgress(done, total)).padBottom(10).row();
+            int total = chapter.levels.size();
+            int done = Math.min(2, total);
+            info.add(buildProgress(done, total)).padBottom(10).row();
 
-        TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
-        info.add(reviewBtn).width(160).height(48).padBottom(10);
-
-        Stack stack = new Stack();
-        Table imgWrap = new Table();
-        imgWrap.add(island).size(ISLAND_W, ISLAND_H);
-        stack.add(imgWrap);
+            TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
+            info.add(reviewBtn).width(160).height(48).padBottom(10);
+        } else {
+            // ساخت یک بلوک خالی برای حفظ دقیق جایگاه اسم در حالتی که جزیره قفل است
+            info.add().height(135f).row();
+        }
 
         Table infoWrap = new Table();
         infoWrap.add(info).expand().bottom().padBottom(-90f);
@@ -219,11 +248,34 @@ public class ChapterSelectScreen extends BaseScreen {
 
         float alpha = (steps == 1) ? 0.85f : 0.6f;
 
-        Table card = new Table();
-        card.setTouchable(Touchable.enabled);
+        Stack cardStack = new Stack();
+        cardStack.setTouchable(Touchable.enabled);
+
         Actor island = islandImage(chapter, w, h);
-        island.getColor().a = alpha;
-        card.add(island).size(w, h).bottom();
+
+        if (chapter != CHAPTERS[0]) {
+            island.setColor(0.15f, 0.15f, 0.15f, alpha);
+            cardStack.add(island);
+
+            Table lockWrap = new Table();
+            Drawable lockDrawable = safeRegion("IMAGE_UI_CHOOSER_SLOT_LOCK_SMALL_SLOT_LOCK_SMALL_71X94");
+            if (lockDrawable != null) {
+                Image lock = new Image(lockDrawable);
+                lock.setScaling(Scaling.fit);
+                lockWrap.add(lock).size(60 * scale, 80 * scale).center();
+            } else {
+                Label lockLbl = new Label("LOCKED", labelStyle("medium_outline"));
+                lockLbl.setColor(Color.RED);
+                lockWrap.add(lockLbl).center();
+            }
+            cardStack.add(lockWrap);
+        } else {
+            island.getColor().a = alpha;
+            cardStack.add(island);
+        }
+
+        Table card = new Table();
+        card.add(cardStack).size(w, h).bottom();
         return card;
     }
 
@@ -263,46 +315,84 @@ public class ChapterSelectScreen extends BaseScreen {
         return t;
     }
 
-    private static final String STAGES_FRAME  = "IMAGE_WORLDMAP_LEVEL_NODE_LEVEL_NODE_118X40_2";
-    private static final String STAGES_CIRCLE = "IMAGE_WORLDMAP_LEVEL_NODE_LEVEL_NODE_97X71_2";
-
     private Actor stagesIcon() {
-        Drawable frame  = safeRegion(STAGES_FRAME);
-        Drawable circle = safeRegion(STAGES_CIRCLE);
-        if (frame == null && circle == null) return null;
+        Drawable frame      = safeRegion("IMAGE_WORLDMAP_LEVEL_NODE_LEVEL_NODE_118X40");
+        Drawable circle     = safeRegion("IMAGE_WORLDMAP_LEVEL_NODE_LEVEL_NODE_97X71_2");
 
-        Stack st = new Stack();
-        if (frame != null) {
-            Table fw = new Table();
-            fw.add(new Image(frame)).size(30);
-            st.add(fw);
+        if (frame == null && circle == null) {
+            Table ph = new Table();
+            ph.setBackground(game.getSkin().newDrawable("white_pixel", Color.CYAN));
+            ph.setSize(47.2f, 34f);
+            return ph;
         }
+
+        float s = 0.4f;
+        float groupWidth = 118 * s;
+        float groupHeight = 78 * s;
+
+        WidgetGroup group = new WidgetGroup();
+        group.setSize(groupWidth, groupHeight);
+
         if (circle != null) {
-            Table cw = new Table();
-            cw.add(new Image(circle)).size(22);
-            st.add(cw);
+            Image img = new Image(circle);
+            img.setSize(97 * s, 71 * s);
+            img.setPosition((groupWidth - img.getWidth()) / 2f, 8 * s);
+            group.addActor(img);
         }
-        return st;
+
+        if (frame != null) {
+            Image img = new Image(frame);
+            img.setSize(118 * s, 40 * s);
+            img.setPosition((groupWidth - img.getWidth()) / 2f, 0);
+            group.addActor(img);
+        }
+
+        return group;
     }
 
     private Table buildProgress(int done, int total) {
         Table t = new Table();
 
-        Actor icon = stagesIcon();
-        if (icon != null) t.add(icon).size(30).padRight(6);
-
-        ProgressBar bar = new ProgressBar(0, total, 1, false,
-            game.getSkin().get("default-horizontal", ProgressBar.ProgressBarStyle.class));
-        bar.setValue(done);
-        t.add(bar).width(130).padRight(8);
-
-        Table fractionWrap = new Table();
-        fractionWrap.setBackground(game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.45f)));
         Label lbl = new Label(done + "/" + total, labelStyle("medium_outline"));
         lbl.setColor(Color.WHITE);
-        fractionWrap.add(lbl).pad(2, 8, 2, 8);
-        t.add(fractionWrap);
+        lbl.setAlignment(Align.center);
 
+        Table textWrap = new Table();
+        Drawable sliceBg = safeRegion("IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE");
+        if (sliceBg != null) {
+            textWrap.setBackground(sliceBg);
+        } else {
+            textWrap.setBackground(game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.5f)));
+        }
+
+        textWrap.add(lbl).pad(6, 26, 6, 12).align(Align.center);
+        textWrap.pack();
+
+        Actor icon = stagesIcon();
+
+        WidgetGroup group = new WidgetGroup();
+
+        float textW = textWrap.getPrefWidth();
+        float textH = textWrap.getPrefHeight();
+        float iconW = icon != null ? icon.getWidth() : 0;
+        float iconH = icon != null ? icon.getHeight() : 0;
+
+        float overlap = iconW * 0.45f;
+        float totalW = textW + iconW - overlap;
+        float totalH = Math.max(textH, iconH);
+
+        group.setSize(totalW, totalH);
+
+        textWrap.setPosition(iconW - overlap, (totalH - textH) / 2f);
+        textWrap.setSize(textW, textH);
+        group.addActor(textWrap);
+
+        if (icon != null) {
+            icon.setPosition(0, (totalH - iconH) / 2f);
+            group.addActor(icon);
+        }
+
+        t.add(group).size(totalW, totalH).padBottom(10);
         return t;
     }
 
@@ -314,12 +404,6 @@ public class ChapterSelectScreen extends BaseScreen {
             t.add(dot).padLeft(6);
         }
         return t;
-    }
-
-    private Label numberLabel(String text) {
-        Label l = new Label(text, labelStyle("medium_outline"));
-        l.setColor(Color.WHITE);
-        return l;
     }
 
     private Label.LabelStyle labelStyle(String name) {
@@ -361,6 +445,36 @@ public class ChapterSelectScreen extends BaseScreen {
             return (r == null) ? null : new TextureRegionDrawable(r);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private void toggleSettings() {
+        if (settingsPopup != null && settingsPopup.hasParent()) {
+            settingsPopup.remove();
+            return;
+        }
+        settingsPopup = new SettingsPopup(game);
+        settingsPopup.pack();
+        settingsPopup.setPosition(
+            (stage.getWidth() - settingsPopup.getWidth()) / 2f,
+            (stage.getHeight() - settingsPopup.getHeight()) / 2f
+        );
+        stage.addActor(settingsPopup);
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        if (stage != null) {
+            stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        }
+    }
+
+    @Override
+    public void resize(int width, int height) {
+        super.resize(width, height);
+        if (stage != null) {
+            stage.getViewport().update(width, height, true);
         }
     }
 
