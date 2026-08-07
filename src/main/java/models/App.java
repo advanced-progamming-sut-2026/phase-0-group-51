@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.Setter;
 import models.enums.Menu;
 import models.games.Game;
+import models.greenHouse.GreenHouse;
 
 import java.util.ArrayList;
 
@@ -30,21 +31,24 @@ public class App {
         ZombieRegistry.load();
         UserRepository repository = new UserRepository();
         User rememberedUser = repository.getRememberedUser();
-        if (rememberedUser == null) {
-            loggedInUser = null;
-            currentMenu = Menu.SIGN_UP_MENU;
-            return;
-        }
-        rememberedUser.setGreenHouse(GreenHouseRepository.load(
-                rememberedUser.getId())
-        );
-        PlantRepository.unlockPlantsAndReturnNew(
-                rememberedUser.getId(),
-                PlantRegistry.getStarterPlantIds()
-        );
+        if (rememberedUser != null) {
 
-        loggedInUser = rememberedUser;
-        currentMenu = Menu.MAIN_MENU;
+            GreenHouse greenHouse =
+                    GreenHouseRepository.load(rememberedUser.getId());
+
+            rememberedUser.setGreenHouse(greenHouse);
+
+            PlantRepository.unlockPlantsAndReturnNew(
+                    rememberedUser.getId(),
+                    PlantRegistry.getStarterPlantIds()
+            );
+
+            loggedInUser = rememberedUser;
+            currentMenu = Menu.MAIN_MENU;
+
+        } else {
+            currentMenu = Menu.SIGN_UP_MENU;
+        }
     }
 
     private static final class AppHolder {

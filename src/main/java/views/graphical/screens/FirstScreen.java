@@ -10,6 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
+import models.App;
+import models.enums.Menu;
 
 public final class FirstScreen extends BaseScreen {
     private Stack root;
@@ -56,6 +58,13 @@ public final class FirstScreen extends BaseScreen {
         signIn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+
+                if (App.getInstance().getLoggedInUser() != null) {
+                    App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+                    game.showScreen(new MainMenuScreen(game));
+                    return;
+                }
+
                 game.showScreen(new LoginScreen(game));
             }
         });
