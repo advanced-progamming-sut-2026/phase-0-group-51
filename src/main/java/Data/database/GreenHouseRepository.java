@@ -135,6 +135,12 @@ public class GreenHouseRepository {
                 while (resultSet.next()) {
                     int row = resultSet.getInt("row");
                     int column = resultSet.getInt("column");
+                    if (row < 1
+                            || row > GreenHouse.ROWS
+                            || column < 1
+                            || column > GreenHouse.COLUMNS) {
+                        continue;
+                    }
                     FlowerPot pot = greenHouse.getPot(row, column);
                     pot.setUnlocked(resultSet.getBoolean("unlocked"));
                     int plantId = resultSet.getInt("plant_id");

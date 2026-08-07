@@ -154,6 +154,72 @@ public class TravelLogController {
     private String normalize(String pageName) {
         return pageName == null ? "" : pageName.trim().toLowerCase(Locale.ROOT);
     }
+    public List<QuestsRepository.QuestEntry> getQuestEntries(QuestType type) {
+        User user = App.getInstance().getLoggedInUser();
+
+        if (user == null) {
+            return List.of();
+        }
+
+        return questService.getPage(user, type);
+    }
+
+    public String getQuestDescription(
+            QuestsRepository.QuestEntry entry
+    ) {
+        return questService.resolvedCondition(
+                entry.quest(),
+                entry.userQuest()
+        );
+    }
+    public List<QuestsRepository.QuestEntry> getAllQuestEntries() {
+        User user = App.getInstance().getLoggedInUser();
+
+        if (user == null) {
+            return List.of();
+        }
+
+        List<QuestsRepository.QuestEntry> entries =
+                new java.util.ArrayList<>();
+
+        entries.addAll(
+                questService.getPage(
+                        user,
+                        QuestType.MAIN
+                )
+        );
+
+        entries.addAll(
+                questService.getPage(
+                        user,
+                        QuestType.DAILY
+                )
+        );
+
+        entries.addAll(
+                questService.getPage(
+                        user,
+                        QuestType.EPIC
+                )
+        );
+
+        entries.sort(
+                java.util.Comparator
+                        .comparingInt(
+                                (QuestsRepository.QuestEntry entry) ->
+                                        entry.quest()
+                                                .getPriority()
+                                                .ordinal()
+                        )
+                        .thenComparingInt(
+                                entry ->
+                                        entry.quest()
+                                                .getId()
+                        )
+        );
+
+        return entries;
+    }
 
     private Result success(String message) {
         return new Result(true, message, null);
