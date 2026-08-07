@@ -143,7 +143,6 @@ public class ZombieWaveManager {
         } else {
             currentDifficulty = Math.min(maxDifficulty, currentDifficulty * 1.25f);
         }
-
         if (endless) {
             gs.logEvent("Endless wave " + number + " started.\n");
         } else if (finalWave) {
