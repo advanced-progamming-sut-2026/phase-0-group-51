@@ -3,12 +3,10 @@ package views.graphical.ui;
 import Data.loader.PlantData;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-import com.badlogic.gdx.scenes.scene2d.ui.Button;
-import com.badlogic.gdx.scenes.scene2d.ui.Container;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
-import com.badlogic.gdx.scenes.scene2d.ui.Stack;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
@@ -20,7 +18,7 @@ public final class PlantCard extends Button {
     private static final String BOOST_BACKGROUND = "IMAGE_UI_PACKETS_BOOST";
     private static final String SELECTED_BACKGROUND = "IMAGE_UI_PACKETS_SELECTED";
     private static final String SELECTED_BORDER = "IMAGE_UI_PACKETS_SELECT";
-    private static final String LOCK = "IMAGE_UI_CARDS_LOCK_MEDIUM_GOLD";
+    private static final String LOCK = "IMAGE_UI_LOCK_SMALL_GOLD";
 
     private static final float CARD_WIDTH = 115f;
     private static final float CARD_HEIGHT = 70f;
@@ -75,11 +73,13 @@ public final class PlantCard extends Button {
 
     private final Image stateBackground;
     private final Image selectedBorder;
+    private final Image plantImage;
     private final Container<Image> lockLayer;
     private final ProgressBar progressBar;
 
     private boolean boosted;
     private boolean locked;
+    private boolean hovered;
 
     public PlantCard(PvzGame game, ViewData data) {
         super(new ButtonStyle());
@@ -105,7 +105,7 @@ public final class PlantCard extends Button {
 
         stateBackground = createImage(READY_BACKGROUND, Scaling.none);
 
-        Image plantImage = createImage(data.plant().cardAssetId(), Scaling.none);
+        plantImage = createImage(data.plant().cardAssetId(), Scaling.none);
 
         progressBar = createPacketProgressBar();
 
@@ -132,6 +132,31 @@ public final class PlantCard extends Button {
                 refreshVisualState();
             }
         });
+        addListener(new InputListener() {
+            @Override
+            public void enter(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor fromActor
+            ) {
+                hovered = true;
+                refreshVisualState();
+            }
+
+            @Override
+            public void exit(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor toActor
+            ) {
+                hovered = false;
+                refreshVisualState();
+            }
+        });
     }
 
     private Stack createInformationLayer() {
@@ -152,14 +177,14 @@ public final class PlantCard extends Button {
         familyLayer.padLeft(-10);
         familyLayer.setTouchable(Touchable.disabled);
 
-        Container<ProgressBar> progressLayer =
-                new Container<>(progressBar);
-
+        Table progressLayer = new Table();
         progressLayer.bottom();
-        progressLayer.width(PROGRESS_WIDTH);
-        progressLayer.height(PROGRESS_HEIGHT);
-        progressLayer.padBottom(-10);
         progressLayer.setTouchable(Touchable.disabled);
+
+        progressLayer.add(progressBar)
+                .width(PROGRESS_WIDTH)
+                .height(PROGRESS_HEIGHT)
+                .padBottom(-10f);
 
         overlay.add(familyLayer);
         overlay.add(progressLayer);
@@ -201,10 +226,9 @@ public final class PlantCard extends Button {
                 Scaling.none
         );
 
-        Container<Image> layer =
-                new Container<>(lockImage);
+        Container<Image> layer = new Container<>(lockImage);
 
-        layer.center();
+        layer.top().right();
         layer.setTouchable(Touchable.disabled);
 
         return layer;
@@ -255,7 +279,7 @@ public final class PlantCard extends Button {
     private void refreshVisualState() {
         String backgroundAsset;
 
-        if (isChecked()) {
+        if (isChecked()  || hovered) {
             backgroundAsset = SELECTED_BACKGROUND;
         } else if (boosted) {
             backgroundAsset = BOOST_BACKGROUND;
@@ -284,6 +308,35 @@ public final class PlantCard extends Button {
         selectedBorder.setVisible(isChecked());
         lockLayer.setVisible(locked);
         progressBar.setVisible(!locked);
+        if (locked) {
+            plantImage.setColor(
+                    0.5f,
+                    0.5f,
+                    0.5f,
+                    1f
+            );
+
+            stateBackground.setColor(
+                    0.65f,
+                    0.65f,
+                    0.65f,
+                    1f
+            );
+        } else {
+            plantImage.setColor(
+                    1f,
+                    1f,
+                    1f,
+                    1f
+            );
+
+            stateBackground.setColor(
+                    1f,
+                    1f,
+                    1f,
+                    1f
+            );
+        }
     }
 
     @Override

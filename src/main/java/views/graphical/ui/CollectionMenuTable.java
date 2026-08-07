@@ -1,5 +1,7 @@
 package views.graphical.ui;
 
+import Data.database.PlantBoostRepository;
+import Data.database.PlantRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import com.badlogic.gdx.graphics.Color;
@@ -12,6 +14,13 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
+import models.App;
+import models.User;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class CollectionMenuTable extends Table {
     private static final String PLANTS_ICON = "IMAGE_UI_STORE_TABICONS_PLANTS";
@@ -22,23 +31,15 @@ public final class CollectionMenuTable extends Table {
     private static final String ZOMBIES_TAB_SELECTED = "IMAGE_UI_ALMANAC_TABS_ZOMBIES_ACTIVE";
     private static final String CLOSE = "IMAGE_UI_ALMANAC_TABS_CLOSE_TAB";
     private static final String CLOSE_HOVER = "IMAGE_UI_ALMANAC_TABS_CLOSE_TAB_DOWN";
-    private static final String DETAILS_BACKGROUND = "IMAGE_UI_ALMANAC_ALMANAC_STAT_BACKGROUND";
-    private static final String PLANT_CARD_BG = "IMAGE_UI_CARDS_CHOOSER_CHOOSER_PLANT_CARD";
-    //private static final String PLANT_CARD_BG = "IMAGE_UI_CARDS_ALMANAC_PLANT_CARD";
-    private static final String STATS_FRAME_BG = "IMAGE_UI_CARDS_CARD_TABLE_FRAME";
 
     private final PvzGame game;
-    private final Table detailsArea;
     private final Table cardsGrid;
 
-    public CollectionMenuTable(PvzGame game, Runnable onClose) {
+    public CollectionMenuTable(PvzGame game) {
         if (game == null) {
             throw new IllegalArgumentException("game cannot be null");
         }
 
-        if (onClose == null) {
-            throw new IllegalArgumentException("onClose cannot be null");
-        }
 
         this.game = game;
 
@@ -50,51 +51,6 @@ public final class CollectionMenuTable extends Table {
         Table content = outerPanel.getContent();
         content.top();
 
-        detailsArea = new Table();
-        //detailsArea.setBackground(drawable(DETAILS_BACKGROUND));
-        detailsArea.pad(12f);
-//        Table plantCardArea = new Table();
-//        plantCardArea.setBackground(drawable(PLANT_CARD_BG));
-//        Table animationPlaceholder = new Table();
-//        plantCardArea.add(animationPlaceholder).grow();
-//        Table statsArea = new Table();
-//        statsArea.setBackground(drawable(DETAILS_BACKGROUND));
-//        detailsArea.add(plantCardArea).expandY().fillY().width(360f).padRight(12f);
-//        detailsArea.add(statsArea).grow();
-        Stack plantCardArea = new Stack();
-
-        Image plantCardBackground = createBackgroundImage(
-                PLANT_CARD_BG,
-                Scaling.none
-        );
-
-        Table animationPlaceholder = new Table();
-
-        plantCardArea.add(plantCardBackground);
-        plantCardArea.add(animationPlaceholder);
-
-
-        Stack statsArea = new Stack();
-
-        Image statsBackground = createBackgroundImage(
-                DETAILS_BACKGROUND,
-                Scaling.fit
-        );
-
-        Table statsContent = new Table();
-
-        statsArea.add(statsBackground);
-        statsArea.add(statsContent);
-
-
-        detailsArea.add(plantCardArea)
-                .expandY()
-                .fillY()
-                .width(360f)
-                .padRight(12f);
-
-        detailsArea.add(statsArea).grow();
-
         cardsGrid = new Table();
         cardsGrid.top().left();
 
@@ -104,7 +60,6 @@ public final class CollectionMenuTable extends Table {
         cardsScroll.setOverscroll(false, false);
         cardsScroll.setScrollingDisabled(true, false);
 
-        content.add(detailsArea).grow().minWidth(0f).minHeight(0f).row();
         content.add(cardsScroll).grow().minWidth(0f).minHeight(0f);
         ImageButton plantsTab = createTabButton(PLANTS_TAB, PLANTS_TAB_SELECTED, PLANTS_ICON);
         ImageButton zombiesTab = createTabButton(ZOMBIES_TAB, ZOMBIES_TAB_SELECTED, ZOMBIES_ICON);
@@ -180,7 +135,6 @@ public final class CollectionMenuTable extends Table {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 CollectionMenuTable.this.remove();
-                onClose.run();
             }
         });
 
@@ -226,29 +180,81 @@ public final class CollectionMenuTable extends Table {
     private void showPlants() {
         cardsGrid.clearChildren();
 
-        PlantData sunflower =
-                PlantRegistry.getByName("Sunflower");
-
-        if (sunflower == null) {
-            throw new IllegalStateException(
-                    "Sunflower is not registered."
-            );
+        User user = App.loggedInUser;
+        if (user == null) {
+            return;
         }
 
-        PlantCard card = new PlantCard(
-                game,
-                new PlantCard.ViewData(
-                        sunflower,
-                        true,
-                        false,
-                        1,
-                        4,
-                        10
-                )
-        );
+        Set<Integer> unlockedPlants =
+                PlantRepository.loadUnlockedPlants(user.getId());
 
-        cardsGrid.add(card)
-                .padLeft(12f).padTop(8f);
+        Map<Integer, Integer> plantLevels =
+                PlantRepository.loadPlantLevels(user.getId());
+
+        Map<Integer, Integer> seedPackets =
+                PlantRepository.loadSeedPackets(user.getId());
+
+        List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
+
+        plants.sort(Comparator.comparingInt(PlantData::id));
+        int column = 0;
+        int columnsPerRow = 8;
+        ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
+
+        plantGroup.setMinCheckCount(0);
+        plantGroup.setMaxCheckCount(1);
+        plantGroup.setUncheckLast(true);
+        for (PlantData plant : plants) {
+            boolean unlocked =
+                    unlockedPlants.contains(plant.id());
+
+            boolean boosted =
+                    unlocked
+                            && PlantBoostRepository.hasBoost(
+                            user.getId(),
+                            plant.id()
+                    );
+
+            int level =
+                    plantLevels.getOrDefault(
+                            plant.id(),
+                            1
+                    );
+
+            int packets =
+                    seedPackets.getOrDefault(
+                            plant.id(),
+                            0
+                    );
+
+            int requiredPackets =
+                    requiredSeedPackets(
+                            plant,
+                            level
+                    );
+
+            PlantCard card = new PlantCard(
+                    game,
+                    new PlantCard.ViewData(
+                            plant,
+                            unlocked,
+                            boosted,
+                            level,
+                            packets,
+                            requiredPackets
+                    )
+            );
+            plantGroup.add(card);
+
+            cardsGrid.add(card).expandX().top().pad(10f);
+
+            column++;
+
+            if (column >= columnsPerRow) {
+                cardsGrid.row();
+                column = 0;
+            }
+        }
     }
 
     private void showZombies() {
@@ -270,15 +276,30 @@ public final class CollectionMenuTable extends Table {
 
         return new TextureRegionDrawable(region);
     }
-    private Image createBackgroundImage(
-            String assetId,
-            Scaling scaling
+    private int requiredSeedPackets(
+            PlantData plant,
+            int currentLevel
     ) {
-        Image image = new Image(drawable(assetId));
+        int maxLevel =
+                plant.upgrades() == null
+                        ? 1
+                        : plant.upgrades().size() + 1;
 
-        image.setScaling(scaling);
-        image.setTouchable(Touchable.disabled);
+        if (currentLevel >= maxLevel) {
+            return 1;
+        }
 
-        return image;
+        int targetLevel = currentLevel + 1;
+
+        return switch (targetLevel) {
+            case 2 -> 5;
+            case 3 -> 10;
+            case 4 -> 20;
+            default ->
+                    20 * Math.max(
+                            1,
+                            targetLevel - 3
+                    );
+        };
     }
 }
