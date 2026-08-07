@@ -13,17 +13,21 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
+import models.App;
+import models.App;
+import models.enums.Menu;
 
 public final class FirstScreen extends BaseScreen {
     private Stack root;
     private Texture backgroundTexture;
+    private static final String EXIT_NORMAL_ID =
+            "IMAGE_UI_DRAPER_CLOSE_BUTTON";
 
-    private static final String EXIT_NORMAL_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON";
-    private static final String EXIT_PRESSED_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
-    private static final String PLAY_ID = "IMAGE_UI_GENERIC_SM_PURPLE_BTN_NORMAL";
-    private static final String PLAY_ID_PRESSED = "IMAGE_UI_GENERIC_SM_PURPLE_BTN_DOWN";
-    private static final String NEW_PLAYER_ID = "IMAGE_UI_MAINMENU_MM_SETTINGS_TAB";
-
+    private static final String EXIT_PRESSED_ID =
+            "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
+    private static final String PLAY_ID ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_NORMAL";
+    private static final String PLAY_ID_PRESSED ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_DOWN";
+    private static final String NEW_PLAYER_ID ="IMAGE_UI_MAINMENU_MM_SETTINGS_TAB";
     public FirstScreen(PvzGame game) {
         super(game);
         buildUi();
@@ -32,8 +36,14 @@ public final class FirstScreen extends BaseScreen {
     private void buildUi() {
         root = new Stack();
         root.setFillParent(true);
-        backgroundTexture = new Texture(Gdx.files.internal("assets/backgrounds/FirstBG.png"));
-        backgroundTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        backgroundTexture = new Texture(
+                Gdx.files.internal("assets/backgrounds/FirstBG.png")
+        );
+
+        backgroundTexture.setFilter(
+                Texture.TextureFilter.Linear,
+                Texture.TextureFilter.Linear
+        );
 
         Image backgroundImage = new Image(backgroundTexture);
         backgroundImage.setFillParent(true);
@@ -57,6 +67,13 @@ public final class FirstScreen extends BaseScreen {
         signIn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+
+                if (App.getInstance().getLoggedInUser() != null) {
+                    App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+                    game.showScreen(new MainMenuScreen(game));
+                    return;
+                }
+
                 game.showScreen(new LoginScreen(game));
             }
         });
@@ -64,27 +81,43 @@ public final class FirstScreen extends BaseScreen {
         Table topRow = new Table();
         Table bottomRow = new Table();
 
-        topRow.add(newPlayer).width(390f).height(50f).padLeft(450f).padBottom(20f);
-        bottomRow.add(exitButton).width(60f).height(60f).padLeft(80f).padBottom(-37f);
-        bottomRow.add(signIn).width(220f).height(100f).padLeft(400f).padBottom(10f);
+        topRow.add(newPlayer)
+                .width(390f)
+                .height(50f)
+                .padLeft(450f)
+                .padBottom(20f);
 
-        content.add(topRow).left().row();
-        content.add(bottomRow).left();
+        bottomRow.add(exitButton)
+                .width(60f)
+                .height(60f)
+                .padLeft(80f)
+                .padBottom(-37f);
+
+        bottomRow.add(signIn)
+                .width(220f)
+                .height(100f)
+                .padLeft(400f)
+                .padBottom(10f);
+
+        content.add(topRow)
+                .left()
+                .row();
+
+        content.add(bottomRow)
+                .left();
 
         root.add(content);
         stage.addActor(root);
     }
-
-
     @Override
     public void show() {
         game.hideHud();
     }
 
     @Override
-    public void render(float delta) {
-        ScreenUtils.clear(0.05f, 0.05f, 0.05f, 1f);
-        super.render(delta);
+    public void render(float delta){
+         ScreenUtils.clear(0.05f,0.05f,0.05f,1f);
+         super.render(delta);
     }
 
     @Override
@@ -104,7 +137,11 @@ public final class FirstScreen extends BaseScreen {
     private TextButton createSignInButton() {
         TextureRegion normalRegion = game.getTextureBank().region(PLAY_ID);
         TextureRegion pressedRegion = game.getTextureBank().region(PLAY_ID_PRESSED);
-        TextButton.TextButtonStyle style = new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
+
+
+        TextButton.TextButtonStyle style =
+                new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
+
         style.up = new TextureRegionDrawable(normalRegion);
         style.down = new TextureRegionDrawable(pressedRegion);
         style.over = new TextureRegionDrawable(normalRegion);
@@ -119,4 +156,6 @@ public final class FirstScreen extends BaseScreen {
         style.over = new TextureRegionDrawable(normalRegion);
         return new TextButton("New Player", style);
     }
+
 }
+

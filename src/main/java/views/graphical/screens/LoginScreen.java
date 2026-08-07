@@ -29,6 +29,7 @@ public class LoginScreen extends BaseScreen {
     private TextField usernameField;
     private TextField passwordField;
     private NotificationOverlay notificationOverlay;
+    private CheckBox stayLoggedInCheckBox;
     public LoginScreen(PvzGame game) {
         super(game);
         buildUi();
@@ -48,7 +49,7 @@ public class LoginScreen extends BaseScreen {
         backgroundImage.setFillParent(true);
         backgroundImage.setTouchable(Touchable.disabled);
 
-
+        stayLoggedInCheckBox = createStayLoggedIn();
         Table content = new Table();
         content.center().center();
         usernameField = createUsernameBox();
@@ -57,7 +58,7 @@ public class LoginScreen extends BaseScreen {
          TextButton forgotPass = createForgotPass();
         content.add(usernameField).size(450f, 80f).padRight(50f).center().row();
         content.add(passwordField).size(450f, 80f).padBottom(20f).padRight(50f).center().row();
-        content.add(createStayLoggedIn()).padBottom(30f).row();
+        content.add(stayLoggedInCheckBox).padBottom(30f).row();
         content.add(loginButton.center()).padBottom(15f).row();
         loginButton.addListener(new ChangeListener() {
             @Override
@@ -120,7 +121,7 @@ public class LoginScreen extends BaseScreen {
     private void handleLogin() {
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
-        Result result = controller.login(username, password, false);
+        Result result = controller.login(username, password,  stayLoggedInCheckBox.isChecked());
         if (!result.success()) {
             notificationOverlay.showError(result.message());
             return;

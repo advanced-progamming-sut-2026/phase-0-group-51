@@ -1,176 +1,148 @@
 package views.graphical.ui;
 
+import Data.database.PlantBoostRepository;
+import Data.database.PlantRepository;
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
-import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
-import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
+import models.App;
+import models.User;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class CollectionMenuTable extends Table {
     private static final String PLANTS_ICON = "IMAGE_UI_STORE_TABICONS_PLANTS";
-
     private static final String ZOMBIES_ICON = "IMAGE_UI_STORE_TABICONS_ZOMBIES";
-
     private static final String PLANTS_TAB = "IMAGE_UI_ALMANAC_TABS_PLANTS_DOWN";
-
     private static final String PLANTS_TAB_SELECTED = "IMAGE_UI_ALMANAC_TABS_PLANTS_ACTIVE";
-
     private static final String ZOMBIES_TAB = "IMAGE_UI_ALMANAC_TABS_ZOMBIES_DOWN";
-
     private static final String ZOMBIES_TAB_SELECTED = "IMAGE_UI_ALMANAC_TABS_ZOMBIES_ACTIVE";
-
     private static final String CLOSE = "IMAGE_UI_ALMANAC_TABS_CLOSE_TAB";
-
     private static final String CLOSE_HOVER = "IMAGE_UI_ALMANAC_TABS_CLOSE_TAB_DOWN";
 
-    private static final String DETAILS_BACKGROUND = "IMAGE_UI_ALMANAC_ALMANAC_STAT_BACKGROUND";
-
     private final PvzGame game;
-    private final Table detailsArea;
     private final Table cardsGrid;
 
-    public CollectionMenuTable(
-            PvzGame game,
-            Runnable onClose
-    ) {
+    public CollectionMenuTable(PvzGame game) {
+        if (game == null) {
+            throw new IllegalArgumentException("game cannot be null");
+        }
+
+
         this.game = game;
 
         setFillParent(true);
-        pad(25f);
+        setTouchable(Touchable.childrenOnly);
+        pad(22f);
 
-        BorderedPanel outerPanel = new BorderedPanel(
-                game,
-                Color.valueOf("75452F")
-        );
-
+        BorderedPanel outerPanel = new BorderedPanel(game, Color.valueOf("75452F"));
         Table content = outerPanel.getContent();
         content.top();
-
-        Table header = createHeader(onClose);
-
-        detailsArea = new Table();
-        detailsArea.setBackground(
-                drawable(DETAILS_BACKGROUND)
-        );
 
         cardsGrid = new Table();
         cardsGrid.top().left();
 
-        ScrollPane cardsScroll = new ScrollPane(
-                cardsGrid,
-                game.getSkin()
-        );
+        ScrollPane cardsScroll = new ScrollPane(cardsGrid, game.getSkin());
 
         cardsScroll.setFadeScrollBars(false);
         cardsScroll.setOverscroll(false, false);
         cardsScroll.setScrollingDisabled(true, false);
 
-        content.add(header)
-                .growX()
-                .height(70f)
-                .row();
-
-        content.add(detailsArea)
-                .growX()
-                .height(300f)
-                .padTop(6f)
-                .row();
-
-        content.add(cardsScroll)
-                .grow()
-                .padTop(8f);
-
-        add(outerPanel).grow();
-    }
-
-    private Table createHeader(Runnable onClose) {
-        Table header = new Table();
-        header.left();
-
-        ImageButton plantsTab = createTabButton(
-                PLANTS_TAB,
-                PLANTS_TAB_SELECTED,
-                PLANTS_ICON
-        );
-
-        ImageButton zombiesTab = createTabButton(
-                ZOMBIES_TAB,
-                ZOMBIES_TAB_SELECTED,
-                ZOMBIES_ICON
-        );
-
-        ImageButton closeButton =
-                createCloseButton();
-
-        ButtonGroup<ImageButton> tabs =
-                new ButtonGroup<>();
-
+        content.add(cardsScroll).grow().minWidth(0f).minHeight(0f);
+        ImageButton plantsTab = createTabButton(PLANTS_TAB, PLANTS_TAB_SELECTED, PLANTS_ICON);
+        ImageButton zombiesTab = createTabButton(ZOMBIES_TAB, ZOMBIES_TAB_SELECTED, ZOMBIES_ICON);
+        ImageButton closeButton = createCloseButton();
+        ButtonGroup<ImageButton> tabs = new ButtonGroup<>();
         tabs.setMinCheckCount(1);
         tabs.setMaxCheckCount(1);
         tabs.setUncheckLast(true);
-
         tabs.add(plantsTab);
         tabs.add(zombiesTab);
+        float tabHeight = plantsTab.getPrefHeight();
+        float panelTopOffset = tabHeight * 0.75f;
+        float leftPadding = 40f;
+        float tabGap = 8f;
 
-        plantsTab.setChecked(true);
+        Stack menuStack = new Stack();
+        menuStack.setTouchable(Touchable.childrenOnly);
+        Table panelLayer = new Table();
+        panelLayer.top();
+        panelLayer.setTouchable(Touchable.childrenOnly);
+        panelLayer.add(outerPanel).grow().minWidth(0f).minHeight(0f).padTop(panelTopOffset);
+
+        Table plantsLayer = new Table();
+        plantsLayer.top().left();
+        plantsLayer.setTouchable(Touchable.childrenOnly);
+        plantsLayer.add(plantsTab).padLeft(leftPadding);
+
+        Table zombiesLayer = new Table();
+        zombiesLayer.top().left();
+        zombiesLayer.setTouchable(Touchable.childrenOnly);
+        zombiesLayer.add(zombiesTab).padLeft(leftPadding + plantsTab.getPrefWidth() + tabGap);
+
+        Table closeLayer = new Table();
+        closeLayer.top().right();
+        closeLayer.setTouchable(Touchable.childrenOnly);
+        float closeButtonOffset = panelTopOffset - (closeButton.getPrefHeight()) + 2;
+        closeLayer.add(closeButton).padTop(closeButtonOffset).padRight(50f);
+
+        menuStack.add(zombiesLayer);
+        menuStack.add(plantsLayer);
+        menuStack.add(panelLayer);
+        menuStack.add(closeLayer);
+
+        add(menuStack).grow().minWidth(0f).minHeight(0f);
 
         plantsTab.addListener(new ChangeListener() {
             @Override
-            public void changed(
-                    ChangeEvent event,
-                    Actor actor
-            ) {
+            public void changed(ChangeEvent event, Actor actor) {
                 if (plantsTab.isChecked()) {
+                    plantsLayer.toFront();
+                    closeLayer.toFront();
                     showPlants();
+                } else {
+                    plantsLayer.toBack();
                 }
             }
         });
 
         zombiesTab.addListener(new ChangeListener() {
             @Override
-            public void changed(
-                    ChangeEvent event,
-                    Actor actor
-            ) {
+            public void changed(ChangeEvent event, Actor actor) {
                 if (zombiesTab.isChecked()) {
+                    zombiesLayer.toFront();
+                    closeLayer.toFront();
                     showZombies();
+                } else {
+                    zombiesLayer.toBack();
                 }
             }
         });
 
         closeButton.addListener(new ChangeListener() {
             @Override
-            public void changed(
-                    ChangeEvent event,
-                    Actor actor
-            ) {
-                onClose.run();
+            public void changed(ChangeEvent event, Actor actor) {
+                CollectionMenuTable.this.remove();
             }
         });
 
-        header.add(plantsTab)
-                .size(105f, 70f);
-
-        header.add(zombiesTab)
-                .size(105f, 70f)
-                .padLeft(4f);
-
-        header.add()
-                .expandX();
-
-        header.add(closeButton)
-                .size(64f, 64f)
-                .padRight(4f);
-
-        return header;
+        plantsTab.setChecked(true);
+        plantsLayer.toFront();
+        closeLayer.toFront();
+        showPlants();
     }
-
     private ImageButton createTabButton(
             String normalBackground,
             String selectedBackground,
@@ -186,6 +158,10 @@ public final class CollectionMenuTable extends Table {
         style.imageUp = drawable(iconAsset);
         style.imageDown = drawable(iconAsset);
         style.imageChecked = drawable(iconAsset);
+
+        style.unpressedOffsetY = 10f;
+        style.pressedOffsetY = 10f;
+        style.checkedOffsetY = 10f;
 
         return new ImageButton(style);
     }
@@ -204,13 +180,87 @@ public final class CollectionMenuTable extends Table {
     private void showPlants() {
         cardsGrid.clearChildren();
 
-        // Add PlantCard objects here later.
+        User user = App.loggedInUser;
+        if (user == null) {
+            return;
+        }
+
+        Set<Integer> unlockedPlants =
+                PlantRepository.loadUnlockedPlants(user.getId());
+
+        Map<Integer, Integer> plantLevels =
+                PlantRepository.loadPlantLevels(user.getId());
+
+        Map<Integer, Integer> seedPackets =
+                PlantRepository.loadSeedPackets(user.getId());
+
+        List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
+
+        plants.sort(Comparator.comparingInt(PlantData::id));
+        int column = 0;
+        int columnsPerRow = 8;
+        ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
+
+        plantGroup.setMinCheckCount(0);
+        plantGroup.setMaxCheckCount(1);
+        plantGroup.setUncheckLast(true);
+        for (PlantData plant : plants) {
+            boolean unlocked =
+                    unlockedPlants.contains(plant.id());
+
+            boolean boosted =
+                    unlocked
+                            && PlantBoostRepository.hasBoost(
+                            user.getId(),
+                            plant.id()
+                    );
+
+            int level =
+                    plantLevels.getOrDefault(
+                            plant.id(),
+                            1
+                    );
+
+            int packets =
+                    seedPackets.getOrDefault(
+                            plant.id(),
+                            0
+                    );
+
+            int requiredPackets =
+                    requiredSeedPackets(
+                            plant,
+                            level
+                    );
+
+            PlantCard card = new PlantCard(
+                    game,
+                    new PlantCard.ViewData(
+                            plant,
+                            unlocked,
+                            boosted,
+                            level,
+                            packets,
+                            requiredPackets
+                    )
+            );
+            plantGroup.add(card);
+
+            cardsGrid.add(card).expandX().top().pad(10f);
+
+            column++;
+
+            if (column >= columnsPerRow) {
+                cardsGrid.row();
+                column = 0;
+            }
+        }
     }
 
     private void showZombies() {
         cardsGrid.clearChildren();
 
-        // Add ZombieCard objects here later.
+        // add your ZombieCard objects here later
     }
 
     private Drawable drawable(String assetId) {
@@ -225,5 +275,31 @@ public final class CollectionMenuTable extends Table {
         }
 
         return new TextureRegionDrawable(region);
+    }
+    private int requiredSeedPackets(
+            PlantData plant,
+            int currentLevel
+    ) {
+        int maxLevel =
+                plant.upgrades() == null
+                        ? 1
+                        : plant.upgrades().size() + 1;
+
+        if (currentLevel >= maxLevel) {
+            return 1;
+        }
+
+        int targetLevel = currentLevel + 1;
+
+        return switch (targetLevel) {
+            case 2 -> 5;
+            case 3 -> 10;
+            case 4 -> 20;
+            default ->
+                    20 * Math.max(
+                            1,
+                            targetLevel - 3
+                    );
+        };
     }
 }

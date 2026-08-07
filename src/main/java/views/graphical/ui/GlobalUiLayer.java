@@ -4,7 +4,7 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Disposable;
-import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import graphics.PvzGame;
 
 import java.util.Objects;
@@ -24,7 +24,7 @@ public final class GlobalUiLayer implements Disposable {
         Objects.requireNonNull(skin, "skin cannot be null");
 
         stage = new Stage(
-                new ExtendViewport(
+                new FitViewport(
                         PvzGame.VIRTUAL_WIDTH,
                         PvzGame.VIRTUAL_HEIGHT
                 ),
