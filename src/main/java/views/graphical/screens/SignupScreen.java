@@ -14,7 +14,9 @@ import com.badlogic.gdx.utils.Align;
 import controllers.LoginMenuController;
 import controllers.SignUpMenuController;
 import graphics.PvzGame;
+import models.App;
 import models.Result;
+import models.enums.Menu;
 import models.enums.SecurityQuestions;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.ForgotPassPopup;
@@ -31,6 +33,7 @@ public class SignupScreen extends BaseScreen{
     private Texture backgroundTexture;
     private static final String TEXT_FIELD = "IMAGE_UI_SEASONS_UNCOMPRESSED_PVZ2_SEASONS_UIASSET_PRIZE_WINDOW_UPPER_UNLOCKED";
     private final SignUpMenuController controller = new SignUpMenuController();
+    private final LoginMenuController loginController = new LoginMenuController();
     private TextField usernameField;
     private TextField passwordField;
     private TextField confirmPasswordField;
@@ -345,6 +348,14 @@ public class SignupScreen extends BaseScreen{
         }
         notificationOverlay.showInfo(result.message());
         clearForm();
+        Result loginResult = loginController.login(username, password, false);
+        if (!loginResult.success()) {
+            notificationOverlay.showError(
+                    "Registration was successful, but automatic login failed: " + loginResult.message());
+            return;
+        }
+        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+        game.showScreen(new MainMenuScreen(game));
 
     }
     private boolean isSuccessful(Result result) {
