@@ -85,7 +85,7 @@ public class GreenHouseScreen extends BaseScreen{
           collectionButton.addListener(new ChangeListener() {
                @Override
                public void changed(ChangeEvent event, Actor actor) {
-                stage.addActor(new CollectionMenuTable(game, ()-> game.showScreen(new FirstScreen(game))));
+                stage.addActor(new CollectionMenuTable(game));
                }
           });
 
