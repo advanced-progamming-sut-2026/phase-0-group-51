@@ -7,9 +7,12 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +23,7 @@ import views.graphical.screens.BaseScreen;
 import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
+import pvz.libpvz.pam.PamPlayer;
 @Getter
 @Setter
 public final class PvzGame extends Game {
@@ -34,6 +38,7 @@ public final class PvzGame extends Game {
     private Skin skin;
     private GlobalUiLayer globalUiLayer;
     private TextureBank textureBank;
+    private PamPlayer pamPlayer;
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -54,6 +59,7 @@ public final class PvzGame extends Game {
         App.getInstance();
 
         textureBank = new TextureBank("738", assetsFolder);
+        pamPlayer = new PamPlayer(textureBank, assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
                 skin
@@ -110,17 +116,40 @@ public final class PvzGame extends Game {
             );
         }
     }
+        public void render() {
 
-    @Override
-    public void render() {
-        super.render();
-        textureBank.update();
+            if (textureBank != null) {
+                textureBank.update();
+            }
 
-        if (globalUiLayer != null) {
-            globalUiLayer.render(
-                    Gdx.graphics.getDeltaTime()
-            );
+            super.render();
+
+            if (globalUiLayer != null) {
+                globalUiLayer.render(
+                        Gdx.graphics.getDeltaTime()
+                );
+            }
         }
+
+    public Actor createPamActor(String pamPath, String clip, float x, float y, boolean loop) {
+        Actor actor = new Actor() {
+            private float stateTime = 0f;
+            @Override
+            public void act(float delta) {
+                super.act(delta);
+                stateTime += delta;
+            }
+
+            @Override
+            public void draw(Batch batch, float parentAlpha) {
+                pamPlayer.draw(batch, pamPath, clip, stateTime, getX(), getY(), loop);
+            }
+        };
+
+        actor.setPosition(x, y);
+        actor.setTouchable(Touchable.disabled);
+
+        return actor;
     }
 
     @Override
