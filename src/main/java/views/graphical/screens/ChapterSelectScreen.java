@@ -201,7 +201,6 @@ public class ChapterSelectScreen extends BaseScreen {
             if (lockDrawable != null) {
                 Image lock = new Image(lockDrawable);
                 lock.setScaling(Scaling.fit);
-                // با پدینگ پایین (80f) قفل به سمت بالا شیفت داده می‌شود تا به اسم برخورد نکند
                 lockWrap.add(lock).size(80, 106).center().padBottom(80f);
             } else {
                 Label lockLbl = new Label("LOCKED", labelStyle("medium_outline"));
@@ -228,7 +227,6 @@ public class ChapterSelectScreen extends BaseScreen {
             TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
             info.add(reviewBtn).width(160).height(48).padBottom(10);
         } else {
-            // ساخت یک بلوک خالی برای حفظ دقیق جایگاه اسم در حالتی که جزیره قفل است
             info.add().height(135f).row();
         }
 
@@ -305,7 +303,7 @@ public class ChapterSelectScreen extends BaseScreen {
             boolean on = i <= level;
             Drawable chiliImg = safeRegion(on ? CHILI_ON : CHILI_OFF);
             if (chiliImg != null) {
-                t.add(new Image(chiliImg)).size(20).padLeft(2);
+                t.add(new Image(chiliImg)).size(25).padLeft(2);
             } else {
                 Label chili = new Label(on ? "\u2588" : "\u2591", labelStyle("medium_outline"));
                 chili.setColor(on ? peppermint() : grey());
