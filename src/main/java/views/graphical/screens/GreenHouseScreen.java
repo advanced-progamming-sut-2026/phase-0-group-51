@@ -24,7 +24,7 @@ public class GreenHouseScreen extends BaseScreen{
      private static final String POT_COUNT_CLICKED = "IMAGE_UI_HUD_INGAME_SPROUT_ICON_DOWN";
      private static final String SHOVEL_CLICKED = "IMAGE_UI_HUD_INGAME_SHOVEL_BUTTON_DOWN";;
      private static final String SHOVEL = "IMAGE_UI_HUD_INGAME_SHOVEL_BUTTON";
-     private static final String VASE_CLICKED = "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL";
+     private static final String VASE_CLICKED = "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED";
      private static final String VASE ="IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL" ;
      private static final String COIN = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL";
      private static final String COIN_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_SELECTED";
@@ -45,8 +45,8 @@ public class GreenHouseScreen extends BaseScreen{
      private static final String GEM_READY_CLICKED = "IMAGE_ZEN_GARDEN_BUTTON_UNLOCK_ACTIVE";
      private static final String WATERING_POT = "IMAGE_ZEN_GARDEN_ZENGARDEN_WATER_POURING_ZENGARDEN_WATER_POURING_317X281";
      private static final float TOP_BUTTON_Y = 635f;
-     private static final float TOP_BUTTON_W = 82f;
-     private static final float TOP_BUTTON_H = 82f;
+     private static final String LOCK=
+             "768/INITIAL/UI/CHOOSER/SLOT_LOCK_SMALL/SLOT_LOCK_SMALL.PAM";
      private Stack root;
      private Texture backgroundTexture;
      private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
@@ -86,46 +86,38 @@ public class GreenHouseScreen extends BaseScreen{
           Image saleBanner = createImage(SALE);
           saleBanner.setTouchable(Touchable.disabled);
           place(uiLayer, backButton,
-                  14f, TOP_BUTTON_Y, TOP_BUTTON_W, TOP_BUTTON_H);
+                  14f, TOP_BUTTON_Y);
 
           place(uiLayer, collectionButton,
-                  103f, TOP_BUTTON_Y, TOP_BUTTON_W, TOP_BUTTON_H);
+                  103f, TOP_BUTTON_Y);
 
           place(uiLayer, vaseButton,
-                  192f, TOP_BUTTON_Y, TOP_BUTTON_W, TOP_BUTTON_H);
+                  192f, TOP_BUTTON_Y);
 
 
           place(uiLayer, potCountButton,
-                  490f, 650f,
-                  155f, 58f);
+                  490f, 650f);
 
           place(uiLayer, gemsButton,
-                  680f, 650f,
-                  165f, 58f);
+                  680f, 650f);
 
           place(uiLayer, coinButton,
-                  870f, 650f,
-                  220f, 58f);
+                  870f, 650f);
 
           place(uiLayer, earnGemButton,
-                  675f, 615f,
-                  178f, 47f);
+                  675f, 600f);
 
           place(uiLayer, earnCoinButton,
-                  900f, 619f,
-                  178f, 47f);
+                  900f, 600f);
 
           place(uiLayer, shopButton,
-                  1140f, 645f,
-                  94f, 70f);
+                  1140f, 615f);
 
           place(uiLayer, saleBanner,
-                  1118f, 632f,
-                  125f, 34f);
+                  1118f, 600f);
 
           place(uiLayer, shovelButton,
-                  1144f, 16f,
-                  88f, 72f);
+                  1144f, 16f);
 
 
 
@@ -149,6 +141,13 @@ public class GreenHouseScreen extends BaseScreen{
           root.add(notificationOverlay);
 
           stage.addActor(root);
+          game.getPamPlayer().loadSync(LOCK);
+          Actor lockActor = game.createPamActor(LOCK, "idle", 1100f, 300f, true);
+          Group lockGroup = new Group();
+          lockGroup.setScale(0.5f);
+          lockGroup.setTransform(true);
+          lockGroup.addActor(lockActor);
+          uiLayer.addActor(lockGroup);
      }
 
      @Override
@@ -176,8 +175,8 @@ public class GreenHouseScreen extends BaseScreen{
           image.setScaling(Scaling.stretch);
           return image;
      }
-     private void place(Group layer, Actor actor, float x, float y, float width, float height) {
-          actor.setBounds(x, y, width, height);
+     private void place(Group layer, Actor actor, float x, float y) {
+          actor.setPosition(x, y);
           layer.addActor(actor);
      }
      @Override
