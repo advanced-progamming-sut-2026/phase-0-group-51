@@ -245,6 +245,17 @@ public final class CollectionMenuTable extends Table {
                     )
             );
             plantGroup.add(card);
+            card.addListener(new ChangeListener() {
+                @Override
+                public void changed(
+                        ChangeEvent event,
+                        Actor actor
+                ) {
+                    if (card.isChecked()) {
+                        openPlantDetails(card);
+                    }
+                }
+            });
 
             cardsGrid.add(card).expandX().top().pad(10f);
 
@@ -255,6 +266,27 @@ public final class CollectionMenuTable extends Table {
                 column = 0;
             }
         }
+    }
+    private void openPlantDetails(
+            PlantCard card
+    ) {
+        if (getStage() == null) {
+            return;
+        }
+
+        setVisible(false);
+
+        PlantDetailsTable details =
+                new PlantDetailsTable(
+                        game,
+                        card.getData(),
+                        () -> {
+                            setVisible(true);
+                            card.setChecked(false);
+                        }
+                );
+
+        getStage().addActor(details);
     }
 
     private void showZombies() {

@@ -29,7 +29,8 @@ public final class PlantLoader {
                     obj.optString("baseAbility", ""), obj.optString("plantFoodEffect", ""),
                     obj.getDouble("actionInterval"), obj.getDouble("recharge"),
                     obj.optDouble("projectileSpeed", 0.5), obj.optString("lvl2", ""),
-                    obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")), requiredString(obj, "cardAssetId")
+                    obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")),
+                    requiredString(obj, "cardAssetId"), obj.getString("idlePamPath"),obj.optString("idleClip", "idle")
             ));
         }
     }
