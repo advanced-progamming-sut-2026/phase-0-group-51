@@ -110,7 +110,44 @@ public class UserRepository {
             exception.printStackTrace();
             return false;}
     }
+    public record CurrencyBalance(
+            int coins,
+            int gems
+    ) {
+    }
 
+    public CurrencyBalance getCurrencyBalance(int userId) {
+
+        String sql = """
+            SELECT coins, gems
+            FROM users
+            WHERE id = ?
+            """;
+
+        try (Connection connection =
+                     DataBaseManager.getConnection();
+             PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+
+            statement.setInt(1, userId);
+
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+
+                if (resultSet.next()) {
+                    return new CurrencyBalance(
+                            resultSet.getInt("coins"),
+                            resultSet.getInt("gems")
+                    );
+                }
+            }
+
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+        }
+
+        return null;
+    }
     public boolean emailExistsForAnotherUser(String email, int userId) {
         String sql = "SELECT 1 FROM users WHERE email = ? AND id <> ?";
         try (Connection connection = DataBaseManager.getConnection();

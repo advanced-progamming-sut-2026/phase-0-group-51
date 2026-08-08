@@ -1,5 +1,6 @@
 package views.graphical.screens;
 
+import Data.database.UserRepository;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -15,6 +16,8 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import controllers.GreenHouseMenuController;
 import graphics.PvzGame;
 import models.Result;
+import models.greenHouse.FlowerPot;
+import models.greenHouse.GreenHouse;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
@@ -45,9 +48,21 @@ public class GreenHouseScreen extends BaseScreen{
      private static final String GEM_READY_CLICKED = "IMAGE_ZEN_GARDEN_BUTTON_UNLOCK_ACTIVE";
      private static final String WATERING_POT = "IMAGE_ZEN_GARDEN_ZENGARDEN_WATER_POURING_ZENGARDEN_WATER_POURING_317X281";
      private static final float TOP_BUTTON_Y = 635f;
-     private static final String LOCK=
-             "768/INITIAL/UI/CHOOSER/SLOT_LOCK_SMALL/SLOT_LOCK_SMALL.PAM";
+     private static final String LOCK= "768/INITIAL/UI/CHOOSER/SLOT_LOCK_SMALL/SLOT_LOCK_SMALL.PAM";
      private Stack root;
+     private final Group[][] potSlots = new Group[GreenHouse.ROWS][GreenHouse.COLUMNS];
+     private static final float[] POT_X = {
+             495f, 650f, 800f, 950f
+     };
+     private static final float[] POT_Y = {
+             380f, 205f, 50f
+     };
+     private Label coinLabel;
+     private Label gemLabel,sale,earnGem,earnCoin;
+     private float currencyRefreshTimer = 0f;
+     private static final float CURRENCY_REFRESH = 0.25f;
+     private static final float LOCK_OFFSET_X = 68f;
+     private static final float LOCK_OFFSET_Y = 75f;
      private Texture backgroundTexture;
      private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
      private static final String BACK_PRESSED = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
@@ -103,21 +118,39 @@ public class GreenHouseScreen extends BaseScreen{
 
           place(uiLayer, coinButton,
                   870f, 650f);
+          gemLabel = new Label("0", skin);
+          coinLabel = new Label("0", skin);
 
+          gemLabel.setTouchable(Touchable.disabled);
+          coinLabel.setTouchable(Touchable.disabled);
+
+          gemLabel.setFontScale(1.1f);
+          coinLabel.setFontScale(1.1f);
+          place(uiLayer, gemLabel,
+                  750f, 670f);
+
+          place(uiLayer, coinLabel,
+                  940f, 670f);
           place(uiLayer, earnGemButton,
-                  675f, 600f);
+                  678f, 597f);
 
           place(uiLayer, earnCoinButton,
                   900f, 600f);
+          earnGem =borderBlack("EARN GEMS!");
+          earnGem.setTouchable(Touchable.disabled);
+          earnCoin = borderBlack("EARN COINS!");
+          earnCoin.setTouchable(Touchable.disabled);
+          place(uiLayer, earnGem, 690f, 605f);
+          place(uiLayer, earnCoin, 910f, 605f);
 
-          place(uiLayer, shopButton,
-                  1140f, 615f);
+          place(uiLayer, shopButton, 1140f, 615f);
+          place(uiLayer, saleBanner, 1118f, 600f);
+          sale = new Label("SALE", skin);
+          sale.setTouchable(Touchable.disabled);
+          sale.setFontScale(1.8f);
 
-          place(uiLayer, saleBanner,
-                  1118f, 600f);
-
-          place(uiLayer, shovelButton,
-                  1144f, 16f);
+          place(uiLayer, sale, 1150f, 610f);
+          place(uiLayer, shovelButton, 1144f, 16f);
 
 
 
@@ -133,7 +166,8 @@ public class GreenHouseScreen extends BaseScreen{
                 stage.addActor(new CollectionMenuTable(game));
                }
           });
-
+          createGreenHouseSlots(uiLayer);
+          refreshGreenHouse();
           root.add(backgroundImage);
           root.add(uiLayer);
 
@@ -141,19 +175,78 @@ public class GreenHouseScreen extends BaseScreen{
           root.add(notificationOverlay);
 
           stage.addActor(root);
-          game.getPamPlayer().loadSync(LOCK);
-          Actor lockActor = game.createPamActor(LOCK, "idle", 1100f, 300f, true);
-          Group lockGroup = new Group();
-          lockGroup.setScale(0.5f);
-          lockGroup.setTransform(true);
-          lockGroup.addActor(lockActor);
-          uiLayer.addActor(lockGroup);
-     }
 
+     }
+     private void createGreenHouseSlots(Group uiLayer) {
+          for (int row = 1; row <= GreenHouse.ROWS; row++) {
+               for (int column = 1; column <= GreenHouse.COLUMNS; column++) {
+                    Group slot = new Group();
+                    slot.setPosition(POT_X[column - 1], POT_Y[row - 1]);
+                    potSlots[row - 1][column - 1] = slot;
+                    uiLayer.addActor(slot);
+               }
+          }
+     }
+     private void refreshGreenHouse() {
+          for (int row = 1; row <= GreenHouse.ROWS; row++) {
+               for (int column = 1; column <= GreenHouse.COLUMNS; column++) {
+                    FlowerPot pot = controller.getPot(row, column);
+                    if (pot == null) {
+                         continue;
+                    }
+                    Group slot = potSlots[row - 1][column - 1];
+                    slot.clearChildren();
+                    if (!pot.isUnlocked()) {
+                         addLockAnimation(slot);
+                    } else {
+                         addPotVisual(slot);
+                         if (!pot.isEmpty()) {
+                              addPlantAnimation(slot, pot);
+                         }
+                    }
+               }
+          }
+     }
+     private void addPotVisual(Group slot) {
+          Image potImage = createImage(POT);
+          potImage.setPosition(0f, 0f);
+          slot.addActor(potImage);
+     }
+     private void addLockAnimation(Group slot) {
+          game.getPamPlayer().loadSync(LOCK);
+          Actor lockActor = game.createPamActor(LOCK, "idle", 0f, 0f, true);
+          Group scaleGroup = new Group();
+          scaleGroup.setTransform(true);
+          scaleGroup.setScale(0.5f);
+          scaleGroup.setPosition(LOCK_OFFSET_X, LOCK_OFFSET_Y);
+          scaleGroup.addActor(lockActor);
+          slot.addActor(scaleGroup);
+     }
      @Override
      public void show() {
           game.hideHud();
 
+     }
+     private String getPlantPam(FlowerPot pot) {
+          return switch (pot.getPlantName()) {
+               case "Peashooter" -> "768/INITIAL/PLANT/PEASHOOTER/PEASHOOTER.PAM";
+               case "Sunflower" -> "768/INITIAL/PLANT/SUNFLOWER/SUNFLOWER.PAM";
+               case "Marigold" -> "768/INITIAL/PLANT/MARIGOLD/MARIGOLD.PAM";
+               default -> null;
+          };
+     }
+     private void addPlantAnimation(Group slot, FlowerPot pot) {
+          String pamPath = getPlantPam(pot);
+          if (pamPath == null) {
+               return;
+          }
+          game.getPamPlayer().loadSync(pamPath);
+          Actor plantActor = game.createPamActor(pamPath, "idle", 0f, 30f, true);
+          Group scaleGroup = new Group();
+          scaleGroup.setTransform(true);
+          scaleGroup.setScale(0.45f);
+          scaleGroup.addActor(plantActor);
+          slot.addActor(scaleGroup);
      }
      private ImageButton createImageButton(String normalAsset, String pressedAsset) {
           TextureRegion normalRegion = game.getTextureBank().region(normalAsset);
@@ -182,6 +275,11 @@ public class GreenHouseScreen extends BaseScreen{
      @Override
      public void render(float delta) {
           ScreenUtils.clear(0.05f, 0.05f, 0.05f, 1f);
+          currencyRefreshTimer += delta;
+          if (currencyRefreshTimer >= CURRENCY_REFRESH) {
+               currencyRefreshTimer = 0f;
+               refreshCurrencyLabels();
+          }
           super.render(delta);
      }
 
@@ -189,6 +287,26 @@ public class GreenHouseScreen extends BaseScreen{
      public void hide() {
 
      }
-
-
+     private void refreshCurrencyLabels() {
+          UserRepository.CurrencyBalance balance = controller.getCurrencyBalance();
+          if (balance == null) {
+               coinLabel.setText("0");
+               gemLabel.setText("0");
+               return;
+          }
+          coinLabel.setText(
+                  String.format("%,d", balance.coins())
+          );
+          gemLabel.setText(
+                  String.format("%,d", balance.gems())
+          );
+     }
+public Label borderBlack(String string){
+     Label.LabelStyle Style = new Label.LabelStyle(skin.get(Label.LabelStyle.class));
+     Style.font = skin.getFont("FBUSV8C5EI_2_outline");
+     Style.fontColor = Color.WHITE;
+     Label label = new Label(string, Style);
+     label.setFontScale(0.8f);
+     return label;
+}
 }

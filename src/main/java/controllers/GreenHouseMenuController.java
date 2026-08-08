@@ -24,7 +24,27 @@ import java.util.Set;
 public class GreenHouseMenuController  {
     private final Random random = new Random();
     private final GreenHouseMenuValidation validation;
+    private final UserRepository userRepository = new UserRepository();
+    public FlowerPot getPot(int row, int column) {
+        User user = currentUser();
+        if (user == null || user.getGreenHouse() == null) {
+            return null;
+        }
+        return user.getGreenHouse().getPot(row, column);
+    }
+    public UserRepository.CurrencyBalance getCurrencyBalance() {
+        User user = currentUser();
+        if (user == null) {
+            return null;
+        }
+        UserRepository.CurrencyBalance balance = userRepository.getCurrencyBalance(user.getId());
+        if (balance != null) {
+            user.setCoins(balance.coins());
+            user.setGems(balance.gems());
+        }
 
+        return balance;
+    }
     public GreenHouseMenuController(){
         this.validation = new GreenHouseMenuValidation();
     }
