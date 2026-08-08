@@ -21,10 +21,10 @@ public final class FirstScreen extends BaseScreen {
     private Stack root;
     private Texture backgroundTexture;
     private static final String EXIT_NORMAL_ID =
-            "IMAGE_UI_DRAPER_CLOSE_BUTTON";
+        "IMAGE_UI_DRAPER_CLOSE_BUTTON";
 
     private static final String EXIT_PRESSED_ID =
-            "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
+        "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
     private static final String PLAY_ID ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_NORMAL";
     private static final String PLAY_ID_PRESSED ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_DOWN";
     private static final String NEW_PLAYER_ID ="IMAGE_UI_MAINMENU_MM_SETTINGS_TAB";
@@ -37,12 +37,12 @@ public final class FirstScreen extends BaseScreen {
         root = new Stack();
         root.setFillParent(true);
         backgroundTexture = new Texture(
-                Gdx.files.internal("assets/backgrounds/FirstBG.png")
+            Gdx.files.internal("assets/backgrounds/FirstBG.png")
         );
 
         backgroundTexture.setFilter(
-                Texture.TextureFilter.Linear,
-                Texture.TextureFilter.Linear
+            Texture.TextureFilter.Linear,
+            Texture.TextureFilter.Linear
         );
 
         Image backgroundImage = new Image(backgroundTexture);
@@ -61,6 +61,12 @@ public final class FirstScreen extends BaseScreen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 Gdx.app.exit();
+            }
+        });
+        newPlayer.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.showScreen(new SignupScreen(game));
             }
         });
 
@@ -82,29 +88,29 @@ public final class FirstScreen extends BaseScreen {
         Table bottomRow = new Table();
 
         topRow.add(newPlayer)
-                .width(390f)
-                .height(50f)
-                .padLeft(450f)
-                .padBottom(20f);
+            .width(390f)
+            .height(50f)
+            .padLeft(450f)
+            .padBottom(20f);
 
         bottomRow.add(exitButton)
-                .width(60f)
-                .height(60f)
-                .padLeft(80f)
-                .padBottom(-37f);
+            .width(60f)
+            .height(60f)
+            .padLeft(80f)
+            .padBottom(-37f);
 
         bottomRow.add(signIn)
-                .width(220f)
-                .height(100f)
-                .padLeft(400f)
-                .padBottom(10f);
+            .width(220f)
+            .height(100f)
+            .padLeft(400f)
+            .padBottom(10f);
 
         content.add(topRow)
-                .left()
-                .row();
+            .left()
+            .row();
 
         content.add(bottomRow)
-                .left();
+            .left();
 
         root.add(content);
         stage.addActor(root);
@@ -116,8 +122,8 @@ public final class FirstScreen extends BaseScreen {
 
     @Override
     public void render(float delta){
-         ScreenUtils.clear(0.05f,0.05f,0.05f,1f);
-         super.render(delta);
+        ScreenUtils.clear(0.05f,0.05f,0.05f,1f);
+        super.render(delta);
     }
 
     @Override
@@ -140,7 +146,7 @@ public final class FirstScreen extends BaseScreen {
 
 
         TextButton.TextButtonStyle style =
-                new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
+            new TextButton.TextButtonStyle(game.getSkin().get(TextButton.TextButtonStyle.class));
 
         style.up = new TextureRegionDrawable(normalRegion);
         style.down = new TextureRegionDrawable(pressedRegion);

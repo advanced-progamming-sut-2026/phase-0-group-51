@@ -31,7 +31,7 @@ public final class GlobalUiLayer implements Disposable {
                 game.getBatch()
         );
 
-        hud = new GlobalHud(skin);
+        hud = new GlobalHud(game, skin);
         notificationOverlay = new NotificationOverlay(skin);
 
         stage.addActor(hud);
