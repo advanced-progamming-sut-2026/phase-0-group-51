@@ -53,7 +53,7 @@ public final class PvzGame extends Game {
         }
         App.getInstance();
 
-        textureBank = new TextureBank("1200", assetsFolder);
+        textureBank = new TextureBank("738", assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
                 skin
@@ -114,6 +114,7 @@ public final class PvzGame extends Game {
     @Override
     public void render() {
         super.render();
+        textureBank.update();
 
         if (globalUiLayer != null) {
             globalUiLayer.render(

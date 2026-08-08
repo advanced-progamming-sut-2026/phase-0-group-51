@@ -260,7 +260,45 @@ public final class CollectionMenuTable extends Table {
     private void showZombies() {
         cardsGrid.clearChildren();
 
-        // add your ZombieCard objects here later
+        ButtonGroup<ZombieCard> zombieGroup =
+                new ButtonGroup<>();
+
+        zombieGroup.setMinCheckCount(0);
+        zombieGroup.setMaxCheckCount(1);
+        zombieGroup.setUncheckLast(true);
+
+        int column = 0;
+        int columnsPerRow = 8;
+
+        for (int i = 0; i < 24; i++) {
+            ZombieCard card = new ZombieCard(
+                    game,
+                    new ZombieCard.ViewData(
+                            "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL"
+                    )
+            );
+
+            zombieGroup.add(card);
+
+            cardsGrid.add(card)
+                    .expandX()
+                    .top()
+                    .pad(10f);
+
+            column++;
+
+            if (column >= columnsPerRow) {
+                cardsGrid.row();
+                column = 0;
+            }
+        }
+
+        if (column != 0) {
+            while (column < columnsPerRow) {
+                cardsGrid.add().expandX();
+                column++;
+            }
+        }
     }
 
     private Drawable drawable(String assetId) {
