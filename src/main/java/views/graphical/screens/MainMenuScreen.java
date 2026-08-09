@@ -13,6 +13,7 @@ import controllers.MainMenuController;
 import graphics.PvzGame;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.NotificationOverlay;
+import views.graphical.ui.PlantSelectionMenuTable;
 
 public class MainMenuScreen extends BaseScreen{
     private Stack root;

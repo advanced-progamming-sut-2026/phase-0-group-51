@@ -241,7 +241,8 @@ public final class CollectionMenuTable extends Table {
                             boosted,
                             level,
                             packets,
-                            requiredPackets
+                            requiredPackets,
+                            false
                     )
             );
             plantGroup.add(card);
