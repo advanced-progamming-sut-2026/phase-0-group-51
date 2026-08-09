@@ -181,7 +181,7 @@ public class ChapterSelectScreen extends BaseScreen {
         return bar;
     }
 
-    private Table buildCenterIsland(ChapterTheme chapter) {
+    private Table buildCenterIsland(final ChapterTheme chapter) {
         boolean isUnlocked = (chapter == CHAPTERS[0]);
         Actor island = islandImage(chapter, ISLAND_W, ISLAND_H);
 
@@ -225,9 +225,26 @@ public class ChapterSelectScreen extends BaseScreen {
             info.add(buildProgress(done, total)).padBottom(10).row();
 
             TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
+            reviewBtn.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    game.showScreen(new ChapterMapScreen(game, chapter));
+                }
+            });
+
             info.add(reviewBtn).width(160).height(48).padBottom(10);
         } else {
-            info.add().height(135f).row();
+            info.add().height(77f).row();
+
+            TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
+            reviewBtn.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    game.showScreen(new ChapterMapScreen(game, chapter));
+                }
+            });
+
+            info.add(reviewBtn).width(160).height(48).padBottom(10);
         }
 
         Table infoWrap = new Table();

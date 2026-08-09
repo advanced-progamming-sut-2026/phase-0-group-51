@@ -14,7 +14,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
 import models.App;
-import models.App;
 import models.enums.Menu;
 
 public final class FirstScreen extends BaseScreen {
@@ -28,6 +27,7 @@ public final class FirstScreen extends BaseScreen {
     private static final String PLAY_ID ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_NORMAL";
     private static final String PLAY_ID_PRESSED ="IMAGE_UI_GENERIC_SM_PURPLE_BTN_DOWN";
     private static final String NEW_PLAYER_ID ="IMAGE_UI_MAINMENU_MM_SETTINGS_TAB";
+
     public FirstScreen(PvzGame game) {
         super(game);
         buildUi();
@@ -114,7 +114,21 @@ public final class FirstScreen extends BaseScreen {
 
         root.add(content);
         stage.addActor(root);
+
+        stage.addListener(new InputListener() {
+            @Override
+            public boolean keyDown(InputEvent event, int keycode) {
+                boolean ctrl = Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT)
+                    || Gdx.input.isKeyPressed(Input.Keys.CONTROL_RIGHT);
+                if (ctrl && keycode == Input.Keys.A) {
+                    game.showScreen(new ChapterSelectScreen(game));
+                    return true;
+                }
+                return false;
+            }
+        });
     }
+
     @Override
     public void show() {
         game.hideHud();
@@ -164,4 +178,3 @@ public final class FirstScreen extends BaseScreen {
     }
 
 }
-
