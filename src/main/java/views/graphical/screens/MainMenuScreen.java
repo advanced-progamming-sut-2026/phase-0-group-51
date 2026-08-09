@@ -5,11 +5,15 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Scaling;
 import controllers.GreenHouseMenuController;
 import controllers.MainMenuController;
 import graphics.PvzGame;
@@ -39,7 +43,15 @@ public class MainMenuScreen extends BaseScreen{
     private static final String NEWS  = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_NORMAL";
     private static final String NEWS_SELECTED  = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_SELECTED";
     private static final String leaderBoard = "IMAGE_UI_GAMECENTER_ICON";
+    private static final String Dokme = "IMAGE_UI_GENERIC_NAVDOT";
+    private static final String Dokme_FILL = "IMAGE_UI_GENERIC_NAVDOT_FILL";
+    private final java.util.List<ImageButton> cards = new java.util.ArrayList<>();
+    private final java.util.List<Image> navDots = new java.util.ArrayList<>();
 
+    private Group carouselGroup;
+    private Table dotsTable;
+
+    private int currentCardIndex = 0;
     protected MainMenuScreen(PvzGame game) {
         super(game);
         buildUi();
@@ -59,6 +71,18 @@ public class MainMenuScreen extends BaseScreen{
         backgroundImage.setFillParent(true);
         backgroundImage.setTouchable(Touchable.disabled);
 
+        carouselGroup = new Group();
+        carouselGroup.setTouchable(Touchable.childrenOnly);
+        dotsTable = new Table();
+        cards.clear();
+
+        cards.add(createCards("assets/backgrounds/Adventure.png"));
+        cards.add(createCards("assets/backgrounds/vase.png"));
+        cards.add(createCards("assets/backgrounds/Beghouled.png"));
+        cards.add(createCards("assets/backgrounds/Zombotany.png"));
+        cards.add(createCards("assets/backgrounds/Wallnut.png"));
+        cards.add(createCards("assets/backgrounds/Izombie.png"));
+        cards.add(createCards("assets/backgrounds/Meow.png"));
 
         Table content = new Table();
         content.center().center();
@@ -101,12 +125,7 @@ public class MainMenuScreen extends BaseScreen{
 
             }
         });
-               ImageButton iZombie = createCards( "assets/backgrounds/Izombie.png");
-               ImageButton beghouled = createCards("assets/backgrounds/Beghouled.png");
-               ImageButton zombotany = createCards("assets/backgrounds/Zombotany.png");
-               ImageButton wallnut = createCards("assets/backgrounds/Wallnut.png");
-               ImageButton meowPoint = createCards("assets/backgrounds/Meow.png");
-               ImageButton adventure = createCards("assets/backgrounds/Adventure.png");
+
         setting.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -123,6 +142,48 @@ public class MainMenuScreen extends BaseScreen{
                 stage.addActor(settingsPopup);
             }
         });
+        cards.get(0).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+              game.showScreen(new ChapterSelectScreen(game));
+            }
+        });
+        cards.get(1).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });
+        cards.get(2).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });
+        cards.get(3).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });
+        cards.get(4).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });cards.get(5).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });cards.get(6).addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // game.showScreen(new AdventureScreen(game));
+            }
+        });
+
+
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -186,6 +247,11 @@ public class MainMenuScreen extends BaseScreen{
         root.add(notificationOverlay);
 
         stage.addActor(root);
+        buildDots();
+        refreshCarousel();
+
+        root.add(carouselGroup);
+        stage.addActor(dotsTable);
     }
     private ImageButton createBackButton() {
         TextureRegion normalRegion = game.getTextureBank().region(BACK);
@@ -272,5 +338,73 @@ public class MainMenuScreen extends BaseScreen{
         style.imageOver = faded;
 
         return new ImageButton(style);
+    }
+    private void buildDots() {
+        navDots.clear();
+        dotsTable.clearChildren();
+
+        for (int i = 0; i < 7; i++) {
+            TextureRegion region = game.getTextureBank().region(Dokme);
+            Image dot = new Image(region);
+            navDots.add(dot);
+            dotsTable.add(dot).pad(6f).size(18f, 18f);
+        }
+        dotsTable.pack();
+        dotsTable.setPosition((stage.getWidth() - dotsTable.getWidth()) / 2f, 250f);
+        refreshDots();
+    }
+    private void refreshDots() {
+        for (int i = 0; i < navDots.size(); i++) {
+            TextureRegion region = game.getTextureBank().region(i == currentCardIndex ? Dokme_FILL : Dokme);
+            navDots.get(i).setDrawable(new TextureRegionDrawable(region));
+        }
+    }
+    private void refreshCarousel() {
+        carouselGroup.clearChildren();
+
+        float mainCardWidth = 520f;
+        float mainCardHeight = 175f;
+
+        float previewWidth = 250f;
+        float previewHeight = 175f;
+
+        float mainX = 380f;
+        float mainY = 280f;
+
+        float previewX = 930f;
+        float previewY = 280f;
+
+
+        ImageButton currentCard = cards.get(currentCardIndex);
+        currentCard.setSize(mainCardWidth, mainCardHeight);
+        currentCard.getImageCell().expand().fill();
+        currentCard.getImage().setScaling(Scaling.stretch);
+        currentCard.setPosition(mainX, mainY);
+        carouselGroup.addActor(currentCard);
+
+        int nextIndex = (currentCardIndex + 1) % cards.size();
+        Drawable previewDrawable = cards.get(nextIndex).getStyle().imageUp;
+
+        Image previewCard = new Image(previewDrawable);
+        previewCard.setScaling(Scaling.stretch);
+        previewCard.setBounds(previewX, previewY, previewWidth, previewHeight);
+
+        previewCard.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                showNextCard();
+            }
+        });
+
+        carouselGroup.addActor(previewCard);
+
+        refreshDots();
+    }
+    private void showNextCard() {
+        currentCardIndex++;
+        if (currentCardIndex >= cards.size()) {
+            currentCardIndex = 0;
+        }
+        refreshCarousel();
     }
 }

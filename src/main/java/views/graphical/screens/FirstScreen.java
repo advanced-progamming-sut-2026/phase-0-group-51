@@ -114,19 +114,6 @@ public final class FirstScreen extends BaseScreen {
 
         root.add(content);
         stage.addActor(root);
-
-        stage.addListener(new InputListener() {
-            @Override
-            public boolean keyDown(InputEvent event, int keycode) {
-                boolean ctrl = Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT)
-                    || Gdx.input.isKeyPressed(Input.Keys.CONTROL_RIGHT);
-                if (ctrl && keycode == Input.Keys.A) {
-                    game.showScreen(new ChapterSelectScreen(game));
-                    return true;
-                }
-                return false;
-            }
-        });
     }
 
     @Override
