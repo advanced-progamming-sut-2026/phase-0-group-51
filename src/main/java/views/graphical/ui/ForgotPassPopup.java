@@ -19,11 +19,14 @@ public class ForgotPassPopup extends BorderedPanel{
     TextField usernameF,emailF,answerF,newPassF;
     private final Runnable closeAction;
     private final Label questionLabel;
+    private final Table content;
     public ForgotPassPopup(PvzGame game, Color bgColor,NotificationOverlay notificationOverlay,  Runnable closeAction) {
         super(game, Color.valueOf("#BC6334"));
          emailF = new TextField("", game.getSkin());
         emailF.setMessageText("Enter your email...");
-         usernameF = new TextField("", game.getSkin());
+        content = getContent();
+
+        usernameF = new TextField("", game.getSkin());
         usernameF.setMessageText("Enter your username...");
          answerF = new TextField("", game.getSkin());
         answerF.setMessageText("Enter your security answer...");
@@ -84,18 +87,37 @@ public class ForgotPassPopup extends BorderedPanel{
             notificationOverlay.showError(result.message());
             return;
         }
-        handleAnswer();
-        notificationOverlay.showInfo(result.message());
+        questionLabel.setText(result.message());
+        showAnswerStep();
+    }
+    private void showAnswerStep() {
+        content.clearChildren();
+        content.defaults().pad(8f);
+        Label title = createTitle("Security Question");
+        TextButton continueButton = createButton("Continue", this::handleAnswer);
+        TextButton cancelButton = createButton("Cancel", this::close);
+        content.add(title).padBottom(15f).row();
+        content.add(questionLabel).width(430f).padBottom(10f).row();
+
+        content.add(answerF).width(430f).height(60f).padBottom(10f).row();
+
+        Table buttons = new Table();
+        buttons.add(cancelButton).width(150f).height(55f).padRight(10f);
+        buttons.add(continueButton).width(180f).height(55f);
+        content.add(buttons).padTop(10f).row();
+
+        focus(answerF);
     }
     private void handleAnswer(){
         String answer = answerF.getText();
         Result result = controller.answerQuestion(answer);
         if (!result.success()) {
             notificationOverlay.showError(result.message());
+            answerF.selectAll();
+            focus(answerF);
             return;
         }
-        handleChangePass();;
-        notificationOverlay.showInfo(result.message());
+        showNewPasswordStep();
     }
     private void handleChangePass(){
         String newPass = newPassF.getText();
@@ -109,7 +131,22 @@ public class ForgotPassPopup extends BorderedPanel{
         notificationOverlay.showInfo(result.message());
         close();
     }
+    private void showNewPasswordStep() {
+        content.clearChildren();
+        content.defaults().pad(8f);
 
+        Label title = createTitle("New Password");
+        TextButton changeButton = createButton("Change Password", this::handleChangePass);
+        TextButton cancelButton = createButton("Cancel", this::close);
+
+        content.add(title).padBottom(15f).row();
+        content.add(newPassF).width(430f).height(60f).padBottom(10f).row();
+        Table buttons = new Table();
+        buttons.add(cancelButton).width(150f).height(55f).padRight(10f);
+        buttons.add(changeButton).width(200f).height(55f);
+        content.add(buttons).padTop(10f).row();
+        focus(newPassF);
+    }
     private Label createTitle(String text) {
         Label title = new Label(text, game.getSkin());
         title.setFontScale(1.4f);

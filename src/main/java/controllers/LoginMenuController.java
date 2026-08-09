@@ -31,15 +31,26 @@ public class LoginMenuController {
         if(password.isEmpty()){
             return new Result(false, "Please enter your password...\n", null);
         }
-            User user = repository.getUserByUsername(username);
-            if (user == null) {
-                return new Result(false, "Username does not exist.\n", null);}
+        User user = repository.getUserByUsername(username);
+
+        if (user == null) {
+            return new Result(
+                    false,
+                    "Username does not exist.\n",
+                    null
+            );
+        }
+
 
             String passwordHash = HashUtil.hashPassword(password);
 
             if (!user.getPasswordHash().equals(passwordHash)) {
                 return new Result(false, "Password is incorrect.\n", null);
             }
+        boolean saved = repository.setStayLoggedIn(user.getId(), stayLoggedIn);
+        if (!saved) {
+            return new Result(false, "Could not save login session.\n", null);
+        }
             GreenHouse greenHouse = GreenHouseRepository.load(user.getId());
             user.setGreenHouse(greenHouse);
             PlantRepository.unlockPlantsAndReturnNew(user.getId(), PlantRegistry.getStarterPlantIds());
@@ -71,8 +82,8 @@ public class LoginMenuController {
             return new Result(false, "No forgot password request found.", null);
         }
         if (!resetPasswordUser.getAnswer().equalsIgnoreCase(answer)) {
-            resetPasswordUser = null;
-            return new Result(false, "Security answer is incorrect.Returning back...\n", null);
+          //  resetPasswordUser = null;
+            return new Result(false, "Security answer is incorrect.\n", null);
         }
         waitingForNewPassword = true;
         return new Result(true, "Enter your new password:", null);
