@@ -21,5 +21,7 @@ public record PlantData(
         String lvl3,
         String lvl4,
         List<UpgradeData> upgrades,
-        String cardAssetId
+        String cardAssetId,
+        String idlePamPath,
+        String idleClip
 ) {}

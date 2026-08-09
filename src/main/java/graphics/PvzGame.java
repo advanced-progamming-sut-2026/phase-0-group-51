@@ -58,7 +58,7 @@ public final class PvzGame extends Game {
         }
         App.getInstance();
 
-        textureBank = new TextureBank("1200", assetsFolder);
+        textureBank = new TextureBank("738", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
@@ -116,9 +116,6 @@ public final class PvzGame extends Game {
             );
         }
     }
-
-
-        @Override
         public void render() {
 
             if (textureBank != null) {

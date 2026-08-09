@@ -245,6 +245,17 @@ public final class CollectionMenuTable extends Table {
                     )
             );
             plantGroup.add(card);
+            card.addListener(new ChangeListener() {
+                @Override
+                public void changed(
+                        ChangeEvent event,
+                        Actor actor
+                ) {
+                    if (card.isChecked()) {
+                        openPlantDetails(card);
+                    }
+                }
+            });
 
             cardsGrid.add(card).expandX().top().pad(10f);
 
@@ -256,11 +267,70 @@ public final class CollectionMenuTable extends Table {
             }
         }
     }
+    private void openPlantDetails(
+            PlantCard card
+    ) {
+        if (getStage() == null) {
+            return;
+        }
+
+        setVisible(false);
+
+        PlantDetailsTable details =
+                new PlantDetailsTable(
+                        game,
+                        card.getData(),
+                        () -> {
+                            setVisible(true);
+                            card.setChecked(false);
+                        }
+                );
+
+        getStage().addActor(details);
+    }
 
     private void showZombies() {
         cardsGrid.clearChildren();
 
-        // add your ZombieCard objects here later
+        ButtonGroup<ZombieCard> zombieGroup =
+                new ButtonGroup<>();
+
+        zombieGroup.setMinCheckCount(0);
+        zombieGroup.setMaxCheckCount(1);
+        zombieGroup.setUncheckLast(true);
+
+        int column = 0;
+        int columnsPerRow = 8;
+
+        for (int i = 0; i < 24; i++) {
+            ZombieCard card = new ZombieCard(
+                    game,
+                    new ZombieCard.ViewData(
+                            "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL"
+                    )
+            );
+
+            zombieGroup.add(card);
+
+            cardsGrid.add(card)
+                    .expandX()
+                    .top()
+                    .pad(10f);
+
+            column++;
+
+            if (column >= columnsPerRow) {
+                cardsGrid.row();
+                column = 0;
+            }
+        }
+
+        if (column != 0) {
+            while (column < columnsPerRow) {
+                cardsGrid.add().expandX();
+                column++;
+            }
+        }
     }
 
     private Drawable drawable(String assetId) {
