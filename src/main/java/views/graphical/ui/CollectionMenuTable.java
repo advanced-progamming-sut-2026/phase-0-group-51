@@ -365,11 +365,11 @@ public final class CollectionMenuTable extends Table {
 
                                     ZombieRegistry
                                             .getIdlePamPath(alias),
-
                                     ZombieRegistry
                                             .getIdleClip(alias),
-
-
+                                    ZombieRegistry.getWalkClip(
+                                            alias
+                                    ),
                                     ZombieRegistry
                                             .getIdleVisibleParts(alias),
 

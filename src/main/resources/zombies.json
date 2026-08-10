@@ -1094,6 +1094,7 @@
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_FISHERMAN",
     "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_FISHERMAN/ZOMBIE_BEACH_FISHERMAN.PAM",
+    "walkClip": "toss",
     "objclass": "ZombieBeachFishermanProps",
     "objdata": {
       "AllowedLowPlants": [],
@@ -1714,6 +1715,7 @@
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_KING",
     "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_KING/ZOMBIE_DARK_KING.PAM",
+    "walkClip": "idle2",
     "objclass": "ZombieDarkKingProps",
     "objdata": {
       "ArtCenter": {
@@ -2228,6 +2230,7 @@
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_PIANO",
     "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PIANO/ZOMBIE_PIANO.PAM",
+    "walkClip": "play",
     "objclass": "ZombiePianoProps",
     "objdata": {
       "ArtCenter": {
@@ -2323,6 +2326,7 @@
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_MODERN_NEWSPAPER",
     "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_MODERN_NEWSPAPER/ZOMBIE_MODERN_NEWSPAPER.PAM",
     "idleClip": "idle_newspaper",
+    "walkClip": "walk_newspaper",
     "objclass": "ZombieNewspaperProps",
     "objdata": {
       "ArtCenter": {

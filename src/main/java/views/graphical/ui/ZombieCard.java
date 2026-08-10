@@ -28,6 +28,7 @@ public final class ZombieCard extends Button {
             String cardAssetId,
             String idlePamPath,
             String idleClip,
+            String walkClip,
             List<String> idleVisibleParts,
             boolean unlocked
     ) {
