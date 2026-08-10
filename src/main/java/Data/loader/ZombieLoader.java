@@ -14,6 +14,7 @@ import java.util.*;
 public class ZombieLoader {
 
     private final Map<String, ArmorDefinition> armorRegistry = new HashMap<>();
+    private final Map<String, String> zombieCardAssets = new LinkedHashMap<>();
 
     private static JsonNode readResourceTree(String classpathResource) throws IOException {
         try (InputStream is = ZombieLoader.class.getResourceAsStream(classpathResource)) {
@@ -59,6 +60,12 @@ public class ZombieLoader {
             String alias    = entry.path("aliases").get(0).asText();
             String objclass = entry.path("objclass").asText();
             JsonNode d      = entry.path("objdata");
+            String cardAssetId = entry.path("cardAssetId").asText();
+
+            if (cardAssetId.isBlank()) {
+                throw new IllegalStateException("Missing cardAssetId for zombie: " + alias);
+            }
+            zombieCardAssets.put(alias, cardAssetId);
 
             Zombie zombie = new Zombie(
                 alias,
@@ -81,5 +88,10 @@ public class ZombieLoader {
 
     public Map<String, ArmorDefinition> getArmorRegistry() {
         return armorRegistry;
+    }
+    public Map<String, String> getZombieCardAssets() {
+        return Collections.unmodifiableMap(
+                zombieCardAssets
+        );
     }
 }
