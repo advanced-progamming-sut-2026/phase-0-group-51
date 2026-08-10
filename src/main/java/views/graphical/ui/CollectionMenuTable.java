@@ -14,7 +14,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
-import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.App;
 import models.User;
@@ -48,7 +47,18 @@ public final class CollectionMenuTable extends Table {
         this.game = game;
 
         setFillParent(true);
-        setTouchable(Touchable.childrenOnly);
+        setTouchable(Touchable.enabled);
+        setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        new Color(
+                                0f,
+                                0f,
+                                0f,
+                                0.55f
+                        )
+                )
+        );
         pad(22f);
 
         BorderedPanel outerPanel = new BorderedPanel(game, Color.valueOf("75452F"));
@@ -334,29 +344,53 @@ public final class CollectionMenuTable extends Table {
             String alias =
                     zombie.getAlias();
 
-            boolean unlocked =
-                    containsIgnoreCase(
-                            discoveredZombies,
-                            alias
-                    );
+//            boolean unlocked =
+//                    containsIgnoreCase(
+//                            discoveredZombies,
+//                            alias
+//                    );
+            boolean unlocked = true;
 
-            String cardAssetId =
-                    ZombieRegistry
-                            .getCardAssetId(alias);
+//            String cardAssetId =
+//                    ZombieRegistry
+//                            .getCardAssetId(alias);
 
             ZombieCard card =
                     new ZombieCard(
                             game,
                             new ZombieCard.ViewData(
                                     alias,
-                                    cardAssetId,
+                                    ZombieRegistry
+                                            .getCardAssetId(alias),
+
+                                    ZombieRegistry
+                                            .getIdlePamPath(alias),
+
+                                    ZombieRegistry
+                                            .getIdleClip(alias),
+
+
+                                    ZombieRegistry
+                                            .getIdleVisibleParts(alias),
+
                                     unlocked
                             )
                     );
+            zombieGroup.add(card);
 
-            if (unlocked) {
-                zombieGroup.add(card);
-            }
+            card.addListener(
+                    new ChangeListener() {
+                        @Override
+                        public void changed(
+                                ChangeEvent event,
+                                Actor actor
+                        ) {
+                            if (card.isChecked()) {
+                                openZombieDetails(card);
+                            }
+                        }
+                    }
+            );
 
             cardsGrid.add(card)
                     .expandX()
@@ -369,16 +403,53 @@ public final class CollectionMenuTable extends Table {
                 cardsGrid.row();
                 column = 0;
             }
+
+//            if (unlocked) {
+//                zombieGroup.add(card);
+//            }
+//
+//            cardsGrid.add(card)
+//                    .expandX()
+//                    .top()
+//                    .pad(10f);
+//
+//            column++;
+//
+//            if (column >= columnsPerRow) {
+//                cardsGrid.row();
+//                column = 0;
+//            }
         }
 
-        if (column != 0) {
-            while (column < columnsPerRow) {
-                cardsGrid.add()
-                        .expandX();
-
-                column++;
-            }
+//        if (column != 0) {
+//            while (column < columnsPerRow) {
+//                cardsGrid.add()
+//                        .expandX();
+//
+//                column++;
+//            }
+//        }
+    }
+    private void openZombieDetails(
+            ZombieCard card
+    ) {
+        if (getStage() == null) {
+            return;
         }
+
+        setVisible(false);
+
+        ZombieDetailsTable details =
+                new ZombieDetailsTable(
+                        game,
+                        card.getData(),
+                        () -> {
+                            setVisible(true);
+                            card.setChecked(false);
+                        }
+                );
+
+        getStage().addActor(details);
     }
     private boolean containsIgnoreCase(
             Set<String> aliases,

@@ -15,6 +15,10 @@ public class ZombieLoader {
 
     private final Map<String, ArmorDefinition> armorRegistry = new HashMap<>();
     private final Map<String, String> zombieCardAssets = new LinkedHashMap<>();
+    private final Map<String, String> zombieIdlePamPaths = new LinkedHashMap<>();
+    private final Map<String, String> zombieIdleClips = new LinkedHashMap<>();
+    private final Map<String, List<String>> zombieIdleVisibleParts = new LinkedHashMap<>();
+    private final Map<String, String> zombieWalkClips = new LinkedHashMap<>();
 
     private static JsonNode readResourceTree(String classpathResource) throws IOException {
         try (InputStream is = ZombieLoader.class.getResourceAsStream(classpathResource)) {
@@ -61,11 +65,36 @@ public class ZombieLoader {
             String objclass = entry.path("objclass").asText();
             JsonNode d      = entry.path("objdata");
             String cardAssetId = entry.path("cardAssetId").asText();
+            String idlePamPath = entry.path("idlePamPath").asText("");
+            String idleClip = entry.path("idleClip").asText("idle");
+            String walkClip = entry.path("walkClip").asText("walk");
 
             if (cardAssetId.isBlank()) {
                 throw new IllegalStateException("Missing cardAssetId for zombie: " + alias);
             }
+            if (idlePamPath.isBlank()) {
+                throw new IllegalStateException("Missing idlePamPath for zombie: " + alias);
+            }
+            List<String> visibleParts = new ArrayList<>();
+
+            JsonNode visiblePartsNode = entry.path("idleVisibleParts");
+
+            if (visiblePartsNode.isArray()) {
+                for (JsonNode part : visiblePartsNode) {
+                    String address =
+                            part.asText("");
+
+                    if (!address.isBlank()) {
+                        visibleParts.add(address);
+                    }
+                }
+            }
+
             zombieCardAssets.put(alias, cardAssetId);
+            zombieIdlePamPaths.put(alias, idlePamPath);
+            zombieIdleClips.put(alias, idleClip);
+            zombieIdleVisibleParts.put(alias, List.copyOf(visibleParts));
+            zombieWalkClips.put(alias, walkClip);
 
             Zombie zombie = new Zombie(
                 alias,
@@ -90,8 +119,18 @@ public class ZombieLoader {
         return armorRegistry;
     }
     public Map<String, String> getZombieCardAssets() {
-        return Collections.unmodifiableMap(
-                zombieCardAssets
-        );
+        return Collections.unmodifiableMap(zombieCardAssets);
+    }
+    public Map<String, String> getZombieIdlePamPaths() {
+        return Collections.unmodifiableMap(zombieIdlePamPaths);
+    }
+    public Map<String, String> getZombieIdleClips() {
+        return Collections.unmodifiableMap(zombieIdleClips);
+    }
+    public Map<String, List<String>> getZombieIdleVisibleParts() {
+        return Collections.unmodifiableMap(zombieIdleVisibleParts);
+    }
+    public Map<String, String> getZombieWalkClips() {
+        return Collections.unmodifiableMap(zombieWalkClips);
     }
 }

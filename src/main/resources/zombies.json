@@ -4,6 +4,7 @@
       "ZombieDefault"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -74,6 +75,11 @@
       "ZombieArmor1"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR1",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": [
+      "zombie_armor_cone_norm",
+      "zombie_tutorial_80x83_2|IMAGE_ZOMBIE_ZOMBIE_TUTORIAL_ZOMBIE_TUTORIAL_80X83_2"
+    ],
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -147,6 +153,11 @@
       "ZombieArmor2"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR2",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": [
+      "zombie_armor_bucket_norm",
+      "zombie_tutorial_96x97|IMAGE_ZOMBIE_ZOMBIE_TUTORIAL_ZOMBIE_TUTORIAL_96X97"
+    ],
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -220,6 +231,8 @@
       "ZombieArmor4"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR4",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": ["zombie_armor_brick_norm", "trowel_base_wCement", "brick_undamaged"],
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -293,6 +306,8 @@
       "ZombieDarkArmor3"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_ARMOR3",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_BASIC/ZOMBIE_DARK_BASIC.PAM",
+    "idleVisibleParts":["_zombie_armor_crown_states", "zombie_armor_crown_norm"],
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -366,7 +381,8 @@
     "aliases": [
       "ZombieGargantuar"
     ],
-    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR1",
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_GARGANTUAR",
+    "idlePamPath":"768/FULL/ZOMBIE/DARK_GARGANTUAR/DARK_GARGANTUAR.PAM",
     "objclass": "ZombieGargantuarProps",
     "objdata": {
       "AlmanacOffset": {
@@ -505,6 +521,7 @@
       "ZombieImp"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_IMP",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL_IMP/ZOMBIE_TUTORIAL_IMP.PAM",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -580,6 +597,7 @@
       "ZombieRa"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_RA",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_RA/ZOMBIE_EGYPT_RA.PAM",
     "objclass": "ZombieRaProps",
     "objdata": {
       "ArtCenter": {
@@ -651,6 +669,7 @@
       "ZombieExplorer"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_EXPLORER",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EXPLORER/ZOMBIE_EXPLORER.PAM",
     "objclass": "ZombieExplorerProps",
     "objdata": {
       "ArtCenter": {
@@ -729,6 +748,7 @@
       "ZombieTombRaiser"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TOMB_RAISER",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_TOMBRAISER/ZOMBIE_EGYPT_TOMBRAISER.PAM",
     "objclass": "ZombieTombRaiserProps",
     "objdata": {
       "# TombRaiser specific properties ": 0,
@@ -805,6 +825,7 @@
       "ZombieIceAgeDodo"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_DODO",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_DODORIDER/ZOMBIE_ICEAGE_DODORIDER.PAM",
     "objclass": "ZombieIceAgeDodoProps",
     "objdata": {
       "AddRandomChanceForJumpPerGridWalked": 0.1,
@@ -917,6 +938,7 @@
       "ZombieIceAgeHunter"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_HUNTER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_HUNTER/ZOMBIE_ICEAGE_HUNTER.PAM",
     "objclass": "ZombieIceAgeHunterProps",
     "objdata": {
       "Actions": [
@@ -994,6 +1016,7 @@
       "ZombieIceAgeTroglobite"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_TROGLOBITE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_TROGLOBITE/ZOMBIE_ICEAGE_TROGLOBITE.PAM",
     "objclass": "ZombieIceAgeTroglobiteProps",
     "objdata": {
       "Actions": [
@@ -1070,6 +1093,7 @@
       "ZombieBeachFisherman"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_FISHERMAN",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_FISHERMAN/ZOMBIE_BEACH_FISHERMAN.PAM",
     "objclass": "ZombieBeachFishermanProps",
     "objdata": {
       "AllowedLowPlants": [],
@@ -1156,6 +1180,7 @@
       "ZombieBeachOctopus"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_OCTOPUS",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_OCTOPUS/ZOMBIE_BEACH_OCTOPUS.PAM",
     "objclass": "ZombieBeachOctopusProps",
     "objdata": {
       "Actions": [
@@ -1229,6 +1254,7 @@
       "ZombieBeachSnorkel"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_SNORKEL",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_SNORKELER/ZOMBIE_BEACH_SNORKELER.PAM",
     "objclass": "ZombieBeachSnorkelProps",
     "objdata": {
       "ArtCenter": {
@@ -1429,6 +1455,7 @@
       "ZombieDarkJuggler"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_JUGGLER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_JESTER/ZOMBIE_DARK_JESTER.PAM",
     "objclass": "ZombieDarkJugglerProps",
     "objdata": {
       "AngleAgnosticProjectiles": [
@@ -1612,6 +1639,7 @@
       "ZombieWizard"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_WIZARD",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_WIZARD/ZOMBIE_DARK_WIZARD.PAM",
     "objclass": "ZombieDarkWizardProps",
     "objdata": {
       "Actions": [
@@ -1685,6 +1713,7 @@
       "ZombieDarkKing"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_KING",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_KING/ZOMBIE_DARK_KING.PAM",
     "objclass": "ZombieDarkKingProps",
     "objdata": {
       "ArtCenter": {
@@ -1777,6 +1806,7 @@
       "ZombieDarkImpDragon"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_IMP_DRAGON",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_IMP_DRAGON/ZOMBIE_DARK_IMP_DRAGON.PAM",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -1853,6 +1883,7 @@
       "ZombieModernAllStar"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_MODERN_ALLSTAR",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_MODERN_ALLSTAR/ZOMBIE_MODERN_ALLSTAR.PAM",
     "objclass": "ZombieModernAllStarProps",
     "objdata": {
       "ArtCenter": {
@@ -1931,6 +1962,7 @@
       "ZombieLostCityJane"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_LOSTCITY_JANE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_LOSTCITY_JANE/ZOMBIE_LOSTCITY_JANE.PAM",
     "objclass": "ZombieLostCityJaneProps",
     "objdata": {
       "ArtCenter": {
@@ -2038,6 +2070,7 @@
       "ZombieCrystalSkull"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_LOSTCITY_CRYSTALSKULL",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_LOSTCITY_CRYSTALSKULL/ZOMBIE_LOSTCITY_CRYSTALSKULL.PAM",
     "objclass": "ZombieCrystalSkullProps",
     "objdata": {
       "ArtCenter": {
@@ -2119,6 +2152,7 @@
       "ZombieProspector"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_PROSPECTOR",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PROSPECTOR/ZOMBIE_PROSPECTOR.PAM",
     "objclass": "ZombieProspectorProps",
     "objdata": {
       "Apex": 250,
@@ -2193,6 +2227,7 @@
       "ZombiePiano"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_PIANO",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PIANO/ZOMBIE_PIANO.PAM",
     "objclass": "ZombiePianoProps",
     "objdata": {
       "ArtCenter": {
@@ -2286,6 +2321,8 @@
       "ZombieNewspaper"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_MODERN_NEWSPAPER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_MODERN_NEWSPAPER/ZOMBIE_MODERN_NEWSPAPER.PAM",
+    "idleClip": "idle_newspaper",
     "objclass": "ZombieNewspaperProps",
     "objdata": {
       "ArtCenter": {
@@ -2359,6 +2396,7 @@
   {
     "aliases": ["ZombieBarrelRoller"],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BARRELROLLER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PIRATE_BARREL_PUSHER/ZOMBIE_PIRATE_BARREL_PUSHER.PAM",
     "objclass": "ZombieBarrelRollerProps",
     "objdata": {}
   },
@@ -2367,6 +2405,7 @@
       "ZombieArcade"
     ],
     "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_EIGHTIES_ARCADE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_80S_ARCADE/ZOMBIE_80S_ARCADE.PAM",
     "objclass": "ZombieArcadeProps",
     "objdata": {
       "Actions": [

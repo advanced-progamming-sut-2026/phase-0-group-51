@@ -6,12 +6,17 @@ import models.Zombie.Zombie;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 
 public class ZombieRegistry {
     private static final Map<String, Zombie> TEMPLATES = new LinkedHashMap<>();
     private static final Map<String, String> CARD_ASSETS = new LinkedHashMap<>();
+    private static final Map<String, String> IDLE_PAM_PATHS = new LinkedHashMap<>();
+    private static final Map<String, String> IDLE_CLIPS = new LinkedHashMap<>();
+    private static final Map<String, List<String>> IDLE_VISIBLE_PARTS = new LinkedHashMap<>();
+    private static final Map<String, String> WALK_CLIPS = new LinkedHashMap<>();
 
     public ZombieRegistry(ZombieRepository repository) throws SQLException {
         init(repository.loadAllZombies());
@@ -32,6 +37,14 @@ public class ZombieRegistry {
             init(loaded);
             CARD_ASSETS.clear();
             CARD_ASSETS.putAll(loader.getZombieCardAssets());
+            IDLE_PAM_PATHS.clear();
+            IDLE_PAM_PATHS.putAll(loader.getZombieIdlePamPaths());
+            IDLE_CLIPS.clear();
+            IDLE_CLIPS.putAll(loader.getZombieIdleClips());
+            IDLE_VISIBLE_PARTS.clear();
+            IDLE_VISIBLE_PARTS.putAll(loader.getZombieIdleVisibleParts());
+            WALK_CLIPS.clear();
+            WALK_CLIPS.putAll(loader.getZombieWalkClips());
         } catch (Exception e) {
             throw new RuntimeException("Failed to load zombies.json", e);
         }
@@ -55,6 +68,19 @@ public class ZombieRegistry {
     }
     public static String getCardAssetId(String alias) {
         return CARD_ASSETS.get(alias);
+    }
+    public static String getIdlePamPath(String alias) {
+        return IDLE_PAM_PATHS.get(alias);
+    }
+    public static String getIdleClip(String alias) {
+        return IDLE_CLIPS.getOrDefault(alias, "idle");
+    }
+    public static String getWalkClip(String alias) {
+        return WALK_CLIPS.getOrDefault(alias, "walk");
+    }
+
+    public static List<String> getIdleVisibleParts(String alias) {
+        return IDLE_VISIBLE_PARTS.getOrDefault(alias, List.of());
     }
 
     public static Map<String, Zombie> getTemplates() {
