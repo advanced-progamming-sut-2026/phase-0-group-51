@@ -272,7 +272,7 @@ public final class CollectionMenuTable extends Table {
                 }
             });
 
-            cardsGrid.add(card).expandX().top().pad(10f);
+            cardsGrid.add(card).expandX().top().padBottom(10f).padTop(20f);
 
             column++;
 
