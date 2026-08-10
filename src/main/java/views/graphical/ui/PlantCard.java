@@ -51,7 +51,7 @@ public final class PlantCard extends Button {
     }
 
     public record ViewData(PlantData plant, boolean unlocked, boolean boosted,
-            int level, int seedPackets, int requiredSeedPackets) {
+            int level, int seedPackets, int requiredSeedPackets, boolean showSunCost) {
         public ViewData {
             if (plant == null) {
                 throw new IllegalArgumentException("plant cannot be null");
@@ -177,6 +177,23 @@ public final class PlantCard extends Button {
         familyLayer.padLeft(-10);
         familyLayer.setTouchable(Touchable.disabled);
 
+        Table costLayer = new Table();
+        costLayer.bottom().right();
+        costLayer.setTouchable(Touchable.disabled);
+
+        if (data.showSunCost()) {
+            Label costLabel = new Label(
+                    Integer.toString(
+                            data.plant().cost()
+                    ),
+                    game.getSkin().get("medium", Label.LabelStyle.class)
+            );
+
+            costLayer.add(costLabel)
+                    .padRight(8f)
+                    .padBottom(6f);
+        }
+
         Table progressLayer = new Table();
         progressLayer.bottom();
         progressLayer.setTouchable(Touchable.disabled);
@@ -187,6 +204,7 @@ public final class PlantCard extends Button {
                 .padBottom(-10f);
 
         overlay.add(familyLayer);
+        overlay.add(costLayer);
         overlay.add(progressLayer);
 
         return overlay;

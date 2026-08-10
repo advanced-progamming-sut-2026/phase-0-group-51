@@ -16,8 +16,12 @@ import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
 import views.graphical.ui.SettingsPopup;
+import models.App;
+import models.User;
+import Data.database.ProgressRepository;
 
 import java.util.List;
+import java.util.Arrays;
 
 public class ChapterSelectScreen extends BaseScreen {
 
@@ -109,7 +113,16 @@ public class ChapterSelectScreen extends BaseScreen {
 
 
     private Table buildCenterIsland(final ChapterTheme chapter) {
-        boolean isUnlocked = (chapter == CHAPTERS[0]);
+        // خواندن پیشرفت واقعی کاربر از دیتابیس
+        User user = App.getInstance().getLoggedInUser();
+        int[] progress = {1, 1}; // حالت پیش‌فرض
+        if (user != null) {
+            progress = new ProgressRepository().getCurrentProgress(user.getId());
+        }
+
+        int chapterIdx = Arrays.asList(CHAPTERS).indexOf(chapter) + 1;
+        boolean isUnlocked = (chapterIdx <= progress[0]);
+
         Actor island = islandImage(chapter, ISLAND_W, ISLAND_H);
 
         Stack stack = new Stack();
@@ -147,8 +160,15 @@ public class ChapterSelectScreen extends BaseScreen {
         if (isUnlocked) {
             info.add(buildDifficulty(chapterDifficulty(chapter))).padBottom(6).row();
 
-            int total = chapter.levels.size();
-            int done = Math.min(2, total);
+            int total = chapter.getLevels().size();
+            int done = 0;
+            if (chapterIdx < progress[0]) {
+                done = total; // تمام مراحل این فصل رد شده
+            } else if (chapterIdx == progress[0]) {
+                // مراحلی که با موفقیت تمام شده، یکی کمتر از مرحله فعلی است
+                done = Math.min(progress[1] - 1, total);
+            }
+
             info.add(buildProgress(done, total)).padBottom(10).row();
 
             TextButton reviewBtn = new TextButton("REVIEW", game.getSkin(), "purple");
@@ -195,7 +215,16 @@ public class ChapterSelectScreen extends BaseScreen {
 
         Actor island = islandImage(chapter, w, h);
 
-        if (chapter != CHAPTERS[0]) {
+        // خواندن وضعیت قفل برای جزیره‌های عقبی
+        User user = App.getInstance().getLoggedInUser();
+        int[] progress = {1, 1};
+        if (user != null) {
+            progress = new ProgressRepository().getCurrentProgress(user.getId());
+        }
+        int chapterIdx = Arrays.asList(CHAPTERS).indexOf(chapter) + 1;
+        boolean isUnlocked = (chapterIdx <= progress[0]);
+
+        if (!isUnlocked) {
             island.setColor(0.15f, 0.15f, 0.15f, alpha);
             cardStack.add(island);
 
