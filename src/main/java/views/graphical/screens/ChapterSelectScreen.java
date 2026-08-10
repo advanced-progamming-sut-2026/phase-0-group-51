@@ -118,7 +118,20 @@ public class ChapterSelectScreen extends BaseScreen {
         Table mainArea = new Table();
 
         Table topRow = new Table();
-        topRow.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED", "BACK")).size(52).padRight(6);
+
+        Actor backIcon = gameIcon(
+                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL",
+                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED",
+                "BACK"
+        );
+        backIcon.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                game.showScreen(new MainMenuScreen(game));
+            }
+        });
+
+        topRow.add(backIcon).size(52).padRight(6);
 
         Actor settingsIcon = gameIcon("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL", "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED", "SETTING");
         settingsIcon.addListener(new ClickListener() {
