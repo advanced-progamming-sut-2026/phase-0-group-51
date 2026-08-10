@@ -194,7 +194,7 @@ public class ChapterMapScreen extends BaseScreen {
             case BIG_WAVE_BEACH:
                 if (levelNum == 1) return "IMAGE_WORLDMAP_BEACH_ANIM27_ANIM27_1362X953";
                 if (levelNum == 3) return "IMAGE_WORLDMAP_BEACH_ANIM12_ANIM12_335X420";
-                if (levelNum == 4) return "IMAGE_WORLDMAP_ZOMBOSS_NODE_BEACH_ZOMBOSS_NODE_BEACH_905X1096";
+                if (levelNum == 4) return "IMAGE_WORLDMAP_TWISTER_ISLAND84";
                 return "IMAGE_WORLDMAP_BEACH_ANIM13_ANIM13_397X399";
 
             case DARK_AGES:
@@ -255,7 +255,7 @@ public class ChapterMapScreen extends BaseScreen {
                 if (levelNum == 1) return new NodeConfig(0.32f, 0.5f, 0.60f, 0.45f);
                 if (levelNum == 2) return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
                 if (levelNum == 3) return new NodeConfig(0.35f, 0.5f, 0.50f, 0.79f);
-                if (levelNum == 4) return new NodeConfig(0.50f, 0.5f, 0.50f, 0.43f);
+                if (levelNum == 4) return new NodeConfig(0.7f, 0.5f, 0.50f, 0.43f);
                 return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
 
             case DARK_AGES:
