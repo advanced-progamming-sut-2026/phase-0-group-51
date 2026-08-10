@@ -28,17 +28,11 @@ public class ChapterMapScreen extends BaseScreen {
     private ScrollPane mapScroll;
     private Group mapContainer;
     private Texture backgroundTexture;
-    private SettingsPopup settingsPopup;
 
     private static final float MAP_WIDTH = 2000f;
     private static final float MAP_HEIGHT = PvzGame.VIRTUAL_HEIGHT;
 
-    private static final String GEM_ICON = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL";
-    private static final String COIN_ICON = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL";
-
-    private static final float ICON_SCALE = 0.5f;
-
-    private int currentActiveLevel;
+    private int currentActiveLevel = 2;
 
     private static class NodeConfig {
         float islandScale;
@@ -140,8 +134,6 @@ public class ChapterMapScreen extends BaseScreen {
         mapScroll.setScrollingDisabled(false, true);
         mapScroll.setOverscroll(false, false);
         stage.addActor(mapScroll);
-
-        buildStaticUi();
     }
 
     private String getBackgroundForChapter(ChapterTheme chapter) {
@@ -401,113 +393,6 @@ public class ChapterMapScreen extends BaseScreen {
 
         mapContainer.addActor(line);
     }
-
-    private void buildStaticUi() {
-        Table topBar = new Table();
-        topBar.setFillParent(true);
-        topBar.top();
-
-        Table topLeftIcons = buildTopLeftIcons();
-        topBar.add(topLeftIcons).left().top().pad(10);
-
-        topBar.add().expandX();
-
-        Table topRightIcons = buildTopRight();
-        topBar.add(topRightIcons).right().top().pad(10);
-
-        stage.addActor(topBar);
-    }
-
-    private Table buildTopLeftIcons() {
-        Table mainArea = new Table();
-
-        Table topRow = new Table();
-
-        Actor backBtn = gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED", "BACK");
-        backBtn.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.showScreen(new ChapterSelectScreen(game));
-            }
-        });
-        topRow.add(backBtn).size(52).padRight(6);
-
-        Actor settingsIcon = gameIcon("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL", "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED", "SETTING");
-        settingsIcon.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                toggleSettings();
-            }
-        });
-        topRow.add(settingsIcon).size(52).padRight(6);
-
-        topRow.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED", "BOOK")).size(52).padRight(6);
-        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL", "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED", "POT")).size(52).padRight(6);
-        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL", "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED", "CAN")).size(52);
-
-        Table bottomRow = new Table();
-        mainArea.add(topRow).left().row();
-        mainArea.add(bottomRow).left().padTop(5);
-
-        return mainArea;
-    }
-
-    private Table buildTopRight() {
-        Table bar = new Table();
-
-        Drawable coin = safeRegion(COIN_ICON);
-        if (coin != null) {
-            Stack coinStack = new Stack();
-            Image coinImg = new Image(coin);
-            coinImg.setScaling(Scaling.fit);
-            coinStack.add(coinImg);
-
-            Label coinLabel = new Label("0", labelStyle("medium_outline"));
-            coinLabel.setColor(Color.WHITE);
-            coinLabel.setAlignment(Align.center);
-            Table coinTextTable = new Table();
-            coinTextTable.add(coinLabel).padLeft(20f);
-            coinStack.add(coinTextTable);
-
-            bar.add(coinStack).size(100, 40).padRight(15);
-        }
-
-        Drawable gem = safeRegion(GEM_ICON);
-        if (gem != null) {
-            Stack gemStack = new Stack();
-            Image gemImg = new Image(gem);
-            gemImg.setScaling(Scaling.fit);
-            gemStack.add(gemImg);
-
-            Label gemLabel = new Label("0", labelStyle("medium_outline"));
-            gemLabel.setColor(Color.WHITE);
-            gemLabel.setAlignment(Align.center);
-            Table gemTextTable = new Table();
-            gemTextTable.add(gemLabel).padLeft(20f);
-            gemStack.add(gemTextTable);
-
-            bar.add(gemStack).size(100, 40).padRight(15);
-        }
-
-        bar.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED", "SHOP")).size(60);
-
-        return bar;
-    }
-
-    private void toggleSettings() {
-        if (settingsPopup != null && settingsPopup.hasParent()) {
-            settingsPopup.remove();
-            return;
-        }
-        settingsPopup = new SettingsPopup(game);
-        settingsPopup.pack();
-        settingsPopup.setPosition(
-            (stage.getWidth() - settingsPopup.getWidth()) / 2f,
-            (stage.getHeight() - settingsPopup.getHeight()) / 2f
-        );
-        stage.addActor(settingsPopup);
-    }
-
     private Drawable safeRegion(String id) {
         try {
             TextureRegion r = game.getTextureBank().region(id);
@@ -525,29 +410,11 @@ public class ChapterMapScreen extends BaseScreen {
         }
     }
 
-    private Actor gameIcon(String normalRegion, String selectedRegion, String fallbackLabel) {
-        Drawable normal = safeRegion(normalRegion);
-        Drawable selected = safeRegion(selectedRegion);
-        if (normal != null) {
-            ImageButton.ImageButtonStyle st = new ImageButton.ImageButtonStyle();
-            st.imageUp = normal;
-            st.imageOver = selected != null ? selected : normal;
-            st.imageDown = selected != null ? selected : normal;
-            return new ImageButton(st);
-        }
-        Table ph = new Table();
-        ph.setBackground(game.getSkin().newDrawable("white_pixel", new Color(1, 1, 1, 0.18f)));
-        Label l = new Label(fallbackLabel, labelStyle("medium"));
-        l.setColor(Color.WHITE);
-        ph.add(l);
-        return ph;
-    }
 
     @Override
     public void show() {
         super.show();
-        game.hideHud();
-
+        game.showHud(0, 0, true, () -> game.showScreen(new ChapterSelectScreen(game)));
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }
