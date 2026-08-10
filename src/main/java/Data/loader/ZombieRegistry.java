@@ -11,6 +11,7 @@ import java.util.Map;
 
 public class ZombieRegistry {
     private static final Map<String, Zombie> TEMPLATES = new LinkedHashMap<>();
+    private static final Map<String, String> CARD_ASSETS = new LinkedHashMap<>();
 
     public ZombieRegistry(ZombieRepository repository) throws SQLException {
         init(repository.loadAllZombies());
@@ -29,6 +30,8 @@ public class ZombieRegistry {
             loader.loadArmors("/ArmorTypeData.json");
             Map<String, Zombie> loaded = loader.loadZombies("/zombies.json");
             init(loaded);
+            CARD_ASSETS.clear();
+            CARD_ASSETS.putAll(loader.getZombieCardAssets());
         } catch (Exception e) {
             throw new RuntimeException("Failed to load zombies.json", e);
         }
@@ -49,6 +52,9 @@ public class ZombieRegistry {
             throw new IllegalArgumentException("Unknown zombie alias: " + alias);
         }
         return template.copy();
+    }
+    public static String getCardAssetId(String alias) {
+        return CARD_ASSETS.get(alias);
     }
 
     public static Map<String, Zombie> getTemplates() {

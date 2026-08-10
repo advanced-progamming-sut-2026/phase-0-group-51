@@ -1,9 +1,11 @@
 package views.graphical.ui;
 
+import Data.database.NewsRepository;
 import Data.database.PlantBoostRepository;
 import Data.database.PlantRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -16,6 +18,8 @@ import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.App;
 import models.User;
+import models.Zombie.Zombie;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -293,6 +297,28 @@ public final class CollectionMenuTable extends Table {
     private void showZombies() {
         cardsGrid.clearChildren();
 
+        User user = App.loggedInUser;
+
+        if (user == null) {
+            return;
+        }
+
+        NewsRepository newsRepository =
+                new NewsRepository();
+
+        Set<String> discoveredZombies =
+                newsRepository
+                        .getDiscoveredZombieAliases(
+                                user.getId()
+                        );
+
+        List<Zombie> zombies =
+                new ArrayList<>(
+                        ZombieRegistry
+                                .getTemplates()
+                                .values()
+                );
+
         ButtonGroup<ZombieCard> zombieGroup =
                 new ButtonGroup<>();
 
@@ -303,15 +329,34 @@ public final class CollectionMenuTable extends Table {
         int column = 0;
         int columnsPerRow = 8;
 
-        for (int i = 0; i < 24; i++) {
-            ZombieCard card = new ZombieCard(
-                    game,
-                    new ZombieCard.ViewData(
-                            "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL"
-                    )
-            );
+        for (Zombie zombie : zombies) {
 
-            zombieGroup.add(card);
+            String alias =
+                    zombie.getAlias();
+
+            boolean unlocked =
+                    containsIgnoreCase(
+                            discoveredZombies,
+                            alias
+                    );
+
+            String cardAssetId =
+                    ZombieRegistry
+                            .getCardAssetId(alias);
+
+            ZombieCard card =
+                    new ZombieCard(
+                            game,
+                            new ZombieCard.ViewData(
+                                    alias,
+                                    cardAssetId,
+                                    unlocked
+                            )
+                    );
+
+            if (unlocked) {
+                zombieGroup.add(card);
+            }
 
             cardsGrid.add(card)
                     .expandX()
@@ -328,10 +373,24 @@ public final class CollectionMenuTable extends Table {
 
         if (column != 0) {
             while (column < columnsPerRow) {
-                cardsGrid.add().expandX();
+                cardsGrid.add()
+                        .expandX();
+
                 column++;
             }
         }
+    }
+    private boolean containsIgnoreCase(
+            Set<String> aliases,
+            String wanted
+    ) {
+        for (String alias : aliases) {
+            if (alias.equalsIgnoreCase(wanted)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private Drawable drawable(String assetId) {
