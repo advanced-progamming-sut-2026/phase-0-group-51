@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Arrays;
 
 public class ChapterSelectScreen extends BaseScreen {
-    private SettingsPopup settingsPopup;
 
     private Texture backgroundTexture;
     private Table content;
@@ -38,9 +37,6 @@ public class ChapterSelectScreen extends BaseScreen {
 
     private static final float ISLAND_W = 310f;
     private static final float ISLAND_H = 360f;
-
-    private static final String GEM_ICON  = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL";
-    private static final String COIN_ICON = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL";
     private static final String CHILI_ON  = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_ICON_SMALL";
     private static final String CHILI_OFF = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_HOLLOW_ICON_SMALL";
 
@@ -76,13 +72,7 @@ public class ChapterSelectScreen extends BaseScreen {
     private void rebuildContent() {
         content.clear();
         content.top();
-
-        Table topBar = new Table();
-        topBar.add(buildTopLeftIcons()).left().top();
-        topBar.add().expandX();
-        topBar.add(buildTopRight()).right().top();
-        content.add(topBar).growX().pad(10).row();
-
+        content.add().height(72f).row();
         Table islandsRow = new Table();
 
         final int SIDE = 2;
@@ -118,85 +108,9 @@ public class ChapterSelectScreen extends BaseScreen {
     private void goNext() { selectedIndex = (selectedIndex + 1) % CHAPTERS.length; rebuildContent(); }
     private void goPrev() { selectedIndex = (selectedIndex - 1 + CHAPTERS.length) % CHAPTERS.length; rebuildContent(); }
 
-    private Table buildTopLeftIcons() {
-        Table mainArea = new Table();
 
-        Table topRow = new Table();
 
-        Actor backIcon = gameIcon(
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL",
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED",
-                "BACK"
-        );
-        backIcon.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.showScreen(new MainMenuScreen(game));
-            }
-        });
 
-        topRow.add(backIcon).size(52).padRight(6);
-
-        Actor settingsIcon = gameIcon("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL", "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED", "SETTING");
-        settingsIcon.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                toggleSettings();
-            }
-        });
-        topRow.add(settingsIcon).size(52).padRight(6);
-
-        topRow.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED", "BOOK")).size(52).padRight(6);
-        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL", "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED", "POT")).size(52).padRight(6);
-        topRow.add(gameIcon("IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL", "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED", "CAN")).size(52);
-
-        Table bottomRow = new Table();
-        mainArea.add(topRow).left().row();
-        mainArea.add(bottomRow).left().padTop(5);
-
-        return mainArea;
-    }
-
-    private Actor gameIcon(String normalRegion, String selectedRegion, String fallbackLabel) {
-        Drawable normal = safeRegion(normalRegion);
-        Drawable selected = safeRegion(selectedRegion);
-        if (normal != null) {
-            Drawable sel = (selected != null) ? selected : normal;
-            ImageButton.ImageButtonStyle st = new ImageButton.ImageButtonStyle();
-            st.imageUp = normal;
-            st.imageOver = sel;
-            st.imageDown = sel;
-            return new ImageButton(st);
-        }
-        Table ph = new Table();
-        ph.setBackground(game.getSkin().newDrawable("white_pixel", new Color(1, 1, 1, 0.18f)));
-        Label l = new Label(fallbackLabel, labelStyle("medium"));
-        l.setColor(Color.WHITE);
-        ph.add(l);
-        return ph;
-    }
-
-    private Table buildTopRight() {
-        Table bar = new Table();
-
-        Drawable coin = safeRegion(COIN_ICON);
-        if (coin != null) {
-            Image coinImg = new Image(coin);
-            coinImg.setScaling(Scaling.fit);
-            bar.add(coinImg).size(100, 40).padRight(15);
-        }
-
-        Drawable gem = safeRegion(GEM_ICON);
-        if (gem != null) {
-            Image gemImg = new Image(gem);
-            gemImg.setScaling(Scaling.fit);
-            bar.add(gemImg).size(100, 40).padRight(15);
-        }
-
-        bar.add(gameIcon("IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL", "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED", "SHOP")).size(60);
-
-        return bar;
-    }
 
     private Table buildCenterIsland(final ChapterTheme chapter) {
         // خواندن پیشرفت واقعی کاربر از دیتابیس
@@ -505,23 +419,11 @@ public class ChapterSelectScreen extends BaseScreen {
         }
     }
 
-    private void toggleSettings() {
-        if (settingsPopup != null && settingsPopup.hasParent()) {
-            settingsPopup.remove();
-            return;
-        }
-        settingsPopup = new SettingsPopup(game);
-        settingsPopup.pack();
-        settingsPopup.setPosition(
-            (stage.getWidth() - settingsPopup.getWidth()) / 2f,
-            (stage.getHeight() - settingsPopup.getHeight()) / 2f
-        );
-        stage.addActor(settingsPopup);
-    }
 
     @Override
     public void show() {
         super.show();
+        game.showHud(0, 0, true, () -> game.showScreen(new MainMenuScreen(game)));
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }

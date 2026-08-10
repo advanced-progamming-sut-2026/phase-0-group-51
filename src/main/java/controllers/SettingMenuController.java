@@ -14,13 +14,20 @@ public class SettingMenuController {
         this.validation = new SettingMenuValidation();
         this.repository = new UserRepository();
     }
-    public Result changeDifficulty(String difficultyLevel){
-        if (!validation.isDifficultyLevelValid(difficultyLevel)){
-            return new Result(false,"Please enter a difficulty level from 1 to 5.",null);
+    public Result changeDifficulty(String difficultyLevel) {
+        if (!validation.isDifficultyLevelValid(difficultyLevel)) {
+            return new Result(false, "Please enter a difficulty level from 1 to 5.", null);
         }
         User user = App.getInstance().getLoggedInUser();
-        user.setDifficultyLevel(validation.dl);
-        repository.updateDifficulty(user.getUsername(), validation.dl);
+        if (user == null) {
+            return new Result(false, "You must be logged in to change difficulty.", null);
+        }
+        int newDifficulty = validation.dl;
+        boolean saved = repository.updateDifficulty(user.getUsername(), newDifficulty);
+        if (!saved) {
+            return new Result(false, "Could not save difficulty level.", null);
+        }
+        user.setDifficultyLevel(newDifficulty);
         return new Result(true, "Difficulty level changed successfully.", null);
     }
     public Result exitMenu(){

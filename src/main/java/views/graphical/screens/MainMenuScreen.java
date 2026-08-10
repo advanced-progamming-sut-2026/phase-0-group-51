@@ -17,31 +17,20 @@ import com.badlogic.gdx.utils.Scaling;
 import controllers.GreenHouseMenuController;
 import controllers.MainMenuController;
 import graphics.PvzGame;
+import models.Result;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.NotificationOverlay;
 import views.graphical.ui.SettingsPopup;
 
 public class MainMenuScreen extends BaseScreen{
-    private SettingsPopup settingsPopup;
     private Stack root;
     private Texture backgroundTexture;
     private final MainMenuController controller = new MainMenuController();
-    private NotificationOverlay notificationOverlay;
     private static final String EXIT_NORMAL_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON";
     private static final String EXIT_PRESSED_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
-    private static final String BOOK = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL";
-    private static final String BOOK_CLICKED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED";
-    private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
-    private static final String BACK_PRESSED = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
-    private static final String WATERING_POT = "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL";
-    private static final String WATERING_POT_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED";
     private static final String PROFILE = "IMAGE_UI_MAINMENU_MM_PLAYERICON";
     private static final String GAME_ICON = "IMAGE_UI_MAINMENU_PVZ2_LOGO_HORIZONTAL";
     private static final String VASE_BREAKER = "IMAGE_UI_FEATURE_UNLOCK_FEATURE_KEY_ART_VASEBREAKER";
-    private static final String SETTINGS = "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL";
-    private static final String SETTINGS_SELECTED = "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED";
-    private static final String NEWS  = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_NORMAL";
-    private static final String NEWS_SELECTED  = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_SELECTED";
     private static final String leaderBoard = "IMAGE_UI_GAMECENTER_ICON";
     private static final String Dokme = "IMAGE_UI_GENERIC_NAVDOT";
     private static final String Dokme_FILL = "IMAGE_UI_GENERIC_NAVDOT_FILL";
@@ -89,59 +78,9 @@ public class MainMenuScreen extends BaseScreen{
 
 
         content.setWidth(450f);
-        ImageButton backButton = createBackButton();
-        ImageButton collectionButton = createCollectionButton();
-        ImageButton greenHouseButton = createGreenhouseButton();
         ImageButton exitButton = createExitButton();
         ImageButton profile = createProfileButton();
-        ImageButton setting = createSettingButton();
-        ImageButton news = createNewsButton();
-        backButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                if(controller.logout().success()){
-                    game.showScreen(new FirstScreen(game));
-                }
-                else{
-                    System.out.println(controller.logout().message()); // برای دیباگ گذاشتم(کنسول)
-                }
-            }
-        });
-        collectionButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                stage.addActor(new CollectionMenuTable(game));
-            }
-        });
-        greenHouseButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.showScreen(new GreenHouseScreen(game));
-            }
-        });
-        news.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
 
-            }
-        });
-
-        setting.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                if (settingsPopup != null && settingsPopup.hasParent()) {
-                    settingsPopup.remove();
-                    return;
-                }
-                settingsPopup = new SettingsPopup(game);
-                settingsPopup.pack();
-                settingsPopup.setPosition(
-                        (stage.getWidth() - settingsPopup.getWidth()) / 2f,
-                        (stage.getHeight() - settingsPopup.getHeight()) / 2f
-                );
-                stage.addActor(settingsPopup);
-            }
-        });
         cards.get(0).addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -190,21 +129,6 @@ public class MainMenuScreen extends BaseScreen{
                 Gdx.app.exit();
             }
         });
-        Container<ImageButton> container = new Container<>(backButton);
-        container.setFillParent(true);
-        container.top().left();
-        container.padTop(15);
-        container.padLeft(15);
-        Container<ImageButton> container2 = new Container<>(collectionButton);
-        container2.setFillParent(true);
-        container2.top().left();
-        container2.padTop(15);
-        container2.padLeft(95);
-        Container<ImageButton> container3 = new Container<>(greenHouseButton);
-        container3.setFillParent(true);
-        container3.top().left();
-        container3.padTop(15);
-        container3.padLeft(175);
         Container<ImageButton> container4 = new Container<>(exitButton);
         container4.setFillParent(true);
         container4.bottom().left();
@@ -222,29 +146,12 @@ public class MainMenuScreen extends BaseScreen{
         container6.setFillParent(true);
         container6.center().center();
         container6.padBottom(300);
-        Container<ImageButton> container7 = new Container<>(setting);
-        container7.setFillParent(true);
-        container7.bottom().left();
-        container7.padBottom(15);
-        container7.padLeft(95);
-        Container<ImageButton> container8 = new Container<>(news);
-        container8.setFillParent(true);
-        container8.top().left();
-        container8.padTop(15);
-        container8.padLeft(255);
         root.add(backgroundImage);
         root.add(content);
-        root.add(container);
-        root.add(container2);
-        root.add(container3);
         root.add(container4);
         root.add(container5);
         root.add(container6);
-        root.add(container7);
-        root.add(container8);
 
-        notificationOverlay = new NotificationOverlay(game.getSkin());
-        root.add(notificationOverlay);
 
         stage.addActor(root);
         buildDots();
@@ -253,39 +160,7 @@ public class MainMenuScreen extends BaseScreen{
         root.add(carouselGroup);
         stage.addActor(dotsTable);
     }
-    private ImageButton createBackButton() {
-        TextureRegion normalRegion = game.getTextureBank().region(BACK);
-        TextureRegion pressedRegion = game.getTextureBank().region(BACK_PRESSED);
 
-        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
-
-        return new ImageButton(style);
-    }
-    private ImageButton createCollectionButton() {
-        TextureRegion normalRegion = game.getTextureBank().region(BOOK);
-        TextureRegion pressedRegion = game.getTextureBank().region(BOOK_CLICKED);
-
-        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
-
-        return new ImageButton(style);
-    }
-    private ImageButton createGreenhouseButton() {
-        TextureRegion normalRegion = game.getTextureBank().region(WATERING_POT);
-        TextureRegion pressedRegion = game.getTextureBank().region(WATERING_POT_CLICKED);
-
-        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
-
-        return new ImageButton(style);
-    }
     private ImageButton createExitButton() {
         TextureRegion normalRegion = game.getTextureBank().region(EXIT_NORMAL_ID);
         TextureRegion pressedRegion = game.getTextureBank().region(EXIT_PRESSED_ID);
@@ -296,26 +171,8 @@ public class MainMenuScreen extends BaseScreen{
         ImageButton imageButton = new ImageButton(style);
         return imageButton;
     }
-    private ImageButton createSettingButton() {
-        TextureRegion normalRegion = game.getTextureBank().region(SETTINGS);
-        TextureRegion pressedRegion = game.getTextureBank().region(SETTINGS_SELECTED);
-        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
-        ImageButton imageButton = new ImageButton(style);
-        return imageButton;
-    }
-    private ImageButton createNewsButton() {
-        TextureRegion normalRegion = game.getTextureBank().region(NEWS);
-        TextureRegion pressedRegion = game.getTextureBank().region(NEWS_SELECTED);
-        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
-        ImageButton imageButton = new ImageButton(style);
-        return imageButton;
-    }
+
+
     private ImageButton createProfileButton(){
         TextureRegion normalRegion = game.getTextureBank().region(PROFILE);
         TextureRegionDrawable normal = new TextureRegionDrawable(normalRegion);
@@ -344,8 +201,20 @@ public class MainMenuScreen extends BaseScreen{
         dotsTable.clearChildren();
 
         for (int i = 0; i < 7; i++) {
+            final int targetIndex = i;
             TextureRegion region = game.getTextureBank().region(Dokme);
             Image dot = new Image(region);
+
+        dot.setTouchable(Touchable.enabled);
+
+        dot.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event,float x,float y) {
+                currentCardIndex = targetIndex;
+                refreshCarousel();
+            }
+        });
+
             navDots.add(dot);
             dotsTable.add(dot).pad(6f).size(18f, 18f);
         }
@@ -371,9 +240,11 @@ public class MainMenuScreen extends BaseScreen{
         float mainX = 380f;
         float mainY = 280f;
 
-        float previewX = 930f;
-        float previewY = 280f;
+        float previousX = 100f;
+        float previousY = 280f;
 
+        float nextX = 930f;
+        float nextY = 280f;
 
         ImageButton currentCard = cards.get(currentCardIndex);
         currentCard.setSize(mainCardWidth, mainCardHeight);
@@ -382,12 +253,31 @@ public class MainMenuScreen extends BaseScreen{
         currentCard.setPosition(mainX, mainY);
         carouselGroup.addActor(currentCard);
 
+        int previousIndex = (currentCardIndex - 1 + cards.size()) % cards.size();
+
+        Drawable previousDrawable = cards.get(previousIndex).getStyle().imageUp;
+        Image previousCard = new Image(previousDrawable);
+        previousCard.setScaling(Scaling.stretch);
+        previousCard.setBounds(previousX, previousY, previewWidth, previewHeight);
+        previousCard.setTouchable(Touchable.enabled);
+
+        previousCard.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        showPreviousCard();
+                    }
+                }
+        );
+
+        carouselGroup.addActor(previousCard);
+
         int nextIndex = (currentCardIndex + 1) % cards.size();
         Drawable previewDrawable = cards.get(nextIndex).getStyle().imageUp;
 
         Image previewCard = new Image(previewDrawable);
         previewCard.setScaling(Scaling.stretch);
-        previewCard.setBounds(previewX, previewY, previewWidth, previewHeight);
+        previewCard.setBounds(nextX, nextY, previewWidth, previewHeight);
 
         previewCard.addListener(new ClickListener() {
             @Override
@@ -407,4 +297,24 @@ public class MainMenuScreen extends BaseScreen{
         }
         refreshCarousel();
     }
-}
+    private void showPreviousCard() {
+        currentCardIndex--;
+
+        if (currentCardIndex < 0) {
+            currentCardIndex = cards.size() - 1;
+        }
+
+        refreshCarousel();
+    }
+    @Override
+    public void show() {
+        super.show();
+        game.showHud(0, 0, true, () -> {Result result = controller.logout();
+                    if (result.success()) {
+                        game.showScreen(new FirstScreen(game));
+                    } else {
+                        game.notifyError(result.message());
+                    }
+                }
+        );
+}}

@@ -14,9 +14,13 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
-
+import controllers.SettingMenuController;
+import models.App;
+import models.Result;
+import models.User;
 public class SettingsPopup extends BorderedPanel {
-
+    private final SettingMenuController controller;
+    private int currentDifficulty;
     private final PvzGame game;
 
     private static final String CHILI_ON  = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_ICON_SMALL";
@@ -29,7 +33,9 @@ public class SettingsPopup extends BorderedPanel {
     public SettingsPopup(PvzGame game) {
         super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
         this.game = game;
-
+        this.controller = new SettingMenuController();
+        User user = App.getInstance().getLoggedInUser();
+        this.currentDifficulty = user == null ? 3 : user.getDifficultyLevel();
         shadowOverlay = game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.75f));
 
         TextureRegion topperRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_WINDOWTOPPER");
@@ -171,17 +177,19 @@ public class SettingsPopup extends BorderedPanel {
         chilis.clear();
         for (int i = 1; i <= CHILI_COUNT; i++) {
             final int level = i;
-            boolean on = i <= GameSettings.difficulty;
+            boolean on = i <= currentDifficulty;
             Drawable d = safeRegion(on ? CHILI_ON : CHILI_OFF);
-
             Actor chili;
             if (d != null) {
                 Image img = new Image(d);
                 img.setScaling(Scaling.fit);
                 chili = img;
             } else {
-                Label l = new Label(on ? "\u2588" : "\u2591",
-                    game.getSkin().get("medium_outline", Label.LabelStyle.class));
+                Label l = new Label(
+                        on ? "\u2588" : "\u2591",
+                        game.getSkin().get("medium_outline", Label.LabelStyle.class)
+                );
+
                 try {
                     l.setColor(game.getSkin().getColor(on ? "PlantFamilyPeppermint" : "Grey"));
                 } catch (Exception ex) {
@@ -191,20 +199,23 @@ public class SettingsPopup extends BorderedPanel {
             }
 
             chili.addListener(new ClickListener() {
-                @Override public void clicked(InputEvent e, float x, float y) {
-                    if (GameSettings.difficulty == level) {
-                        GameSettings.difficulty = Math.max(1, level - 1);
-                    } else {
-                        GameSettings.difficulty = level;
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    Result result = controller.changeDifficulty(String.valueOf(level));
+
+                    if (!result.success()) {
+                        game.notifyError(result.message());
+                        return;
                     }
+
+                    currentDifficulty = level;
                     rebuildChilis();
-                }
+                    game.notifyInfo(result.message());}
             });
 
-            chilis.add(chili).size(26).padLeft(4);
+            chilis.add(chili).size(26f).padLeft(4f);
         }
     }
-
     private Drawable safeRegion(String id) {
         try {
             TextureRegion r = game.getTextureBank().region(id);
