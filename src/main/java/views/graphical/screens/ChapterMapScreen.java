@@ -18,6 +18,9 @@ import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
 import views.graphical.ui.SettingsPopup;
+import models.App;
+import models.User;
+import Data.database.ProgressRepository;
 
 public class ChapterMapScreen extends BaseScreen {
 
@@ -35,7 +38,7 @@ public class ChapterMapScreen extends BaseScreen {
 
     private static final float ICON_SCALE = 0.5f;
 
-    private int currentActiveLevel = 2;
+    private int currentActiveLevel;
 
     private static class NodeConfig {
         float islandScale;
@@ -60,25 +63,30 @@ public class ChapterMapScreen extends BaseScreen {
         }
     }
 
-    private static class DecoConfig {
-        String imageId;
-        float x;
-        float y;
-        float scale;
-        float alpha;
-
-        DecoConfig(String imageId, float x, float y, float scale, float alpha) {
-            this.imageId = imageId;
-            this.x = x;
-            this.y = y;
-            this.scale = scale;
-            this.alpha = alpha;
-        }
-    }
-
     public ChapterMapScreen(PvzGame game, ChapterTheme chapter) {
         super(game);
         this.chapter = chapter;
+
+        // استخراج پیشرفت مرحله‌ها از دیتابیس
+        User user = App.getInstance().getLoggedInUser();
+        int[] progress = {1, 1};
+        if (user != null) {
+            progress = new ProgressRepository().getCurrentProgress(user.getId());
+        }
+
+        int chapterIndex = 1;
+        if (chapter == ChapterTheme.FROSTBITE_CAVES) chapterIndex = 2;
+        else if (chapter == ChapterTheme.BIG_WAVE_BEACH) chapterIndex = 3;
+        else if (chapter == ChapterTheme.DARK_AGES) chapterIndex = 4;
+
+        if (chapterIndex < progress[0]) {
+            currentActiveLevel = 999; // همه مراحل در این فصل पास شده‌اند
+        } else if (chapterIndex == progress[0]) {
+            currentActiveLevel = progress[1]; // مرحله فعلی
+        } else {
+            currentActiveLevel = 0; // تمام مراحل قفل هستند
+        }
+
         buildUi();
     }
 
@@ -92,8 +100,6 @@ public class ChapterMapScreen extends BaseScreen {
         bgImage.setScaling(Scaling.stretch);
         bgImage.setTouchable(Touchable.disabled);
         mapContainer.addActor(bgImage);
-
-        addEdgeDecorations();
 
         Drawable bgStatueDrawable = safeRegion(getBackgroundStatueId(chapter));
         if (bgStatueDrawable != null) {
@@ -136,59 +142,6 @@ public class ChapterMapScreen extends BaseScreen {
         stage.addActor(mapScroll);
 
         buildStaticUi();
-    }
-
-    private DecoConfig[] getEdgeDecoConfigs(ChapterTheme chapter) {
-        switch (chapter) {
-            case ANCIENT_EGYPT:
-                return new DecoConfig[]{
-                    new DecoConfig("IMAGE_WORLDMAP_EGYPT_ISLAND25", 60f, 120f, 0.2f, 0.4f),
-                    new DecoConfig("IMAGE_WORLDMAP_EGYPT_ISLAND16", 1400f, 100f, 0.4f, 0.4f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND23", -50f, 80f, 1.2f, 0.8f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND22", 1100f, 50f, 1.2f, 0.8f)
-                };
-            case FROSTBITE_CAVES:
-                return new DecoConfig[]{
-                    new DecoConfig("IMAGE_WORLDMAP_ICEAGE_ISLAND24", 600f, 400f, 0.5f, 0.5f),
-                    new DecoConfig("IMAGE_WORLDMAP_ICEAGE_ISLAND23", 1400f, 200f, 0.5f, 0.6f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND23", -50f, 80f, 1.2f, 0.8f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND22", 1100f, 50f, 1.2f, 0.8f)
-                };
-            case BIG_WAVE_BEACH:
-                return new DecoConfig[]{
-                    new DecoConfig("IMAGE_WORLDMAP_BEACH_ISLAND13", 600f, 300f, 0.5f, 0.4f),
-                    new DecoConfig("IMAGE_WORLDMAP_BEACH_ANIM1_ANIM1_283X291", 1200f, 180f, 0.5f, 0.4f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND23", -50f, 80f, 1.2f, 0.8f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND22", 1100f, 50f, 1.2f, 0.8f)
-                };
-            case DARK_AGES:
-                return new DecoConfig[]{
-                    new DecoConfig("IMAGE_WORLDMAP_DARK_ISLAND21", 600f, 100f, 0.5f, 0.3f),
-                    new DecoConfig("IMAGE_WORLDMAP_DARK_ANIM6_ANIM6_649X585", 1650f, 250f, 0.5f, 0.4f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND23", -50f, 80f, 1.2f, 0.8f),
-                    new DecoConfig("IMAGE_WORLDMAP_COWBOY_ISLAND22", 1100f, 50f, 1.2f, 0.8f)
-                };
-            default:
-                return new DecoConfig[]{
-                    new DecoConfig("PLACEHOLDER_DEFAULT_DECO_LEFT", -20f, 150f, 1.0f, 0.4f),
-                    new DecoConfig("PLACEHOLDER_DEFAULT_DECO_RIGHT", 1650f, 250f, 1.0f, 0.4f)
-                };
-        }
-    }
-
-    private void addEdgeDecorations() {
-        DecoConfig[] decos = getEdgeDecoConfigs(chapter);
-        for (DecoConfig deco : decos) {
-            Drawable d = safeRegion(deco.imageId);
-            if (d != null) {
-                Image img = new Image(d);
-                img.setSize(img.getWidth() * deco.scale, img.getHeight() * deco.scale);
-                img.setPosition(deco.x, deco.y);
-                img.setColor(1f, 1f, 1f, deco.alpha);
-                img.setTouchable(Touchable.disabled);
-                mapContainer.addActor(img);
-            }
-        }
     }
 
     private String getBackgroundForChapter(ChapterTheme chapter) {
@@ -241,7 +194,7 @@ public class ChapterMapScreen extends BaseScreen {
             case BIG_WAVE_BEACH:
                 if (levelNum == 1) return "IMAGE_WORLDMAP_BEACH_ANIM27_ANIM27_1362X953";
                 if (levelNum == 3) return "IMAGE_WORLDMAP_BEACH_ANIM12_ANIM12_335X420";
-                if (levelNum == 4) return "IMAGE_WORLDMAP_TWISTER_ISLAND84";
+                if (levelNum == 4) return "IMAGE_WORLDMAP_ZOMBOSS_NODE_BEACH_ZOMBOSS_NODE_BEACH_905X1096";
                 return "IMAGE_WORLDMAP_BEACH_ANIM13_ANIM13_397X399";
 
             case DARK_AGES:
@@ -302,7 +255,7 @@ public class ChapterMapScreen extends BaseScreen {
                 if (levelNum == 1) return new NodeConfig(0.32f, 0.5f, 0.60f, 0.45f);
                 if (levelNum == 2) return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
                 if (levelNum == 3) return new NodeConfig(0.35f, 0.5f, 0.50f, 0.79f);
-                if (levelNum == 4) return new NodeConfig(0.75f, 0.5f, 0.50f, 0.43f);
+                if (levelNum == 4) return new NodeConfig(0.50f, 0.5f, 0.50f, 0.43f);
                 return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
 
             case DARK_AGES:
