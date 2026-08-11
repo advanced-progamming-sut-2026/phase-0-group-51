@@ -344,16 +344,15 @@ public final class CollectionMenuTable extends Table {
             String alias =
                     zombie.getAlias();
 
-//            boolean unlocked =
-//                    containsIgnoreCase(
-//                            discoveredZombies,
-//                            alias
-//                    );
-            boolean unlocked = true;
+            boolean unlocked =
+                    containsIgnoreCase(
+                            discoveredZombies,
+                            alias
+                    );
 
-//            String cardAssetId =
-//                    ZombieRegistry
-//                            .getCardAssetId(alias);
+            String cardAssetId =
+                    ZombieRegistry
+                            .getCardAssetId(alias);
 
             ZombieCard card =
                     new ZombieCard(
@@ -376,21 +375,23 @@ public final class CollectionMenuTable extends Table {
                                     unlocked
                             )
                     );
-            zombieGroup.add(card);
 
-            card.addListener(
-                    new ChangeListener() {
-                        @Override
-                        public void changed(
-                                ChangeEvent event,
-                                Actor actor
-                        ) {
-                            if (card.isChecked()) {
-                                openZombieDetails(card);
+            if (unlocked) {
+                zombieGroup.add(card);
+                card.addListener(
+                        new ChangeListener() {
+                            @Override
+                            public void changed(
+                                    ChangeEvent event,
+                                    Actor actor
+                            ) {
+                                if (card.isChecked()) {
+                                    openZombieDetails(card);
+                                }
                             }
                         }
-                    }
-            );
+                );
+            }
 
             cardsGrid.add(card)
                     .expandX()
@@ -403,32 +404,16 @@ public final class CollectionMenuTable extends Table {
                 cardsGrid.row();
                 column = 0;
             }
-
-//            if (unlocked) {
-//                zombieGroup.add(card);
-//            }
-//
-//            cardsGrid.add(card)
-//                    .expandX()
-//                    .top()
-//                    .pad(10f);
-//
-//            column++;
-//
-//            if (column >= columnsPerRow) {
-//                cardsGrid.row();
-//                column = 0;
-//            }
         }
 
-//        if (column != 0) {
-//            while (column < columnsPerRow) {
-//                cardsGrid.add()
-//                        .expandX();
-//
-//                column++;
-//            }
-//        }
+        if (column != 0) {
+            while (column < columnsPerRow) {
+                cardsGrid.add()
+                        .expandX();
+
+                column++;
+            }
+        }
     }
     private void openZombieDetails(
             ZombieCard card
