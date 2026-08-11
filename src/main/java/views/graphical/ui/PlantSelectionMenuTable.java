@@ -72,7 +72,7 @@ public final class PlantSelectionMenuTable extends Table {
         this.game = game;
 
         setFillParent(true);
-        setTouchable(Touchable.childrenOnly);
+        setTouchable(Touchable.enabled);
         pad(16f);
 
         selectedSlotsTable = new Table();
