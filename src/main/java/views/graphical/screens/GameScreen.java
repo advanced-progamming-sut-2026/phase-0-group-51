@@ -70,6 +70,8 @@ public class GameScreen extends BaseScreen {
 
     private final GamingController gamingController = new GamingController();
 
+    private float gameTickAccumulator;
+
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
         this.theme = theme;
@@ -201,12 +203,7 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
-                PlantSelectionMenuTable plantSelection =
-                        new PlantSelectionMenuTable(
-                                game,
-                                plantSlotsBar,
-                                this::startGameAfterSelection
-                        );
+                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, plantSlotsBar, this::startGameAfterSelection);
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
                 break;
@@ -249,6 +246,7 @@ public class GameScreen extends BaseScreen {
 
         worldStage.addActor(boardView);
 
+        gameTickAccumulator = 0f;
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
@@ -256,6 +254,8 @@ public class GameScreen extends BaseScreen {
     @Override
     public void render(float delta) {
         updateCutscene(delta);
+        updateGameplayTicks(delta);
+
         uiStage.act(delta);
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -280,6 +280,35 @@ public class GameScreen extends BaseScreen {
         drawDebugGrid();
 
         uiStage.draw();
+    }
+
+    private void updateGameplayTicks(float delta) {
+        if (introState != IntroState.PLAYING) {
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame == null
+                || currentGame.getGameState() == null
+                || currentGame.getGameState().isFinished()) {
+            return;
+        }
+
+        int ticksPerSecond = Math.max(1, currentGame.getGameState().getTicksPerSecond());
+
+        float tickDuration = 1f / ticksPerSecond;
+
+        gameTickAccumulator += Math.min(delta, 0.25f);
+
+        while (gameTickAccumulator >= tickDuration) {
+            if (currentGame.getGameState().isFinished()) {
+                gameTickAccumulator = 0f;
+                break;
+            }
+            currentGame.forward(1);
+            gameTickAccumulator -= tickDuration;
+        }
     }
 
     private void handleTileClick(

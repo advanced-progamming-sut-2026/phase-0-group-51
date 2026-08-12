@@ -15,11 +15,15 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
+import lombok.Getter;
 import lombok.Setter;
 import models.App;
 import models.User;
+import models.games.Game;
+import models.games.GameState;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -51,8 +55,19 @@ public final class PlantSlotsBar extends Table {
     private final ButtonGroup<PlantCard> gameplayPlantGroup =
             new ButtonGroup<>();
 
+    @Getter
     private PlantData selectedPlant;
+    @Setter
     private Consumer<PlantData> onPlantSelected;
+
+    private final Map<Integer, PlantCard> gameplayCardsByPlantId =
+            new HashMap<>();
+
+    private final Map<Integer, Integer> cooldownStartTickByPlantId =
+            new HashMap<>();
+
+    private final Map<Integer, Integer> cooldownEndTickByPlantId =
+            new HashMap<>();
 
     public PlantSlotsBar(PvzGame game) {
         if (game == null) {
@@ -170,6 +185,7 @@ public final class PlantSlotsBar extends Table {
     private void rebuild() {
         clearChildren();
         gameplayPlantGroup.clear();
+        gameplayCardsByPlantId.clear();
 
         User user = App.loggedInUser;
 
@@ -265,6 +281,10 @@ public final class PlantSlotsBar extends Table {
             );
         } else if (mode == Mode.GAMEPLAY) {
             gameplayPlantGroup.add(card);
+            gameplayCardsByPlantId.put(
+                    plant.id(),
+                    card
+            );
 
             if (plant.equals(selectedPlant)) {
                 card.setChecked(true);
@@ -302,6 +322,123 @@ public final class PlantSlotsBar extends Table {
         return card;
     }
 
+    @Override
+    public void act(
+            float delta
+    ) {
+        super.act(delta);
+
+        if (mode == Mode.GAMEPLAY) {
+            refreshGameplayAvailability();
+        }
+    }
+
+    private void refreshGameplayAvailability() {
+        Game currentGame =
+                App.getInstance().getCurrentGame();
+
+        if (currentGame == null
+                || currentGame.getGameState() == null) {
+            return;
+        }
+
+        GameState state =
+                currentGame.getGameState();
+
+        int currentTick =
+                state.getTickCounter();
+
+        int currentSun =
+                state.getSun();
+
+        for (PlantData plant : slots) {
+            if (plant == null) {
+                continue;
+            }
+
+            PlantCard card =
+                    gameplayCardsByPlantId.get(
+                            plant.id()
+                    );
+
+            if (card == null) {
+                continue;
+            }
+
+            int cooldownEnd =
+                    state.getPlantCooldownEnd(
+                            plant.id()
+                    );
+
+            int ticksRemaining =
+                    Math.max(
+                            0,
+                            cooldownEnd
+                                    - currentTick
+                    );
+
+            if (ticksRemaining > 0) {
+                Integer knownEnd =
+                        cooldownEndTickByPlantId.get(
+                                plant.id()
+                        );
+
+                if (knownEnd == null
+                        || knownEnd != cooldownEnd) {
+                    cooldownEndTickByPlantId.put(
+                            plant.id(),
+                            cooldownEnd
+                    );
+
+                    cooldownStartTickByPlantId.put(
+                            plant.id(),
+                            currentTick
+                    );
+                }
+
+                int cooldownStart =
+                        cooldownStartTickByPlantId.getOrDefault(
+                                plant.id(),
+                                currentTick
+                        );
+
+                int totalTicks =
+                        Math.max(
+                                1,
+                                cooldownEnd
+                                        - cooldownStart
+                        );
+
+                float fraction =
+                        Math.min(
+                                1f,
+                                ticksRemaining
+                                        / (float) totalTicks
+                        );
+
+                card.setCooldownFraction(
+                        fraction
+                );
+            } else {
+                cooldownStartTickByPlantId.remove(
+                        plant.id()
+                );
+
+                cooldownEndTickByPlantId.remove(
+                        plant.id()
+                );
+
+                card.setCooldownFraction(
+                        0f
+                );
+            }
+
+            card.setEnoughSun(
+                    currentSun >= plant.cost()
+            );
+        }
+    }
+
     private Image createEmptySlot() {
         TextureRegion region =
                 game.getTextureBank().region(
@@ -328,16 +465,6 @@ public final class PlantSlotsBar extends Table {
         );
 
         return emptySlot;
-    }
-
-    public void setOnPlantSelected(
-            Consumer<PlantData> onPlantSelected
-    ) {
-        this.onPlantSelected = onPlantSelected;
-    }
-
-    public PlantData getSelectedPlant() {
-        return selectedPlant;
     }
 
     public void clearPlantSelection() {
