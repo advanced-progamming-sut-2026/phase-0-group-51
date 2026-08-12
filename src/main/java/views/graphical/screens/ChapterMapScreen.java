@@ -60,8 +60,6 @@ public class ChapterMapScreen extends BaseScreen {
     public ChapterMapScreen(PvzGame game, ChapterTheme chapter) {
         super(game);
         this.chapter = chapter;
-
-        // استخراج پیشرفت مرحله‌ها از دیتابیس
         User user = App.getInstance().getLoggedInUser();
         int[] progress = {1, 1};
         if (user != null) {
@@ -74,11 +72,11 @@ public class ChapterMapScreen extends BaseScreen {
         else if (chapter == ChapterTheme.DARK_AGES) chapterIndex = 4;
 
         if (chapterIndex < progress[0]) {
-            currentActiveLevel = 999; // همه مراحل در این فصل पास شده‌اند
+            currentActiveLevel = 999;
         } else if (chapterIndex == progress[0]) {
-            currentActiveLevel = progress[1]; // مرحله فعلی
+            currentActiveLevel = progress[1];
         } else {
-            currentActiveLevel = 0; // تمام مراحل قفل هستند
+            currentActiveLevel = 0;
         }
 
         buildUi();
