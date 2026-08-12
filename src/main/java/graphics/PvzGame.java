@@ -19,6 +19,7 @@ import lombok.Setter;
 import models.App;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
+import views.graphical.animation.PamAnimationActor;
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
@@ -160,55 +161,16 @@ public final class PvzGame extends Game {
             boolean loop,
             List<String> visibleParts
     ) {
-        Map<String, Boolean> visibilityMap =
-                new HashMap<>();
-
-        if (visibleParts != null) {
-            for (String part : visibleParts) {
-                if (part != null
-                        && !part.isBlank()) {
-
-                    visibilityMap.put(
-                            part,
-                            true
-                    );
-                }
-            }
-        }
-
-        Actor actor =
-                new Actor() {
-
-                    private float stateTime = 0f;
-
-                    @Override
-                    public void act(float delta) {
-                        super.act(delta);
-                        stateTime += delta;
-                    }
-
-                    @Override
-                    public void draw(
-                            Batch batch,
-                            float parentAlpha
-                    ) {
-                        pamPlayer.draw(
-                                batch,
-                                pamPath,
-                                clip,
-                                stateTime,
-                                getX(),
-                                getY(),
-                                loop,
-                                visibilityMap
-                        );
-                    }
-                };
+        PamAnimationActor actor =
+                new PamAnimationActor(
+                        pamPlayer,
+                        pamPath,
+                        clip,
+                        loop
+                );
 
         actor.setPosition(x, y);
-        actor.setTouchable(
-                Touchable.disabled
-        );
+        actor.setVisibleParts(visibleParts);
 
         return actor;
     }
