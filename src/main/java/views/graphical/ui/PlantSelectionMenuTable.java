@@ -44,6 +44,7 @@ public final class PlantSelectionMenuTable extends Table {
     private static final float PREVIEW_HEIGHT = 190f;
 
     private final PvzGame game;
+    private final Runnable onSelectionComplete;
 
     private final Table cardsGrid;
     private final Table selectedSlotsTable;
@@ -62,7 +63,7 @@ public final class PlantSelectionMenuTable extends Table {
     private Map<Integer, Integer> plantLevels = Map.of();
     private Map<Integer, Integer> seedPackets = Map.of();
 
-    public PlantSelectionMenuTable(PvzGame game) {
+    public PlantSelectionMenuTable(PvzGame game, Runnable onSelectionComplete) {
         if (game == null) {
             throw new IllegalArgumentException(
                     "game cannot be null"
@@ -70,9 +71,10 @@ public final class PlantSelectionMenuTable extends Table {
         }
 
         this.game = game;
+        this.onSelectionComplete = onSelectionComplete;
 
         setFillParent(true);
-        setTouchable(Touchable.childrenOnly);
+        setTouchable(Touchable.enabled);
         pad(16f);
 
         selectedSlotsTable = new Table();
@@ -142,6 +144,21 @@ public final class PlantSelectionMenuTable extends Table {
                 "LET'S ROCK!",
                 game.getSkin(),
                 "purple"
+        );
+        letsRockButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        Result result = controller.startGame();
+                        if (!result.success()) {
+                            game.notifyError(result.message());
+                            return;
+                        }
+                        if (onSelectionComplete != null) {
+                            onSelectionComplete.run();
+                        }
+                    }
+                }
         );
 
         Table mainLayout = new Table();

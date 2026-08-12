@@ -19,11 +19,17 @@ import lombok.Setter;
 import models.App;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
+import views.graphical.animation.PamAnimationActor;
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
 import pvz.libpvz.pam.PamPlayer;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Getter
 @Setter
 public final class PvzGame extends Game {
@@ -58,7 +64,7 @@ public final class PvzGame extends Game {
         }
         App.getInstance();
 
-        textureBank = new TextureBank("738", assetsFolder);
+        textureBank = new TextureBank("768", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
@@ -131,23 +137,40 @@ public final class PvzGame extends Game {
             }
         }
 
-    public Actor createPamActor(String pamPath, String clip, float x, float y, boolean loop) {
-        Actor actor = new Actor() {
-            private float stateTime = 0f;
-            @Override
-            public void act(float delta) {
-                super.act(delta);
-                stateTime += delta;
-            }
-
-            @Override
-            public void draw(Batch batch, float parentAlpha) {
-                pamPlayer.draw(batch, pamPath, clip, stateTime, getX(), getY(), loop);
-            }
-        };
+    public Actor createPamActor(
+            String pamPath,
+            String clip,
+            float x,
+            float y,
+            boolean loop
+    ) {
+        return createPamActor(
+                pamPath,
+                clip,
+                x,
+                y,
+                loop,
+                List.of()
+        );
+    }
+    public Actor createPamActor(
+            String pamPath,
+            String clip,
+            float x,
+            float y,
+            boolean loop,
+            List<String> visibleParts
+    ) {
+        PamAnimationActor actor =
+                new PamAnimationActor(
+                        pamPlayer,
+                        pamPath,
+                        clip,
+                        loop
+                );
 
         actor.setPosition(x, y);
-        actor.setTouchable(Touchable.disabled);
+        actor.setVisibleParts(visibleParts);
 
         return actor;
     }
