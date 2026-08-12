@@ -3,6 +3,12 @@
     "aliases": [
       "ZombieDefault"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "toughness": "Average",
+    "speed": "Basic",
+    "overallDisc": "Regular Garden-variety zombie.",
+    "funDisc": "Basic Zombie hates the term \"Basic\". He doesn't consider himself some generic foe or common corpse. He's an individual, darn it, and he's going to make a difference even if it kills you.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -72,6 +78,16 @@
     "aliases": [
       "ZombieArmor1"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR1",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": [
+      "zombie_armor_cone_norm",
+      "zombie_tutorial_80x83_2|IMAGE_ZOMBIE_ZOMBIE_TUTORIAL_ZOMBIE_TUTORIAL_80X83_2"
+    ],
+    "toughness": "Protected",
+    "speed": "Basic",
+    "overallDisc": "His traffic cone headpiece makes him twice as tough as normal zombies.",
+    "funDisc":"After a wild night, Conehead Zombie woke up holding a mysterious receipt for a cone and industrial strength adhesive.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -144,6 +160,16 @@
     "aliases": [
       "ZombieArmor2"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR2",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": [
+      "zombie_armor_bucket_norm",
+      "zombie_tutorial_96x97|IMAGE_ZOMBIE_ZOMBIE_TUTORIAL_ZOMBIE_TUTORIAL_96X97"
+    ],
+    "toughness": "Hardened",
+    "speed": "Basic",
+    "overallDisc": "His bucket hat makes him extremely resistant to damage.",
+    "funDisc":"There was a time when Buckethead Zombie was hailed as a zombie genius for his innovative bucket-on-head strategy. It's been a few years, though, and zombies wonder if he's got any surprises left. His secret? He doesn't.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -216,6 +242,13 @@
     "aliases": [
       "ZombieArmor4"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_ARMOR4",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM",
+    "idleVisibleParts": ["zombie_armor_brick_norm", "trowel_base_wCement", "brick_undamaged"],
+    "toughness": "Machined",
+    "speed": "Basic",
+    "overallDisc": "Brickhead Zombie's brick head provides thorough brickheaded brickheadness.",
+    "funDisc":"After consultation with various storybook wolves, it was determined that straw helmets and wood helmets were not up to snuff, and that brick helmets had to be seriously considered.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -288,6 +321,13 @@
     "aliases": [
       "ZombieDarkArmor3"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_ARMOR3",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_BASIC/ZOMBIE_DARK_BASIC.PAM",
+    "idleVisibleParts":["_zombie_armor_crown_states", "zombie_armor_crown_norm"],
+    "toughness": "Machined",
+    "speed": "Basic",
+    "overallDisc": "His king appointed helm provides amazing protection from damage.",
+    "funDisc":"Knight Zombie was just as surprised as anyone when Zombie King promoted him. He'd never say this out loud, but he's not sure he deserves the position. He's not sure he has what it takes to wear the armor. But like they say, \"Fake it 'til you make it.\"",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -361,6 +401,14 @@
     "aliases": [
       "ZombieGargantuar"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_GARGANTUAR",
+    "idlePamPath":"768/FULL/ZOMBIE/DARK_GARGANTUAR/DARK_GARGANTUAR.PAM",
+    "toughness": "Great",
+    "speed": "Hungry",
+    "damage": "crushes plants with pole",
+    "special": "throws Imp when damaged",
+    "overallDisc": "Gargantuar really is kind of a big deal.",
+    "funDisc":"Gargantuar is the embodiment of power, made real. He is a juggernaut of hunger, from which there is no escape. He is fear unleashed. Well, he's fear slightly leashed.",
     "objclass": "ZombieGargantuarProps",
     "objdata": {
       "AlmanacOffset": {
@@ -498,6 +546,12 @@
     "aliases": [
       "ZombieImp"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL_IMP",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL_IMP/ZOMBIE_TUTORIAL_IMP.PAM",
+    "toughness": "Average",
+    "speed": "Hungry",
+    "overallDisc": "Is hurled onto the lawn past your defenses, then shuffles ahead.",
+    "funDisc":"What he lacks in reach he more than makes up for with his bad attitude, or Zombattitude as he likes to call it. Don't encourage him.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -572,6 +626,13 @@
     "aliases": [
       "ZombieRa"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_RA",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_RA/ZOMBIE_EGYPT_RA.PAM",
+    "toughness": "Average",
+    "speed": "Basic",
+    "overallDisc": "Tries to steal sun, just for safe keeping.",
+    "special": "tries to steal sun",
+    "funDisc":"Ra Zombie isn't actually named after the Sun God Ra, though that's a common mistake. He just likes to say \"Ra\" a lot.",
     "objclass": "ZombieRaProps",
     "objdata": {
       "ArtCenter": {
@@ -642,6 +703,14 @@
     "aliases": [
       "ZombieExplorer"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_EXPLORER",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EXPLORER/ZOMBIE_EXPLORER.PAM",
+    "toughness": "Solid",
+    "speed": "Hungry",
+    "overallDisc": "Carries a torch that can instantly destroy your plants.",
+    "damage": "torch destroys a plant on contact",
+    "weakness": "cold attacks extinguish torch",
+    "funDisc":"His impressive friendly mutton chops has always kept food in them for weeks, making sure his explorations are filled with snacks.",
     "objclass": "ZombieExplorerProps",
     "objdata": {
       "ArtCenter": {
@@ -719,6 +788,13 @@
     "aliases": [
       "ZombieTombRaiser"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TOMB_RAISER",
+    "idlePamPath":"768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_TOMBRAISER/ZOMBIE_EGYPT_TOMBRAISER.PAM",
+    "toughness": "Dense",
+    "speed": "Basic",
+    "overallDisc": "Throws out bones to create tombstones.",
+    "special": "creates tombstones on the lawn",
+    "funDisc":"He dreams about playing fetch, running for brains. He loves burying himself in the yard, and is not yet indoor trained. He's still looking for his tail.",
     "objclass": "ZombieTombRaiserProps",
     "objdata": {
       "# TombRaiser specific properties ": 0,
@@ -794,6 +870,12 @@
     "aliases": [
       "ZombieIceAgeDodo"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_DODO",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_DODORIDER/ZOMBIE_ICEAGE_DODORIDER.PAM",
+    "toughness": "Protected",
+    "speed": "Speedy",
+    "overallDisc": "Dodo bird with an imp rider. The dodo can flap and jump over barricades as well as troublesome plants.",
+    "funDisc":"Dodo Rider believes dodos are the future of transportation. He believes a public dodo-riding system is not only a wise expenditure of tax dollars but would help the vast majority of zombies get where they need to go more efficiently. Everyone keeps telling him there's no future in dodos, but he refuses to listen.",
     "objclass": "ZombieIceAgeDodoProps",
     "objdata": {
       "AddRandomChanceForJumpPerGridWalked": 0.1,
@@ -905,6 +987,12 @@
     "aliases": [
       "ZombieIceAgeHunter"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_HUNTER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_HUNTER/ZOMBIE_ICEAGE_HUNTER.PAM",
+    "toughness": "Dense",
+    "speed": "Creeper",
+    "overallDisc": "Zombie that can throw snow balls at range to cool down plants until they freeze into blocks.",
+    "funDisc":"Shhhhh ... Hunter Zombie didn't actually kill that sabertooth tiger. He found the skin at a thrift store. Also, he's a vegetarian. Tell no one.",
     "objclass": "ZombieIceAgeHunterProps",
     "objdata": {
       "Actions": [
@@ -981,6 +1069,13 @@
     "aliases": [
       "ZombieIceAgeTroglobite"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_ICEAGE_TROGLOBITE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_ICEAGE_TROGLOBITE/ZOMBIE_ICEAGE_TROGLOBITE.PAM",
+    "toughness": "Dense",
+    "speed": "Basic",
+    "overallDisc": "Strong zombie that can push blocks of ice across the lawn.",
+    "damage": "crushes plants with frozen blocks",
+    "funDisc":"Troglobite has been pushing ice blocks across the tundra day in and day out for as long as he can remember. It's cold and exhausting work, and frankly, he's ready for a vacation. He'd like to go somewhere sunny and warm for a change. He'd like to relax in the sand. He hears Big Wave Beach is nice this time of year.",
     "objclass": "ZombieIceAgeTroglobiteProps",
     "objdata": {
       "Actions": [
@@ -1056,6 +1151,14 @@
     "aliases": [
       "ZombieBeachFisherman"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_FISHERMAN",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_FISHERMAN/ZOMBIE_BEACH_FISHERMAN.PAM",
+    "walkClip": "toss",
+    "toughness": "Dense",
+    "speed": "Zero",
+    "overallDisc": "Casts line to pull far plants to him.",
+    "special": "Pulls plants to the right",
+    "funDisc":"Everyone is tired of Fisherman Zombie's fishing stories. He's always bragging about the size of his catch. Time and time again, he claims to have caught \"the big one.\" But the fact of the matter is, no one has seen him actually catch a fish. Not once. It's more than a little suspicious.",
     "objclass": "ZombieBeachFishermanProps",
     "objdata": {
       "AllowedLowPlants": [],
@@ -1141,6 +1244,13 @@
     "aliases": [
       "ZombieBeachOctopus"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_OCTOPUS",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_OCTOPUS/ZOMBIE_BEACH_OCTOPUS.PAM",
+    "toughness": "Hardened",
+    "speed": "Creeper",
+    "overallDisc": "Throws octopi at your plants to bind them up.",
+    "special": "bound plants are passive until their octopus is destroyed",
+    "funDisc":"It started innocently enough. One day, Octo Zombie decided to get a pet octopus. But he loved that octopus so much, he got another and another... and another. Next thing you know, he was volunteering at an octopus rescue shelter. And now, well, no one wants to tell him, but he's pretty much the undersea equivalent of a cat lady. You should see how many are living at his house. It's quite startling.",
     "objclass": "ZombieBeachOctopusProps",
     "objdata": {
       "Actions": [
@@ -1213,6 +1323,13 @@
     "aliases": [
       "ZombieBeachSnorkel"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_SNORKEL",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_BEACH_SNORKELER/ZOMBIE_BEACH_SNORKELER.PAM",
+    "toughness": "Protected",
+    "speed": "Basic",
+    "overallDisc": "Snorkel zombies can swim underwater.",
+    "special": "submerges to avoid attacks",
+    "funDisc":"Snorkel Zombie has a hard time getting the Bikini Zombies. He's tried offering them flowers, jewelry, and even chocolate-covered brains. But nothing seems to work. They just can't seem to see past the snorkel on his face.",
     "objclass": "ZombieBeachSnorkelProps",
     "objdata": {
       "ArtCenter": {
@@ -1412,6 +1529,12 @@
     "aliases": [
       "ZombieDarkJuggler"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_JUGGLER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_JESTER/ZOMBIE_DARK_JESTER.PAM",
+    "toughness": "Protected",
+    "speed": "Basic",
+    "overallDisc": "Returns projectiles that are shot at him.",
+    "funDisc":"Oh sure, everyone loves to laugh at Jester Zombie's clownish routines. But what no one knows is that he has a Master of Fine Arts from the Chewliard Performing Arts School. Heck, he's been on stage with some of the finest classical theatre companies this side of the lawn. But sometimes you just gotta go where the paycheck is.",
     "objclass": "ZombieDarkJugglerProps",
     "objdata": {
       "AngleAgnosticProjectiles": [
@@ -1594,6 +1717,12 @@
     "aliases": [
       "ZombieWizard"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_WIZARD",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_WIZARD/ZOMBIE_DARK_WIZARD.PAM",
+    "toughness": "Dense",
+    "speed": "Creeper",
+    "overallDisc": "Transforms plants into passive sheep.",
+    "funDisc":"All the zombies agree, Wizard Zombie's powers of transmutation are impressive. But what they don't get is ... why sheep? Everyone knows it would be more helpful if the Wizard used his powers to turn plants into, say, more zombies. But yeah, no one is going to say that to his face.",
     "objclass": "ZombieDarkWizardProps",
     "objdata": {
       "Actions": [
@@ -1666,6 +1795,13 @@
     "aliases": [
       "ZombieDarkKing"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_KING",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_KING/ZOMBIE_DARK_KING.PAM",
+    "walkClip": "idle2",
+    "toughness": "Hardened",
+    "speed": "Zero",
+    "overallDisc": "Grants knight helms to nearby peasant zombies.",
+    "funDisc":"As Shakespeare once wrote, \"Uneasy lies the head that wears a crown.\" And Zombie King couldn't agree more. It is incredibly difficult to get a good night's sleep with a crown on your head. That thing is all kinds of uncomfortable.",
     "objclass": "ZombieDarkKingProps",
     "objdata": {
       "ArtCenter": {
@@ -1757,6 +1893,13 @@
     "aliases": [
       "ZombieDarkImpDragon"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_DARK_IMP_DRAGON",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_DARK_IMP_DRAGON/ZOMBIE_DARK_IMP_DRAGON.PAM",
+    "toughness": "Average",
+    "speed": "Basic",
+    "overallDisc": "Spit past most your defenses, then claws forward.",
+    "special": "Immune to fire damage",
+    "funDisc":"Imp Zombie knows he's too old to wear a dragon costume like a kid on Halloween. But he doesn't care. Let the others judge. His spirit animal is a dragon, and he feels closer to his true self when he's dressed like this.",
     "objclass": "ZombiePropertySheet",
     "objdata": {
       "ArtCenter": {
@@ -1832,6 +1975,14 @@
     "aliases": [
       "ZombieModernAllStar"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_MODERN_ALLSTAR",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_MODERN_ALLSTAR/ZOMBIE_MODERN_ALLSTAR.PAM",
+    "toughness": "Hardened",
+    "speed": "Flighty",
+    "overallDisc": "A heavy-duty zombie who charges your defensive line.",
+    "damage": "charges like a flighty zombie upon entering the lawn and destroys the first plant he meets",
+    "special": "slows down and becomes a stiff zombie after tackling a plant",
+    "funDisc":"All-Star Zombie is a third-round draft pick and shows a lot of promise, but come on, his salary demands are beyond ridiculous. Ten million brains per year? For FIFTY YEARS?",
     "objclass": "ZombieModernAllStarProps",
     "objdata": {
       "ArtCenter": {
@@ -1909,6 +2060,12 @@
     "aliases": [
       "ZombieLostCityJane"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_LOSTCITY_JANE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_LOSTCITY_JANE/ZOMBIE_LOSTCITY_JANE.PAM",
+    "toughness": "Protected",
+    "speed": "Hungry",
+    "overallDisc": "Her parasol provides protection from lobbed projectiles.",
+    "funDisc":"Wealthy beyond reason, the Parasol Zombie lived a life of luxury - when what she craved was a life of adventure. She funded the expedition to the Lost City and set out to see its wonders for herself, never forgetting to bring her trusty parasol. \"In case it rains,\" she explained - but it only came out sounding like \"Brains\".",
     "objclass": "ZombieLostCityJaneProps",
     "objdata": {
       "ArtCenter": {
@@ -2015,6 +2172,14 @@
     "aliases": [
       "ZombieCrystalSkull"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_LOSTCITY_CRYSTALSKULL",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_LOSTCITY_CRYSTALSKULL/ZOMBIE_LOSTCITY_CRYSTALSKULL.PAM",
+    "toughness": "Protected",
+    "speed": "Basic",
+    "overallDisc": "Uses skull to steal sun, then unleashes energy in a destructive beam.",
+    "damage": "destroys one plant on the 4 tiles in front of him after attempting to steal sun",
+    "special": "tries to steal sun",
+    "funDisc":"Unlike the more famous crystal skulls, turquoise skulls are totally non-mysterious and common as dirt.",
     "objclass": "ZombieCrystalSkullProps",
     "objdata": {
       "ArtCenter": {
@@ -2095,6 +2260,13 @@
     "aliases": [
       "ZombieProspector"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_PROSPECTOR",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PROSPECTOR/ZOMBIE_PROSPECTOR.PAM",
+    "toughness": "Average",
+    "speed": "Stiff",
+    "overallDisc": "Launches over your defenses when his fuse blows down.",
+    "special": "appears on the left side of your lawn when dynamite explodes",
+    "funDisc":"\"There once was a zombie who got old, spending all his day looking for gold. 'Til one day in the rain, he finally ate the brains… and, wait, where's his other shoe?\"",
     "objclass": "ZombieProspectorProps",
     "objdata": {
       "Apex": 250,
@@ -2168,6 +2340,15 @@
     "aliases": [
       "ZombiePiano"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_PIANO",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PIANO/ZOMBIE_PIANO.PAM",
+    "walkClip": "play",
+    "toughness": "Hardened",
+    "speed": "Creeper",
+    "overallDisc": "His rolling piano crushes plants while his music causes dancing zombies to switch lanes.",
+    "damage": "crushes plants with piano",
+    "special":"causes cowboy zombies to switch lanes",
+    "funDisc":"Pianist Zombie only knows two songs, and they're both groaners.",
     "objclass": "ZombiePianoProps",
     "objdata": {
       "ArtCenter": {
@@ -2260,6 +2441,15 @@
     "aliases": [
       "ZombieNewspaper"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_MODERN_NEWSPAPER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_MODERN_NEWSPAPER/ZOMBIE_MODERN_NEWSPAPER.PAM",
+    "idleClip": "idle_newspaper",
+    "walkClip": "walk_newspaper",
+    "toughness": "Hardened",
+    "speed": "Hungry",
+    "overallDisc": "Newspaper protects zombie, who is then enraged when it is destroyed.",
+    "special": "becomes a flighty zombie once the newspaper is destroyed",
+    "funDisc":"You can't really blame him for getting so upset; he was THIS close to finishing the crossword (23 down was \"Brains\").",
     "objclass": "ZombieNewspaperProps",
     "objdata": {
       "ArtCenter": {
@@ -2332,6 +2522,14 @@
   },
   {
     "aliases": ["ZombieBarrelRoller"],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BARRELROLLER",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_PIRATE_BARREL_PUSHER/ZOMBIE_PIRATE_BARREL_PUSHER.PAM",
+    "toughness": "Hardened",
+    "speed": "Basic",
+    "overallDisc": "His rolling barrel crushes plants and provides excellent protection.",
+    "damage":"crushes plants with barrel",
+    "special": "imps thrown from barrel when destroyed",
+    "funDisc":"Barrel Roller Zombie is part of a super underground secret awesome club. You probably haven't heard about it. Also, his left arm is slightly longer than his right arm.",
     "objclass": "ZombieBarrelRollerProps",
     "objdata": {}
   },
@@ -2339,6 +2537,13 @@
     "aliases": [
       "ZombieArcade"
     ],
+    "cardAssetId": "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_EIGHTIES_ARCADE",
+    "idlePamPath":"768/FULL/ZOMBIE/ZOMBIE_80S_ARCADE/ZOMBIE_80S_ARCADE.PAM",
+    "toughness": "Dense",
+    "speed": "Hungry",
+    "overallDisc": "Pushes an arcade cabinet that spits out 8-Bit Zombies.",
+    "damage": "crushes plants with arcade machine",
+    "funDisc":"When it's a choice between quarters for games and quarters for laundry, Arcade Zombie is prepared to make the ultimate stinky sacrifice.",
     "objclass": "ZombieArcadeProps",
     "objdata": {
       "Actions": [

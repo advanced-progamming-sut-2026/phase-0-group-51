@@ -387,4 +387,9 @@ public class SignupScreen extends BaseScreen{
 
         stage.setKeyboardFocus(usernameField);
     }
+    @Override
+    public void show() {
+        super.show();
+        game.hideHud();
+    }
 }

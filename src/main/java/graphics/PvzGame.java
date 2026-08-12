@@ -24,6 +24,11 @@ import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
 import pvz.libpvz.pam.PamPlayer;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Getter
 @Setter
 public final class PvzGame extends Game {
@@ -58,7 +63,7 @@ public final class PvzGame extends Game {
         }
         App.getInstance();
 
-        textureBank = new TextureBank("738", assetsFolder);
+        textureBank = new TextureBank("768", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
         globalUiLayer = new GlobalUiLayer(
                 this,
@@ -131,23 +136,79 @@ public final class PvzGame extends Game {
             }
         }
 
-    public Actor createPamActor(String pamPath, String clip, float x, float y, boolean loop) {
-        Actor actor = new Actor() {
-            private float stateTime = 0f;
-            @Override
-            public void act(float delta) {
-                super.act(delta);
-                stateTime += delta;
-            }
+    public Actor createPamActor(
+            String pamPath,
+            String clip,
+            float x,
+            float y,
+            boolean loop
+    ) {
+        return createPamActor(
+                pamPath,
+                clip,
+                x,
+                y,
+                loop,
+                List.of()
+        );
+    }
+    public Actor createPamActor(
+            String pamPath,
+            String clip,
+            float x,
+            float y,
+            boolean loop,
+            List<String> visibleParts
+    ) {
+        Map<String, Boolean> visibilityMap =
+                new HashMap<>();
 
-            @Override
-            public void draw(Batch batch, float parentAlpha) {
-                pamPlayer.draw(batch, pamPath, clip, stateTime, getX(), getY(), loop);
+        if (visibleParts != null) {
+            for (String part : visibleParts) {
+                if (part != null
+                        && !part.isBlank()) {
+
+                    visibilityMap.put(
+                            part,
+                            true
+                    );
+                }
             }
-        };
+        }
+
+        Actor actor =
+                new Actor() {
+
+                    private float stateTime = 0f;
+
+                    @Override
+                    public void act(float delta) {
+                        super.act(delta);
+                        stateTime += delta;
+                    }
+
+                    @Override
+                    public void draw(
+                            Batch batch,
+                            float parentAlpha
+                    ) {
+                        pamPlayer.draw(
+                                batch,
+                                pamPath,
+                                clip,
+                                stateTime,
+                                getX(),
+                                getY(),
+                                loop,
+                                visibilityMap
+                        );
+                    }
+                };
 
         actor.setPosition(x, y);
-        actor.setTouchable(Touchable.disabled);
+        actor.setTouchable(
+                Touchable.disabled
+        );
 
         return actor;
     }

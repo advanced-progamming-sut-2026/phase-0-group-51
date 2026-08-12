@@ -14,6 +14,8 @@ import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import lombok.Getter;
 
+import java.util.List;
+
 public final class ZombieCard extends Button {
     private static final String READY_BACKGROUND =
             "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_READY";
@@ -21,12 +23,50 @@ public final class ZombieCard extends Button {
     private static final String SELECTED_BACKGROUND =
             "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_SELECTED";
 
-    public record ViewData(String zombieAssetId) {
+    public record ViewData(
+            String alias,
+            String cardAssetId,
+            String idlePamPath,
+            String idleClip,
+            String walkClip,
+            List<String> idleVisibleParts,
+            boolean unlocked
+    ) {
         public ViewData {
-            if (zombieAssetId == null || zombieAssetId.isBlank()) {
+            if (alias == null || alias.isBlank()) {
                 throw new IllegalArgumentException(
-                        "zombieAssetId cannot be null or blank"
+                        "alias cannot be null or blank"
                 );
+            }
+
+            if (cardAssetId == null
+                    || cardAssetId.isBlank()) {
+                throw new IllegalArgumentException(
+                        "cardAssetId cannot be null or blank"
+                );
+            }
+
+            if (idlePamPath == null
+                    || idlePamPath.isBlank()) {
+                throw new IllegalArgumentException(
+                        "idlePamPath cannot be null or blank"
+                );
+            }
+
+            if (idleClip == null
+                    || idleClip.isBlank()) {
+                idleClip = "idle";
+            }
+            if (walkClip == null
+                    || walkClip.isBlank()) {
+                walkClip = "walk";
+            }
+
+            if (idleVisibleParts == null) {
+                idleVisibleParts = List.of();
+            } else {
+                idleVisibleParts =
+                        List.copyOf(idleVisibleParts);
             }
         }
     }
@@ -85,13 +125,27 @@ public final class ZombieCard extends Button {
                 Scaling.none
         );
 
-        zombieImage = createImage(
-                data.zombieAssetId(),
-                Scaling.none
-        );
-
         cardStack.add(stateBackground);
-        cardStack.add(zombieImage);
+
+        if (data.unlocked()) {
+
+            zombieImage = createImage(
+                    data.cardAssetId(),
+                    Scaling.none
+            );
+
+            cardStack.add(zombieImage);
+
+        } else {
+
+            zombieImage = null;
+
+            setChecked(false);
+            setDisabled(true);
+            setTouchable(
+                    Touchable.disabled
+            );
+        }
 
         add(cardStack).size(cardWidth, cardHeight);
 
@@ -137,15 +191,30 @@ public final class ZombieCard extends Button {
     private void refreshVisualState() {
         String backgroundAsset;
 
-        if (isChecked() || hovered) {
-            backgroundAsset = SELECTED_BACKGROUND;
+        if (!data.unlocked()) {
+
+            backgroundAsset =
+                    READY_BACKGROUND;
+
+        } else if (
+                isChecked()
+                        || hovered
+        ) {
+
+            backgroundAsset =
+                    SELECTED_BACKGROUND;
+
         } else {
-            backgroundAsset = READY_BACKGROUND;
+
+            backgroundAsset =
+                    READY_BACKGROUND;
         }
 
         stateBackground.setDrawable(
                 new TextureRegionDrawable(
-                        requireRegion(backgroundAsset)
+                        requireRegion(
+                                backgroundAsset
+                        )
                 )
         );
     }
