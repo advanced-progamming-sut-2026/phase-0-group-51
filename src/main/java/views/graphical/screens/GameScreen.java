@@ -9,7 +9,9 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import graphics.PvzGame;
+import models.App;
 import models.games.ChapterTheme;
+import models.games.Game;
 import models.games.Level;
 import views.graphical.ui.PlantSelectionMenuTable;
 
@@ -38,6 +40,7 @@ public class GameScreen extends BaseScreen {
     private float cameraMainX;
     private float cameraRightX;
     private float cameraSelectionX;
+    private float cameraGameplayX;
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
@@ -46,6 +49,20 @@ public class GameScreen extends BaseScreen {
             .filter(l -> l.levelNumber() == levelNumber)
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Level " + levelNumber + " not found!"));
+
+        Game currentGame = new Game();
+        int chapterIndex = currentGame.getChapters().indexOf(theme);
+        int levelIndex = theme.getLevels().indexOf(currentLevel);
+        if (chapterIndex < 0 || levelIndex < 0) {
+            throw new IllegalStateException(
+                    "Could not resolve selected chapter/level."
+            );
+        }
+
+        currentGame.setCurrentChapterIndex(chapterIndex);
+        currentGame.setCurrentLevelIndex(levelIndex);
+
+        App.getInstance().setCurrentGame(currentGame);
 
         loadBackgroundAssets();
 
@@ -56,6 +73,7 @@ public class GameScreen extends BaseScreen {
         uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
 
         cameraMainX = viewWidth / 2f;
+        cameraGameplayX = bgLeft.getRegionWidth() + bgMid.getRegionWidth() / 2f;
         cameraRightX = totalWorldWidth - (viewWidth / 2f);
         cameraSelectionX = cameraRightX - (viewWidth / 2.5f);
 
@@ -140,15 +158,16 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
-                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game);
+                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, this::startGameAfterSelection);
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
                 break;
 
             case PAN_BACK_TO_MAIN:
                 float progressLeft = Math.min(1f, stateTime / panDuration);
-                camera.position.x = Interpolation.smooth.apply(cameraSelectionX, cameraMainX, progressLeft);
+                camera.position.x = Interpolation.smooth.apply(cameraSelectionX, cameraGameplayX, progressLeft);
                 if (progressLeft >= 1f) {
+                    camera.position.x = cameraGameplayX;
                     introState = IntroState.PLAYING;
                 }
                 break;
