@@ -20,9 +20,11 @@ import graphics.PvzGame;
 import models.Result;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.NotificationOverlay;
+import views.graphical.ui.ProfilePopup;
 import views.graphical.ui.SettingsPopup;
 
 public class MainMenuScreen extends BaseScreen{
+    private ProfilePopup profilePopup;
     private Stack root;
     private Texture backgroundTexture;
     private final MainMenuController controller = new MainMenuController();
@@ -129,6 +131,12 @@ public class MainMenuScreen extends BaseScreen{
                 Gdx.app.exit();
             }
         });
+        profile.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                toggleProfile();
+            }
+        });
         Container<ImageButton> container4 = new Container<>(exitButton);
         container4.setFillParent(true);
         container4.bottom().left();
@@ -159,6 +167,20 @@ public class MainMenuScreen extends BaseScreen{
 
         root.add(carouselGroup);
         stage.addActor(dotsTable);
+    }
+
+    private void toggleProfile() {
+        if (profilePopup != null && profilePopup.hasParent()) {
+            profilePopup.remove();
+            return;
+        }
+        profilePopup = new ProfilePopup(game);
+        profilePopup.pack();
+        profilePopup.setPosition(
+                (stage.getWidth() - profilePopup.getWidth()) / 2f,
+                (stage.getHeight() - profilePopup.getHeight()) / 2f
+        );
+        stage.addActor(profilePopup);
     }
 
     private ImageButton createExitButton() {

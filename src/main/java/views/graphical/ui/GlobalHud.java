@@ -1,6 +1,8 @@
 package views.graphical.ui;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
@@ -8,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
+import controllers.NewsMenuController;
 import graphics.PvzGame;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -17,7 +20,6 @@ import models.App;
 import models.User;
 
 import com.badlogic.gdx.scenes.scene2d.Group;
-import com.badlogic.gdx.scenes.scene2d.Touchable;
 import views.graphical.screens.GreenHouseScreen;
 public final class GlobalHud extends Table {
 
@@ -42,6 +44,13 @@ public final class GlobalHud extends Table {
     private static final String NEWS_SELECTED = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_SELECTED";
     private static final String SHOP = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL";
     private static final String SHOP_CLICKED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED";
+    private final NewsMenuController newsController = new NewsMenuController();
+    private Label unreadNewsLabel;
+    private Table unreadNews;
+    private Texture unreadBadgeTexture;
+    private newsPopup newsPopup;
+    private float newsRefreshTimer = 0f;
+    private static final float NEWS_REFRESH = 0.5f;
     public GlobalHud(PvzGame game, Skin skin) {
         this.game = game;
         this.skin = skin;
@@ -149,19 +158,77 @@ public final class GlobalHud extends Table {
         });
         topRow.add(zenGardenButton).size(52f).padRight(6f);;
         Actor newsButton = gameIcon(NEWS, NEWS_SELECTED, "NEWS");
+        newsButton.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        toggleNews();
+                    }
+                }
+        );
 
-        newsButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                //  News menu
-            }
-        });
+        Stack newsStack = new Stack();
+        Table iconLayer = new Table();
+        iconLayer.add(newsButton).size(52f);
+        newsStack.add(iconLayer);
 
-        topRow.add(newsButton).size(52f);
-
+        unreadNews = createUnreadNews();
+        Table badgeLayer = new Table();
+        badgeLayer.top().right();
+        badgeLayer.add(unreadNews).size(24f).padTop(-2f).padRight(-2f);
+        newsStack.add(badgeLayer);
+        topRow.add(newsStack).size(58f);
         return topRow;
     }
+    private void toggleNews() {
+        if (newsPopup != null && newsPopup.hasParent()) {
+            newsPopup.remove();
+            newsPopup = null;
+            return;
+        }
+        newsPopup = new newsPopup(game, this::refreshUnreadNews);
+        getStage().addActor(newsPopup);
+        newsPopup.toFront();
+        refreshUnreadNews();
+    }
+    private Table createUnreadNews() {
+        final int textureSize = 64;
+        Pixmap pixmap = new Pixmap(textureSize, textureSize, Pixmap.Format.RGBA8888);
+        pixmap.setColor(0f, 0f, 0f, 0f);
+        pixmap.fill();
+        pixmap.setColor(Color.valueOf("841919"));
+        pixmap.fillCircle(
+                textureSize / 2,
+                textureSize / 2,
+                textureSize / 2 - 1
+        );
 
+        pixmap.setColor(
+                Color.valueOf("E53935")
+        );
+        pixmap.fillCircle(
+                textureSize / 2,
+                textureSize / 2,
+                textureSize / 2 - 5
+        );
+
+        unreadBadgeTexture = new Texture(pixmap);
+        pixmap.dispose();
+        unreadBadgeTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        Table badge = new Table();
+        badge.setBackground(new TextureRegionDrawable(new TextureRegion(unreadBadgeTexture)));
+
+
+        unreadNewsLabel = new Label("0", labelStyle("medium_outline"));
+        unreadNewsLabel.setColor(Color.WHITE);
+        unreadNewsLabel.setAlignment(Align.center);
+        unreadNewsLabel.setFontScale(0.65f);
+        unreadNewsLabel.setTouchable(Touchable.disabled);
+        badge.add(unreadNewsLabel).expand().fill();
+        badge.setTouchable(Touchable.disabled);
+        badge.setVisible(false);
+        return badge;
+    }
     public void configure(int coins, int gems, boolean showBackButton, Runnable backAction) {
         this.backAction = backAction;
         if (backButton != null) {
@@ -173,6 +240,8 @@ public final class GlobalHud extends Table {
         setVisible(true);
         currencyRefreshTimer = 0f;
         refreshCurrencyLabels();
+        newsRefreshTimer = 0f;
+        refreshUnreadNews();
     }
     public void updateCurrencies(int coins, int gems) {
         if (coinLabel != null) coinLabel.setText(String.valueOf(coins));
@@ -335,5 +404,22 @@ public final class GlobalHud extends Table {
             currencyRefreshTimer = 0f;
             refreshCurrencyLabels();
         }
+        newsRefreshTimer += delta;
+        if (newsRefreshTimer >= NEWS_REFRESH) {
+            newsRefreshTimer = 0f;
+            refreshUnreadNews();
+        }
+    }
+    private void refreshUnreadNews() {
+        if (unreadNews == null || unreadNewsLabel == null) {return;}
+        int unreadCount = newsController.getUnreadNewsCount();
+        if (unreadCount <= 0) {
+            unreadNews.setVisible(false);
+            return;
+        }
+        unreadNewsLabel.setText(
+                unreadCount > 99 ? "99+" : String.valueOf(unreadCount)
+        );
+        unreadNews.setVisible(true);
     }
 }

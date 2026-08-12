@@ -21,7 +21,39 @@ public class ProfileMenuController {
         this.signUpValidation = new SignUpValidation();
         this.repository = new UserRepository();
     }
+    public record ProfileData(
+            String username,
+            String nickname,
+            String email,
+            int gamesPlayed,
+            int coins,
+            int gems,
+            int passedLevels,
+            int mostMeowPoint
+    ) {
+    }
 
+    public ProfileData getProfileData() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return null;
+        }
+        User freshUser = repository.getUserByUsername(user.getUsername());
+        if (freshUser == null) {
+            freshUser = user;
+        }
+        int passedLevels = repository.getPassedLevels(user.getId());
+        return new ProfileData(
+                freshUser.getUsername(),
+                freshUser.getNickname(),
+                freshUser.getEmail(),
+                freshUser.getGamesPlayed(),
+                freshUser.getCoins(),
+                freshUser.getGems(),
+                passedLevels,
+                freshUser.getMostMeowPoint()
+        );
+    }
     public Result changeUsername(String newUsername) {
         User user = currentUser();
         if (user == null) {
