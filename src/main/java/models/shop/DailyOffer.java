@@ -29,6 +29,9 @@ public class DailyOffer {
     public int getFinalPrice() {
         return (int)(BASE_PRICE*(1 - DISCOUNT));
     }
+    public int getBasePrice() {
+        return BASE_PRICE;
+    }
     public boolean isFinished() {
         return date.isBefore(LocalDate.now());
     }

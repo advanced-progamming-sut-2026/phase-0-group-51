@@ -163,9 +163,8 @@ public class ChapterSelectScreen extends BaseScreen {
             int total = chapter.getLevels().size();
             int done = 0;
             if (chapterIdx < progress[0]) {
-                done = total; // تمام مراحل این فصل رد شده
+                done = total;
             } else if (chapterIdx == progress[0]) {
-                // مراحلی که با موفقیت تمام شده، یکی کمتر از مرحله فعلی است
                 done = Math.min(progress[1] - 1, total);
             }
 
