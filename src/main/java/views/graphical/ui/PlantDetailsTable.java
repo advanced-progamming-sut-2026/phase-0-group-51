@@ -13,14 +13,17 @@ import graphics.PvzGame;
 
 public final class PlantDetailsTable extends Table {
 
-    private static final String PLANT_BACKGROUND =
-            "IMAGE_UI_CARDS_BACKGROUNDS_CARD_PLANT_BG_MODERN";
-
-    private static final String BACK =
-            "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
-
-    private static final String BACK_PRESSED =
-            "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
+    private static final String PLANT_BACKGROUND = "IMAGE_UI_CARDS_BACKGROUNDS_CARD_PLANT_BG_MODERN";
+    private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
+    private static final String BACK_PRESSED = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
+    private static final String SUN_COST_ICON = "IMAGE_UI_ALMANAC_ALMANAC_STAT_ICON_SUNCOST";
+    private static final String RECHARGE_ICON = "IMAGE_UI_ALMANAC_PLANTS_RECHARGE_ICON";
+    private static final String TOUGHNESS_ICON = "IMAGE_UI_ALMANAC_PLANTS_TOUGHNESS_ICON";
+    private static final String DAMAGE_ICON = "IMAGE_UI_ALMANAC_PLANTS_DAMAGE_ICON";
+    private static final String RANGE_ICON = "IMAGE_UI_ALMANAC_PLANTS_RANGE_ICON";
+    private static final String SPECIAL_ICON = "IMAGE_UI_ALMANAC_ALMANAC_STAT_ICON_SPECIAL";
+    private static final String FAMILY_ICON = "IMAGE_UI_PACKETS_MINTFAM_PEASHOOTER";
+    private static final String PLANT_FOOD_ICON = "IMAGE_UI_ALMANAC_PLANT_FOOD_STAT_ICON";
 
     private final PvzGame game;
     private final PlantCard.ViewData data;
@@ -109,8 +112,18 @@ public final class PlantDetailsTable extends Table {
         Table leftSide =
                 createLeftSide();
 
-        Table rightSide =
-                new Table();
+        Table rightSide = createRightSide();
+        ScrollPane cardsScroll = new ScrollPane(
+                rightSide,
+                game.getSkin()
+        );
+
+        cardsScroll.setFadeScrollBars(false);
+        cardsScroll.setOverscroll(false, false);
+        cardsScroll.setScrollingDisabled(
+                true,
+                false
+        );
 
         body.add(leftSide)
                 .width(470f)
@@ -119,11 +132,319 @@ public final class PlantDetailsTable extends Table {
                 .padLeft(40f)
                 .padTop(25f);
 
-        body.add(rightSide)
+        body.add(cardsScroll)
                 .grow();
 
         add(body)
                 .grow();
+    }
+
+    private Table createRightSide() {
+        Table right = new Table();
+        right.top().left();
+
+        Table stats = new Table();
+        stats.top().left();
+
+        stats.add(createStat(SUN_COST_ICON, "SUN COST", String.valueOf(data.plant().cost())))
+                .width(245f)
+                .left();
+
+        stats.add(createStat(RECHARGE_ICON,
+                                "RECHARGE",
+                                formatNumber(
+                                        data.plant().recharge()
+                                )
+                        )
+                )
+                .width(245f)
+                .left()
+                .row();
+
+
+        stats.add(
+                        createStat(
+                                TOUGHNESS_ICON,
+                                "TOUGHNESS",
+                                String.valueOf(
+                                        data.plant().baseHp()
+                                )
+                        )
+                )
+                .width(245f)
+                .left()
+                .padTop(15f);
+
+        stats.add(
+                        createStat(
+                                DAMAGE_ICON,
+                                "DAMAGE",
+                                data.plant().damageExpression()
+                        )
+                )
+                .width(245f)
+                .left()
+                .padTop(15f).row();
+
+        stats.add(
+                        createStat(
+                                SPECIAL_ICON,
+                                "SPECIAL",
+                                data.plant().tags().toString()
+                        )
+                )
+                .width(245f)
+                .left()
+                .padTop(15f)
+                .row();
+
+
+        right.add(stats)
+                .growX()
+                .left()
+                .row();
+
+
+        right.add(
+                        createFamilyRow()
+                )
+                .width(245f)
+                .left()
+                .padTop(25f)
+                .row();
+
+
+        right.add(
+                        createDescriptionRow(
+                                PLANT_FOOD_ICON,
+                                "Plant Food:",
+                                data.plant().onPlantFoodDescription()
+                        )
+                )
+                .width(500f)
+                .left()
+                .padTop(20f)
+                .row();
+
+
+        right.add(
+                        createDescriptionRow(
+                                null,
+                                "",
+                                data.plant().overallDescription()
+                        )
+                )
+                .width(500f)
+                .left()
+                .padTop(15f)
+                .row();
+
+
+        Label funDescription =
+                new Label(
+                        data.plant()
+                                .funDescription(),
+                        game.getSkin().get("big", Label.LabelStyle.class)
+                );
+        funDescription.setColor(Color.YELLOW);
+
+        funDescription.setWrap(true);
+
+        funDescription.setColor(
+                Color.valueOf("FFD75A")
+        );
+
+        right.add(funDescription)
+                .width(500f)
+                .left()
+                .padTop(25f)
+                .padBottom(15f);
+
+        return right;
+    }
+    private Table createStat(
+            String iconAsset,
+            String title,
+            String value
+    ) {
+        Table stat = new Table();
+        stat.left();
+
+        Actor icon =createIconOrPlaceholder(iconAsset);
+
+        Table text = new Table();
+        text.left();
+
+        Label titleLabel = new Label(title, game.getSkin());
+
+        titleLabel.setColor(Color.LIGHT_GRAY);
+
+        Label valueLabel = new Label(value == null || value.isBlank() ? "—" : value, game.getSkin(), "big");
+
+        valueLabel.setColor(Color.WHITE);
+
+        text.add(titleLabel)
+                .left()
+                .row();
+
+        text.add(valueLabel)
+                .left();
+
+        stat.add(icon)
+                .size(48f)
+                .padRight(8f);
+
+        stat.add(text)
+                .left();
+
+        return stat;
+    }
+    private Table createFamilyRow() {
+        Table row = new Table();
+        row.left();
+
+        Actor icon =
+                createIconOrPlaceholder(
+                        FAMILY_ICON
+                );
+
+        Label family =
+                new Label(
+                        familyName(
+                                data.plant().category()
+                        ),
+                        game.getSkin(),
+                        "big"
+                );
+
+        row.add(icon)
+                .size(48f)
+                .padRight(10f);
+
+        row.add(family)
+                .left();
+
+        return row;
+    }
+    private Table createDescriptionRow(
+            String iconAsset,
+            String title,
+            String description
+    ) {
+        Table row = new Table();
+        row.left().top();
+
+        if (iconAsset != null) {
+            Actor icon =
+                    createIconOrPlaceholder(
+                            iconAsset
+                    );
+
+            row.add(icon)
+                    .size(42f)
+                    .top()
+                    .padRight(8f);
+        }
+
+        Label text =
+                new Label(
+                        title + " " + description,
+                        game.getSkin().get("big", Label.LabelStyle.class)
+                );
+
+        text.setWrap(true);
+        text.setColor(Color.WHITE);
+
+        row.add(text)
+                .growX()
+                .left()
+                .top();
+
+        return row;
+    }
+    private String formatNumber(
+            double number
+    ) {
+        if (number == Math.rint(number)) {
+            return String.valueOf(
+                    (int) number
+            );
+        }
+
+        return String.valueOf(number);
+    }
+    private String familyName(
+            String category
+    ) {
+        return switch (category) {
+            case "SunProducer" ->
+                    "Enlighten-mint";
+
+            case "Shooter" ->
+                    "Appease-mint";
+
+            case "Lobber" ->
+                    "Arma-mint";
+
+            case "Explosive" ->
+                    "Bombard-mint";
+
+            case "Melee" ->
+                    "Enforce-mint";
+
+            case "Wall-nut" ->
+                    "Reinforce-mint";
+
+            case "Modifier" ->
+                    "Enchant-mint";
+
+            case "Strike-through" ->
+                    "Pierce-mint";
+
+            case "Homing" ->
+                    "catTail-mint";
+
+            default ->
+                    category;
+        };
+    }
+    private Actor createIconOrPlaceholder(
+            String assetId
+    ) {
+        if (assetId != null
+                && !assetId.isBlank()) {
+
+            Image image =
+                    new Image(
+                            drawable(assetId)
+                    );
+
+            image.setScaling(
+                    Scaling.fit
+            );
+
+            image.setTouchable(
+                    Touchable.disabled
+            );
+
+            return image;
+        }
+
+        Table placeholder =
+                new Table();
+
+        placeholder.setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        Color.valueOf("08782E")
+                )
+        );
+
+        placeholder.setTouchable(
+                Touchable.disabled
+        );
+
+        return placeholder;
     }
 
     private Table createLeftSide() {

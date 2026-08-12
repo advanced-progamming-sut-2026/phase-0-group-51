@@ -23,5 +23,8 @@ public record PlantData(
         List<UpgradeData> upgrades,
         String cardAssetId,
         String idlePamPath,
-        String idleClip
+        String idleClip,
+        String onPlantFoodDescription,
+        String overallDescription,
+        String funDescription
 ) {}

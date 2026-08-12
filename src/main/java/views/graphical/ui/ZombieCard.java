@@ -14,6 +14,8 @@ import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import lombok.Getter;
 
+import java.util.List;
+
 public final class ZombieCard extends Button {
     private static final String READY_BACKGROUND =
             "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_READY";
@@ -21,7 +23,15 @@ public final class ZombieCard extends Button {
     private static final String SELECTED_BACKGROUND =
             "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_SELECTED";
 
-    public record ViewData(String alias, String cardAssetId, boolean unlocked) {
+    public record ViewData(
+            String alias,
+            String cardAssetId,
+            String idlePamPath,
+            String idleClip,
+            String walkClip,
+            List<String> idleVisibleParts,
+            boolean unlocked
+    ) {
         public ViewData {
             if (alias == null || alias.isBlank()) {
                 throw new IllegalArgumentException(
@@ -34,6 +44,29 @@ public final class ZombieCard extends Button {
                 throw new IllegalArgumentException(
                         "cardAssetId cannot be null or blank"
                 );
+            }
+
+            if (idlePamPath == null
+                    || idlePamPath.isBlank()) {
+                throw new IllegalArgumentException(
+                        "idlePamPath cannot be null or blank"
+                );
+            }
+
+            if (idleClip == null
+                    || idleClip.isBlank()) {
+                idleClip = "idle";
+            }
+            if (walkClip == null
+                    || walkClip.isBlank()) {
+                walkClip = "walk";
+            }
+
+            if (idleVisibleParts == null) {
+                idleVisibleParts = List.of();
+            } else {
+                idleVisibleParts =
+                        List.copyOf(idleVisibleParts);
             }
         }
     }

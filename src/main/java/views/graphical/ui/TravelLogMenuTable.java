@@ -1,6 +1,7 @@
 package views.graphical.ui;
 
 import Data.database.QuestsRepository;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -44,6 +45,7 @@ public final class TravelLogMenuTable extends Table {
 
     private static final String QUEST_BACKGROUND =
             "IMAGE_UI_QUEST_TOAST_QUEST_TOAST_DEFAULT";
+    private static final float PANEL_WIDTH = 950f;
 
     //test
     private static final float QUEST_ROW_HEIGHT = 150f;
@@ -65,7 +67,18 @@ public final class TravelLogMenuTable extends Table {
         this.game = game;
 
         setFillParent(true);
-        setTouchable(Touchable.childrenOnly);
+        setTouchable(Touchable.enabled);
+        setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        new Color(
+                                0f,
+                                0f,
+                                0f,
+                                0.55f
+                        )
+                )
+        );
         pad(22f);
 
         Table panel = new Table();
@@ -97,11 +110,6 @@ public final class TravelLogMenuTable extends Table {
                 QUESTS_TAB_SELECTED
         );
 
-        ImageButton minigamesTab = createTabButton(
-                MINIGAMES_TAB,
-                MINIGAMES_TAB_SELECTED
-        );
-
         ImageButton closeButton = createCloseButton();
 
         ButtonGroup<ImageButton> tabGroup =
@@ -112,7 +120,6 @@ public final class TravelLogMenuTable extends Table {
         tabGroup.setUncheckLast(true);
 
         tabGroup.add(questsTab);
-        tabGroup.add(minigamesTab);
         float tabHeight = questsTab.getPrefHeight();
         float panelTopOffset = tabHeight * 0.75f;
         float leftPadding = 40f;
@@ -126,28 +133,23 @@ public final class TravelLogMenuTable extends Table {
         panelLayer.setTouchable(Touchable.childrenOnly);
 
         panelLayer.add(panel)
-                .grow()
-                .minWidth(0f)
+                .width(PANEL_WIDTH)
+                .growY()
                 .minHeight(0f)
                 .padTop(panelTopOffset);
 
         Table questsLayer = new Table();
         questsLayer.top().left();
         questsLayer.setTouchable(Touchable.childrenOnly);
+        float panelSideSpace =
+                (PvzGame.VIRTUAL_WIDTH - PANEL_WIDTH) / 2f;
+        questsLayer.add(questsTab).padLeft(panelSideSpace + leftPadding);
 
-        questsLayer.add(questsTab)
-                .padLeft(leftPadding);
 
         Table minigamesLayer = new Table();
         minigamesLayer.top().left();
         minigamesLayer.setTouchable(Touchable.childrenOnly);
 
-        minigamesLayer.add(minigamesTab)
-                .padLeft(
-                        leftPadding
-                                + questsTab.getPrefWidth()
-                                + tabGap
-                );
 
         Table closeLayer = new Table();
         closeLayer.top().right();
@@ -160,8 +162,10 @@ public final class TravelLogMenuTable extends Table {
 
         closeLayer.add(closeButton)
                 .padTop(closeButtonOffset)
-                .padRight(50f);
-
+                .padRight(
+                        panelSideSpace
+                                + 50f
+                );
         menuStack.add(minigamesLayer);
         menuStack.add(questsLayer);
         menuStack.add(panelLayer);
@@ -184,22 +188,6 @@ public final class TravelLogMenuTable extends Table {
                     showQuests();
                 } else {
                     questsLayer.toBack();
-                }
-            }
-        });
-
-        minigamesTab.addListener(new ChangeListener() {
-            @Override
-            public void changed(
-                    ChangeEvent event,
-                    Actor actor
-            ) {
-                if (minigamesTab.isChecked()) {
-                    minigamesLayer.toFront();
-                    closeLayer.toFront();
-                    showMinigames();
-                } else {
-                    minigamesLayer.toBack();
                 }
             }
         });

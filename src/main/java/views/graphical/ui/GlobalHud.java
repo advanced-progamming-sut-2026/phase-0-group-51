@@ -114,6 +114,15 @@ public final class GlobalHud extends Table {
             "BOOK"
         );
 
+        ImageButton questBtn = new ImageButton(game.getSkin().get("hud_quests", ImageButton.ImageButtonStyle.class));
+        topRow.add(questBtn).size(52f).padRight(6f);
+        questBtn.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                getStage().addActor(new TravelLogMenuTable(game));
+            }
+        });
+
         almanacButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
