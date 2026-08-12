@@ -15,10 +15,11 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import Data.database.UserRepository;
 import models.App;
 import models.User;
+import views.graphical.ui.ShopPopup;
 
 import com.badlogic.gdx.scenes.scene2d.Group;
-import com.badlogic.gdx.scenes.scene2d.Touchable;
 import views.graphical.screens.GreenHouseScreen;
+
 public final class GlobalHud extends Table {
 
     private final PvzGame game;
@@ -42,6 +43,7 @@ public final class GlobalHud extends Table {
     private static final String NEWS_SELECTED = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_SELECTED";
     private static final String SHOP = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL";
     private static final String SHOP_CLICKED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED";
+
     public GlobalHud(PvzGame game, Skin skin) {
         this.game = game;
         this.skin = skin;
@@ -74,9 +76,9 @@ public final class GlobalHud extends Table {
         Table topRow = new Table();
         topRow.setTouchable(Touchable.childrenOnly);
         backButton = gameIcon(
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL",
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED",
-                "BACK"
+            "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_NORMAL",
+            "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_BACK_SELECTED",
+            "BACK"
         );
 
         backButton.addListener(new ClickListener() {
@@ -91,9 +93,9 @@ public final class GlobalHud extends Table {
         topRow.add(backButton).size(52f).padRight(6f);
 
         Actor settingsButton = gameIcon(
-                "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL",
-                "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED",
-                "SETTING"
+            "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL",
+            "IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_SELECTED",
+            "SETTING"
         );
 
         settingsButton.addListener(new ClickListener() {
@@ -107,9 +109,9 @@ public final class GlobalHud extends Table {
 
 
         Actor almanacButton = gameIcon(
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL",
-                "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED",
-                "BOOK"
+            "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_NORMAL",
+            "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_ALMANAC_SELECTED",
+            "BOOK"
         );
 
         ImageButton questBtn = new ImageButton(game.getSkin().get("hud_quests", ImageButton.ImageButtonStyle.class));
@@ -124,16 +126,18 @@ public final class GlobalHud extends Table {
         almanacButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                getStage().addActor(new CollectionMenuTable(game));
+                if (getStage() != null) {
+                    getStage().addActor(new CollectionMenuTable(game));
+                }
             }
         });
 
         topRow.add(almanacButton).size(52f).padRight(6f);
 
         Actor minigamesButton = gameIcon(
-                "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL",
-                "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED",
-                "POT"
+            "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_NORMAL",
+            "IMAGE_UI_GENERIC_BUTTON_HUD_MINIGAMES_SELECTED",
+            "POT"
         );
 
         minigamesButton.addListener(new ClickListener() {
@@ -146,17 +150,19 @@ public final class GlobalHud extends Table {
         topRow.add(minigamesButton).size(52f).padRight(6f);
 
         Actor zenGardenButton = gameIcon(
-                "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL",
-                "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED",
-                "CAN"
+            "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL",
+            "IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_SELECTED",
+            "CAN"
         );
 
         zenGardenButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                game.showScreen(new GreenHouseScreen(game));}
+                game.showScreen(new GreenHouseScreen(game));
+            }
         });
-        topRow.add(zenGardenButton).size(52f).padRight(6f);;
+        topRow.add(zenGardenButton).size(52f).padRight(6f);
+
         Actor newsButton = gameIcon(NEWS, NEWS_SELECTED, "NEWS");
 
         newsButton.addListener(new ClickListener() {
@@ -176,13 +182,14 @@ public final class GlobalHud extends Table {
         if (backButton != null) {
             backButton.setVisible(showBackButton);
             backButton.setTouchable(
-                    showBackButton ? Touchable.enabled : Touchable.disabled
+                showBackButton ? Touchable.enabled : Touchable.disabled
             );
         }
         setVisible(true);
         currencyRefreshTimer = 0f;
         refreshCurrencyLabels();
     }
+
     public void updateCurrencies(int coins, int gems) {
         if (coinLabel != null) coinLabel.setText(String.valueOf(coins));
         if (gemLabel != null) gemLabel.setText(String.valueOf(gems));
@@ -227,19 +234,23 @@ public final class GlobalHud extends Table {
         ph.add(l);
         return ph;
     }
+
     private void toggleSettings() {
         if (settingsPopup != null && settingsPopup.hasParent()) {
             settingsPopup.remove();
             return;
         }
-        settingsPopup = new SettingsPopup(game);
-        settingsPopup.pack();
-        settingsPopup.setPosition(
+        if (getStage() != null) {
+            settingsPopup = new SettingsPopup(game);
+            settingsPopup.pack();
+            settingsPopup.setPosition(
                 (getStage().getWidth() - settingsPopup.getWidth()) / 2f,
                 (getStage().getHeight() - settingsPopup.getHeight()) / 2f
-        );
-        getStage().addActor(settingsPopup);
+            );
+            getStage().addActor(settingsPopup);
+        }
     }
+
     private Table buildCurrencyBar() {
 
         Table bar = new Table();
@@ -258,18 +269,30 @@ public final class GlobalHud extends Table {
 
         Group coinDisplay = createCurrencyDisplay(COIN, COIN_CLICKED, coinLabel);
         bar.add(coinDisplay).size(coinDisplay.getWidth(), coinDisplay.getHeight());
+
+        // دکمه فروشگاه و متصل کردن آن به پاپ‌آپ
         Actor shopButton = gameIcon(SHOP, SHOP_CLICKED, "SHOP");
 
         shopButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                // game.showScreen(new ShopScreen(game));
+                // اطمینان از اینکه Stage نال نیست تا از کرش جلوگیری شود
+                if (GlobalHud.this.getStage() != null) {
+                    ShopPopup shopPopup = new ShopPopup(game);
+                    shopPopup.pack();
+                    shopPopup.setPosition(
+                        (GlobalHud.this.getStage().getWidth() - shopPopup.getWidth()) / 2f,
+                        (GlobalHud.this.getStage().getHeight() - shopPopup.getHeight()) / 2f
+                    );
+                    GlobalHud.this.getStage().addActor(shopPopup);
+                }
             }
         });
 
         bar.add(shopButton).size(60f).padLeft(10f);
         return bar;
     }
+
     private Group createCurrencyDisplay(String normalAsset, String pressedAsset, Label label) {
         ImageButton button = createCurrencyButton(normalAsset, pressedAsset);
         float width = button.getPrefWidth();
@@ -278,20 +301,20 @@ public final class GlobalHud extends Table {
         Group group = new Group();
 
         group.setSize(
-                width,
-                height
+            width,
+            height
         );
 
         button.setBounds(
-                0f,
-                0f,
-                width,
-                height
+            0f,
+            0f,
+            width,
+            height
         );
 
         label.setPosition(
-                70f,
-                20f
+            70f,
+            20f
         );
 
         group.addActor(button);
@@ -299,6 +322,7 @@ public final class GlobalHud extends Table {
 
         return group;
     }
+
     private ImageButton createCurrencyButton(String normalAsset, String pressedAsset) {
         TextureRegion normalRegion = game.getTextureBank().region(normalAsset);
         TextureRegion pressedRegion = game.getTextureBank().region(pressedAsset);
@@ -312,6 +336,7 @@ public final class GlobalHud extends Table {
 
         return button;
     }
+
     private void refreshCurrencyLabels() {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
@@ -333,6 +358,7 @@ public final class GlobalHud extends Table {
         coinLabel.setText(String.format("%,d", balance.coins()));
         gemLabel.setText(String.format("%,d", balance.gems()));
     }
+
     @Override
     public void act(float delta) {
         super.act(delta);

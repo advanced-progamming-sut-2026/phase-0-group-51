@@ -60,8 +60,6 @@ public class ChapterMapScreen extends BaseScreen {
     public ChapterMapScreen(PvzGame game, ChapterTheme chapter) {
         super(game);
         this.chapter = chapter;
-
-        // استخراج پیشرفت مرحله‌ها از دیتابیس
         User user = App.getInstance().getLoggedInUser();
         int[] progress = {1, 1};
         if (user != null) {
@@ -74,11 +72,11 @@ public class ChapterMapScreen extends BaseScreen {
         else if (chapter == ChapterTheme.DARK_AGES) chapterIndex = 4;
 
         if (chapterIndex < progress[0]) {
-            currentActiveLevel = 999; // همه مراحل در این فصل पास شده‌اند
+            currentActiveLevel = 999;
         } else if (chapterIndex == progress[0]) {
-            currentActiveLevel = progress[1]; // مرحله فعلی
+            currentActiveLevel = progress[1];
         } else {
-            currentActiveLevel = 0; // تمام مراحل قفل هستند
+            currentActiveLevel = 0;
         }
 
         buildUi();
@@ -186,7 +184,7 @@ public class ChapterMapScreen extends BaseScreen {
             case BIG_WAVE_BEACH:
                 if (levelNum == 1) return "IMAGE_WORLDMAP_BEACH_ANIM27_ANIM27_1362X953";
                 if (levelNum == 3) return "IMAGE_WORLDMAP_BEACH_ANIM12_ANIM12_335X420";
-                if (levelNum == 4) return "IMAGE_WORLDMAP_ZOMBOSS_NODE_BEACH_ZOMBOSS_NODE_BEACH_905X1096";
+                if (levelNum == 4) return "IMAGE_WORLDMAP_TWISTER_ISLAND84";
                 return "IMAGE_WORLDMAP_BEACH_ANIM13_ANIM13_397X399";
 
             case DARK_AGES:
@@ -247,7 +245,7 @@ public class ChapterMapScreen extends BaseScreen {
                 if (levelNum == 1) return new NodeConfig(0.32f, 0.5f, 0.60f, 0.45f);
                 if (levelNum == 2) return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
                 if (levelNum == 3) return new NodeConfig(0.35f, 0.5f, 0.50f, 0.79f);
-                if (levelNum == 4) return new NodeConfig(0.50f, 0.5f, 0.50f, 0.43f);
+                if (levelNum == 4) return new NodeConfig(0.7f, 0.5f, 0.50f, 0.43f);
                 return new NodeConfig(0.35f, 0.5f, 0.55f, 0.78f);
 
             case DARK_AGES:

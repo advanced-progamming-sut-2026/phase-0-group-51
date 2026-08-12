@@ -51,7 +51,7 @@ public final class PlantCard extends Button {
     }
 
     public record ViewData(PlantData plant, boolean unlocked, boolean boosted,
-            int level, int seedPackets, int requiredSeedPackets, boolean showSunCost) {
+                           int level, int seedPackets, int requiredSeedPackets, boolean showSunCost) {
         public ViewData {
             if (plant == null) {
                 throw new IllegalArgumentException("plant cannot be null");
@@ -80,6 +80,7 @@ public final class PlantCard extends Button {
     private boolean boosted;
     private boolean locked;
     private boolean hovered;
+    private boolean forceHideProgress = false;
 
     public PlantCard(PvzGame game, ViewData data) {
         super(new ButtonStyle());
@@ -126,8 +127,8 @@ public final class PlantCard extends Button {
         addListener(new ChangeListener() {
             @Override
             public void changed(
-                    ChangeEvent event,
-                    Actor actor
+                ChangeEvent event,
+                Actor actor
             ) {
                 refreshVisualState();
             }
@@ -135,11 +136,11 @@ public final class PlantCard extends Button {
         addListener(new InputListener() {
             @Override
             public void enter(
-                    InputEvent event,
-                    float x,
-                    float y,
-                    int pointer,
-                    Actor fromActor
+                InputEvent event,
+                float x,
+                float y,
+                int pointer,
+                Actor fromActor
             ) {
                 hovered = true;
                 refreshVisualState();
@@ -147,11 +148,11 @@ public final class PlantCard extends Button {
 
             @Override
             public void exit(
-                    InputEvent event,
-                    float x,
-                    float y,
-                    int pointer,
-                    Actor toActor
+                InputEvent event,
+                float x,
+                float y,
+                int pointer,
+                Actor toActor
             ) {
                 hovered = false;
                 refreshVisualState();
@@ -165,10 +166,10 @@ public final class PlantCard extends Button {
 
         Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.fit);
         float familyWidth =
-                familyLogo.getDrawable().getMinWidth() * 0.7f;
+            familyLogo.getDrawable().getMinWidth() * 0.7f;
 
         float familyHeight =
-                familyLogo.getDrawable().getMinHeight() * 0.7f;
+            familyLogo.getDrawable().getMinHeight() * 0.7f;
         Container<Image> familyLayer = new Container<>(familyLogo);
 
         familyLayer.top().left();
@@ -183,15 +184,15 @@ public final class PlantCard extends Button {
 
         if (data.showSunCost()) {
             Label costLabel = new Label(
-                    Integer.toString(
-                            data.plant().cost()
-                    ),
-                    game.getSkin().get("medium", Label.LabelStyle.class)
+                Integer.toString(
+                    data.plant().cost()
+                ),
+                game.getSkin().get("medium", Label.LabelStyle.class)
             );
 
             costLayer.add(costLabel)
-                    .padRight(8f)
-                    .padBottom(6f);
+                .padRight(8f)
+                .padBottom(6f);
         }
 
         Table progressLayer = new Table();
@@ -199,9 +200,9 @@ public final class PlantCard extends Button {
         progressLayer.setTouchable(Touchable.disabled);
 
         progressLayer.add(progressBar)
-                .width(PROGRESS_WIDTH)
-                .height(PROGRESS_HEIGHT)
-                .padBottom(-10f);
+            .width(PROGRESS_WIDTH)
+            .height(PROGRESS_HEIGHT)
+            .padBottom(-10f);
 
         overlay.add(familyLayer);
         overlay.add(costLayer);
@@ -212,24 +213,24 @@ public final class PlantCard extends Button {
 
     private ProgressBar createPacketProgressBar() {
         float maximum = Math.max(
-                1f,
-                data.requiredSeedPackets()
+            1f,
+            data.requiredSeedPackets()
         );
 
         ProgressBar bar = new ProgressBar(
-                0f,
-                maximum,
-                1f,
-                false,
-                game.getSkin(),
-                "xp_green"
+            0f,
+            maximum,
+            1f,
+            false,
+            game.getSkin(),
+            "xp_green"
         );
 
         bar.setValue(
-                Math.min(
-                        data.seedPackets(),
-                        maximum
-                )
+            Math.min(
+                data.seedPackets(),
+                maximum
+            )
         );
 
         bar.setAnimateDuration(0f);
@@ -240,8 +241,8 @@ public final class PlantCard extends Button {
 
     private Container<Image> createLockLayer() {
         Image lockImage = createImage(
-                LOCK,
-                Scaling.none
+            LOCK,
+            Scaling.none
         );
 
         Container<Image> layer = new Container<>(lockImage);
@@ -253,21 +254,21 @@ public final class PlantCard extends Button {
     }
 
     private Image createImage(
-            String assetId,
-            Scaling scaling
+        String assetId,
+        Scaling scaling
     ) {
         TextureRegion region =
-                game.getTextureBank().region(assetId);
+            game.getTextureBank().region(assetId);
 
         if (region == null) {
             throw new IllegalStateException(
-                    "TextureBank region was not found: "
-                            + assetId
+                "TextureBank region was not found: "
+                    + assetId
             );
         }
 
         Image image = new Image(
-                new TextureRegionDrawable(region)
+            new TextureRegionDrawable(region)
         );
 
         image.setScaling(scaling);
@@ -294,6 +295,11 @@ public final class PlantCard extends Button {
         refreshVisualState();
     }
 
+    public void hideProgressBar() {
+        this.forceHideProgress = true;
+        refreshVisualState();
+    }
+
     private void refreshVisualState() {
         String backgroundAsset;
 
@@ -306,53 +312,54 @@ public final class PlantCard extends Button {
         }
 
         TextureRegion backgroundRegion =
-                game.getTextureBank().region(
-                        backgroundAsset
-                );
+            game.getTextureBank().region(
+                backgroundAsset
+            );
 
         if (backgroundRegion == null) {
             throw new IllegalStateException(
-                    "Card background was not found: "
-                            + backgroundAsset
+                "Card background was not found: "
+                    + backgroundAsset
             );
         }
 
         stateBackground.setDrawable(
-                new TextureRegionDrawable(
-                        backgroundRegion
-                )
+            new TextureRegionDrawable(
+                backgroundRegion
+            )
         );
 
         selectedBorder.setVisible(isChecked());
         lockLayer.setVisible(locked);
-        progressBar.setVisible(!locked);
+        progressBar.setVisible(!locked && !forceHideProgress);
+
         if (locked) {
             plantImage.setColor(
-                    0.5f,
-                    0.5f,
-                    0.5f,
-                    1f
+                0.5f,
+                0.5f,
+                0.5f,
+                1f
             );
 
             stateBackground.setColor(
-                    0.65f,
-                    0.65f,
-                    0.65f,
-                    1f
+                0.65f,
+                0.65f,
+                0.65f,
+                1f
             );
         } else {
             plantImage.setColor(
-                    1f,
-                    1f,
-                    1f,
-                    1f
+                1f,
+                1f,
+                1f,
+                1f
             );
 
             stateBackground.setColor(
-                    1f,
-                    1f,
-                    1f,
-                    1f
+                1f,
+                1f,
+                1f,
+                1f
             );
         }
     }
