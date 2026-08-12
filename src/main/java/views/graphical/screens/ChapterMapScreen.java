@@ -17,7 +17,6 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
-import views.graphical.ui.SettingsPopup;
 import models.App;
 import models.User;
 import Data.database.ProgressRepository;
@@ -29,7 +28,7 @@ public class ChapterMapScreen extends BaseScreen {
     private Group mapContainer;
     private Texture backgroundTexture;
 
-    private static final float MAP_WIDTH = 2000f;
+    private static final float MAP_WIDTH = PvzGame.VIRTUAL_WIDTH;
     private static final float MAP_HEIGHT = PvzGame.VIRTUAL_HEIGHT;
 
     private int currentActiveLevel = 2;
@@ -78,6 +77,10 @@ public class ChapterMapScreen extends BaseScreen {
         } else {
             currentActiveLevel = 0;
         }
+
+
+
+        //currentActiveLevel = 999;
 
         buildUi();
     }
@@ -371,7 +374,8 @@ public class ChapterMapScreen extends BaseScreen {
             node.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    System.out.println("Clicked on Playable Level: " + levelNum + " of " + chapter.name);
+                    // تغییر صفحه به GameScreen همراه با چپتر و شماره مرحله
+                    game.showScreen(new GameScreen(game, chapter, levelNum));
                 }
             });
         }
