@@ -1,19 +1,27 @@
 package views.graphical.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import graphics.PvzGame;
 import models.App;
+import models.Board.Board;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+import views.graphical.gameplay.board.BoardArea;
+import views.graphical.gameplay.board.BoardTransform;
+import views.graphical.gameplay.board.BoardView;
+import views.graphical.gameplay.hud.GameHud;
 import views.graphical.ui.PlantSelectionMenuTable;
+import views.graphical.ui.PlantSlotsBar;
 
 public class GameScreen extends BaseScreen {
 
@@ -23,6 +31,10 @@ public class GameScreen extends BaseScreen {
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final Stage uiStage;
+    private final Stage worldStage;
+    private final PlantSlotsBar plantSlotsBar;
+
+    private GameHud gameHud;
 
     private TextureRegion bgLeft;
     private TextureRegion bgMid;
@@ -41,6 +53,14 @@ public class GameScreen extends BaseScreen {
     private float cameraRightX;
     private float cameraSelectionX;
     private float cameraGameplayX;
+
+    private final ShapeRenderer shapeRenderer;
+
+    private BoardView boardView;
+    private BoardArea boardArea;
+    private final BoardTransform boardTransform;
+
+    private boolean showGrid = true;
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
@@ -70,7 +90,11 @@ public class GameScreen extends BaseScreen {
 
         camera = new OrthographicCamera();
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
+        worldStage = new Stage(viewport, game.getBatch());
         uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
+
+        plantSlotsBar = new PlantSlotsBar(game);
+        plantSlotsBar.setMode(PlantSlotsBar.Mode.SELECTION);
 
         cameraMainX = viewWidth / 2f;
         cameraGameplayX = bgLeft.getRegionWidth() + bgMid.getRegionWidth() / 2f;
@@ -79,6 +103,16 @@ public class GameScreen extends BaseScreen {
 
         camera.position.set(cameraMainX, worldHeight / 2f, 0);
         camera.update();
+
+        shapeRenderer = new ShapeRenderer();
+
+        boardArea = new BoardArea(
+                        533f,
+                        62f,
+                        737f,
+                        380f);
+
+        boardTransform = new BoardTransform(boardArea);
     }
 
     private void loadBackgroundAssets() {
@@ -158,7 +192,12 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
-                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, this::startGameAfterSelection);
+                PlantSelectionMenuTable plantSelection =
+                        new PlantSelectionMenuTable(
+                                game,
+                                plantSlotsBar,
+                                this::startGameAfterSelection
+                        );
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
                 break;
@@ -177,7 +216,27 @@ public class GameScreen extends BaseScreen {
     }
 
     public void startGameAfterSelection() {
+        plantSlotsBar.remove();
+        plantSlotsBar.setOnRemoveRequested(null);
+
         uiStage.clear();
+
+        plantSlotsBar.setMode(PlantSlotsBar.Mode.GAMEPLAY);
+
+        gameHud = new GameHud(game, plantSlotsBar);
+        uiStage.addActor(gameHud);
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame == null || currentGame.getGameState() == null) {
+            throw new IllegalStateException(
+                    "Game state was not created."
+            );
+        }
+
+        Board board = currentGame.getGameState().getBoard();
+        boardView = new BoardView(board, boardTransform);
+        worldStage.addActor(boardView);
+
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
@@ -203,8 +262,71 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
+        worldStage.act(delta);
+        worldStage.draw();
+
+        drawDebugGrid();
 
         uiStage.draw();
+    }
+
+    private void drawDebugGrid() {
+        if (!showGrid) {
+            return;
+        }
+
+        BoardArea area =
+                boardTransform.getArea();
+
+        float tileWidth =
+                boardTransform.tileWidth();
+
+        float tileHeight =
+                boardTransform.tileHeight();
+
+        shapeRenderer.setProjectionMatrix(
+                camera.combined
+        );
+
+        shapeRenderer.begin(
+                ShapeRenderer.ShapeType.Line
+        );
+
+        shapeRenderer.setColor(Color.RED);
+
+        for (int column = 0;
+             column <= BoardTransform.COLUMNS;
+             column++) {
+
+            float x =
+                    area.x()
+                            + column * tileWidth;
+
+            shapeRenderer.line(
+                    x,
+                    area.y(),
+                    x,
+                    area.y() + area.height()
+            );
+        }
+
+        for (int row = 0;
+             row <= BoardTransform.ROWS;
+             row++) {
+
+            float y =
+                    area.y()
+                            + row * tileHeight;
+
+            shapeRenderer.line(
+                    area.x(),
+                    y,
+                    area.x() + area.width(),
+                    y
+            );
+        }
+
+        shapeRenderer.end();
     }
 
     @Override

@@ -51,7 +51,7 @@ public final class PlantCard extends Button {
     }
 
     public record ViewData(PlantData plant, boolean unlocked, boolean boosted,
-                           int level, int seedPackets, int requiredSeedPackets, boolean showSunCost) {
+                           int level, int seedPackets, int requiredSeedPackets, boolean showSunCost, boolean showProgress) {
         public ViewData {
             if (plant == null) {
                 throw new IllegalArgumentException("plant cannot be null");
@@ -66,10 +66,34 @@ public final class PlantCard extends Button {
                 throw new IllegalArgumentException("requiredSeedPackets must be positive");
             }
         }
+        public ViewData(
+                PlantData plant,
+                boolean unlocked,
+                boolean boosted,
+                int level,
+                int seedPackets,
+                int requiredSeedPackets,
+                boolean showSunCost
+        ) {
+            this(
+                    plant,
+                    unlocked,
+                    boosted,
+                    level,
+                    seedPackets,
+                    requiredSeedPackets,
+                    showSunCost,
+                    true
+            );
+        }
     }
     private final PvzGame game;
     @Getter
     private final ViewData data;
+
+    private final float cardScale;
+    private final float cardWidth;
+    private final float cardHeight;
 
     private final Image stateBackground;
     private final Image selectedBorder;
@@ -83,6 +107,19 @@ public final class PlantCard extends Button {
     private boolean forceHideProgress = false;
 
     public PlantCard(PvzGame game, ViewData data) {
+        this(game, data, 1f);
+    }
+
+    /**
+     * Creates a PlantCard at a visual scale.
+     * The normal collection/selection-grid cards still use 1f.
+     * PlantSlotsBar uses a slightly smaller scale.
+     */
+    public PlantCard(
+            PvzGame game,
+            ViewData data,
+            float cardScale
+    ) {
         super(new ButtonStyle());
 
         if (game == null) {
@@ -93,8 +130,17 @@ public final class PlantCard extends Button {
             throw new IllegalArgumentException("data cannot be null");
         }
 
+        if (cardScale <= 0f) {
+            throw new IllegalArgumentException(
+                    "cardScale must be positive"
+            );
+        }
+
         this.game = game;
         this.data = data;
+        this.cardScale = cardScale;
+        this.cardWidth = CARD_WIDTH * cardScale;
+        this.cardHeight = CARD_HEIGHT * cardScale;
         this.boosted = data.boosted();
         this.locked = !data.unlocked();
 
@@ -104,15 +150,31 @@ public final class PlantCard extends Button {
         Stack cardStack = new Stack();
         cardStack.setTouchable(Touchable.disabled);
 
-        stateBackground = createImage(READY_BACKGROUND, Scaling.none);
+        Scaling cardImageScaling =
+                cardScale == 1f
+                        ? Scaling.none
+                        : Scaling.fit;
 
-        plantImage = createImage(data.plant().cardAssetId(), Scaling.none);
+        stateBackground = createImage(
+                READY_BACKGROUND,
+                cardImageScaling
+        );
+
+        plantImage = createImage(
+                data.plant().cardAssetId(),
+                cardImageScaling
+        );
 
         progressBar = createPacketProgressBar();
 
-        selectedBorder = createImage(SELECTED_BORDER, Scaling.none);
+        selectedBorder = createImage(
+                SELECTED_BORDER,
+                cardImageScaling
+        );
 
-        lockLayer = createLockLayer();
+        lockLayer = createLockLayer(
+                cardImageScaling
+        );
 
         cardStack.add(stateBackground);
         cardStack.add(plantImage);
@@ -120,7 +182,10 @@ public final class PlantCard extends Button {
         cardStack.add(createInformationLayer());
         cardStack.add(lockLayer);
 
-        add(cardStack).size(CARD_WIDTH, CARD_HEIGHT);
+        add(cardStack).size(
+                cardWidth,
+                cardHeight
+        );
 
         refreshVisualState();
 
@@ -166,10 +231,14 @@ public final class PlantCard extends Button {
 
         Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.fit);
         float familyWidth =
-            familyLogo.getDrawable().getMinWidth() * 0.7f;
+            familyLogo.getDrawable().getMinWidth()
+                    * 0.7f
+                    * cardScale;
 
         float familyHeight =
-            familyLogo.getDrawable().getMinHeight() * 0.7f;
+            familyLogo.getDrawable().getMinHeight()
+                    * 0.7f
+                    * cardScale;
         Container<Image> familyLayer = new Container<>(familyLogo);
 
         familyLayer.top().left();
@@ -199,10 +268,12 @@ public final class PlantCard extends Button {
         progressLayer.bottom();
         progressLayer.setTouchable(Touchable.disabled);
 
-        progressLayer.add(progressBar)
-            .width(PROGRESS_WIDTH)
-            .height(PROGRESS_HEIGHT)
-            .padBottom(-10f);
+        if (data.showProgress()) {
+            progressLayer.add(progressBar)
+                    .width(PROGRESS_WIDTH)
+                    .height(PROGRESS_HEIGHT)
+                    .padBottom(-10f);
+        }
 
         overlay.add(familyLayer);
         overlay.add(costLayer);
@@ -239,10 +310,12 @@ public final class PlantCard extends Button {
         return bar;
     }
 
-    private Container<Image> createLockLayer() {
+    private Container<Image> createLockLayer(
+            Scaling scaling
+    ) {
         Image lockImage = createImage(
             LOCK,
-            Scaling.none
+            scaling
         );
 
         Container<Image> layer = new Container<>(lockImage);
@@ -331,7 +404,7 @@ public final class PlantCard extends Button {
 
         selectedBorder.setVisible(isChecked());
         lockLayer.setVisible(locked);
-        progressBar.setVisible(!locked && !forceHideProgress);
+        progressBar.setVisible(data.showProgress() && !locked);
 
         if (locked) {
             plantImage.setColor(
@@ -366,11 +439,11 @@ public final class PlantCard extends Button {
 
     @Override
     public float getPrefWidth() {
-        return CARD_WIDTH;
+        return cardWidth;
     }
 
     @Override
     public float getPrefHeight() {
-        return CARD_HEIGHT;
+        return cardHeight;
     }
 }
