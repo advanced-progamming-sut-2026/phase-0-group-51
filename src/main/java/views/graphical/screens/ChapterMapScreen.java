@@ -28,7 +28,7 @@ public class ChapterMapScreen extends BaseScreen {
     private Group mapContainer;
     private Texture backgroundTexture;
 
-    private static final float MAP_WIDTH = PvzGame.VIRTUAL_WIDTH;
+    private static final float MAP_WIDTH = 2000f;
     private static final float MAP_HEIGHT = PvzGame.VIRTUAL_HEIGHT;
 
     private int currentActiveLevel = 2;
