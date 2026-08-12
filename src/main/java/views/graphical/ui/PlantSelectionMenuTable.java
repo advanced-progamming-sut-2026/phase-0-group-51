@@ -7,12 +7,10 @@ import Data.loader.PlantRegistry;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
@@ -28,33 +26,27 @@ import java.util.List;
 
 public final class PlantSelectionMenuTable extends Table {
 
-    private static final String EMPTY_PACKET =
-            "IMAGE_UI_SEASONS_UNCOMPRESSED_PVZ2_SEASONS_UIASSET_PRIZE_WINDOW_UPPER_UNLOCKED";
-
     private static final String TOP_PREVIEW_BACKGROUND =
             "IMAGE_UI_QUESTS_QUEST_PANEL_DAILY";
-
-    private static final int MAX_SELECTED_PLANTS = 8;
-
-    private static final float EMPTY_PACKET_WIDTH = 120f;
-    private static final float EMPTY_PACKET_HEIGHT = 75f;
 
     private static final float PANEL_WIDTH = 650f;
 
     private static final float PREVIEW_HEIGHT = 190f;
 
+    private static final float SCREEN_PADDING = 16f;
+    private static final float PLANT_SLOTS_TOP_OFFSET = 75f;
+    private static final float PLANT_SLOTS_CELL_TOP_PADDING =
+            PLANT_SLOTS_TOP_OFFSET - SCREEN_PADDING;
+
     private final PvzGame game;
     private final Runnable onSelectionComplete;
 
     private final Table cardsGrid;
-    private final Table selectedSlotsTable;
+    private final PlantSlotsBar plantSlotsBar;
     private final Table previewContent;
 
     private final PlantSelectionController controller =
             new PlantSelectionController();
-
-    private final PlantData[] selectedSlots =
-            new PlantData[MAX_SELECTED_PLANTS];
 
     private final Map<Integer, PlantCard> gridCardsByPlantId =
             new HashMap<>();
@@ -63,26 +55,41 @@ public final class PlantSelectionMenuTable extends Table {
     private Map<Integer, Integer> plantLevels = Map.of();
     private Map<Integer, Integer> seedPackets = Map.of();
 
-    public PlantSelectionMenuTable(PvzGame game, Runnable onSelectionComplete) {
+    public PlantSelectionMenuTable(
+            PvzGame game,
+            PlantSlotsBar plantSlotsBar,
+            Runnable onSelectionComplete
+    ) {
         if (game == null) {
             throw new IllegalArgumentException(
                     "game cannot be null"
             );
         }
 
+        if (plantSlotsBar == null) {
+            throw new IllegalArgumentException(
+                    "plantSlotsBar cannot be null"
+            );
+        }
+
         this.game = game;
+        this.plantSlotsBar = plantSlotsBar;
         this.onSelectionComplete = onSelectionComplete;
 
         setFillParent(true);
         setTouchable(Touchable.enabled);
-        pad(16f);
 
-        selectedSlotsTable = new Table();
-        selectedSlotsTable.top().left();
+        pad(SCREEN_PADDING);
 
         refreshPlantData();
+
+        plantSlotsBar.setMode(
+                PlantSlotsBar.Mode.SELECTION
+        );
+        plantSlotsBar.setOnRemoveRequested(
+                this::removePlantFromSlot
+        );
         loadExistingSelectedPlants();
-        buildSelectedSlots();
 
         BorderedPanel outerPanel = new BorderedPanel(
                 game,
@@ -164,10 +171,10 @@ public final class PlantSelectionMenuTable extends Table {
         Table mainLayout = new Table();
         mainLayout.top().left();
 
-        mainLayout.add(selectedSlotsTable)
+        mainLayout.add(plantSlotsBar)
                 .top()
                 .left()
-                .padTop(8f)
+                .padTop(PLANT_SLOTS_CELL_TOP_PADDING)
                 .padRight(4f);
 
         mainLayout.add(outerPanel)
@@ -226,106 +233,24 @@ public final class PlantSelectionMenuTable extends Table {
     }
 
     private void loadExistingSelectedPlants() {
-        Arrays.fill(selectedSlots, null);
-
         Game currentGame =
                 App.getInstance().getCurrentGame();
 
         if (currentGame == null) {
+            plantSlotsBar.loadPlants(List.of());
             return;
         }
 
-        List<PlantData> selected =
-                currentGame.getSelectedPlantsForThisGame();
-
-        int count = Math.min(
-                selected.size(),
-                MAX_SELECTED_PLANTS
+        plantSlotsBar.loadPlants(
+                currentGame.getSelectedPlantsForThisGame()
         );
-
-        for (int i = 0; i < count; i++) {
-            selectedSlots[i] = selected.get(i);
-        }
     }
 
-    private void buildSelectedSlots() {
-        selectedSlotsTable.clearChildren();
-
-        for (int i = 0; i < MAX_SELECTED_PLANTS; i++) {
-
-            PlantData plant =
-                    selectedSlots[i];
-
-            if (plant == null) {
-                Image emptySlot =
-                        new Image(
-                                drawable(EMPTY_PACKET)
-                        );
-
-                emptySlot.setScaling(
-                        Scaling.stretch
-                );
-
-                emptySlot.setTouchable(
-                        Touchable.disabled
-                );
-
-                selectedSlotsTable.add(emptySlot)
-                        .size(
-                                EMPTY_PACKET_WIDTH,
-                                EMPTY_PACKET_HEIGHT
-                        )
-                        .padBottom(2f)
-                        .row();
-
-            } else {
-                PlantCard selectedCard =
-                        createSelectedSlotCard(
-                                plant,
-                                i
-                        );
-
-                selectedSlotsTable.add(selectedCard)
-                        .size(
-                                EMPTY_PACKET_WIDTH,
-                                EMPTY_PACKET_HEIGHT
-                        )
-                        .padBottom(2f)
-                        .row();
-            }
-        }
-    }
-    private PlantCard createSelectedSlotCard(
-            PlantData plant,
-            int slotIndex
-    ) {
-        PlantCard card = new PlantCard(
-                game,
-                createViewData(plant)
-        );
-
-        card.addListener(
-                new ClickListener() {
-                    @Override
-                    public void clicked(
-                            InputEvent event,
-                            float x,
-                            float y
-                    ) {
-                        removePlantFromSlot(
-                                slotIndex
-                        );
-                    }
-                }
-        );
-
-        return card;
-    }
     private void removePlantFromSlot(
             int slotIndex
     ) {
         PlantData plant =
-                selectedSlots[slotIndex];
+                plantSlotsBar.getPlant(slotIndex);
 
         if (plant == null) {
             return;
@@ -340,12 +265,10 @@ public final class PlantSelectionMenuTable extends Table {
             game.notifyError(
                     result.message()
             );
-
             return;
         }
 
-        selectedSlots[slotIndex] =
-                null;
+        plantSlotsBar.removePlant(slotIndex);
 
         PlantCard gridCard =
                 gridCardsByPlantId.get(
@@ -355,23 +278,19 @@ public final class PlantSelectionMenuTable extends Table {
         if (gridCard != null) {
             gridCard.setChecked(false);
         }
-
-        buildSelectedSlots();
     }
+
     private void selectPlantIntoSlot(
             PlantCard card
     ) {
         PlantData plant =
                 card.getData().plant();
 
-        if (isPlantAlreadySelected(plant)) {
+        if (plantSlotsBar.contains(plant)) {
             return;
         }
 
-        int emptySlot =
-                findFirstEmptySlot();
-
-        if (emptySlot == -1) {
+        if (plantSlotsBar.isFull()) {
             game.notifyError(
                     "Plant selection is full."
             );
@@ -394,32 +313,9 @@ public final class PlantSelectionMenuTable extends Table {
             return;
         }
 
-        selectedSlots[emptySlot] =
-                plant;
-
-        buildSelectedSlots();
-    }
-    private int findFirstEmptySlot() {
-        for (int i = 0; i < selectedSlots.length; i++) {
-            if (selectedSlots[i] == null) {
-                return i;
-            }
-        }
-
-        return -1;
+        plantSlotsBar.addPlant(plant);
     }
 
-    private boolean isPlantAlreadySelected(
-            PlantData plant
-    ) {
-        for (PlantData selected : selectedSlots) {
-            if (plant.equals(selected)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
     private PlantCard.ViewData createViewData(
             PlantData plant
     ) {

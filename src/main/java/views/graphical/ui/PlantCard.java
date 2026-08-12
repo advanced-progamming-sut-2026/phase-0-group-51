@@ -1,6 +1,8 @@
 package views.graphical.ui;
 
 import Data.loader.PlantData;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -51,7 +53,7 @@ public final class PlantCard extends Button {
     }
 
     public record ViewData(PlantData plant, boolean unlocked, boolean boosted,
-                           int level, int seedPackets, int requiredSeedPackets, boolean showSunCost) {
+                           int level, int seedPackets, int requiredSeedPackets, boolean showSunCost, boolean showProgress) {
         public ViewData {
             if (plant == null) {
                 throw new IllegalArgumentException("plant cannot be null");
@@ -66,16 +68,43 @@ public final class PlantCard extends Button {
                 throw new IllegalArgumentException("requiredSeedPackets must be positive");
             }
         }
+        public ViewData(
+                PlantData plant,
+                boolean unlocked,
+                boolean boosted,
+                int level,
+                int seedPackets,
+                int requiredSeedPackets,
+                boolean showSunCost
+        ) {
+            this(
+                    plant,
+                    unlocked,
+                    boosted,
+                    level,
+                    seedPackets,
+                    requiredSeedPackets,
+                    showSunCost,
+                    true
+            );
+        }
     }
     private final PvzGame game;
     @Getter
     private final ViewData data;
+
+    private final float cardScale;
+    private final float cardWidth;
+    private final float cardHeight;
 
     private final Image stateBackground;
     private final Image selectedBorder;
     private final Image plantImage;
     private final Container<Image> lockLayer;
     private final ProgressBar progressBar;
+    private final CooldownOverlay cooldownOverlay;
+
+    private Label sunCostLabel;
 
     private boolean boosted;
     private boolean locked;
@@ -83,6 +112,14 @@ public final class PlantCard extends Button {
     private boolean forceHideProgress = false;
 
     public PlantCard(PvzGame game, ViewData data) {
+        this(game, data, 1f);
+    }
+
+    public PlantCard(
+            PvzGame game,
+            ViewData data,
+            float cardScale
+    ) {
         super(new ButtonStyle());
 
         if (game == null) {
@@ -93,8 +130,17 @@ public final class PlantCard extends Button {
             throw new IllegalArgumentException("data cannot be null");
         }
 
+        if (cardScale <= 0f) {
+            throw new IllegalArgumentException(
+                    "cardScale must be positive"
+            );
+        }
+
         this.game = game;
         this.data = data;
+        this.cardScale = cardScale;
+        this.cardWidth = CARD_WIDTH * cardScale;
+        this.cardHeight = CARD_HEIGHT * cardScale;
         this.boosted = data.boosted();
         this.locked = !data.unlocked();
 
@@ -104,23 +150,41 @@ public final class PlantCard extends Button {
         Stack cardStack = new Stack();
         cardStack.setTouchable(Touchable.disabled);
 
-        stateBackground = createImage(READY_BACKGROUND, Scaling.none);
+        Scaling cardImageScaling = cardScale == 1f ? Scaling.none : Scaling.fit;
 
-        plantImage = createImage(data.plant().cardAssetId(), Scaling.none);
+        stateBackground = createImage(READY_BACKGROUND, cardImageScaling);
+
+        plantImage = createImage(data.plant().cardAssetId(), cardImageScaling);
 
         progressBar = createPacketProgressBar();
 
-        selectedBorder = createImage(SELECTED_BORDER, Scaling.none);
+        selectedBorder = createImage(SELECTED_BORDER, cardImageScaling);
 
-        lockLayer = createLockLayer();
+        lockLayer = createLockLayer(cardImageScaling);
+
+        TextureRegion cooldownRegion = game.getTextureBank().region(READY_BACKGROUND);
+
+        if (cooldownRegion == null) {
+            throw new IllegalStateException(
+                    "Cooldown overlay region was not found: "
+                            + READY_BACKGROUND
+            );
+        }
+
+        cooldownOverlay = new CooldownOverlay(cooldownRegion);
 
         cardStack.add(stateBackground);
         cardStack.add(plantImage);
         cardStack.add(selectedBorder);
         cardStack.add(createInformationLayer());
+        cardStack.add(cooldownOverlay);
+        cardStack.add(createCostLayer());
         cardStack.add(lockLayer);
 
-        add(cardStack).size(CARD_WIDTH, CARD_HEIGHT);
+        add(cardStack).size(
+                cardWidth,
+                cardHeight
+        );
 
         refreshVisualState();
 
@@ -165,11 +229,9 @@ public final class PlantCard extends Button {
         overlay.setTouchable(Touchable.disabled);
 
         Image familyLogo = createImage(familyFor(data.plant().category()), Scaling.fit);
-        float familyWidth =
-            familyLogo.getDrawable().getMinWidth() * 0.7f;
+        float familyWidth = familyLogo.getDrawable().getMinWidth() * 0.7f * cardScale;
 
-        float familyHeight =
-            familyLogo.getDrawable().getMinHeight() * 0.7f;
+        float familyHeight = familyLogo.getDrawable().getMinHeight() * 0.7f * cardScale;
         Container<Image> familyLayer = new Container<>(familyLogo);
 
         familyLayer.top().left();
@@ -178,44 +240,39 @@ public final class PlantCard extends Button {
         familyLayer.padLeft(-10);
         familyLayer.setTouchable(Touchable.disabled);
 
-        Table costLayer = new Table();
-        costLayer.bottom().right();
-        costLayer.setTouchable(Touchable.disabled);
-
-        if (data.showSunCost()) {
-            Label costLabel = new Label(
-                Integer.toString(
-                    data.plant().cost()
-                ),
-                game.getSkin().get("medium", Label.LabelStyle.class)
-            );
-
-            costLayer.add(costLabel)
-                .padRight(8f)
-                .padBottom(6f);
-        }
-
         Table progressLayer = new Table();
         progressLayer.bottom();
         progressLayer.setTouchable(Touchable.disabled);
 
-        progressLayer.add(progressBar)
-            .width(PROGRESS_WIDTH)
-            .height(PROGRESS_HEIGHT)
-            .padBottom(-10f);
+        if (data.showProgress()) {
+            progressLayer.add(progressBar).width(PROGRESS_WIDTH).height(PROGRESS_HEIGHT).padBottom(-10f);
+        }
 
         overlay.add(familyLayer);
-        overlay.add(costLayer);
         overlay.add(progressLayer);
 
         return overlay;
     }
 
+    private Table createCostLayer() {
+        Table costLayer = new Table();
+        costLayer.bottom().right();
+        costLayer.setTouchable(Touchable.disabled);
+
+        if (data.showSunCost()) {
+            sunCostLabel = new Label(
+                    Integer.toString(data.plant().cost()),
+                    game.getSkin().get("medium", Label.LabelStyle.class)
+            );
+
+            costLayer.add(sunCostLabel).padRight(8f).padBottom(6f);
+        }
+
+        return costLayer;
+    }
+
     private ProgressBar createPacketProgressBar() {
-        float maximum = Math.max(
-            1f,
-            data.requiredSeedPackets()
-        );
+        float maximum = Math.max(1f, data.requiredSeedPackets());
 
         ProgressBar bar = new ProgressBar(
             0f,
@@ -226,12 +283,7 @@ public final class PlantCard extends Button {
             "xp_green"
         );
 
-        bar.setValue(
-            Math.min(
-                data.seedPackets(),
-                maximum
-            )
-        );
+        bar.setValue(Math.min(data.seedPackets(), maximum));
 
         bar.setAnimateDuration(0f);
         bar.setTouchable(Touchable.disabled);
@@ -239,11 +291,8 @@ public final class PlantCard extends Button {
         return bar;
     }
 
-    private Container<Image> createLockLayer() {
-        Image lockImage = createImage(
-            LOCK,
-            Scaling.none
-        );
+    private Container<Image> createLockLayer(Scaling scaling) {
+        Image lockImage = createImage(LOCK, scaling);
 
         Container<Image> layer = new Container<>(lockImage);
 
@@ -253,28 +302,42 @@ public final class PlantCard extends Button {
         return layer;
     }
 
-    private Image createImage(
-        String assetId,
-        Scaling scaling
-    ) {
-        TextureRegion region =
-            game.getTextureBank().region(assetId);
+    private Image createImage(String assetId, Scaling scaling) {
+        TextureRegion region = game.getTextureBank().region(assetId);
 
         if (region == null) {
-            throw new IllegalStateException(
-                "TextureBank region was not found: "
-                    + assetId
-            );
+            throw new IllegalStateException("TextureBank region was not found: " + assetId);
         }
 
-        Image image = new Image(
-            new TextureRegionDrawable(region)
-        );
+        Image image = new Image(new TextureRegionDrawable(region));
 
         image.setScaling(scaling);
         image.setTouchable(Touchable.disabled);
 
         return image;
+    }
+
+    public void setCooldownFraction(float cooldownFraction) {
+        float clamped = Math.max(0f, Math.min(1f, cooldownFraction));
+
+        boolean coolingDown = clamped > 0f;
+
+        cooldownOverlay.setFraction(clamped);
+
+        if (coolingDown && isChecked()) {
+            setChecked(false);
+        }
+
+        setDisabled(coolingDown);
+        refreshVisualState();
+    }
+
+    public void setEnoughSun(boolean enoughSun) {
+        if (sunCostLabel == null) {
+            return;
+        }
+
+        sunCostLabel.setColor(enoughSun ? Color.WHITE : Color.RED);
     }
 
     public void setBoosted(boolean boosted) {
@@ -311,66 +374,72 @@ public final class PlantCard extends Button {
             backgroundAsset = READY_BACKGROUND;
         }
 
-        TextureRegion backgroundRegion =
-            game.getTextureBank().region(
-                backgroundAsset
-            );
+        TextureRegion backgroundRegion = game.getTextureBank().region(backgroundAsset);
 
         if (backgroundRegion == null) {
-            throw new IllegalStateException(
-                "Card background was not found: "
-                    + backgroundAsset
-            );
+            throw new IllegalStateException("Card background was not found: " + backgroundAsset);
         }
 
-        stateBackground.setDrawable(
-            new TextureRegionDrawable(
-                backgroundRegion
-            )
-        );
+        stateBackground.setDrawable(new TextureRegionDrawable(backgroundRegion));
 
-        selectedBorder.setVisible(isChecked());
+        selectedBorder.setVisible(isChecked() && !isDisabled());
         lockLayer.setVisible(locked);
-        progressBar.setVisible(!locked && !forceHideProgress);
+        progressBar.setVisible(data.showProgress() && !locked);
 
         if (locked) {
-            plantImage.setColor(
-                0.5f,
-                0.5f,
-                0.5f,
-                1f
-            );
-
-            stateBackground.setColor(
-                0.65f,
-                0.65f,
-                0.65f,
-                1f
-            );
+            plantImage.setColor(0.5f, 0.5f, 0.5f, 1f);
+            stateBackground.setColor(0.65f, 0.65f, 0.65f, 1f);
         } else {
-            plantImage.setColor(
-                1f,
-                1f,
-                1f,
-                1f
-            );
+            plantImage.setColor(1f, 1f, 1f, 1f);
+            stateBackground.setColor(1f, 1f, 1f, 1f);
+        }
+    }
 
-            stateBackground.setColor(
-                1f,
-                1f,
-                1f,
-                1f
-            );
+    private static final class CooldownOverlay extends Actor {
+
+        private static final float BASE_DARK_ALPHA = 0.25f;
+
+        private static final float TIMER_DARK_ALPHA = 0.55f;
+
+        private final TextureRegion region;
+
+        private float fraction;
+
+        private CooldownOverlay(TextureRegion region) {
+            this.region = region;
+            setTouchable(Touchable.disabled);
+        }
+
+        private void setFraction(float fraction) {
+            this.fraction = fraction;
+            setVisible(fraction > 0f);
+        }
+
+        @Override
+        public void draw(Batch batch, float parentAlpha) {
+            if (fraction <= 0f) {
+                return;
+            }
+
+            Color previousColor = new Color(batch.getColor());
+            batch.setColor(0f, 0f, 0f, BASE_DARK_ALPHA * parentAlpha);
+
+            batch.draw(region, getX(), getY(), getWidth(), getHeight());
+            float timerHeight = getHeight() * fraction;
+
+            batch.setColor(0f, 0f, 0f, TIMER_DARK_ALPHA * parentAlpha);
+            batch.draw(region, getX(), getY(), getWidth(), timerHeight);
+            batch.setColor(previousColor);
         }
     }
 
     @Override
     public float getPrefWidth() {
-        return CARD_WIDTH;
+        return cardWidth;
     }
 
     @Override
     public float getPrefHeight() {
-        return CARD_HEIGHT;
+        return cardHeight;
     }
 }

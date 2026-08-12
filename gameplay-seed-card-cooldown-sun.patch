@@ -1,0 +1,492 @@
+--- a/src/main/java/views/graphical/ui/PlantCard.java
++++ b/src/main/java/views/graphical/ui/PlantCard.java
+@@ -1,6 +1,8 @@
+ package views.graphical.ui;
+ 
+ import Data.loader.PlantData;
++import com.badlogic.gdx.graphics.Color;
++import com.badlogic.gdx.graphics.g2d.Batch;
+ import com.badlogic.gdx.graphics.g2d.TextureRegion;
+ import com.badlogic.gdx.scenes.scene2d.Actor;
+ import com.badlogic.gdx.scenes.scene2d.InputEvent;
+@@ -100,6 +102,9 @@
+     private final Image plantImage;
+     private final Container<Image> lockLayer;
+     private final ProgressBar progressBar;
++    private final CooldownOverlay cooldownOverlay;
++
++    private Label sunCostLabel;
+ 
+     private boolean boosted;
+     private boolean locked;
+@@ -176,10 +181,29 @@
+                 cardImageScaling
+         );
+ 
++        TextureRegion cooldownRegion =
++                game.getTextureBank().region(
++                        READY_BACKGROUND
++                );
++
++        if (cooldownRegion == null) {
++            throw new IllegalStateException(
++                    "Cooldown overlay region was not found: "
++                            + READY_BACKGROUND
++            );
++        }
++
++        cooldownOverlay =
++                new CooldownOverlay(
++                        cooldownRegion
++                );
++
+         cardStack.add(stateBackground);
+         cardStack.add(plantImage);
+         cardStack.add(selectedBorder);
+         cardStack.add(createInformationLayer());
++        cardStack.add(cooldownOverlay);
++        cardStack.add(createCostLayer());
+         cardStack.add(lockLayer);
+ 
+         add(cardStack).size(
+@@ -247,23 +271,6 @@
+         familyLayer.padLeft(-10);
+         familyLayer.setTouchable(Touchable.disabled);
+ 
+-        Table costLayer = new Table();
+-        costLayer.bottom().right();
+-        costLayer.setTouchable(Touchable.disabled);
+-
+-        if (data.showSunCost()) {
+-            Label costLabel = new Label(
+-                Integer.toString(
+-                    data.plant().cost()
+-                ),
+-                game.getSkin().get("medium", Label.LabelStyle.class)
+-            );
+-
+-            costLayer.add(costLabel)
+-                .padRight(8f)
+-                .padBottom(6f);
+-        }
+-
+         Table progressLayer = new Table();
+         progressLayer.bottom();
+         progressLayer.setTouchable(Touchable.disabled);
+@@ -276,10 +283,33 @@
+         }
+ 
+         overlay.add(familyLayer);
+-        overlay.add(costLayer);
+         overlay.add(progressLayer);
+ 
+         return overlay;
++    }
++
++    private Table createCostLayer() {
++        Table costLayer = new Table();
++        costLayer.bottom().right();
++        costLayer.setTouchable(Touchable.disabled);
++
++        if (data.showSunCost()) {
++            sunCostLabel = new Label(
++                    Integer.toString(
++                            data.plant().cost()
++                    ),
++                    game.getSkin().get(
++                            "medium",
++                            Label.LabelStyle.class
++                    )
++            );
++
++            costLayer.add(sunCostLabel)
++                    .padRight(8f)
++                    .padBottom(6f);
++        }
++
++        return costLayer;
+     }
+ 
+     private ProgressBar createPacketProgressBar() {
+@@ -350,6 +380,47 @@
+         return image;
+     }
+ 
++    public void setCooldownFraction(
++            float cooldownFraction
++    ) {
++        float clamped =
++                Math.max(
++                        0f,
++                        Math.min(
++                                1f,
++                                cooldownFraction
++                        )
++                );
++
++        boolean coolingDown =
++                clamped > 0f;
++
++        cooldownOverlay.setFraction(
++                clamped
++        );
++
++        if (coolingDown && isChecked()) {
++            setChecked(false);
++        }
++
++        setDisabled(coolingDown);
++        refreshVisualState();
++    }
++
++    public void setEnoughSun(
++            boolean enoughSun
++    ) {
++        if (sunCostLabel == null) {
++            return;
++        }
++
++        sunCostLabel.setColor(
++                enoughSun
++                        ? Color.WHITE
++                        : Color.RED
++        );
++    }
++
+     public void setBoosted(boolean boosted) {
+         if (this.boosted == boosted) {
+             return;
+@@ -402,7 +473,7 @@
+             )
+         );
+ 
+-        selectedBorder.setVisible(isChecked());
++        selectedBorder.setVisible(isChecked() && !isDisabled());
+         lockLayer.setVisible(locked);
+         progressBar.setVisible(data.showProgress() && !locked);
+ 
+@@ -437,6 +508,68 @@
+         }
+     }
+ 
++    private static final class CooldownOverlay
++            extends Actor {
++
++        private static final float DARK_ALPHA =
++                0.68f;
++
++        private final TextureRegion region;
++
++        private float fraction;
++
++        private CooldownOverlay(
++                TextureRegion region
++        ) {
++            this.region = region;
++            setTouchable(Touchable.disabled);
++        }
++
++        private void setFraction(
++                float fraction
++        ) {
++            this.fraction = fraction;
++            setVisible(fraction > 0f);
++        }
++
++        @Override
++        public void draw(
++                Batch batch,
++                float parentAlpha
++        ) {
++            if (fraction <= 0f) {
++                return;
++            }
++
++            Color previousColor =
++                    new Color(
++                            batch.getColor()
++                    );
++
++            float darkHeight =
++                    getHeight() * fraction;
++
++            batch.setColor(
++                    0f,
++                    0f,
++                    0f,
++                    DARK_ALPHA * parentAlpha
++            );
++
++            batch.draw(
++                    region,
++                    getX(),
++                    getY(),
++                    getWidth(),
++                    darkHeight
++            );
++
++            batch.setColor(
++                    previousColor
++            );
++        }
++    }
++
+     @Override
+     public float getPrefWidth() {
+         return cardWidth;
+--- a/src/main/java/views/graphical/ui/PlantSlotsBar.java
++++ b/src/main/java/views/graphical/ui/PlantSlotsBar.java
+@@ -18,8 +18,11 @@
+ import lombok.Setter;
+ import models.App;
+ import models.User;
++import models.games.Game;
++import models.games.GameState;
+ 
+ import java.util.Arrays;
++import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.function.Consumer;
+@@ -53,6 +56,15 @@
+ 
+     private PlantData selectedPlant;
+     private Consumer<PlantData> onPlantSelected;
++
++    private final Map<Integer, PlantCard> gameplayCardsByPlantId =
++            new HashMap<>();
++
++    private final Map<Integer, Integer> cooldownStartTickByPlantId =
++            new HashMap<>();
++
++    private final Map<Integer, Integer> cooldownEndTickByPlantId =
++            new HashMap<>();
+ 
+     public PlantSlotsBar(PvzGame game) {
+         if (game == null) {
+@@ -170,6 +182,7 @@
+     private void rebuild() {
+         clearChildren();
+         gameplayPlantGroup.clear();
++        gameplayCardsByPlantId.clear();
+ 
+         User user = App.loggedInUser;
+ 
+@@ -265,6 +278,10 @@
+             );
+         } else if (mode == Mode.GAMEPLAY) {
+             gameplayPlantGroup.add(card);
++            gameplayCardsByPlantId.put(
++                    plant.id(),
++                    card
++            );
+ 
+             if (plant.equals(selectedPlant)) {
+                 card.setChecked(true);
+@@ -302,6 +319,123 @@
+         return card;
+     }
+ 
++    @Override
++    public void act(
++            float delta
++    ) {
++        super.act(delta);
++
++        if (mode == Mode.GAMEPLAY) {
++            refreshGameplayAvailability();
++        }
++    }
++
++    private void refreshGameplayAvailability() {
++        Game currentGame =
++                App.getInstance().getCurrentGame();
++
++        if (currentGame == null
++                || currentGame.getGameState() == null) {
++            return;
++        }
++
++        GameState state =
++                currentGame.getGameState();
++
++        int currentTick =
++                state.getTickCounter();
++
++        int currentSun =
++                state.getSun();
++
++        for (PlantData plant : slots) {
++            if (plant == null) {
++                continue;
++            }
++
++            PlantCard card =
++                    gameplayCardsByPlantId.get(
++                            plant.id()
++                    );
++
++            if (card == null) {
++                continue;
++            }
++
++            int cooldownEnd =
++                    state.getPlantCooldownEnd(
++                            plant.id()
++                    );
++
++            int ticksRemaining =
++                    Math.max(
++                            0,
++                            cooldownEnd
++                                    - currentTick
++                    );
++
++            if (ticksRemaining > 0) {
++                Integer knownEnd =
++                        cooldownEndTickByPlantId.get(
++                                plant.id()
++                        );
++
++                if (knownEnd == null
++                        || knownEnd != cooldownEnd) {
++                    cooldownEndTickByPlantId.put(
++                            plant.id(),
++                            cooldownEnd
++                    );
++
++                    cooldownStartTickByPlantId.put(
++                            plant.id(),
++                            currentTick
++                    );
++                }
++
++                int cooldownStart =
++                        cooldownStartTickByPlantId.getOrDefault(
++                                plant.id(),
++                                currentTick
++                        );
++
++                int totalTicks =
++                        Math.max(
++                                1,
++                                cooldownEnd
++                                        - cooldownStart
++                        );
++
++                float fraction =
++                        Math.min(
++                                1f,
++                                ticksRemaining
++                                        / (float) totalTicks
++                        );
++
++                card.setCooldownFraction(
++                        fraction
++                );
++            } else {
++                cooldownStartTickByPlantId.remove(
++                        plant.id()
++                );
++
++                cooldownEndTickByPlantId.remove(
++                        plant.id()
++                );
++
++                card.setCooldownFraction(
++                        0f
++                );
++            }
++
++            card.setEnoughSun(
++                    currentSun >= plant.cost()
++            );
++        }
++    }
++
+     private Image createEmptySlot() {
+         TextureRegion region =
+                 game.getTextureBank().region(
+--- a/src/main/java/views/graphical/screens/GameScreen.java
++++ b/src/main/java/views/graphical/screens/GameScreen.java
+@@ -70,6 +70,8 @@
+ 
+     private final GamingController gamingController = new GamingController();
+ 
++    private float gameTickAccumulator;
++
+     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
+         super(game);
+         this.theme = theme;
+@@ -249,6 +251,7 @@
+ 
+         worldStage.addActor(boardView);
+ 
++        gameTickAccumulator = 0f;
+         introState = IntroState.PAN_BACK_TO_MAIN;
+         stateTime = 0f;
+     }
+@@ -256,6 +259,8 @@
+     @Override
+     public void render(float delta) {
+         updateCutscene(delta);
++        updateGameplayTicks(delta);
++
+         uiStage.act(delta);
+ 
+         Gdx.gl.glClearColor(0, 0, 0, 1);
+@@ -280,6 +285,54 @@
+         drawDebugGrid();
+ 
+         uiStage.draw();
++    }
++
++    private void updateGameplayTicks(
++            float delta
++    ) {
++        if (introState != IntroState.PLAYING) {
++            return;
++        }
++
++        Game currentGame =
++                App.getInstance().getCurrentGame();
++
++        if (currentGame == null
++                || currentGame.getGameState() == null
++                || currentGame.getGameState().isFinished()) {
++            return;
++        }
++
++        int ticksPerSecond =
++                Math.max(
++                        1,
++                        currentGame
++                                .getGameState()
++                                .getTicksPerSecond()
++                );
++
++        float tickDuration =
++                1f / ticksPerSecond;
++
++        gameTickAccumulator +=
++                Math.min(
++                        delta,
++                        0.25f
++                );
++
++        while (gameTickAccumulator
++                >= tickDuration) {
++            if (currentGame
++                    .getGameState()
++                    .isFinished()) {
++                gameTickAccumulator = 0f;
++                break;
++            }
++
++            currentGame.forward(1);
++            gameTickAccumulator -=
++                    tickDuration;
++        }
+     }
+ 
+     private void handleTileClick(
