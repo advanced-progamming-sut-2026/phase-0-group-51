@@ -11,7 +11,7 @@ public class NewsRepository {
             List<News> newsList = new ArrayList<>();
 
             String sql = """
-                SELECT n.id, n.content, un.is_read
+                SELECT n.id, n.content, n.created_at, un.is_read
                 FROM news n
                 JOIN user_news un ON n.id = un.news_id
                 WHERE un.user_id = ?
@@ -30,6 +30,7 @@ public class NewsRepository {
                                 resultSet.getInt("id"),
                                 userId,
                                 resultSet.getString("content"),
+                                resultSet.getString("created_at"),
                                 resultSet.getInt("is_read") == 1
                         ));
                     }
