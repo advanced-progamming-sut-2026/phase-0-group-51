@@ -1,6 +1,8 @@
 package views.graphical.screens;
 
+import Data.loader.PlantData;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -10,9 +12,12 @@ import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import controllers.GamingController;
 import graphics.PvzGame;
 import models.App;
 import models.Board.Board;
+import models.Board.Tile;
+import models.Result;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
@@ -32,6 +37,7 @@ public class GameScreen extends BaseScreen {
     private final Viewport viewport;
     private final Stage uiStage;
     private final Stage worldStage;
+    private final InputMultiplexer inputMultiplexer;
     private final PlantSlotsBar plantSlotsBar;
 
     private GameHud gameHud;
@@ -61,6 +67,8 @@ public class GameScreen extends BaseScreen {
     private final BoardTransform boardTransform;
 
     private boolean showGrid = true;
+
+    private final GamingController gamingController = new GamingController();
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
@@ -92,6 +100,7 @@ public class GameScreen extends BaseScreen {
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
         worldStage = new Stage(viewport, game.getBatch());
         uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
+        inputMultiplexer = new InputMultiplexer(uiStage, worldStage);
 
         plantSlotsBar = new PlantSlotsBar(game);
         plantSlotsBar.setMode(PlantSlotsBar.Mode.SELECTION);
@@ -148,7 +157,7 @@ public class GameScreen extends BaseScreen {
     @Override
     public void show() {
         game.hideHud();
-        Gdx.input.setInputProcessor(uiStage);
+        Gdx.input.setInputProcessor(inputMultiplexer);
     }
 
     private void updateCutscene(float delta) {
@@ -235,6 +244,9 @@ public class GameScreen extends BaseScreen {
 
         Board board = currentGame.getGameState().getBoard();
         boardView = new BoardView(board, boardTransform);
+
+        boardView.setOnTileClicked(this::handleTileClick);
+
         worldStage.addActor(boardView);
 
         introState = IntroState.PAN_BACK_TO_MAIN;
@@ -270,62 +282,49 @@ public class GameScreen extends BaseScreen {
         uiStage.draw();
     }
 
+    private void handleTileClick(
+            Tile tile
+    ) {
+        PlantData selectedPlant = plantSlotsBar.getSelectedPlant();
+        if (selectedPlant == null) {
+            return;
+        }
+        int x = tile.getColumn() + 1;
+        int y = tile.getLane() + 1;
+        Result result = gamingController.plantPlant(selectedPlant.name(), x, y);
+        if (!result.success()) {
+            game.notifyError(result.message());
+            return;
+        }
+        plantSlotsBar.clearPlantSelection();
+    }
+
     private void drawDebugGrid() {
         if (!showGrid) {
             return;
         }
 
-        BoardArea area =
-                boardTransform.getArea();
+        BoardArea area = boardTransform.getArea();
 
-        float tileWidth =
-                boardTransform.tileWidth();
+        float tileWidth = boardTransform.tileWidth();
 
-        float tileHeight =
-                boardTransform.tileHeight();
+        float tileHeight = boardTransform.tileHeight();
 
-        shapeRenderer.setProjectionMatrix(
-                camera.combined
-        );
+        shapeRenderer.setProjectionMatrix(camera.combined);
 
-        shapeRenderer.begin(
-                ShapeRenderer.ShapeType.Line
-        );
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
 
         shapeRenderer.setColor(Color.RED);
 
-        for (int column = 0;
-             column <= BoardTransform.COLUMNS;
-             column++) {
-
-            float x =
-                    area.x()
-                            + column * tileWidth;
-
-            shapeRenderer.line(
-                    x,
-                    area.y(),
-                    x,
-                    area.y() + area.height()
-            );
+        for (int column = 0; column <= BoardTransform.COLUMNS; column++) {
+            float x = area.x() + column * tileWidth;
+            shapeRenderer.line(x, area.y(), x, area.y() + area.height());
         }
 
-        for (int row = 0;
-             row <= BoardTransform.ROWS;
-             row++) {
-
-            float y =
-                    area.y()
-                            + row * tileHeight;
-
-            shapeRenderer.line(
-                    area.x(),
-                    y,
-                    area.x() + area.width(),
-                    y
-            );
+        for (int row = 0; row <= BoardTransform.ROWS; row++) {
+            float y = area.y() + row * tileHeight;
+            shapeRenderer.line(area.x(), y, area.x() + area.width(), y);
         }
-
         shapeRenderer.end();
     }
 
@@ -338,5 +337,7 @@ public class GameScreen extends BaseScreen {
     @Override
     public void dispose() {
         uiStage.dispose();
+        worldStage.dispose();
+        shapeRenderer.dispose();
     }
 }

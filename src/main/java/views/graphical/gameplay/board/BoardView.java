@@ -2,8 +2,11 @@ package views.graphical.gameplay.board;
 
 import com.badlogic.gdx.scenes.scene2d.Group;
 import lombok.Getter;
+import lombok.Setter;
 import models.Board.Board;
 import models.Board.Tile;
+
+import java.util.function.Consumer;
 
 public final class BoardView extends Group {
 
@@ -12,6 +15,8 @@ public final class BoardView extends Group {
     private final BoardTransform transform;
 
     private final TileView[][] tileViews;
+    @Setter
+    private Consumer<Tile> onTileClicked;
 
     public BoardView(
             Board board,
@@ -66,6 +71,14 @@ public final class BoardView extends Group {
                         transform.tileY(lane),
                         transform.tileWidth(),
                         transform.tileHeight()
+                );
+
+                tileView.setOnClicked(
+                        tile -> {
+                            if (onTileClicked != null) {
+                                onTileClicked.accept(tile);
+                            }
+                        }
                 );
 
                 tileViews[lane][column] =
