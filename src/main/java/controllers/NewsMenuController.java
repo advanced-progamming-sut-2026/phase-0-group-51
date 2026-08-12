@@ -83,4 +83,29 @@ public class NewsMenuController {
     public void exitMenu() {
         App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
     }
+    public int getUnreadNewsCount() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return 0;
+        }
+        return repository.countUnreadNews(
+                user.getId()
+        );
+    }
+    public List<News> openAllNews() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return List.of();
+        }
+        List<News> newsList = repository.getNewsForUser(user.getId());
+        for (News news : newsList) {
+            if (!news.isRead()) {
+                boolean marked = repository.markAsRead(user.getId(), news.getId());
+                if (marked) {
+                    news.setRead(true);
+                }
+            }
+        }
+        return newsList;
+    }
 }

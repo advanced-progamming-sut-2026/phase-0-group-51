@@ -11,5 +11,6 @@ public class News {
 private int id;
 private int userId;
 private String message;
+private String createdAt;
 private boolean isRead;
 }
