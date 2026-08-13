@@ -124,7 +124,7 @@ public class GameScreen extends BaseScreen {
         camera = new OrthographicCamera();
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
         worldStage = new Stage(viewport, game.getBatch());
-        uiStage = new Stage(new FitViewport(viewWidth, worldHeight));
+        uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
         inputMultiplexer = new InputMultiplexer(uiStage, worldStage);
 
         plantSlotsBar = new PlantSlotsBar(game);
