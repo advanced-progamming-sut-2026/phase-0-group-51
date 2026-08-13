@@ -2,13 +2,16 @@ package views.graphical.gameplay.hud;
 
 
 import Data.database.UserRepository;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
@@ -47,6 +50,8 @@ public class GameHud extends Table {
     private static final String PLANT_FOOD_RECTANGLE = "IMAGE_UI_HUD_INGAME_DEMO";
     private static final String PLANT_FOOD_DOT_FILL = "IMAGE_UI_GENERIC_NAVDOT_FILL";
     private static final String PLANT_FOOD_DOT = "IMAGE_UI_GENERIC_NAVDOT";
+    private static final String FLAG ="IMAGE_ZOMBIE_ZOMBIE_BIGHEAD_FLAG_ZOMBIE_BIGHEAD_FLAG_123X95";
+    private static final String FLAG_BAR ="IMAGE_ZOMBIE_ZOMBIE_BIGHEAD_FLAG_ZOMBIE_BIGHEAD_FLAG_23X194";
     private static final int MAX_PLANT_FOOD = 3;
     private static final int CHEAT_SUN_AMOUNT = 25;
     private static final float STATE_REFRESH = 0.10f;
@@ -76,15 +81,40 @@ public class GameHud extends Table {
 
     private static final float PLANT_SLOTS_TOP_GAP = 4f;
     private static final float SIDE_PADDING = 16f;
-    private ProgressBar waveProgress;
-    private Label waveLabel;
-    private Stack waveStack;
 
     private final PlantSlotsBar plantSlotsBar;
     private ImageButton shovelButton;
 
     private float stateRefreshTimer;
     private float currencyRefreshTimer;
+    private Group waveGroup;
+
+    private Image waveFill;
+    private Image waveZombieHead;
+    private Group[] waveMarkers;
+    private Image[] waveFlagImages;
+
+    private int lastCompletedWaves = -1;
+
+    private static final float WAVE_BAR_WIDTH = 260f;
+    private static final float WAVE_BAR_HEIGHT = 36f;
+
+    private static final float TRACK_LEFT = 12f;
+    private static final float TRACK_RIGHT = 242f;
+
+    private static final float WAVE_FILL_Y = 11f;
+    private static final float WAVE_FILL_HEIGHT = 10f;
+
+
+    private static final float FLAG_WIDTH = 27f;
+    private static final float FLAG_HEIGHT = 21f;
+
+
+    private static final float FLAG_POLE_WIDTH = 5f;
+    private static final float FLAG_POLE_HEIGHT = 46f;
+
+    private static final float FLAG_DOWN_Y = 2f;
+    private static final float FLAG_UP_Y = 29f;
     public GameHud(PvzGame game, PlantSlotsBar plantSlotsBar, Runnable onPauseRequested) {
         if (game == null) {
             throw new IllegalArgumentException("game cannot be null");
@@ -196,7 +226,7 @@ public class GameHud extends Table {
 
         sunLabel.setColor(Color.WHITE);
         sunLabel.setAlignment(Align.center);
-        sunContent.add(sunIcon).size(44f).padLeft(-15f);
+        sunContent.add(sunIcon).size(44f).padLeft(-9f);
 
         sunContent.add(sunLabel).expandX().center().padRight(8f);
         sunBank.add(sunBackground);
@@ -221,38 +251,89 @@ public class GameHud extends Table {
                 }
         );
 
-        Table foodDisplay = new Table();
-        Image foodIcon = new Image(drawable(PLANT_FOOD));
-        foodIcon.setScaling(Scaling.fit);
+        Stack foodDisplay = new Stack();
+
         Stack dotsBank = new Stack();
 
-        Image dotsBackground = new Image(drawable(PLANT_FOOD_RECTANGLE));
+        Image dotsBackground =
+                new Image(
+                        drawable(
+                                PLANT_FOOD_RECTANGLE
+                        )
+                );
 
-        dotsBackground.setScaling(Scaling.stretch);
+        dotsBackground.setScaling(
+                Scaling.stretch
+        );
 
-        dotsBank.add(dotsBackground);
+        dotsBank.add(
+                dotsBackground
+        );
 
-        Table dots = new Table();
+
+        Table dots =
+                new Table();
 
         dots.center();
 
         for (int i = 0; i < MAX_PLANT_FOOD; i++) {
 
-            Image dot = new Image(drawable(PLANT_FOOD_DOT_FILL));
-            plantFoodDots[i] = dot;
-            dots.add(dot).size(14f).pad(2f);
+            Image dot =
+                    new Image(
+                            drawable(
+                                    PLANT_FOOD_DOT_FILL
+                            )
+                    );
+
+            plantFoodDots[i] =
+                    dot;
+
+            dots.add(dot)
+                    .size(14f)
+                    .pad(2f);
         }
 
-        dotsBank.add(dots);
+        dotsBank.add(
+                dots
+        );
 
-        foodDisplay.add(foodIcon)
-                .size(38f)
-                .padRight(-4f);
 
-        foodDisplay.add(dotsBank)
+        Table rectangleLayer =
+                new Table();
+
+        rectangleLayer.right();
+
+        rectangleLayer.add(dotsBank)
                 .width(82f)
                 .height(32f);
 
+        foodDisplay.add(
+                rectangleLayer
+        );
+
+        Image foodIcon =
+                new Image(
+                        drawable(
+                                PLANT_FOOD
+                        )
+                );
+
+        foodIcon.setScaling(
+                Scaling.fit
+        );
+
+
+        Table iconLayer =
+                new Table();
+
+        iconLayer.left();
+
+        iconLayer.add(foodIcon)
+                .size(60f);
+
+        foodDisplay.add(
+                iconLayer
+        );
 
         foodRow.add(addFoodButton)
                 .size(42f)
@@ -378,41 +459,170 @@ public class GameHud extends Table {
     }
 
     private void buildWaveProgress() {
-        ProgressBar.ProgressBarStyle style = new ProgressBar.ProgressBarStyle();
-        style.background =
-                game.getSkin()
-                        .newDrawable("white_pixel", new Color(0f, 0f, 0f, 0.55f));
+        waveGroup = new Group();
+        waveGroup.setSize(
+                WAVE_BAR_WIDTH + 70f,
+                85f
+        );
 
+        waveFill = new Image(game.getSkin().newDrawable("white_pixel", Color.valueOf("65B83B")));
+        waveFill.setBounds(
+                WAVE_BAR_WIDTH,
+                WAVE_FILL_Y,
+                0f,
+                WAVE_FILL_HEIGHT
+        );
 
-        style.knobBefore = game.getSkin().newDrawable("white_pixel", Color.valueOf("65B83B"));
+        waveGroup.addActor(waveFill);
+        Image progressFrame = new Image(drawable(WAVE_PROGRESS));
+        progressFrame.setScaling(Scaling.stretch);
+        progressFrame.setBounds(
+                0f,
+                0f,
+                WAVE_BAR_WIDTH,
+                WAVE_BAR_HEIGHT
+        );
 
+        waveGroup.addActor(progressFrame);
+        Texture zombieTexture = new Texture(Gdx.files.internal("assets/UIs/zombie.png"));
 
-        waveProgress = new ProgressBar(0f, 1f, 0.01f, false, style);
+        waveZombieHead =
+                new Image(zombieTexture);
 
+        waveZombieHead.setScaling(
+                Scaling.fit
+        );
+        waveZombieHead.setBounds(
+                TRACK_RIGHT - 12f,
+                -7f,
+                52f,
+                52f
+        );
+        waveGroup.addActor(
+                waveZombieHead
+        );
+        bottomRight.add(waveGroup)
+                .width(WAVE_BAR_WIDTH + 70f)
+                .height(85f);
 
-        waveProgress.setValue(0f);
-
-
-        waveLabel = new Label("0 / 0", labelStyle("medium_outline"));
-
-        waveLabel.setAlignment(Align.center);
-        waveLabel.setColor(Color.WHITE);
-        waveStack = new Stack();
-        waveStack.add(waveProgress);
-
-
-        Image frame = new Image(drawable(WAVE_PROGRESS));
-        frame.setScaling(Scaling.stretch);
-        frame.setTouchable(Touchable.disabled);
-        waveStack.add(frame);
-        Table textLayer = new Table();
-        textLayer.add(waveLabel);
-        waveStack.add(textLayer);
-
-
-        bottomRight.add(waveStack)
-                .width(260f).height(38f);
+        waveGroup.setVisible(false);
     }
+
+        private void rebuildWaveFlags(int totalWaves) {
+
+            if (waveMarkers != null) {
+                for (Group marker : waveMarkers) {
+                    if (marker != null) {
+                        marker.remove();
+                    }
+                }
+            }
+
+            waveMarkers = new Group[totalWaves];
+            waveFlagImages = new Image[totalWaves];
+            float trackWidth = TRACK_RIGHT - TRACK_LEFT;
+            for (int i = 0; i < totalWaves; i++) {
+
+                float fraction = (i + 1f) / totalWaves;
+                float poleX = TRACK_RIGHT - trackWidth * fraction;
+                Group marker = new Group();
+                marker.setBounds(
+                        poleX - FLAG_WIDTH,
+                        0f,
+                        FLAG_WIDTH + FLAG_POLE_WIDTH,
+                        58f
+                );
+
+                Image pole =
+                        new Image(
+                                drawable(FLAG_BAR)
+                        );
+
+                pole.setScaling(
+                        Scaling.stretch
+                );
+
+                pole.setBounds(
+                        FLAG_WIDTH - FLAG_POLE_WIDTH / 2f,
+                        0f,
+                        FLAG_POLE_WIDTH,
+                        FLAG_POLE_HEIGHT
+                );
+
+                marker.addActor(pole);
+                Image flag =
+                        new Image(
+                                drawable(FLAG)
+                        );
+
+                flag.setScaling(
+                        Scaling.fit
+                );
+
+
+                flag.setBounds(
+                        23f,
+                        FLAG_DOWN_Y,
+                        FLAG_WIDTH,
+                        FLAG_HEIGHT
+                );
+
+                marker.addActor(flag);
+
+
+                waveGroup.addActor(marker);
+
+                waveMarkers[i] = marker;
+                waveFlagImages[i] = flag;
+            }
+
+            lastCompletedWaves = -1;
+        }
+
+    private void updateWaveFlags(int currentWave, int totalWaves) {
+        if (waveFlagImages == null || waveFlagImages.length != totalWaves) {
+            rebuildWaveFlags(totalWaves);
+        }
+
+        int completedWaves = MathUtils.clamp(currentWave - 1, 0, totalWaves);
+        if (completedWaves == lastCompletedWaves) {
+            return;
+        }
+
+        for (int i = 0; i < waveFlagImages.length; i++) {
+            Image flag = waveFlagImages[i];
+            float targetY;
+            if (i < completedWaves) {
+                targetY = FLAG_UP_Y;
+            } else {
+                targetY = FLAG_DOWN_Y;
+            }
+            flag.clearActions();
+            flag.addAction(
+                    Actions.moveTo(
+                            flag.getX(),
+                            targetY,
+                            0.30f
+                    )
+            );
+        }
+        lastCompletedWaves = completedWaves;
+    }
+
+        private void updateWaveFill(float progress) {
+
+            progress = MathUtils.clamp(progress, 0f, 1f);
+            float trackWidth = TRACK_RIGHT - TRACK_LEFT;
+            float fillWidth = trackWidth * progress;
+
+            float progressX = TRACK_RIGHT - fillWidth;
+            waveFill.setBounds(progressX, WAVE_FILL_Y, fillWidth, WAVE_FILL_HEIGHT);
+            waveZombieHead.setPosition(
+                    progressX - 12f,
+                    waveZombieHead.getY()
+            );
+        }
+
     @Override
     public void act(
             float delta
@@ -448,23 +658,20 @@ public class GameHud extends Table {
         }
     }
 
-
     private void refreshGameplayState() {
         Game currentGame = App.getInstance().getCurrentGame();
-        if (currentGame == null || currentGame.getGameState() == null) {
+        if (currentGame == null
+                || currentGame.getGameState() == null) {
             return;
         }
 
         GameState state = currentGame.getGameState();
         sunLabel.setText(state.getSun());
         int foodCount = MathUtils.clamp(state.getPlantFoodCount(), 0, MAX_PLANT_FOOD);
-
         for (int i = 0; i < plantFoodDots.length; i++) {
-            if (i < foodCount) {
-                plantFoodDots[i].setColor(Color.valueOf("65D44B"));
 
+            if (i < foodCount) {plantFoodDots[i].setColor(Color.valueOf("65D44B"));
             } else {
-
                 plantFoodDots[i].setColor(
                         new Color(
                                 0.20f,
@@ -475,29 +682,28 @@ public class GameHud extends Table {
                 );
             }
         }
-
         ZombieWaveManager waveManager = state.getZombieWaveManager();
         if (waveManager == null) {
-            waveStack.setVisible(false);
+            waveGroup.setVisible(false);
             return;
         }
-
-        waveStack.setVisible(true);
+        waveGroup.setVisible(true);
         int current = waveManager.getCurrentWaveNumber();
-
         if (waveManager.isEndless()) {
-            waveProgress.setValue(0f);
-            waveLabel.setText("Wave " + current);
+
+            // Endless بعداً
             return;
         }
+
+
         int total = waveManager.getTotalWaves();
-
-
-        float progress = total <= 0 ? 0f : current / (float) total;
-
-
-        waveProgress.setValue(MathUtils.clamp(progress, 0f, 1f));
-        waveLabel.setText(current + " / " + total);
+        if (total <= 0) {
+            return;
+        }
+        updateWaveFlags(current, total);
+        int completed = MathUtils.clamp(current - 1, 0, total);
+        float progress = completed / (float) total;
+        updateWaveFill(progress);
     }
 
 
