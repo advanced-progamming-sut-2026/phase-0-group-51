@@ -1,20 +1,37 @@
 package views.graphical.screens;
 
+import Data.loader.PlantData;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
-import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.*;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import controllers.GamingController;
 import graphics.PvzGame;
 import models.App;
+import models.Board.Board;
+import models.Board.Tile;
+import models.Result;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+
+
+import views.graphical.gameplay.board.BoardArea;
+import views.graphical.gameplay.board.BoardTransform;
+import views.graphical.gameplay.board.BoardView;
+
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.ui.PlantSelectionMenuTable;
+import views.graphical.ui.PlantSlotsBar;
+import views.graphical.ui.StartGameMenuPopup;
 
 public class GameScreen extends BaseScreen {
 
@@ -24,6 +41,9 @@ public class GameScreen extends BaseScreen {
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final Stage uiStage;
+    private final Stage worldStage;
+    private final InputMultiplexer inputMultiplexer;
+    private final PlantSlotsBar plantSlotsBar;
 
     private TextureRegion bgLeft;
     private TextureRegion bgMid;
@@ -35,6 +55,14 @@ public class GameScreen extends BaseScreen {
         WAIT_AT_MAIN, PAN_TO_ZOMBIES, WAIT_AT_ZOMBIES, PAN_TO_SELECTION, SHOW_PLANT_SELECT, WAITING_FOR_SELECTION, PAN_BACK_TO_MAIN, PLAYING
     }
 
+    private enum OverlayMode {
+        NONE, START_OBJECTIVES, PAUSE
+    }
+
+    private OverlayMode overlayMode = OverlayMode.NONE;
+
+    private Table modalOverlay;
+
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
 
@@ -42,7 +70,23 @@ public class GameScreen extends BaseScreen {
     private float cameraRightX;
     private float cameraSelectionX;
     private float cameraGameplayX;
+
     private GameHud gameHud;
+
+
+    private final ShapeRenderer shapeRenderer;
+
+    private BoardView boardView;
+    private BoardArea boardArea;
+    private final BoardTransform boardTransform;
+
+    private boolean showGrid = true;
+
+    private final GamingController gamingController = new GamingController();
+
+    private float gameTickAccumulator;
+
+
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
         this.theme = theme;
@@ -71,7 +115,12 @@ public class GameScreen extends BaseScreen {
 
         camera = new OrthographicCamera();
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
+        worldStage = new Stage(viewport, game.getBatch());
         uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
+        inputMultiplexer = new InputMultiplexer(uiStage, worldStage);
+
+        plantSlotsBar = new PlantSlotsBar(game);
+        plantSlotsBar.setMode(PlantSlotsBar.Mode.SELECTION);
 
         cameraMainX = viewWidth / 2f;
         cameraGameplayX = bgLeft.getRegionWidth() + bgMid.getRegionWidth() / 2f;
@@ -80,6 +129,16 @@ public class GameScreen extends BaseScreen {
 
         camera.position.set(cameraMainX, worldHeight / 2f, 0);
         camera.update();
+
+        shapeRenderer = new ShapeRenderer();
+
+        boardArea = new BoardArea(
+                        533f,
+                        62f,
+                        737f,
+                        380f);
+
+        boardTransform = new BoardTransform(boardArea);
     }
 
     private void loadBackgroundAssets() {
@@ -114,14 +173,22 @@ public class GameScreen extends BaseScreen {
 
     @Override
     public void show() {
-        game.hideHud();
-        Gdx.input.setInputProcessor(uiStage);
+    game.hideHud();
+    Gdx.input.setInputProcessor(inputMultiplexer);
+    showStartObjectives();
     }
 
     private void updateCutscene(float delta) {
-        if (introState == IntroState.PLAYING || introState == IntroState.WAITING_FOR_SELECTION) return;
+          if (overlayMode != OverlayMode.NONE) {
+        return;
+    }
 
-        stateTime += delta;
+    if (introState == IntroState.PLAYING || introState == IntroState.WAITING_FOR_SELECTION) {
+        return;
+    }
+
+    stateTime += delta;
+
         float waitDuration = 1.0f;
         float panDuration = 1.5f;
         float shortPanDuration = 0.8f;
@@ -159,7 +226,7 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
-                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, this::startGameAfterSelection);
+                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, plantSlotsBar, this::startGameAfterSelection);
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
                 break;
@@ -180,17 +247,117 @@ public class GameScreen extends BaseScreen {
         camera.update();
     }
 
-    public void startGameAfterSelection() {
-        uiStage.clear();
-        gameHud = new GameHud(game, null, null);
-        uiStage.addActor(gameHud);
-        introState = IntroState.PAN_BACK_TO_MAIN;
-        stateTime = 0f;
+ public void startGameAfterSelection() {
+
+    plantSlotsBar.remove();
+    plantSlotsBar.setOnRemoveRequested(null);
+
+    uiStage.clear();
+    plantSlotsBar.setMode(
+            PlantSlotsBar.Mode.GAMEPLAY
+    );
+
+    gameHud = new GameHud(
+            game,
+            plantSlotsBar,
+            null
+    );
+
+    uiStage.addActor(gameHud);
+    Game currentGame =
+            App.getInstance()
+                    .getCurrentGame();
+
+    if (currentGame == null
+            || currentGame.getGameState() == null) {
+
+        throw new IllegalStateException(
+                "Game state was not created."
+        );
+    }
+
+
+    Board board =
+            currentGame
+                    .getGameState()
+                    .getBoard();
+
+    boardView =
+            new BoardView(
+                    board,
+                    boardTransform
+            );
+
+    boardView.setOnTileClicked(
+            this::handleTileClick
+    );
+
+    worldStage.addActor(
+            boardView
+    );
+
+
+    gameTickAccumulator = 0f;
+
+    introState =
+            IntroState.PAN_BACK_TO_MAIN;
+
+    stateTime = 0f;
+}
+
+    private void showStartObjectives() {
+        if (overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        overlayMode = OverlayMode.START_OBJECTIVES;
+
+        gameTickAccumulator = 0f;
+
+        StartGameMenuPopup popup = new StartGameMenuPopup(game, this::continueAfterObjectives, objectivesForCurrentLevel());
+
+        showModal(popup);
+    }
+    private void continueAfterObjectives() {
+        if (overlayMode != OverlayMode.START_OBJECTIVES) {
+            return;
+        }
+
+        removeModal();
+
+        overlayMode = OverlayMode.NONE;
+        gameTickAccumulator = 0f;
+    }
+    private void showModal(Actor popup) {
+        removeModal();
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.setTouchable(Touchable.enabled);
+        overlay.addListener(new InputListener() {
+                    @Override
+                    public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                        return true;
+                    }
+                });
+
+        overlay.add(popup).center();
+        modalOverlay = overlay;
+        uiStage.addActor(modalOverlay);
+        modalOverlay.toFront();
+    }
+    private void removeModal() {
+        if (modalOverlay == null) {
+            return;
+        }
+        modalOverlay.remove();
+        modalOverlay = null;
     }
 
     @Override
     public void render(float delta) {
         updateCutscene(delta);
+        updateGameplayTicks(delta);
+
         uiStage.act(delta);
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -209,8 +376,89 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
+        if (overlayMode == OverlayMode.NONE) {
+            worldStage.act(delta);
+        }
+        worldStage.draw();
+
+        drawDebugGrid();
 
         uiStage.draw();
+    }
+
+    private void updateGameplayTicks(float delta) {
+        if (introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame == null
+                || currentGame.getGameState() == null
+                || currentGame.getGameState().isFinished()) {
+            return;
+        }
+
+        int ticksPerSecond = Math.max(1, currentGame.getGameState().getTicksPerSecond());
+
+        float tickDuration = 1f / ticksPerSecond;
+
+        gameTickAccumulator += Math.min(delta, 0.25f);
+
+        while (gameTickAccumulator >= tickDuration) {
+            if (currentGame.getGameState().isFinished()) {
+                gameTickAccumulator = 0f;
+                break;
+            }
+            currentGame.forward(1);
+            gameTickAccumulator -= tickDuration;
+        }
+    }
+
+    private void handleTileClick(
+            Tile tile
+    ) {
+        PlantData selectedPlant = plantSlotsBar.getSelectedPlant();
+        if (selectedPlant == null) {
+            return;
+        }
+        int x = tile.getColumn() + 1;
+        int y = tile.getLane() + 1;
+        Result result = gamingController.plantPlant(selectedPlant.name(), x, y);
+        if (!result.success()) {
+            game.notifyError(result.message());
+            return;
+        }
+        plantSlotsBar.clearPlantSelection();
+    }
+
+    private void drawDebugGrid() {
+        if (!showGrid) {
+            return;
+        }
+
+        BoardArea area = boardTransform.getArea();
+
+        float tileWidth = boardTransform.tileWidth();
+
+        float tileHeight = boardTransform.tileHeight();
+
+        shapeRenderer.setProjectionMatrix(camera.combined);
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+
+        shapeRenderer.setColor(Color.RED);
+
+        for (int column = 0; column <= BoardTransform.COLUMNS; column++) {
+            float x = area.x() + column * tileWidth;
+            shapeRenderer.line(x, area.y(), x, area.y() + area.height());
+        }
+
+        for (int row = 0; row <= BoardTransform.ROWS; row++) {
+            float y = area.y() + row * tileHeight;
+            shapeRenderer.line(area.x(), y, area.x() + area.width(), y);
+        }
+        shapeRenderer.end();
     }
 
     @Override
@@ -222,5 +470,7 @@ public class GameScreen extends BaseScreen {
     @Override
     public void dispose() {
         uiStage.dispose();
+        worldStage.dispose();
+        shapeRenderer.dispose();
     }
 }

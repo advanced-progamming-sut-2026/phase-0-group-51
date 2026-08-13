@@ -1,5 +1,6 @@
 package views.graphical.gameplay.hud;
 
+
 import Data.database.UserRepository;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -63,7 +64,6 @@ public class GameHud extends Table {
     private final Table bottomCenter;
     private final Table bottomRight;
 
-    private final Actor gameplayBar;
     private final Runnable onPauseRequested;
     private Runnable onShovelRequested;
     private Runnable onSpeedRequested;
@@ -77,22 +77,29 @@ public class GameHud extends Table {
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
-
+    private static final float PLANT_SLOTS_TOP_OFFSET = 75f;
+    private static final float SIDE_PADDING = 16f;
     private ProgressBar waveProgress;
     private Label waveLabel;
     private Stack waveStack;
 
-
+    private final PlantSlotsBar plantSlotsBar;
     private ImageButton shovelButton;
 
     private float stateRefreshTimer;
     private float currencyRefreshTimer;
-    public GameHud(PvzGame game, Actor gameplayBar, Runnable onPauseRequested) {
+    public GameHud(PvzGame game, PlantSlotsBar plantSlotsBar, Runnable onPauseRequested) {
         if (game == null) {
             throw new IllegalArgumentException("game cannot be null");
         }
+         if (plantSlotsBar == null) {
+            throw new IllegalArgumentException(
+                    "plantSlotsBar cannot be null"
+            );
+        }
+
+        this.plantSlotsBar = plantSlotsBar;
         this.game = game;
-        this.gameplayBar = gameplayBar;
         this.onPauseRequested = onPauseRequested;
         setFillParent(true);
         setTouchable(Touchable.childrenOnly);
@@ -105,6 +112,7 @@ public class GameHud extends Table {
         bottomCenter = new Table();
         bottomRight = new Table();
 
+        setTouchable(Touchable.childrenOnly);
         buildHud();
         hideGameHud();
     }
@@ -113,10 +121,15 @@ public class GameHud extends Table {
 
         top();
         buildSunAndPlantFood();
-        buildGameplayBar();
         buildRightControls();
         buildWaveProgress();
-
+        add(plantSlotsBar)
+        .expandX()
+        .left()
+        .padTop(PLANT_SLOTS_TOP_OFFSET)
+        .padLeft(SIDE_PADDING)
+        .padRight(SIDE_PADDING)
+        .row();
         Table topRow = new Table();
         topRow.add(topLeft).top().left().width(175f);
         topRow.add(topCenter).expandX().top().center();
@@ -243,12 +256,7 @@ public class GameHud extends Table {
         );
         getStage().addActor(pausePopup);
     }
-    private void buildGameplayBar() {
-        topCenter.top().center();
-        if (gameplayBar != null) {
-            topCenter.add(gameplayBar).top().center();
-        }
-    }
+ 
     private void buildRightControls() {
         topRight.top().right();
         Table buttons = new Table();
@@ -578,7 +586,9 @@ public class GameHud extends Table {
         }
     }
 
-
+    public PlantSlotsBar getPlantSlotsBar() {
+        return plantSlotsBar;
+    }
     private void showResult(Result result) {
 
         if (result == null) {
@@ -593,5 +603,8 @@ public class GameHud extends Table {
     }
 
 
+    
+   
 
-}
+
+

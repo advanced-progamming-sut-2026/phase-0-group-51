@@ -1,7 +1,9 @@
 package views.graphical.ui;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
@@ -9,7 +11,8 @@ import graphics.PvzGame;
 
 public class PauseMenuPopup extends BorderedPanel {
 
-    public PauseMenuPopup(PvzGame game) {
+
+    public PauseMenuPopup(PvzGame game, Runnable onSaveAndQuit, Runnable onRestart, Runnable onResume) {
         super(game, com.badlogic.gdx.graphics.Color.valueOf("8F4909"));
         TextureRegion topperRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_WINDOWTOPPER");
         TextureRegion sunflowerRegion = game.getTextureBank().region("IMAGE_UI_PAUSEMENU_SUNFLOWER_TOPPER");
@@ -50,6 +53,33 @@ public class PauseMenuPopup extends BorderedPanel {
         TextButton exitButton = new TextButton("SAVE AND EXIT", game.getSkin().get("purple", TextButton.TextButtonStyle.class));
         TextButton restartButton = new TextButton("RESTART", game.getSkin(), "purple");
         TextButton resumeButton = new TextButton("RESUME", game.getSkin(), "brown");
+
+        exitButton.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        if (onSaveAndQuit != null) {
+                            onSaveAndQuit.run();
+                        }
+                    }
+                });
+
+        restartButton.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        if (onRestart != null) {
+                            onRestart.run();
+                        }
+                    }
+                });
+
+        resumeButton.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        if (onResume != null) {
+                            onResume.run();
+                        }
+                    }
+                });
 
         Table buttonsTable = new Table();
         buttonsTable.add(exitButton).padRight(10);
