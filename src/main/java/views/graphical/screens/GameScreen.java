@@ -13,6 +13,7 @@ import models.App;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+import views.graphical.gameplay.hud.GameHud;
 import views.graphical.ui.PlantSelectionMenuTable;
 
 public class GameScreen extends BaseScreen {
@@ -41,7 +42,7 @@ public class GameScreen extends BaseScreen {
     private float cameraRightX;
     private float cameraSelectionX;
     private float cameraGameplayX;
-
+    private GameHud gameHud;
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
         this.theme = theme;
@@ -169,6 +170,9 @@ public class GameScreen extends BaseScreen {
                 if (progressLeft >= 1f) {
                     camera.position.x = cameraGameplayX;
                     introState = IntroState.PLAYING;
+                    if (gameHud != null) {
+                        gameHud.showGameHud();
+                    }
                 }
                 break;
         }
@@ -178,6 +182,8 @@ public class GameScreen extends BaseScreen {
 
     public void startGameAfterSelection() {
         uiStage.clear();
+        gameHud = new GameHud(game, null, null);
+        uiStage.addActor(gameHud);
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
