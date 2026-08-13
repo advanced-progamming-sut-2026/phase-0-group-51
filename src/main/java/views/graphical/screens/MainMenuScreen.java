@@ -18,6 +18,8 @@ import controllers.GreenHouseMenuController;
 import controllers.MainMenuController;
 import graphics.PvzGame;
 import models.Result;
+import models.minigames.MinigameType;
+import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.NotificationOverlay;
 import views.graphical.ui.ProfilePopup;
@@ -43,7 +45,7 @@ public class MainMenuScreen extends BaseScreen{
     private Table dotsTable;
 
     private int currentCardIndex = 0;
-    protected MainMenuScreen(PvzGame game) {
+    public MainMenuScreen(PvzGame game) {
         super(game);
         buildUi();
 
@@ -89,35 +91,69 @@ public class MainMenuScreen extends BaseScreen{
               game.showScreen(new ChapterSelectScreen(game));
             }
         });
-        cards.get(1).addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
-            }
-        });
-        cards.get(2).addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
-            }
-        });
-        cards.get(3).addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
-            }
-        });
-        cards.get(4).addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
-            }
-        });cards.get(5).addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
-            }
-        });cards.get(6).addListener(new ChangeListener() {
+        cards.get(1).addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        game.showScreen(new minigames(game, MinigameType.VASEBREAKER));
+                    }
+                }
+        );
+
+
+        cards.get(2).addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        game.showScreen(new minigames(game, MinigameType.BEGHOULDED));
+                    }
+                }
+        );
+
+
+        cards.get(3).addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        game.showScreen(new minigames(game, MinigameType.ZOMBOTANY));
+                    }
+                }
+        );
+
+
+        cards.get(4).addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        game.showScreen(new minigames(game, MinigameType.WALLNUT_BOWLING));
+                    }
+                }
+        );
+
+
+        cards.get(5).addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        game.showScreen(new minigames(game, MinigameType.IZOMBIE));}
+                }
+        );
+        cards.get(6).addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 // game.showScreen(new AdventureScreen(game));
