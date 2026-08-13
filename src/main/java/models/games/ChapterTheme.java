@@ -33,11 +33,30 @@ public enum ChapterTheme {
                                     ZombieType.EXPLORER,
                                     ZombieType.TOMB_RAISER
                             )
+                    ).withDefinition(
+                            "Survive the first Ancient Egypt attack.",
+                            "Do not let the zombies reach the house."
                     ),
                     new Level(2, LevelType.SAVE_OUR_SEEDS, 3, 1500f,
-                            100, ancientEgyptSaveOurSeeds()),
-                    new Level(3, LevelType.CONVEYOR_BELT, 4, 1500f),
-                    new Level(4, LevelType.BOSS, 5, 2000f)
+                            100, ancientEgyptSaveOurSeeds()).withDefinition(
+                            "Protect the endangered plants while surviving the Ancient Egypt attack.",
+                            "Do not let the zombies reach the house.",
+                            "Protect all endangered plants."
+                    ),
+                    new Level(3, LevelType.CONVEYOR_BELT, 4, 1500f).withDefinition(
+                            "Fight using only the plants delivered by the conveyor belt.",
+                            "Do not let the zombies reach the house.",
+                            "Use the plants delivered by the conveyor belt."
+                    ),
+                    new Level(4, LevelType.BOSS, 5, 2000f).withDefinition(
+                            "Face the Big Wave Beach boss battle.",
+                            "Defeat the boss.",
+                            "Do not let the zombies reach the house."
+                    ).withDefinition(
+                            "Face the Ancient Egypt boss battle.",
+                            "Defeat the boss.",
+                            "Do not let the zombies reach the house."
+                    )
             ),
             TimeOfTheDay.DAY
     ),
@@ -50,11 +69,26 @@ public enum ChapterTheme {
             ),
             List.of(ChapterFeature.ICE_WIND, ChapterFeature.ICE_FLOOR),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f, frostbiteLevelOne()),
+                    new Level(1, LevelType.NORMAL, 2, 1000f, frostbiteLevelOne()).withDefinition(
+                            "Survive the freezing conditions of Frostbite Caves.",
+                            "Do not let the zombies reach the house."
+                    ),
                     new Level(2, LevelType.TIMED_BATTLE, 3, 1500f,
-                            frostbiteLevelTwo(), TimedBattleConfig.combined(12, 250, 90)),
-                    new Level(3, LevelType.DEAD_LINE, 4, 2000f, frostbiteLevelThree(), 3),
-                    new Level(4, LevelType.BOSS, 5, 2000f, frostbiteLevelFour())
+                            frostbiteLevelTwo(), TimedBattleConfig.combined(12, 250, 90)).withDefinition(
+                            "Complete the timed objectives while fighting through Frostbite Caves.",
+                            "Complete the timed battle objectives before time runs out.",
+                            "Do not let the zombies reach the house."
+                    ),
+                    new Level(3, LevelType.DEAD_LINE, 4, 2000f, frostbiteLevelThree(), 3).withDefinition(
+                            "Hold the line in Frostbite Caves.",
+                            "Do not let the zombies cross the marked line.",
+                            "Do not let the zombies reach the house."
+                    ),
+                    new Level(4, LevelType.BOSS, 5, 2000f, frostbiteLevelFour()).withDefinition(
+                            "Face the Frostbite Caves boss battle.",
+                            "Defeat the boss.",
+                            "Do not let the zombies reach the house."
+                    )
             ),
             TimeOfTheDay.DAY
     ),
@@ -67,9 +101,20 @@ public enum ChapterTheme {
             ),
             List.of(ChapterFeature.WATER_LEVEL, ChapterFeature.BACKWATER),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f),
-                    new Level(2, LevelType.LOVE_YOUR_PLANTS, 3, 1500f, 6),
-                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4, 2000f, 800, List.of()),
+                    new Level(1, LevelType.NORMAL, 2, 1000f).withDefinition(
+                            "Survive the tides and zombies of Big Wave Beach.",
+                            "Do not let the zombies reach the house."
+                    ),
+                    new Level(2, LevelType.LOVE_YOUR_PLANTS, 3, 1500f, 6).withDefinition(
+                            "Keep your plants alive while defending Big Wave Beach.",
+                            "Do not let the zombies reach the house.",
+                            "Do not exceed the allowed number of lost plants."
+                    ),
+                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4, 2000f, 800, List.of()).withDefinition(
+                            "Prepare your garden first, then start the zombie waves.",
+                            "Plant your available plants before starting the zombie waves.",
+                            "Do not let the zombies reach the house."
+                    ),
                     new Level(4, LevelType.BOSS, 5, 2000f)
             ),
             TimeOfTheDay.DAY
@@ -84,10 +129,24 @@ public enum ChapterTheme {
                     ChapterFeature.NECROMANCY
             ),
             List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f),
-                    new Level(2, LevelType.LOCKED_PLANTS, 3, 1500f),
-                    new Level(3, LevelType.NIGHT_OPS, 4, 2000f),
-                    new Level(4, LevelType.BOSS, 5, 2000f)
+                    new Level(1, LevelType.NORMAL, 2, 1000f).withDefinition(
+                            "Survive the darkness and graves of the Dark Ages.",
+                            "Do not let the zombies reach the house."
+                    ),
+                    new Level(2, LevelType.LOCKED_PLANTS, 3, 1500f).withDefinition(
+                            "Win while obeying the Locked Plants restrictions.",
+                            "Do not let the zombies reach the house.",
+                            "Follow the plant restrictions selected for this level."
+                    ),
+                    new Level(3, LevelType.NIGHT_OPS, 4, 2000f).withDefinition(
+                            "Survive a full night operation in the Dark Ages.",
+                            "Do not let the zombies reach the house."
+                    ),
+                    new Level(4, LevelType.BOSS, 5, 2000f).withDefinition(
+                            "Face the Dark Ages boss battle.",
+                            "Defeat the boss.",
+                            "Do not let the zombies reach the house."
+                    )
             ),
             TimeOfTheDay.NIGHT
     ),

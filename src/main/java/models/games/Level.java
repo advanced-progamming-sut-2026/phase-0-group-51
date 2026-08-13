@@ -18,7 +18,9 @@ public record Level(
         int deadlineColumn,
         int plantLossLimit,
         SaveOurSeedsConfig saveOurSeedsConfig,
-        TimedBattleConfig timedBattleConfig
+        TimedBattleConfig timedBattleConfig,
+        String description,
+        List<String> objectives
 ) {
     public Level(
             int levelNumber,
@@ -37,7 +39,9 @@ public record Level(
                 -1,
                 -1,
                 SaveOurSeedsConfig.none(),
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -59,7 +63,9 @@ public record Level(
                 -1,
                 -1,
                 SaveOurSeedsConfig.none(),
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -82,7 +88,9 @@ public record Level(
                 -1,
                 -1,
                 SaveOurSeedsConfig.none(),
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -105,7 +113,9 @@ public record Level(
                 deadlineColumn,
                 -1,
                 SaveOurSeedsConfig.none(),
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -127,7 +137,9 @@ public record Level(
                 -1,
                 plantLossLimit,
                 SaveOurSeedsConfig.none(),
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -150,7 +162,9 @@ public record Level(
                 -1,
                 -1,
                 SaveOurSeedsConfig.none(),
-                timedBattleConfig
+                timedBattleConfig,
+                "",
+                List.of()
         );
     }
 
@@ -173,7 +187,9 @@ public record Level(
                 -1,
                 -1,
                 saveOurSeedsConfig,
-                TimedBattleConfig.none()
+                TimedBattleConfig.none(),
+                "",
+                List.of()
         );
     }
 
@@ -190,6 +206,12 @@ public record Level(
         timedBattleConfig = timedBattleConfig == null
                 ? TimedBattleConfig.none()
                 : timedBattleConfig;
+        description = description == null
+                ? ""
+                : description.trim();
+        objectives = objectives == null
+                ? List.of()
+                : List.copyOf(objectives);
         if (type == LevelType.SAVE_OUR_SEEDS
                 && !saveOurSeedsConfig.isConfigured()) {
             throw new IllegalArgumentException("A Save Our Seeds level requires protected plants.");
@@ -220,6 +242,41 @@ public record Level(
                             + "to Timed Battle levels."
             );
         }
+    }
+
+    public Level withDefinition(
+            String description,
+            String... objectives
+    ) {
+        return new Level(
+                levelNumber,
+                type,
+                totalWaves,
+                baseDifficulty,
+                startingSun,
+                allowedZombies,
+                frostbiteConfig,
+                deadlineColumn,
+                plantLossLimit,
+                saveOurSeedsConfig,
+                timedBattleConfig,
+                description,
+                objectives == null
+                        ? List.of()
+                        : List.of(objectives)
+        );
+    }
+
+    public ChapterTheme chapterTheme() {
+        for (ChapterTheme theme : ChapterTheme.values()) {
+            for (Level level : theme.getLevels()) {
+                if (level == this) {
+                    return theme;
+                }
+            }
+        }
+
+        return null;
     }
 
     public List<ZombieType> resolveAllowedZombies(
