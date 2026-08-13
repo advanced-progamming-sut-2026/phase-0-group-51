@@ -3,16 +3,18 @@ package views.graphical.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import graphics.PvzGame;
 
 public class StartGameMenuPopup extends BorderedPanel {
-    public StartGameMenuPopup(PvzGame game, String... objects) {
+    public StartGameMenuPopup(PvzGame game, Runnable onContinue, String... objects) {
         super(game, com.badlogic.gdx.graphics.Color.valueOf("8F4909"));
 
         TextureRegion circle = game.getTextureBank().region("IMAGE_UI_NIMBLE_RADIOEMPTY");
@@ -47,6 +49,15 @@ public class StartGameMenuPopup extends BorderedPanel {
         TextButton.TextButtonStyle customPurpleStyle = new TextButton.TextButtonStyle(game.getSkin().get("purple", TextButton.TextButtonStyle.class));
         customPurpleStyle.font = newFont;
         TextButton continueButton = new TextButton("CONTINUE", customPurpleStyle);
+        continueButton.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeListener.ChangeEvent event, Actor actor) {
+                        if (onContinue != null) {
+                            onContinue.run();
+                        }
+                    }
+                });
+
 
         this.getContent().add(innerCard).width(600f).pad(30,20,10,20).expand().fill().row();
         this.getContent().add(continueButton).padBottom(-55).align(Align.center);
