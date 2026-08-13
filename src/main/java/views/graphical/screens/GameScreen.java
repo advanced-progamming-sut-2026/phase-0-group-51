@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import controllers.GamingController;
 import graphics.PvzGame;
@@ -27,9 +28,12 @@ import models.Result;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+
+
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
+
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
@@ -47,8 +51,6 @@ public class GameScreen extends BaseScreen {
     private final Stage worldStage;
     private final InputMultiplexer inputMultiplexer;
     private final PlantSlotsBar plantSlotsBar;
-
-    private GameHud gameHud;
 
     private TextureRegion bgLeft;
     private TextureRegion bgMid;
@@ -77,6 +79,9 @@ public class GameScreen extends BaseScreen {
     private float cameraSelectionX;
     private float cameraGameplayX;
 
+    private GameHud gameHud;
+
+
     private final ShapeRenderer shapeRenderer;
 
     private BoardView boardView;
@@ -88,6 +93,7 @@ public class GameScreen extends BaseScreen {
     private final GamingController gamingController = new GamingController();
 
     private float gameTickAccumulator;
+
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
@@ -118,7 +124,7 @@ public class GameScreen extends BaseScreen {
         camera = new OrthographicCamera();
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
         worldStage = new Stage(viewport, game.getBatch());
-        uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
+        uiStage = new Stage(new FitViewport(viewWidth, worldHeight));
         inputMultiplexer = new InputMultiplexer(uiStage, worldStage);
 
         plantSlotsBar = new PlantSlotsBar(game);
@@ -204,9 +210,13 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        if (introState == IntroState.PLAYING || introState == IntroState.WAITING_FOR_SELECTION) return;
+        if (introState == IntroState.PLAYING
+                || introState == IntroState.WAITING_FOR_SELECTION) {
+            return;
+        }
 
         stateTime += delta;
+
         float waitDuration = 1.0f;
         float panDuration = 1.5f;
         float shortPanDuration = 0.8f;
@@ -255,6 +265,9 @@ public class GameScreen extends BaseScreen {
                 if (progressLeft >= 1f) {
                     camera.position.x = cameraGameplayX;
                     introState = IntroState.PLAYING;
+                    if (gameHud != null) {
+                        gameHud.showGameHud();
+                    }
                 }
                 break;
         }
@@ -262,35 +275,63 @@ public class GameScreen extends BaseScreen {
         camera.update();
     }
 
-    public void startGameAfterSelection() {
-        plantSlotsBar.remove();
-        plantSlotsBar.setOnRemoveRequested(null);
+ public void startGameAfterSelection() {
 
-        uiStage.clear();
+    plantSlotsBar.remove();
+    plantSlotsBar.setOnRemoveRequested(null);
 
-        plantSlotsBar.setMode(PlantSlotsBar.Mode.GAMEPLAY);
+    uiStage.clear();
+    plantSlotsBar.setMode(
+            PlantSlotsBar.Mode.GAMEPLAY
+    );
 
-        gameHud = new GameHud(game, plantSlotsBar);
-        uiStage.addActor(gameHud);
-        Game currentGame = App.getInstance().getCurrentGame();
+    gameHud = new GameHud(
+            game,
+            plantSlotsBar,
+            this::showPauseMenu
+    );
 
-        if (currentGame == null || currentGame.getGameState() == null) {
-            throw new IllegalStateException(
-                    "Game state was not created."
-            );
-        }
+    uiStage.addActor(gameHud);
+    Game currentGame =
+            App.getInstance()
+                    .getCurrentGame();
 
-        Board board = currentGame.getGameState().getBoard();
-        boardView = new BoardView(board, boardTransform);
+    if (currentGame == null
+            || currentGame.getGameState() == null) {
 
-        boardView.setOnTileClicked(this::handleTileClick);
-
-        worldStage.addActor(boardView);
-
-        gameTickAccumulator = 0f;
-        introState = IntroState.PAN_BACK_TO_MAIN;
-        stateTime = 0f;
+        throw new IllegalStateException(
+                "Game state was not created."
+        );
     }
+
+
+    Board board =
+            currentGame
+                    .getGameState()
+                    .getBoard();
+
+    boardView =
+            new BoardView(
+                    board,
+                    boardTransform
+            );
+
+    boardView.setOnTileClicked(
+            this::handleTileClick
+    );
+
+    worldStage.addActor(
+            boardView
+    );
+
+
+    gameTickAccumulator = 0f;
+
+    introState =
+            IntroState.PAN_BACK_TO_MAIN;
+
+    stateTime = 0f;
+}
 
     private void showStartObjectives() {
         if (overlayMode != OverlayMode.NONE) {
