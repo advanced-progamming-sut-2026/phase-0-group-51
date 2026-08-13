@@ -2,16 +2,22 @@ package views.graphical.screens;
 
 import Data.loader.PlantData;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.*;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import controllers.GamingController;
 import graphics.PvzGame;
@@ -29,6 +35,7 @@ import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
+import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
@@ -62,6 +69,7 @@ public class GameScreen extends BaseScreen {
     private OverlayMode overlayMode = OverlayMode.NONE;
 
     private Table modalOverlay;
+    private final Texture modalDimTexture;
 
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
@@ -116,7 +124,7 @@ public class GameScreen extends BaseScreen {
         camera = new OrthographicCamera();
         viewport = new ExtendViewport(viewWidth, worldHeight, camera);
         worldStage = new Stage(viewport, game.getBatch());
-        uiStage = new Stage(new ExtendViewport(viewWidth, worldHeight));
+        uiStage = new Stage(new FitViewport(viewWidth, worldHeight));
         inputMultiplexer = new InputMultiplexer(uiStage, worldStage);
 
         plantSlotsBar = new PlantSlotsBar(game);
@@ -131,6 +139,21 @@ public class GameScreen extends BaseScreen {
         camera.update();
 
         shapeRenderer = new ShapeRenderer();
+
+        Pixmap modalDimPixmap =
+                new Pixmap(
+                        1,
+                        1,
+                        Pixmap.Format.RGBA8888
+                );
+
+        modalDimPixmap.setColor(Color.WHITE);
+        modalDimPixmap.fill();
+
+        modalDimTexture =
+                new Texture(modalDimPixmap);
+
+        modalDimPixmap.dispose();
 
         boardArea = new BoardArea(
                         533f,
@@ -172,22 +195,27 @@ public class GameScreen extends BaseScreen {
     }
 
     @Override
+    public InputMultiplexer getInputProcessor() {
+        return inputMultiplexer;
+    }
+
+    @Override
     public void show() {
-    game.hideHud();
-    Gdx.input.setInputProcessor(inputMultiplexer);
-    showStartObjectives();
+        game.hideHud();
+        showStartObjectives();
     }
 
     private void updateCutscene(float delta) {
-          if (overlayMode != OverlayMode.NONE) {
-        return;
-    }
+        if (overlayMode != OverlayMode.NONE) {
+            return;
+        }
 
-    if (introState == IntroState.PLAYING || introState == IntroState.WAITING_FOR_SELECTION) {
-        return;
-    }
+        if (introState == IntroState.PLAYING
+                || introState == IntroState.WAITING_FOR_SELECTION) {
+            return;
+        }
 
-    stateTime += delta;
+        stateTime += delta;
 
         float waitDuration = 1.0f;
         float panDuration = 1.5f;
@@ -260,7 +288,7 @@ public class GameScreen extends BaseScreen {
     gameHud = new GameHud(
             game,
             plantSlotsBar,
-            null
+            this::showPauseMenu
     );
 
     uiStage.addActor(gameHud);
@@ -314,9 +342,31 @@ public class GameScreen extends BaseScreen {
 
         gameTickAccumulator = 0f;
 
-        StartGameMenuPopup popup = new StartGameMenuPopup(game, this::continueAfterObjectives, objectivesForCurrentLevel());
+        ChapterTheme levelTheme =
+                currentLevel.chapterTheme();
+
+        String chapterName =
+                levelTheme == null
+                        ? theme.getName()
+                        : levelTheme.getName();
+
+        StartGameMenuPopup popup = new StartGameMenuPopup(
+                        game,
+                        this::continueAfterObjectives,
+                        chapterName,
+                        currentLevel.levelNumber(),
+                        currentLevel.description(),
+                        currentLevel.objectives().toArray(String[]::new));
 
         showModal(popup);
+        animateStartPopup(popup);
+    }
+    private void animateStartPopup(Actor popup) {
+        modalOverlay.validate();
+        float targetX = popup.getX();
+        float targetY = popup.getY();
+        popup.setPosition(targetX, -popup.getHeight());
+        popup.addAction(Actions.moveTo(targetX, targetY, 0.55f, Interpolation.pow3Out));
     }
     private void continueAfterObjectives() {
         if (overlayMode != OverlayMode.START_OBJECTIVES) {
@@ -327,20 +377,50 @@ public class GameScreen extends BaseScreen {
 
         overlayMode = OverlayMode.NONE;
         gameTickAccumulator = 0f;
+        stateTime = 0f;
     }
     private void showModal(Actor popup) {
         removeModal();
+
         Table overlay = new Table();
         overlay.setFillParent(true);
         overlay.setTouchable(Touchable.enabled);
-        overlay.addListener(new InputListener() {
+
+        TextureRegionDrawable dimBackground =
+                new TextureRegionDrawable(
+                        new TextureRegion(
+                                modalDimTexture
+                        )
+                );
+
+        overlay.setBackground(
+                dimBackground.tint(
+                        new Color(
+                                0f,
+                                0f,
+                                0f,
+                                0.62f
+                        )
+                )
+        );
+
+        overlay.addListener(
+                new InputListener() {
                     @Override
-                    public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                    public boolean touchDown(
+                            InputEvent event,
+                            float x,
+                            float y,
+                            int pointer,
+                            int button
+                    ) {
                         return true;
                     }
-                });
+                }
+        );
 
         overlay.add(popup).center();
+
         modalOverlay = overlay;
         uiStage.addActor(modalOverlay);
         modalOverlay.toFront();
@@ -353,8 +433,79 @@ public class GameScreen extends BaseScreen {
         modalOverlay = null;
     }
 
+    private void handlePauseShortcut() {
+        if (!Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            return;
+        }
+
+        if (overlayMode == OverlayMode.PAUSE) {
+            resumeGame();
+            return;
+        }
+
+        if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE) {
+            showPauseMenu();
+        }
+    }
+
+    private void showPauseMenu() {
+        if (introState != IntroState.PLAYING
+                || overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        overlayMode = OverlayMode.PAUSE;
+        gameTickAccumulator = 0f;
+
+        PauseMenuPopup popup =
+                new PauseMenuPopup(
+                        game,
+                        this::saveAndExit,
+                        this::restartLevel,
+                        this::resumeGame
+                );
+
+        showModal(popup);
+    }
+
+    private void resumeGame() {
+        if (overlayMode != OverlayMode.PAUSE) {
+            return;
+        }
+
+        removeModal();
+        overlayMode = OverlayMode.NONE;
+        gameTickAccumulator = 0f;
+    }
+
+    private void restartLevel() {
+        removeModal();
+
+        Gdx.app.postRunnable(
+                () -> game.showScreen(
+                        new GameScreen(
+                                game,
+                                theme,
+                                currentLevel.levelNumber()
+                        )
+                )
+        );
+    }
+
+    private void saveAndExit() {
+        removeModal();
+
+        Gdx.app.postRunnable(
+                () -> game.showScreen(
+                        new MainMenuScreen(game)
+                )
+        );
+    }
+
     @Override
     public void render(float delta) {
+        handlePauseShortcut();
         updateCutscene(delta);
         updateGameplayTicks(delta);
 
@@ -472,5 +623,6 @@ public class GameScreen extends BaseScreen {
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();
+        modalDimTexture.dispose();
     }
 }

@@ -25,9 +25,7 @@ import models.User;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ZombieWaveManager;
-import views.graphical.ui.PauseMenuPopup;
-import views.graphical.ui.ProfilePopup;
-import views.graphical.ui.SettingsPopup;
+import views.graphical.ui.PlantSlotsBar;
 @Getter
 @Setter
 public class GameHud extends Table {
@@ -55,7 +53,6 @@ public class GameHud extends Table {
     private static final float CURRENCY_REFRESH = 0.50f;
 
     private final PvzGame game;
-    private PauseMenuPopup pausePopup;
     private final Table topLeft;
     private final Table topCenter;
     private final Table topRight;
@@ -77,7 +74,7 @@ public class GameHud extends Table {
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
-    private static final float PLANT_SLOTS_TOP_OFFSET = 75f;
+    private static final float PLANT_SLOTS_TOP_GAP = 4f;
     private static final float SIDE_PADDING = 16f;
     private ProgressBar waveProgress;
     private Label waveLabel;
@@ -120,27 +117,55 @@ public class GameHud extends Table {
     private void buildHud() {
 
         top();
+
         buildSunAndPlantFood();
         buildRightControls();
         buildWaveProgress();
-        add(plantSlotsBar)
-        .expandX()
-        .left()
-        .padTop(PLANT_SLOTS_TOP_OFFSET)
-        .padLeft(SIDE_PADDING)
-        .padRight(SIDE_PADDING)
-        .row();
+
         Table topRow = new Table();
-        topRow.add(topLeft).top().left().width(175f);
-        topRow.add(topCenter).expandX().top().center();
-        topRow.add(topRight).top().right().width(220f);
-        add(topRow).growX().top().padTop(8f).padLeft(8f).padRight(8f).row();
+        topRow.top();
+
+        topRow.add(topLeft)
+                .top()
+                .left()
+                .width(175f);
+
+        topRow.add(topCenter)
+                .expandX()
+                .top()
+                .center();
+
+        topRow.add(topRight)
+                .top()
+                .right()
+                .width(220f);
+
+        add(topRow)
+                .growX()
+                .top()
+                .padTop(4f)
+                .padLeft(8f)
+                .padRight(8f)
+                .row();
+
+        add(plantSlotsBar)
+                .left()
+                .padTop(PLANT_SLOTS_TOP_GAP)
+                .padLeft(SIDE_PADDING)
+                .padRight(SIDE_PADDING)
+                .row();
+
         add().expand().row();
+
         Table bottomRow = new Table();
         bottomRow.add(bottomLeft).left();
         bottomRow.add(bottomCenter).expandX().center();
         bottomRow.add(bottomRight).right();
-        add(bottomRow).growX().bottom().pad(10f);
+
+        add(bottomRow)
+                .growX()
+                .bottom()
+                .pad(10f);
     }
 
     private void buildSunAndPlantFood() {
@@ -243,20 +268,7 @@ public class GameHud extends Table {
                 .left()
                 .padTop(3f);
     }
-    private void togglePause() {
-        if (pausePopup != null && pausePopup.hasParent()) {
-            pausePopup.remove();
-            return;
-        }
-        pausePopup = new PauseMenuPopup(game);
-        pausePopup.pack();
-        pausePopup.setPosition(
-                (getStage().getWidth() - pausePopup.getWidth()) / 2f,
-                (getStage().getHeight() - pausePopup.getHeight()) / 2f
-        );
-        getStage().addActor(pausePopup);
-    }
- 
+
     private void buildRightControls() {
         topRight.top().right();
         Table buttons = new Table();
@@ -289,9 +301,14 @@ public class GameHud extends Table {
         pauseButton.addListener(
                 new ClickListener() {
                     @Override
-                    public void clicked(InputEvent event, float x, float y) {
-
-                        togglePause();
+                    public void clicked(
+                            InputEvent event,
+                            float x,
+                            float y
+                    ) {
+                        if (onPauseRequested != null) {
+                            onPauseRequested.run();
+                        }
                     }
                 }
         );
@@ -601,10 +618,4 @@ public class GameHud extends Table {
             game.notifyError(result.message());
         }
     }
-
-
-    
-   
-
-
-
+}
