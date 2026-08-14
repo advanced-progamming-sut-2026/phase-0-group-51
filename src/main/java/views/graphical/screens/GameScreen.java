@@ -35,6 +35,7 @@ import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
+import views.graphical.ui.GameSettings;
 import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
@@ -88,7 +89,6 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
 
-    private boolean showGrid = true;
 
     private final GamingController gamingController = new GamingController();
 
@@ -203,6 +203,14 @@ public class GameScreen extends BaseScreen {
     public void show() {
         game.hideHud();
         showStartObjectives();
+    }
+
+    @Override
+    public void hide() {
+        if (gameHud != null) {
+            gameHud.hideGameHud();
+        }
+        removeModal();
     }
 
     private void updateCutscene(float delta) {
@@ -495,6 +503,10 @@ public class GameScreen extends BaseScreen {
 
     private void saveAndExit() {
         removeModal();
+        if (gameHud != null) {
+            gameHud.hideGameHud();
+            gameHud.remove();
+        }
 
         Gdx.app.postRunnable(
                 () -> game.showScreen(
@@ -514,6 +526,7 @@ public class GameScreen extends BaseScreen {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        viewport.apply();
         game.getBatch().setProjectionMatrix(camera.combined);
         game.getBatch().begin();
 
@@ -527,7 +540,8 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
-        if (overlayMode == OverlayMode.NONE) {
+        if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE) {
             worldStage.act(delta);
         }
         worldStage.draw();
@@ -569,6 +583,11 @@ public class GameScreen extends BaseScreen {
     private void handleTileClick(
             Tile tile
     ) {
+        if (introState != IntroState.PLAYING
+                || overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
         PlantData selectedPlant = plantSlotsBar.getSelectedPlant();
         if (selectedPlant == null) {
             return;
@@ -584,7 +603,7 @@ public class GameScreen extends BaseScreen {
     }
 
     private void drawDebugGrid() {
-        if (!showGrid) {
+        if (!GameSettings.showGrid) {
             return;
         }
 
@@ -620,6 +639,9 @@ public class GameScreen extends BaseScreen {
 
     @Override
     public void dispose() {
+        if (gameHud != null) {
+            gameHud.dispose();
+        }
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();
