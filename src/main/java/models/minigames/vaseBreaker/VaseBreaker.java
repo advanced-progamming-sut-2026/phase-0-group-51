@@ -155,7 +155,6 @@ public class VaseBreaker extends Game {
             spawnedZombie.setLane(y - 1);
             spawnedZombie.setX(x - 1);
         }
-        vase.breakVase();
         if (vase.getContentType() == VaseContentType.SEED_PACKET) {
             int expiresAt = getGameState().getTickCounter() + packetLifetimeTicks();
             droppedSeedPackets.add(new DroppedSeedPacket(vase.getPlantName(), x, y, expiresAt));
