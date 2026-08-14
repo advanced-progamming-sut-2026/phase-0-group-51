@@ -44,7 +44,6 @@ public final class PlantSelectionMenuTable extends Table {
     private final Table cardsGrid;
     private final PlantSlotsBar plantSlotsBar;
     private final Table previewContent;
-
     private final PlantSelectionController controller =
             new PlantSelectionController();
 

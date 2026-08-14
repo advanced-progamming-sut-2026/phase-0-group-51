@@ -37,6 +37,7 @@ import models.minigames.MinigameType;
 
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.MainMenuScreen;
+import views.graphical.screens.minigamesScreen.vaseBreaker.VaseBreakerScreen;
 
 public class minigames extends BaseScreen {
 
@@ -120,30 +121,10 @@ public class minigames extends BaseScreen {
 
             createConnectingLine(start, end);
         }
+
         for (int i = 0; i < stagePositions.length; i++) {
-
             int stageNumber = i + 1;
-
-            Group stageIsland =
-                    createStageIsland(
-                            stageNumber,
-                            stagePositions[i]
-                    );
-
-            mapContainer.addActor(
-                    stageIsland
-            );
-        }
-        for (int i = 0; i < stagePositions.length; i++) {
-
-            int stageNumber = i + 1;
-
-            Group stageIsland =
-                    createStageIsland(
-                            stageNumber,
-                            stagePositions[i]
-                    );
-
+            Group stageIsland = createStageIsland(stageNumber, stagePositions[i]);
             mapContainer.addActor(stageIsland);
         }
 
@@ -630,50 +611,36 @@ public class minigames extends BaseScreen {
         );
     }
 
-    private void startStage(
-            int stageNumber
-    ) {
-
+    private void startStage(int stageNumber) {
+        if (minigameType == MinigameType.VASEBREAKER) {
+            Gdx.app.postRunnable(() -> game.showScreen(new VaseBreakerScreen(game, stageNumber)));
+            return;
+        }
         Result result;
 
         switch (minigameType) {
 
-            case VASEBREAKER ->
-
-                    result = new VaseBreakerController().startStage(stageNumber);
-
-
             case BEGHOULDED ->
-
                     result = new BeghouledController().startStage(stageNumber);
 
-
             case IZOMBIE ->
-
                     result = new IZombieController().startStage(stageNumber);
 
 
             case WALLNUT_BOWLING ->
-
                     result = new WallnutBowlingController().startStage(stageNumber);
 
 
             case ZOMBOTANY ->
-
                     result = new ZombotanyController().startStage(stageNumber);
 
-
-            default -> {
-                return;
-            }
+            default -> {return;}
         }
-
 
         if (!result.success()) {
             game.notifyError(result.message());
             return;
         }
-
 
         game.notifyInfo(result.message());
 
