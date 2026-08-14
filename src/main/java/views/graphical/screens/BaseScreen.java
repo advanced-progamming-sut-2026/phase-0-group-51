@@ -4,6 +4,7 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import graphics.PvzGame;
 
@@ -41,6 +42,7 @@ public abstract class BaseScreen extends ScreenAdapter {
     @Override
     public void render(float delta) {
         float safeDelta = Math.min(delta, 0.1f);
+        ScreenUtils.clear(0f, 0f, 0f, 1f);
 
         stage.act(safeDelta);
         stage.draw();

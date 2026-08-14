@@ -79,7 +79,7 @@ public class GameHud extends Table {
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
-    private static final float PLANT_SLOTS_TOP_GAP = 4f;
+    private static final float PLANT_SLOTS_TOP_GAP = 0f;
     private static final float SIDE_PADDING = 16f;
 
     private final PlantSlotsBar plantSlotsBar;
@@ -91,6 +91,7 @@ public class GameHud extends Table {
 
     private Image waveFill;
     private Image waveZombieHead;
+    private Texture waveZombieTexture;
     private Group[] waveMarkers;
     private Image[] waveFlagImages;
 
@@ -167,8 +168,7 @@ public class GameHud extends Table {
 
         topRow.add(topRight)
                 .top()
-                .right()
-                .width(220f);
+                .right();
 
         add(topRow)
                 .growX()
@@ -441,15 +441,11 @@ public class GameHud extends Table {
             String normalAsset,
             String pressedAsset
     ) {
-        TextureRegion normalRegion = game.getTextureBank().region(normalAsset);
-        TextureRegion pressedRegion = game.getTextureBank().region(pressedAsset);
         ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
 
-        style.imageUp = new TextureRegionDrawable(normalRegion);
-
-        style.imageDown = new TextureRegionDrawable(pressedRegion);
-
-        style.imageOver = new TextureRegionDrawable(pressedRegion);
+        style.imageUp = drawable(normalAsset);
+        style.imageDown = drawable(pressedAsset);
+        style.imageOver = drawable(pressedAsset);
 
 
         ImageButton button = new ImageButton(style);
@@ -484,10 +480,15 @@ public class GameHud extends Table {
         );
 
         waveGroup.addActor(progressFrame);
-        Texture zombieTexture = new Texture(Gdx.files.internal("assets/UIs/zombie.png"));
+        waveZombieTexture =
+                new Texture(
+                        Gdx.files.internal(
+                                "assets/UIs/zombie.png"
+                        )
+                );
 
         waveZombieHead =
-                new Image(zombieTexture);
+                new Image(waveZombieTexture);
 
         waveZombieHead.setScaling(
                 Scaling.fit
@@ -579,12 +580,17 @@ public class GameHud extends Table {
             lastCompletedWaves = -1;
         }
 
-    private void updateWaveFlags(int currentWave, int totalWaves) {
+    private void updateWaveFlags(int completedWaves, int totalWaves) {
         if (waveFlagImages == null || waveFlagImages.length != totalWaves) {
             rebuildWaveFlags(totalWaves);
         }
 
-        int completedWaves = MathUtils.clamp(currentWave - 1, 0, totalWaves);
+        completedWaves = MathUtils.clamp(
+                completedWaves,
+                0,
+                totalWaves
+        );
+
         if (completedWaves == lastCompletedWaves) {
             return;
         }
@@ -700,9 +706,20 @@ public class GameHud extends Table {
         if (total <= 0) {
             return;
         }
-        updateWaveFlags(current, total);
-        int completed = MathUtils.clamp(current - 1, 0, total);
-        float progress = completed / (float) total;
+        int completed =
+                waveManager.isLevelCleared()
+                        ? total
+                        : MathUtils.clamp(
+                                current - 1,
+                                0,
+                                total
+                        );
+
+        updateWaveFlags(completed, total);
+
+        float progress =
+                completed / (float) total;
+
         updateWaveFill(progress);
     }
 
@@ -780,14 +797,22 @@ public class GameHud extends Table {
 
     private Drawable drawable(String id) {
         try {
-            TextureRegion region = game.getTextureBank().region(id);
-            if (region != null) {
-                return new TextureRegionDrawable(region);
-            }
-        } catch (Exception ignored) {
-        }
+            TextureRegion region =
+                    game.getTextureBank().region(id);
 
-        return game.getSkin().newDrawable("white_pixel", Color.DARK_GRAY);
+            if (region == null) {
+                throw new IllegalStateException(
+                        "Missing HUD asset: " + id
+                );
+            }
+
+            return new TextureRegionDrawable(region);
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Could not load HUD asset: " + id,
+                    exception
+            );
+        }
     }
 
 
@@ -806,6 +831,13 @@ public class GameHud extends Table {
 
         } catch (Exception exception) {
             return game.getSkin().get("default", Label.LabelStyle.class);
+        }
+    }
+
+    public void dispose() {
+        if (waveZombieTexture != null) {
+            waveZombieTexture.dispose();
+            waveZombieTexture = null;
         }
     }
 
