@@ -102,6 +102,10 @@ public class ProjectileViewManager extends Group {
                 )
                         * transform.tileHeight();
 
+        y +=
+                (float) projectile.getVisualArcOffset()
+                        * transform.tileHeight();
+
         actor.setProjectilePosition(
                 x,
                 y

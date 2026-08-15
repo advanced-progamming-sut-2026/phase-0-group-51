@@ -23,8 +23,8 @@ public class ProjectileActor extends Group {
     private static final String CABBAGE_CLIP =
             "plantfood_cabbage";
 
-    private static final float PEA_SCALE = 1;
-    private static final float CABBAGE_SCALE = 1;
+    private static final float PEA_SCALE = 0.7f;
+    private static final float CABBAGE_SCALE = 0.4f;
 
     private final Projectile projectile;
     private final PamAnimationActor animation;

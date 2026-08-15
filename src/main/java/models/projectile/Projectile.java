@@ -36,6 +36,9 @@ public class Projectile {
     @Getter
     private double posY;
     @Getter
+    @Setter
+    private double visualArcOffset;
+    @Getter
     private final double dirX;
     @Getter
     private final double dirY;
