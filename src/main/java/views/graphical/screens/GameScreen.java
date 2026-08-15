@@ -41,6 +41,8 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
+import views.graphical.gameplay.zombie.ZombieAnimationSystem;
+import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
 import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
@@ -94,6 +96,8 @@ public class GameScreen extends BaseScreen {
     private BoardView boardView;
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
+    private final ZombieAnimationSystem zombieAnimationSystem;
+    private final ZombieLevelPreview zombieLevelPreview;
 
 
     private final GamingController gamingController = new GamingController();
@@ -175,6 +179,25 @@ public class GameScreen extends BaseScreen {
                 380f);
 
         boardTransform = new BoardTransform(boardArea);
+        zombieAnimationSystem = new ZombieAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
+                theme
+        );
+
+        zombieLevelPreview = new ZombieLevelPreview(
+                game.getPamPlayer(),
+                worldStage,
+                theme,
+                cameraRightX
+        );
+
+        zombieLevelPreview.show(
+                currentLevel.resolveAllowedZombies(
+                        theme.getAllowedZombies()
+                )
+        );
     }
 
     private void loadBackgroundAssets() {
@@ -275,6 +298,8 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
+
+
                 PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, plantSlotsBar, this::startGameAfterSelection);
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
@@ -297,6 +322,8 @@ public class GameScreen extends BaseScreen {
     }
 
     public void startGameAfterSelection() {
+        zombieLevelPreview.clear();
+
         plantSlotsBar.remove();
         plantSlotsBar.setOnRemoveRequested(null);
 
@@ -619,6 +646,17 @@ public class GameScreen extends BaseScreen {
         updateCutscene(delta);
         updateGameplayTicks(delta);
 
+        if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE) {
+            Game currentGame = App.getInstance().getCurrentGame();
+            if (currentGame != null && currentGame.getGameState() != null) {
+                zombieAnimationSystem.update(
+                        delta,
+                        currentGame.getGameState().getZombiesInTheGame()
+                );
+            }
+        }
+
         uiStage.act(delta);
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -639,19 +677,41 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
-        if (introState == IntroState.PLAYING && overlayMode == OverlayMode.NONE) {
+        boolean animateZombiePreview =
+                introState == IntroState.PAN_TO_ZOMBIES
+                        || introState == IntroState.WAIT_AT_ZOMBIES
+                        || introState == IntroState.PAN_TO_SELECTION
+                        || introState == IntroState.WAITING_FOR_SELECTION;
+
+        if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
-            if (currentGame != null && currentGame.getGameState() != null) {
-                Board board = currentGame.getGameState().getBoard();
+            if (currentGame != null
+                    && currentGame.getGameState() != null) {
+                Board board =
+                        currentGame.getGameState().getBoard();
+
                 if (plantViewManager != null) {
-                    plantViewManager.sync(board);
+                    plantViewManager.sync(
+                            board
+                    );
                 }
+
                 if (sunViewManager != null) {
-                    sunViewManager.sync(board.getActiveSuns(), getRenderTickAlpha());
+                    sunViewManager.sync(
+                            board.getActiveSuns(),
+                            getRenderTickAlpha()
+                    );
                 }
             }
+        }
+
+        if (overlayMode == OverlayMode.NONE
+                && (introState == IntroState.PLAYING
+                || animateZombiePreview)) {
             worldStage.act(delta);
         }
+
         worldStage.draw();
 
         drawDebugGrid();
@@ -777,6 +837,8 @@ public class GameScreen extends BaseScreen {
         if (gameHud != null) {
             gameHud.dispose();
         }
+        zombieLevelPreview.clear();
+        zombieAnimationSystem.clear();
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();
