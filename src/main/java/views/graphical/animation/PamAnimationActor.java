@@ -1,7 +1,7 @@
 package views.graphical.animation;
 
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import pvz.libpvz.pam.PamPlayer;
@@ -25,6 +25,11 @@ public class PamAnimationActor extends Actor {
 
     private final Map<String, Boolean> visibilityMap =
         new HashMap<>();
+
+
+    private String groundingClip;
+    private float[] groundCenterXByFrame = new float[0];
+    private float groundingDuration = 0f;
 
     public PamAnimationActor(
         PamPlayer pamPlayer,
@@ -69,6 +74,22 @@ public class PamAnimationActor extends Actor {
         this.playbackSpeed = Math.max(0f, playbackSpeed);
     }
 
+    public float getPlaybackSpeed() {
+        return playbackSpeed;
+    }
+
+    public float getStateTime() {
+        return stateTime;
+    }
+
+    public String getClip() {
+        return clip;
+    }
+
+    public boolean isAnimationPaused() {
+        return animationPaused;
+    }
+
     public void setVisibleParts(Collection<String> parts) {
         visibilityMap.clear();
 
@@ -87,16 +108,88 @@ public class PamAnimationActor extends Actor {
         return visibilityMap;
     }
 
-    public String getClip() {
-        return clip;
+
+    public void setGroundingCurve(
+        String clip,
+        Rectangle[] boundsByFrame,
+        float clipDuration
+    ) {
+        clearGrounding();
+
+        if (clip == null
+            || clip.isBlank()
+            || boundsByFrame == null
+            || boundsByFrame.length < 2
+            || clipDuration <= 0f) {
+            return;
+        }
+
+        float[] centers = new float[boundsByFrame.length];
+        int validCount = 0;
+
+        for (int i = 0; i < boundsByFrame.length; i++) {
+            Rectangle bounds = boundsByFrame[i];
+
+            if (bounds == null) {
+                centers[i] = Float.NaN;
+                continue;
+            }
+
+            centers[i] = bounds.x + bounds.width * 0.5f;
+            validCount++;
+        }
+
+        if (validCount < 2) {
+            return;
+        }
+
+        fillMissingValues(centers);
+
+        this.groundingClip = clip;
+        this.groundCenterXByFrame = centers;
+        this.groundingDuration = clipDuration;
     }
 
-    public float getStateTime() {
-        return stateTime;
+    public void clearGrounding() {
+        groundingClip = null;
+        groundCenterXByFrame = new float[0];
+        groundingDuration = 0f;
     }
 
-    public boolean isAnimationPaused() {
-        return animationPaused;
+    public void clearGroundingKeepingVisualPosition() {
+        float correctionX = currentGroundingOffsetX();
+        setX(getX() + correctionX);
+        clearGrounding();
+    }
+
+    public boolean hasGrounding() {
+        return groundingClip != null
+            && groundCenterXByFrame.length >= 2
+            && groundingDuration > 0f;
+    }
+
+    public int getGroundingFrameCount() {
+        return groundCenterXByFrame.length;
+    }
+
+    public float getGroundingDuration() {
+        return groundingDuration;
+    }
+
+    public float getGroundingStepDistanceCanvas() {
+        if (!hasGrounding()) {
+            return 0f;
+        }
+
+        return Math.abs(
+            groundCenterXByFrame[groundCenterXByFrame.length - 1]
+                - groundCenterXByFrame[0]
+        );
+    }
+
+    public float getGroundingStepDistanceWorld() {
+        return getGroundingStepDistanceCanvas()
+            * Math.abs(getScaleX());
     }
 
     @Override
@@ -113,78 +206,115 @@ public class PamAnimationActor extends Actor {
         Batch batch,
         float parentAlpha
     ) {
+        float drawX = getX() + currentGroundingOffsetX();
 
-        float scaleX = getScaleX();
-        float scaleY = getScaleY();
+        pamPlayer.draw(
+            batch,
+            pamPath,
+            clip,
+            stateTime,
+            drawX,
+            getY(),
+            getScaleX(),
+            getScaleY(),
+            loop,
+            visibilityMap
+        );
+    }
+    private float currentGroundingOffsetX() {
+        if (!hasGrounding()
+            || !groundingClip.equals(clip)
+            || !loop) {
+            return 0f;
+        }
 
+        int frameCount = groundCenterXByFrame.length;
+        int frameIndex = currentGroundingFrameIndex();
 
+        float progress = frameCount <= 1
+            ? 0f
+            : frameIndex / (float) (frameCount - 1);
 
-        if (scaleX == 1f && scaleY == 1f) {
+        float startX = groundCenterXByFrame[0];
+        float endX = groundCenterXByFrame[frameCount - 1];
+        float currentX = groundCenterXByFrame[frameIndex];
 
-            pamPlayer.draw(
-                batch,
-                pamPath,
-                clip,
-                stateTime,
-                getX(),
-                getY(),
-                loop,
-                visibilityMap
-            );
+        float expectedLinearX = startX
+            + (endX - startX) * progress;
 
+        return (expectedLinearX - currentX) * getScaleX();
+    }
+
+    private int currentGroundingFrameIndex() {
+        int frameCount = groundCenterXByFrame.length;
+
+        if (frameCount <= 1 || groundingDuration <= 0f) {
+            return 0;
+        }
+
+        float localTime = stateTime % groundingDuration;
+        if (localTime < 0f) {
+            localTime += groundingDuration;
+        }
+
+        float frameDuration = groundingDuration / frameCount;
+        if (frameDuration <= 0f) {
+            return 0;
+        }
+
+        int frameIndex = (int) Math.floor(localTime / frameDuration);
+
+        if (frameIndex < 0) {
+            return 0;
+        }
+
+        return Math.min(frameIndex, frameCount - 1);
+    }
+
+    private static void fillMissingValues(float[] values) {
+        int firstValid = -1;
+
+        for (int i = 0; i < values.length; i++) {
+            if (!Float.isNaN(values[i])) {
+                firstValid = i;
+                break;
+            }
+        }
+
+        if (firstValid < 0) {
             return;
         }
 
-        Matrix4 originalTransform =
-            new Matrix4(batch.getTransformMatrix());
+        for (int i = 0; i < firstValid; i++) {
+            values[i] = values[firstValid];
+        }
 
-        Matrix4 scaledTransform =
-            new Matrix4(originalTransform);
+        int previousValid = firstValid;
 
-        /*
-         * Scale around the center position of the PAM actor.
-         *
-         * This also allows negative scaleX:
-         *
-         * setScale(-0.45f, 0.45f)
-         *
-         * which mirrors the zombie horizontally.
-         */
-        scaledTransform
-            .translate(
-                getX(),
-                getY(),
-                0f
-            )
-            .scale(
-                scaleX,
-                scaleY,
-                1f
-            )
-            .translate(
-                -getX(),
-                -getY(),
-                0f
-            );
+        for (int i = firstValid + 1; i < values.length; i++) {
+            if (Float.isNaN(values[i])) {
+                continue;
+            }
 
-        batch.setTransformMatrix(scaledTransform);
+            int nextValid = i;
+            int gap = nextValid - previousValid;
 
-        try {
+            if (gap > 1) {
+                float from = values[previousValid];
+                float to = values[nextValid];
 
-            pamPlayer.draw(
-                batch,
-                pamPath,
-                clip,
-                stateTime,
-                getX(),
-                getY(),
-                loop,
-                visibilityMap
-            );
+                for (int j = 1; j < gap; j++) {
+                    float alpha = j / (float) gap;
+                    values[previousValid + j] =
+                        from + (to - from) * alpha;
+                }
+            }
 
-        } finally {
+            previousValid = nextValid;
+        }
 
-            batch.setTransformMatrix(originalTransform);
+        for (int i = previousValid + 1; i < values.length; i++) {
+            values[i] = values[previousValid];
         }
     }
 }
