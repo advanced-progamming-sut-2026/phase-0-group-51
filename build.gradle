@@ -53,7 +53,7 @@ dependencies {
     runtimeOnly "com.badlogicgames.gdx:gdx-freetype-platform:${gdxVersion}:natives-desktop"
 
     // کتابخانه نمایش animationهای PVZ2
-    implementation 'com.github.pizpizi:libPVZ:016f0ae'
+    implementation 'com.github.pizpizi:libPVZ:v0.1.6'
 
     // رابط کاربری PVZ2
     implementation 'com.github.pizpizi:pvz-skin:v0.1.0'

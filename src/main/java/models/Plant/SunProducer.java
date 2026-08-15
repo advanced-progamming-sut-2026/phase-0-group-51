@@ -178,6 +178,7 @@ public enum SunProducer implements PlantType {
                 Integer.MAX_VALUE,
                 plant
         ));
+        plant.signalAction(PlantAction.PRODUCE);
         state.recordTimedBattleSunProduced(amount);
         state.logEvent(plant.getName() + " produced a sun at ("
                 + (plant.getPosX() + 1) + ", "

@@ -320,15 +320,16 @@ public final class PlantCard extends Button {
     public void setCooldownFraction(float cooldownFraction) {
         float clamped = Math.max(0f, Math.min(1f, cooldownFraction));
 
-        boolean coolingDown = clamped > 0f;
-
         cooldownOverlay.setFraction(clamped);
+        refreshVisualState();
+    }
 
-        if (coolingDown && isChecked()) {
+    public void setAvailable(boolean available) {
+        if (!available && isChecked()) {
             setChecked(false);
         }
 
-        setDisabled(coolingDown);
+        setDisabled(!available);
         refreshVisualState();
     }
 

@@ -1,9 +1,11 @@
 package views.graphical.animation;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import lombok.Getter;
 import pvz.libpvz.pam.PamPlayer;
 
 import java.util.Collection;
@@ -21,16 +23,18 @@ public class PamAnimationActor extends Actor {
 
     private float stateTime = 0f;
     private float playbackSpeed = 1f;
+    @Getter
     private boolean animationPaused = false;
 
+    @Getter
     private final Map<String, Boolean> visibilityMap =
-        new HashMap<>();
+            new HashMap<>();
 
     public PamAnimationActor(
-        PamPlayer pamPlayer,
-        String pamPath,
-        String clip,
-        boolean loop
+            PamPlayer pamPlayer,
+            String pamPath,
+            String clip,
+            boolean loop
     ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer);
         this.pamPath = Objects.requireNonNull(pamPath);
@@ -83,20 +87,8 @@ public class PamAnimationActor extends Actor {
         }
     }
 
-    public Map<String, Boolean> getVisibilityMap() {
-        return visibilityMap;
-    }
-
-    public String getClip() {
-        return clip;
-    }
-
     public float getStateTime() {
         return stateTime;
-    }
-
-    public boolean isAnimationPaused() {
-        return animationPaused;
     }
 
     @Override
@@ -110,81 +102,62 @@ public class PamAnimationActor extends Actor {
 
     @Override
     public void draw(
-        Batch batch,
-        float parentAlpha
+            Batch batch,
+            float parentAlpha
     ) {
+        Color oldColor = new Color(batch.getColor());
+        Color color = getColor();
+        Matrix4 originalTransform =
+                new Matrix4(batch.getTransformMatrix());
+
+        batch.setColor(
+                color.r,
+                color.g,
+                color.b,
+                color.a * parentAlpha
+        );
 
         float scaleX = getScaleX();
         float scaleY = getScaleY();
 
-
-
-        if (scaleX == 1f && scaleY == 1f) {
-
-            pamPlayer.draw(
-                batch,
-                pamPath,
-                clip,
-                stateTime,
-                getX(),
-                getY(),
-                loop,
-                visibilityMap
-            );
-
-            return;
-        }
-
-        Matrix4 originalTransform =
-            new Matrix4(batch.getTransformMatrix());
-
-        Matrix4 scaledTransform =
-            new Matrix4(originalTransform);
-
-        /*
-         * Scale around the center position of the PAM actor.
-         *
-         * This also allows negative scaleX:
-         *
-         * setScale(-0.45f, 0.45f)
-         *
-         * which mirrors the zombie horizontally.
-         */
-        scaledTransform
-            .translate(
-                getX(),
-                getY(),
-                0f
-            )
-            .scale(
-                scaleX,
-                scaleY,
-                1f
-            )
-            .translate(
-                -getX(),
-                -getY(),
-                0f
-            );
-
-        batch.setTransformMatrix(scaledTransform);
-
         try {
+            if (scaleX != 1f || scaleY != 1f) {
+                Matrix4 scaledTransform =
+                        new Matrix4(originalTransform);
+
+                scaledTransform
+                        .translate(
+                                getX(),
+                                getY(),
+                                0f
+                        )
+                        .scale(
+                                scaleX,
+                                scaleY,
+                                1f
+                        )
+                        .translate(
+                                -getX(),
+                                -getY(),
+                                0f
+                        );
+
+                batch.setTransformMatrix(scaledTransform);
+            }
 
             pamPlayer.draw(
-                batch,
-                pamPath,
-                clip,
-                stateTime,
-                getX(),
-                getY(),
-                loop,
-                visibilityMap
+                    batch,
+                    pamPath,
+                    clip,
+                    stateTime,
+                    getX(),
+                    getY(),
+                    loop,
+                    visibilityMap
             );
-
         } finally {
-
             batch.setTransformMatrix(originalTransform);
+            batch.setColor(oldColor);
         }
     }
 }

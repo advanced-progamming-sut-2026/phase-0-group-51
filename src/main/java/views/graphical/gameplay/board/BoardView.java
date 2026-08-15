@@ -17,6 +17,8 @@ public final class BoardView extends Group {
     private final TileView[][] tileViews;
     @Setter
     private Consumer<Tile> onTileClicked;
+    @Setter
+    private Consumer<Tile> onTileHovered;
 
     public BoardView(
             Board board,
@@ -42,7 +44,6 @@ public final class BoardView extends Group {
                 ][
                 board.getColumnCount()
                 ];
-
         buildTiles();
     }
 
@@ -77,6 +78,18 @@ public final class BoardView extends Group {
                         tile -> {
                             if (onTileClicked != null) {
                                 onTileClicked.accept(tile);
+                            }
+                        }
+                );
+                tileView.setOnHoverChanged(
+                        (tile, hovered) -> {
+                            if (onTileHovered == null) {
+                                return;
+                            }
+                            if (hovered) {
+                                onTileHovered.accept(tile);
+                            } else {
+                                onTileHovered.accept(null);
                             }
                         }
                 );
