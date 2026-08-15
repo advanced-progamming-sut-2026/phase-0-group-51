@@ -2,10 +2,9 @@ package views.graphical.animation;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-import lombok.Getter;
 import pvz.libpvz.pam.PamPlayer;
 
 import java.util.Collection;
@@ -23,12 +22,14 @@ public class PamAnimationActor extends Actor {
 
     private float stateTime = 0f;
     private float playbackSpeed = 1f;
-    @Getter
     private boolean animationPaused = false;
 
-    @Getter
     private final Map<String, Boolean> visibilityMap =
             new HashMap<>();
+
+    private String groundingClip;
+    private float[] groundCenterXByFrame = new float[0];
+    private float groundingDuration = 0f;
 
     public PamAnimationActor(
             PamPlayer pamPlayer,
@@ -69,8 +70,24 @@ public class PamAnimationActor extends Actor {
         animationPaused = false;
     }
 
+    public boolean isAnimationPaused() {
+        return animationPaused;
+    }
+
     public void setPlaybackSpeed(float playbackSpeed) {
         this.playbackSpeed = Math.max(0f, playbackSpeed);
+    }
+
+    public float getPlaybackSpeed() {
+        return playbackSpeed;
+    }
+
+    public float getStateTime() {
+        return stateTime;
+    }
+
+    public String getClip() {
+        return clip;
     }
 
     public void setVisibleParts(Collection<String> parts) {
@@ -87,8 +104,95 @@ public class PamAnimationActor extends Actor {
         }
     }
 
-    public float getStateTime() {
-        return stateTime;
+    public Map<String, Boolean> getVisibilityMap() {
+        return visibilityMap;
+    }
+
+    public void setGroundingCurve(
+            String clip,
+            Rectangle[] boundsByFrame,
+            float clipDuration
+    ) {
+        clearGrounding();
+
+        if (clip == null
+                || clip.isBlank()
+                || boundsByFrame == null
+                || boundsByFrame.length < 2
+                || clipDuration <= 0f) {
+            return;
+        }
+
+        float[] centers = new float[boundsByFrame.length];
+        int validCount = 0;
+
+        for (int i = 0; i < boundsByFrame.length; i++) {
+            Rectangle bounds = boundsByFrame[i];
+
+            if (bounds == null) {
+                centers[i] = Float.NaN;
+                continue;
+            }
+
+            centers[i] = bounds.x + bounds.width * 0.5f;
+            validCount++;
+        }
+
+        if (validCount < 2) {
+            return;
+        }
+
+        fillMissingValues(centers);
+
+        this.groundingClip = clip;
+        this.groundCenterXByFrame = centers;
+        this.groundingDuration = clipDuration;
+    }
+
+    public void clearGrounding() {
+        groundingClip = null;
+        groundCenterXByFrame = new float[0];
+        groundingDuration = 0f;
+    }
+
+    public void clearGroundingKeepingVisualPosition() {
+        float correctionX = currentGroundingOffsetX();
+
+        setX(getX() + correctionX);
+
+        clearGrounding();
+    }
+
+    public boolean hasGrounding() {
+        return groundingClip != null
+                && groundCenterXByFrame.length >= 2
+                && groundingDuration > 0f;
+    }
+
+    public int getGroundingFrameCount() {
+        return groundCenterXByFrame.length;
+    }
+
+    public float getGroundingDuration() {
+        return groundingDuration;
+    }
+
+    public float getGroundingStepDistanceCanvas() {
+        if (!hasGrounding()) {
+            return 0f;
+        }
+
+        return Math.abs(
+                groundCenterXByFrame[
+                        groundCenterXByFrame.length - 1
+                        ]
+                        - groundCenterXByFrame[0]
+        );
+    }
+
+    public float getGroundingStepDistanceWorld() {
+        return getGroundingStepDistanceCanvas()
+                * Math.abs(getScaleX());
     }
 
     @Override
@@ -105,59 +209,191 @@ public class PamAnimationActor extends Actor {
             Batch batch,
             float parentAlpha
     ) {
-        Color oldColor = new Color(batch.getColor());
-        Color color = getColor();
-        Matrix4 originalTransform =
-                new Matrix4(batch.getTransformMatrix());
+        float drawX =
+                getX()
+                        + currentGroundingOffsetX();
+
+        Color oldColor =
+                new Color(batch.getColor());
+
+        Color actorColor =
+                getColor();
 
         batch.setColor(
-                color.r,
-                color.g,
-                color.b,
-                color.a * parentAlpha
+                actorColor.r,
+                actorColor.g,
+                actorColor.b,
+                actorColor.a * parentAlpha
         );
 
-        float scaleX = getScaleX();
-        float scaleY = getScaleY();
-
         try {
-            if (scaleX != 1f || scaleY != 1f) {
-                Matrix4 scaledTransform =
-                        new Matrix4(originalTransform);
-
-                scaledTransform
-                        .translate(
-                                getX(),
-                                getY(),
-                                0f
-                        )
-                        .scale(
-                                scaleX,
-                                scaleY,
-                                1f
-                        )
-                        .translate(
-                                -getX(),
-                                -getY(),
-                                0f
-                        );
-
-                batch.setTransformMatrix(scaledTransform);
-            }
-
             pamPlayer.draw(
                     batch,
                     pamPath,
                     clip,
                     stateTime,
-                    getX(),
+                    drawX,
                     getY(),
+                    getScaleX(),
+                    getScaleY(),
                     loop,
                     visibilityMap
             );
         } finally {
-            batch.setTransformMatrix(originalTransform);
             batch.setColor(oldColor);
+        }
+    }
+
+    private float currentGroundingOffsetX() {
+        if (!hasGrounding()
+                || !groundingClip.equals(clip)
+                || !loop) {
+            return 0f;
+        }
+
+        int frameCount =
+                groundCenterXByFrame.length;
+
+        int frameIndex =
+                currentGroundingFrameIndex();
+
+        float progress =
+                frameCount <= 1
+                        ? 0f
+                        : frameIndex
+                        / (float) (frameCount - 1);
+
+        float startX =
+                groundCenterXByFrame[0];
+
+        float endX =
+                groundCenterXByFrame[
+                        frameCount - 1
+                        ];
+
+        float currentX =
+                groundCenterXByFrame[
+                        frameIndex
+                        ];
+
+        float expectedLinearX =
+                startX
+                        + (endX - startX)
+                        * progress;
+
+        return (
+                expectedLinearX
+                        - currentX
+        ) * getScaleX();
+    }
+
+    private int currentGroundingFrameIndex() {
+        int frameCount =
+                groundCenterXByFrame.length;
+
+        if (frameCount <= 1
+                || groundingDuration <= 0f) {
+            return 0;
+        }
+
+        float localTime =
+                stateTime
+                        % groundingDuration;
+
+        if (localTime < 0f) {
+            localTime += groundingDuration;
+        }
+
+        float frameDuration =
+                groundingDuration
+                        / frameCount;
+
+        if (frameDuration <= 0f) {
+            return 0;
+        }
+
+        int frameIndex =
+                (int) Math.floor(
+                        localTime
+                                / frameDuration
+                );
+
+        if (frameIndex < 0) {
+            return 0;
+        }
+
+        return Math.min(
+                frameIndex,
+                frameCount - 1
+        );
+    }
+
+    private static void fillMissingValues(
+            float[] values
+    ) {
+        int firstValid = -1;
+
+        for (int i = 0; i < values.length; i++) {
+            if (!Float.isNaN(values[i])) {
+                firstValid = i;
+                break;
+            }
+        }
+
+        if (firstValid < 0) {
+            return;
+        }
+
+        for (int i = 0; i < firstValid; i++) {
+            values[i] = values[firstValid];
+        }
+
+        int previousValid =
+                firstValid;
+
+        for (int i = firstValid + 1;
+             i < values.length;
+             i++) {
+
+            if (Float.isNaN(values[i])) {
+                continue;
+            }
+
+            int nextValid = i;
+            int gap =
+                    nextValid
+                            - previousValid;
+
+            if (gap > 1) {
+                float from =
+                        values[previousValid];
+
+                float to =
+                        values[nextValid];
+
+                for (int j = 1; j < gap; j++) {
+                    float alpha =
+                            j / (float) gap;
+
+                    values[
+                            previousValid + j
+                            ] =
+                            from
+                                    + (to - from)
+                                    * alpha;
+                }
+            }
+
+            previousValid =
+                    nextValid;
+        }
+
+        for (int i = previousValid + 1;
+             i < values.length;
+             i++) {
+
+            values[i] =
+                    values[previousValid];
         }
     }
 }

@@ -61,7 +61,6 @@ dependencies {
 
 }
 
-// آدرس assetها مخصوص هر لپ‌تاپ است و نباید commit شود.
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 
