@@ -131,6 +131,7 @@ public enum Lobber implements PlantType {
                 target.getX(),
                 target.getLane()
         ));
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void launchAtGrave(
@@ -144,6 +145,7 @@ public enum Lobber implements PlantType {
                 target.getColumn(),
                 target.getLane()
         ).withGraveTarget());
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private Projectile createProjectile(

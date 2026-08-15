@@ -14,7 +14,9 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -30,11 +32,13 @@ import models.games.Game;
 import models.games.Level;
 
 
+import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
+import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.ui.GameSettings;
 import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
@@ -94,6 +98,12 @@ public class GameScreen extends BaseScreen {
 
     private float gameTickAccumulator;
 
+    private PlantActor placementPreview;
+    private PlantViewManager plantViewManager;
+
+    private Image rowHighlight;
+    private Image columnHighlight;
+
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
@@ -140,18 +150,12 @@ public class GameScreen extends BaseScreen {
 
         shapeRenderer = new ShapeRenderer();
 
-        Pixmap modalDimPixmap =
-                new Pixmap(
-                        1,
-                        1,
-                        Pixmap.Format.RGBA8888
-                );
+        Pixmap modalDimPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
 
         modalDimPixmap.setColor(Color.WHITE);
         modalDimPixmap.fill();
 
-        modalDimTexture =
-                new Texture(modalDimPixmap);
+        modalDimTexture = new Texture(modalDimPixmap);
 
         modalDimPixmap.dispose();
 
@@ -285,61 +289,60 @@ public class GameScreen extends BaseScreen {
 
  public void startGameAfterSelection() {
 
+
     plantSlotsBar.remove();
     plantSlotsBar.setOnRemoveRequested(null);
 
     uiStage.clear();
-    plantSlotsBar.setMode(
-            PlantSlotsBar.Mode.GAMEPLAY
-    );
-
-    gameHud = new GameHud(
-            game,
-            plantSlotsBar,
-            this::showPauseMenu
-    );
-
+    plantSlotsBar.setMode(PlantSlotsBar.Mode.GAMEPLAY);
+     plantSlotsBar.setOnPlantSelected(this::handlePlantSelectionChanged);
+    gameHud = new GameHud(game, plantSlotsBar, this::showPauseMenu);
     uiStage.addActor(gameHud);
-    Game currentGame =
-            App.getInstance()
-                    .getCurrentGame();
+    Game currentGame = App.getInstance().getCurrentGame();
 
-    if (currentGame == null
-            || currentGame.getGameState() == null) {
-
-        throw new IllegalStateException(
-                "Game state was not created."
-        );
+    if (currentGame == null || currentGame.getGameState() == null) {
+        throw new IllegalStateException("Game state was not created.");
     }
 
 
-    Board board =
-            currentGame
-                    .getGameState()
-                    .getBoard();
+    Board board = currentGame.getGameState().getBoard();
 
-    boardView =
-            new BoardView(
-                    board,
-                    boardTransform
-            );
+    boardView = new BoardView(board, boardTransform);
 
-    boardView.setOnTileClicked(
-            this::handleTileClick
-    );
+    boardView.setOnTileClicked(this::handleTileClick);
+     boardView.setOnTileHovered(this::handleTileHover);
 
-    worldStage.addActor(
-            boardView
-    );
+    createPlacementHighlights();
+    worldStage.addActor(rowHighlight);
+    worldStage.addActor(columnHighlight);
+    worldStage.addActor(boardView);
+     plantViewManager = new PlantViewManager(game, boardTransform);
+     worldStage.addActor(plantViewManager);
+    placementPreview = new PlantActor(game);
+    placementPreview.setPreviewMode(true);
+    worldStage.addActor(placementPreview);
 
 
     gameTickAccumulator = 0f;
 
-    introState =
-            IntroState.PAN_BACK_TO_MAIN;
+    introState = IntroState.PAN_BACK_TO_MAIN;
 
     stateTime = 0f;
 }
+    private void handlePlantSelectionChanged(PlantData plant) {
+        if (placementPreview == null) {
+            return;
+        }
+
+        if (plant == null) {
+            placementPreview.clearPlant();
+            hidePlacementHighlights();
+            return;
+        }
+
+        placementPreview.setPreviewMode(true);
+        placementPreview.setPlant(plant);
+    }
 
     private void showStartObjectives() {
         if (overlayMode != OverlayMode.NONE) {
@@ -514,7 +517,46 @@ public class GameScreen extends BaseScreen {
                 )
         );
     }
+    private void createPlacementHighlights() {
+        Drawable highlightDrawable = game.getSkin().newDrawable("white_pixel", new Color(1f, 1f, 1f, 0.70f));
+        rowHighlight = new Image(highlightDrawable);
+        columnHighlight = new Image(highlightDrawable);
+        rowHighlight.setTouchable(Touchable.disabled);
+        columnHighlight.setTouchable(Touchable.disabled);
+        rowHighlight.setVisible(false);
+        columnHighlight.setVisible(false);
+    }
+    private void handleTileHover(Tile tile) {
+        if (tile == null || plantSlotsBar.getSelectedPlant() == null) {
+            hidePlacementHighlights();
+            return;
+        }
+        BoardArea area = boardTransform.getArea();
+        rowHighlight.setBounds(area.x(),
+                boardTransform.tileY(tile.getLane()),
+                area.width(),
+                boardTransform.tileHeight()
+        );
 
+        columnHighlight.setBounds(
+                boardTransform.tileX(tile.getColumn()),
+                area.y(),
+                boardTransform.tileWidth(),
+                area.height()
+        );
+
+        rowHighlight.setVisible(true);
+        columnHighlight.setVisible(true);
+    }
+    private void hidePlacementHighlights() {
+        if (rowHighlight != null) {
+            rowHighlight.setVisible(false);
+        }
+
+        if (columnHighlight != null) {
+            columnHighlight.setVisible(false);
+        }
+    }
     @Override
     public void render(float delta) {
         handlePauseShortcut();
@@ -529,6 +571,7 @@ public class GameScreen extends BaseScreen {
         viewport.apply();
         game.getBatch().setProjectionMatrix(camera.combined);
         game.getBatch().begin();
+        game.getBatch().setColor(Color.WHITE);
 
         float currentX = 0;
         game.getBatch().draw(bgLeft, currentX, 0, bgLeft.getRegionWidth(), worldHeight);
@@ -540,14 +583,17 @@ public class GameScreen extends BaseScreen {
         game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
-        if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE) {
+        if (introState == IntroState.PLAYING && overlayMode == OverlayMode.NONE) {
+            Game currentGame = App.getInstance().getCurrentGame();
+            if (currentGame != null && currentGame.getGameState() != null && plantViewManager != null) {
+                plantViewManager.sync(currentGame.getGameState().getBoard());
+            }
             worldStage.act(delta);
         }
         worldStage.draw();
 
         drawDebugGrid();
-
+        game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
     }
 

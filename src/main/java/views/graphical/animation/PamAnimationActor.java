@@ -1,8 +1,10 @@
 package views.graphical.animation;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import lombok.Getter;
 import pvz.libpvz.pam.PamPlayer;
 
 import java.util.Collection;
@@ -22,6 +24,7 @@ public class PamAnimationActor extends Actor {
     private float playbackSpeed = 1f;
     private boolean animationPaused = false;
 
+    @Getter
     private final Map<String, Boolean> visibilityMap =
             new HashMap<>();
 
@@ -82,10 +85,6 @@ public class PamAnimationActor extends Actor {
         }
     }
 
-    public Map<String, Boolean> getVisibilityMap() {
-        return visibilityMap;
-    }
-
     @Override
     public void act(float delta) {
         super.act(delta);
@@ -100,6 +99,14 @@ public class PamAnimationActor extends Actor {
             Batch batch,
             float parentAlpha
     ) {
+        Color oldColor = new Color(batch.getColor());
+        Color color = getColor();
+        batch.setColor(
+                color.r,
+                color.g,
+                color.b,
+                color.a * parentAlpha
+        );
         pamPlayer.draw(
                 batch,
                 pamPath,
@@ -110,5 +117,6 @@ public class PamAnimationActor extends Actor {
                 loop,
                 visibilityMap
         );
+        batch.setColor(oldColor);
     }
 }

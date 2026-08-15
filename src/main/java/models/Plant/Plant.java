@@ -57,6 +57,12 @@ public class Plant {
     private int blueFlameTicks;
     private boolean autoPlantFoodOnEntry;
 
+    @Getter
+    private PlantAction lastAction = PlantAction.NONE;
+
+    @Getter
+    private long actionSerial = 0;
+
     private int damage;
 
     public Plant(int id, String name, PlantType plantType, PlantStats plantStat,
@@ -294,6 +300,10 @@ public class Plant {
                 blueFlame = false;
             }
         }
+    }
+    public void signalAction(PlantAction action) {
+        lastAction = action;
+        actionSerial++;
     }
     public void die(GameState gameState) {
         if (markedForRemoval) return;
