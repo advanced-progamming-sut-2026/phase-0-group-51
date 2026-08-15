@@ -32,6 +32,7 @@ import models.games.Game;
 import models.games.Level;
 
 
+import models.sun.Sun;
 import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
@@ -39,6 +40,7 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -104,6 +106,7 @@ public class GameScreen extends BaseScreen {
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
+    private SunViewManager sunViewManager;
 
     private Image rowHighlight;
     private Image columnHighlight;
@@ -177,23 +180,23 @@ public class GameScreen extends BaseScreen {
 
         boardTransform = new BoardTransform(boardArea);
         zombieAnimationSystem = new ZombieAnimationSystem(
-            game.getPamPlayer(),
-            worldStage,
-            boardTransform,
-            theme
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
+                theme
         );
 
         zombieLevelPreview = new ZombieLevelPreview(
-            game.getPamPlayer(),
-            worldStage,
-            theme,
-            cameraRightX
+                game.getPamPlayer(),
+                worldStage,
+                theme,
+                cameraRightX
         );
 
         zombieLevelPreview.show(
-            currentLevel.resolveAllowedZombies(
-                theme.getAllowedZombies()
-            )
+                currentLevel.resolveAllowedZombies(
+                        theme.getAllowedZombies()
+                )
         );
     }
 
@@ -373,15 +376,13 @@ public class GameScreen extends BaseScreen {
         worldStage.addActor(columnHighlight);
         worldStage.addActor(boardView);
 
-        plantViewManager =
-                new PlantViewManager(
-                        game,
-                        boardTransform
-                );
+        plantViewManager = new PlantViewManager(game, boardTransform);
         worldStage.addActor(plantViewManager);
+        sunViewManager = new SunViewManager(game, boardTransform);
+        sunViewManager.setOnSunClicked(this::handleSunClicked);
+        worldStage.addActor(sunViewManager);
 
-        placementPreview =
-                new PlantActor(game);
+        placementPreview = new PlantActor(game);
         placementPreview.setPreviewMode(true);
         worldStage.addActor(placementPreview);
 
@@ -405,6 +406,25 @@ public class GameScreen extends BaseScreen {
 
         placementPreview.setPreviewMode(true);
         placementPreview.setPlant(plant);
+    }
+    private void handleSunClicked(Sun sun) {
+        if (sun == null || introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
+
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame == null || currentGame.getGameState() == null) {
+
+            return;
+        }
+
+        boolean collected = currentGame.getGameState().getBoard().collectSun(sun, currentGame.getGameState());
+
+        if (!collected) {
+            game.notifyError("Sun has expired or was already collected.");
+        }
     }
 
     private void showStartObjectives() {
@@ -627,12 +647,12 @@ public class GameScreen extends BaseScreen {
         updateGameplayTicks(delta);
 
         if (introState == IntroState.PLAYING
-            && overlayMode == OverlayMode.NONE) {
+                && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
-                    delta,
-                    currentGame.getGameState().getZombiesInTheGame()
+                        delta,
+                        currentGame.getGameState().getZombiesInTheGame()
                 );
             }
         }
@@ -658,21 +678,31 @@ public class GameScreen extends BaseScreen {
 
         game.getBatch().end();
         boolean animateZombiePreview =
-            introState == IntroState.PAN_TO_ZOMBIES
-                || introState == IntroState.WAIT_AT_ZOMBIES
-                || introState == IntroState.PAN_TO_SELECTION
-                || introState == IntroState.WAITING_FOR_SELECTION;
+                introState == IntroState.PAN_TO_ZOMBIES
+                        || introState == IntroState.WAIT_AT_ZOMBIES
+                        || introState == IntroState.PAN_TO_SELECTION
+                        || introState == IntroState.WAITING_FOR_SELECTION;
 
         if (introState == IntroState.PLAYING
                 && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
-
             if (currentGame != null
-                    && currentGame.getGameState() != null
-                    && plantViewManager != null) {
-                plantViewManager.sync(
-                        currentGame.getGameState().getBoard()
-                );
+                    && currentGame.getGameState() != null) {
+                Board board =
+                        currentGame.getGameState().getBoard();
+
+                if (plantViewManager != null) {
+                    plantViewManager.sync(
+                            board
+                    );
+                }
+
+                if (sunViewManager != null) {
+                    sunViewManager.sync(
+                            board.getActiveSuns(),
+                            getRenderTickAlpha()
+                    );
+                }
             }
         }
 
@@ -687,6 +717,33 @@ public class GameScreen extends BaseScreen {
         drawDebugGrid();
         game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
+    }
+    private float getRenderTickAlpha() {
+        Game currentGame =
+                App.getInstance()
+                        .getCurrentGame();
+
+        if (currentGame == null
+                || currentGame.getGameState() == null) {
+            return 0f;
+        }
+
+        int ticksPerSecond =
+                Math.max(
+                        1,
+                        currentGame
+                                .getGameState()
+                                .getTicksPerSecond()
+                );
+
+        float tickDuration =
+                1f / ticksPerSecond;
+
+        return Math.min(
+                1f,
+                gameTickAccumulator
+                        / tickDuration
+        );
     }
 
     private void updateGameplayTicks(float delta) {
@@ -722,7 +779,7 @@ public class GameScreen extends BaseScreen {
             Tile tile
     ) {
         if (introState != IntroState.PLAYING
-            || overlayMode != OverlayMode.NONE) {
+                || overlayMode != OverlayMode.NONE) {
             return;
         }
 
