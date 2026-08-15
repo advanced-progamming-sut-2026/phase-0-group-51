@@ -225,6 +225,10 @@ public final class PlantSlotsBar extends Table {
                         .row();
             }
         }
+
+        if (mode == Mode.GAMEPLAY) {
+            refreshGameplayAvailability();
+        }
     }
 
     private PlantCard createPlantSlot(
@@ -433,8 +437,15 @@ public final class PlantSlotsBar extends Table {
                 );
             }
 
-            card.setEnoughSun(
-                    currentSun >= plant.cost()
+            boolean enoughSun =
+                    currentSun >= plant.cost();
+
+            boolean coolingDown =
+                    ticksRemaining > 0;
+
+            card.setEnoughSun(enoughSun);
+            card.setAvailable(
+                    enoughSun && !coolingDown
             );
         }
     }

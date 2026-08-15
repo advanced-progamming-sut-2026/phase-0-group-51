@@ -2,6 +2,7 @@ package Data.loader;
 
 import models.Plant.PlantTag;
 import java.util.List;
+import java.util.Map;
 
 public record PlantData(
         int id,
@@ -26,5 +27,14 @@ public record PlantData(
         String idleClip,
         String onPlantFoodDescription,
         String overallDescription,
-        String funDescription
-) {}
+        String funDescription,
+        Map<String, PlantAnimationData> animations
+) {
+    public PlantAnimationData animation(String key) {
+        return animations.get(key);
+    }
+
+    public boolean hasAnimation(String key) {
+        return animations.containsKey(key);
+    }
+}

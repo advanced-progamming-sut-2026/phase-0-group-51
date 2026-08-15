@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class PlantLoader {
     private PlantLoader() {}
@@ -31,7 +33,8 @@ public final class PlantLoader {
                     obj.optDouble("projectileSpeed", 0.5), obj.optString("lvl2", ""),
                     obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")),
                     requiredString(obj, "cardAssetId"), obj.getString("idlePamPath"),obj.optString("idleClip", "idle"),
-                    obj.optString("onPlantFoodDescription"), obj.optString("overallDescription"), obj.optString("funDescription")
+                    obj.optString("onPlantFoodDescription"), obj.optString("overallDescription"), obj.optString("funDescription"),
+                    parseAnimations(obj)
             ));
         }
     }
@@ -73,6 +76,23 @@ public final class PlantLoader {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load " + path, e);
         }
+    }
+
+    private static Map<String, PlantAnimationData> parseAnimations(JSONObject obj) {
+        JSONObject animations = obj.optJSONObject("animations");
+        if (animations == null) {
+            return Map.of();
+        }
+        Map<String, PlantAnimationData> result = new LinkedHashMap<>();
+        for (String key : animations.keySet()) {
+            JSONObject animation = animations.getJSONObject(key);
+            String clip = requiredString(animation, "clip");
+            boolean loop = animation.optBoolean("loop", true);
+            float duration = (float) animation.optDouble("duration", 0.0);
+            result.put(key, new PlantAnimationData(clip, loop, duration));
+        }
+
+        return Map.copyOf(result);
     }
 
     private static String requiredString(

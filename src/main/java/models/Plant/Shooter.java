@@ -228,6 +228,7 @@ public enum Shooter implements PlantType {
                     plant.getDamage()
             );
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void shootPeaPod(Plant plant, GameState state) {

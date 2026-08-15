@@ -137,7 +137,7 @@ public final class PvzGame extends Game {
             }
         }
 
-    public Actor createPamActor(
+    public PamAnimationActor createPamActor(
             String pamPath,
             String clip,
             float x,
@@ -153,7 +153,7 @@ public final class PvzGame extends Game {
                 List.of()
         );
     }
-    public Actor createPamActor(
+    public PamAnimationActor createPamActor(
             String pamPath,
             String clip,
             float x,

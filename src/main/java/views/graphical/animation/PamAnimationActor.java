@@ -1,5 +1,6 @@
 package views.graphical.animation;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -24,18 +25,17 @@ public class PamAnimationActor extends Actor {
     private boolean animationPaused = false;
 
     private final Map<String, Boolean> visibilityMap =
-        new HashMap<>();
-
+            new HashMap<>();
 
     private String groundingClip;
     private float[] groundCenterXByFrame = new float[0];
     private float groundingDuration = 0f;
 
     public PamAnimationActor(
-        PamPlayer pamPlayer,
-        String pamPath,
-        String clip,
-        boolean loop
+            PamPlayer pamPlayer,
+            String pamPath,
+            String clip,
+            boolean loop
     ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer);
         this.pamPath = Objects.requireNonNull(pamPath);
@@ -70,6 +70,10 @@ public class PamAnimationActor extends Actor {
         animationPaused = false;
     }
 
+    public boolean isAnimationPaused() {
+        return animationPaused;
+    }
+
     public void setPlaybackSpeed(float playbackSpeed) {
         this.playbackSpeed = Math.max(0f, playbackSpeed);
     }
@@ -84,10 +88,6 @@ public class PamAnimationActor extends Actor {
 
     public String getClip() {
         return clip;
-    }
-
-    public boolean isAnimationPaused() {
-        return animationPaused;
     }
 
     public void setVisibleParts(Collection<String> parts) {
@@ -108,19 +108,18 @@ public class PamAnimationActor extends Actor {
         return visibilityMap;
     }
 
-
     public void setGroundingCurve(
-        String clip,
-        Rectangle[] boundsByFrame,
-        float clipDuration
+            String clip,
+            Rectangle[] boundsByFrame,
+            float clipDuration
     ) {
         clearGrounding();
 
         if (clip == null
-            || clip.isBlank()
-            || boundsByFrame == null
-            || boundsByFrame.length < 2
-            || clipDuration <= 0f) {
+                || clip.isBlank()
+                || boundsByFrame == null
+                || boundsByFrame.length < 2
+                || clipDuration <= 0f) {
             return;
         }
 
@@ -158,14 +157,16 @@ public class PamAnimationActor extends Actor {
 
     public void clearGroundingKeepingVisualPosition() {
         float correctionX = currentGroundingOffsetX();
+
         setX(getX() + correctionX);
+
         clearGrounding();
     }
 
     public boolean hasGrounding() {
         return groundingClip != null
-            && groundCenterXByFrame.length >= 2
-            && groundingDuration > 0f;
+                && groundCenterXByFrame.length >= 2
+                && groundingDuration > 0f;
     }
 
     public int getGroundingFrameCount() {
@@ -182,14 +183,16 @@ public class PamAnimationActor extends Actor {
         }
 
         return Math.abs(
-            groundCenterXByFrame[groundCenterXByFrame.length - 1]
-                - groundCenterXByFrame[0]
+                groundCenterXByFrame[
+                        groundCenterXByFrame.length - 1
+                        ]
+                        - groundCenterXByFrame[0]
         );
     }
 
     public float getGroundingStepDistanceWorld() {
         return getGroundingStepDistanceCanvas()
-            * Math.abs(getScaleX());
+                * Math.abs(getScaleX());
     }
 
     @Override
@@ -203,75 +206,131 @@ public class PamAnimationActor extends Actor {
 
     @Override
     public void draw(
-        Batch batch,
-        float parentAlpha
+            Batch batch,
+            float parentAlpha
     ) {
-        float drawX = getX() + currentGroundingOffsetX();
+        float drawX =
+                getX()
+                        + currentGroundingOffsetX();
 
-        pamPlayer.draw(
-            batch,
-            pamPath,
-            clip,
-            stateTime,
-            drawX,
-            getY(),
-            getScaleX(),
-            getScaleY(),
-            loop,
-            visibilityMap
+        Color oldColor =
+                new Color(batch.getColor());
+
+        Color actorColor =
+                getColor();
+
+        batch.setColor(
+                actorColor.r,
+                actorColor.g,
+                actorColor.b,
+                actorColor.a * parentAlpha
         );
+
+        try {
+            pamPlayer.draw(
+                    batch,
+                    pamPath,
+                    clip,
+                    stateTime,
+                    drawX,
+                    getY(),
+                    getScaleX(),
+                    getScaleY(),
+                    loop,
+                    visibilityMap
+            );
+        } finally {
+            batch.setColor(oldColor);
+        }
     }
+
     private float currentGroundingOffsetX() {
         if (!hasGrounding()
-            || !groundingClip.equals(clip)
-            || !loop) {
+                || !groundingClip.equals(clip)
+                || !loop) {
             return 0f;
         }
 
-        int frameCount = groundCenterXByFrame.length;
-        int frameIndex = currentGroundingFrameIndex();
+        int frameCount =
+                groundCenterXByFrame.length;
 
-        float progress = frameCount <= 1
-            ? 0f
-            : frameIndex / (float) (frameCount - 1);
+        int frameIndex =
+                currentGroundingFrameIndex();
 
-        float startX = groundCenterXByFrame[0];
-        float endX = groundCenterXByFrame[frameCount - 1];
-        float currentX = groundCenterXByFrame[frameIndex];
+        float progress =
+                frameCount <= 1
+                        ? 0f
+                        : frameIndex
+                        / (float) (frameCount - 1);
 
-        float expectedLinearX = startX
-            + (endX - startX) * progress;
+        float startX =
+                groundCenterXByFrame[0];
 
-        return (expectedLinearX - currentX) * getScaleX();
+        float endX =
+                groundCenterXByFrame[
+                        frameCount - 1
+                        ];
+
+        float currentX =
+                groundCenterXByFrame[
+                        frameIndex
+                        ];
+
+        float expectedLinearX =
+                startX
+                        + (endX - startX)
+                        * progress;
+
+        return (
+                expectedLinearX
+                        - currentX
+        ) * getScaleX();
     }
 
     private int currentGroundingFrameIndex() {
-        int frameCount = groundCenterXByFrame.length;
+        int frameCount =
+                groundCenterXByFrame.length;
 
-        if (frameCount <= 1 || groundingDuration <= 0f) {
+        if (frameCount <= 1
+                || groundingDuration <= 0f) {
             return 0;
         }
 
-        float localTime = stateTime % groundingDuration;
+        float localTime =
+                stateTime
+                        % groundingDuration;
+
         if (localTime < 0f) {
             localTime += groundingDuration;
         }
 
-        float frameDuration = groundingDuration / frameCount;
+        float frameDuration =
+                groundingDuration
+                        / frameCount;
+
         if (frameDuration <= 0f) {
             return 0;
         }
 
-        int frameIndex = (int) Math.floor(localTime / frameDuration);
+        int frameIndex =
+                (int) Math.floor(
+                        localTime
+                                / frameDuration
+                );
 
         if (frameIndex < 0) {
             return 0;
         }
 
-        return Math.min(frameIndex, frameCount - 1);
+        return Math.min(
+                frameIndex,
+                frameCount - 1
+        );
     }
 
-    private static void fillMissingValues(float[] values) {
+    private static void fillMissingValues(
+            float[] values
+    ) {
         int firstValid = -1;
 
         for (int i = 0; i < values.length; i++) {
@@ -289,32 +348,52 @@ public class PamAnimationActor extends Actor {
             values[i] = values[firstValid];
         }
 
-        int previousValid = firstValid;
+        int previousValid =
+                firstValid;
 
-        for (int i = firstValid + 1; i < values.length; i++) {
+        for (int i = firstValid + 1;
+             i < values.length;
+             i++) {
+
             if (Float.isNaN(values[i])) {
                 continue;
             }
 
             int nextValid = i;
-            int gap = nextValid - previousValid;
+            int gap =
+                    nextValid
+                            - previousValid;
 
             if (gap > 1) {
-                float from = values[previousValid];
-                float to = values[nextValid];
+                float from =
+                        values[previousValid];
+
+                float to =
+                        values[nextValid];
 
                 for (int j = 1; j < gap; j++) {
-                    float alpha = j / (float) gap;
-                    values[previousValid + j] =
-                        from + (to - from) * alpha;
+                    float alpha =
+                            j / (float) gap;
+
+                    values[
+                            previousValid + j
+                            ] =
+                            from
+                                    + (to - from)
+                                    * alpha;
                 }
             }
 
-            previousValid = nextValid;
+            previousValid =
+                    nextValid;
         }
 
-        for (int i = previousValid + 1; i < values.length; i++) {
-            values[i] = values[previousValid];
+        for (int i = previousValid + 1;
+             i < values.length;
+             i++) {
+
+            values[i] =
+                    values[previousValid];
         }
     }
 }
