@@ -65,6 +65,29 @@ public class Sun {
         }
         return new Result(false, "", null);
     }
+    public float getFallProgress() {
+        return getFallProgress(0f);
+    }
+    public float getFallProgress(
+            float partialTick
+    ) {
+        if (grounded) {
+            return 1f;
+        }
+
+        float visualTicks =
+                livedTicks
+                        + Math.max(
+                        0f,
+                        Math.min(1f, partialTick)
+                );
+
+        return Math.min(
+                1f,
+                visualTicks
+                        / (float) FALL_DURATION
+        );
+    }
 
     public boolean isActive() {
         return !collected && !expired;
