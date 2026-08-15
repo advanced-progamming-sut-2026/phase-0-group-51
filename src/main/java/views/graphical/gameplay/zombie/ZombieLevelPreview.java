@@ -16,7 +16,7 @@ import java.util.Objects;
 public final class ZombieLevelPreview {
 
 
-    private static final float PREVIEW_SCALE = 0.43f;
+    private static final float PREVIEW_SCALE = 0.55f;
 
 
     private static final float COLUMN_X_OFFSET = -110f;
@@ -82,53 +82,53 @@ public final class ZombieLevelPreview {
     ) {
         clear();
 
-        if (zombieTypes == null
-            || zombieTypes.isEmpty()) {
-
+        if (zombieTypes == null || zombieTypes.isEmpty()) {
             return;
         }
 
         List<ZombieType> uniqueTypes =
             new ArrayList<>(
-                new LinkedHashSet<>(
-                    zombieTypes
-                )
+                new LinkedHashSet<>(zombieTypes)
             );
 
         float frontColumnX =
-            cameraRightX
-                + COLUMN_X_OFFSET;
-        for (
-            int i = uniqueTypes.size() - 1;
-            i >= 0;
-            i--
-        ) {
+            cameraRightX + COLUMN_X_OFFSET;
 
-            ZombieType type =
-                uniqueTypes.get(i);
+        int columnCount =
+            (uniqueTypes.size() + MAX_ROWS - 1) / MAX_ROWS;
 
-            int row =
-                i % MAX_ROWS;
-            int column =
-                i / MAX_ROWS;
+        for (int column = columnCount - 1; column >= 0; column--) {
 
-            float x =
-                frontColumnX
-                    + column
-                    * BACK_COLUMN_X_SPACING;
+            for (int row = 0; row < MAX_ROWS; row++) {
 
-            float y =
-                START_Y
-                    - row
-                    * Y_SPACING
-                    + column
-                    * BACK_COLUMN_Y_OFFSET;
+                int index =
+                    column * MAX_ROWS + row;
 
-            addPreviewActor(
-                type,
-                x,
-                y
-            );
+                if (index >= uniqueTypes.size()) {
+                    continue;
+                }
+
+                ZombieType type =
+                    uniqueTypes.get(index);
+
+                float x =
+                    frontColumnX
+                        + column
+                        * BACK_COLUMN_X_SPACING;
+
+                float y =
+                    START_Y
+                        - row
+                        * Y_SPACING
+                        + column
+                        * BACK_COLUMN_Y_OFFSET;
+
+                addPreviewActor(
+                    type,
+                    x,
+                    y
+                );
+            }
         }
     }
 

@@ -27,7 +27,7 @@ import java.util.Set;
 
 public final class ZombieAnimationSystem {
 
-    public static final float DEFAULT_SCALE = 0.45f;
+    public static final float DEFAULT_SCALE = 0.57f;
 
     private static final String GROUND_PART = "ground_swatch";
 
