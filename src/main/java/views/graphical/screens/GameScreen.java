@@ -109,9 +109,9 @@ public class GameScreen extends BaseScreen {
         super(game);
         this.theme = theme;
         this.currentLevel = theme.getLevels().stream()
-            .filter(l -> l.levelNumber() == levelNumber)
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Level " + levelNumber + " not found!"));
+                .filter(l -> l.levelNumber() == levelNumber)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Level " + levelNumber + " not found!"));
 
         Game currentGame = new Game();
         int chapterIndex = currentGame.getChapters().indexOf(theme);
@@ -150,20 +150,26 @@ public class GameScreen extends BaseScreen {
 
         shapeRenderer = new ShapeRenderer();
 
-        Pixmap modalDimPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        Pixmap modalDimPixmap =
+                new Pixmap(
+                        1,
+                        1,
+                        Pixmap.Format.RGBA8888
+                );
 
         modalDimPixmap.setColor(Color.WHITE);
         modalDimPixmap.fill();
 
-        modalDimTexture = new Texture(modalDimPixmap);
+        modalDimTexture =
+                new Texture(modalDimPixmap);
 
         modalDimPixmap.dispose();
 
         boardArea = new BoardArea(
-                        533f,
-                        62f,
-                        737f,
-                        380f);
+                533f,
+                62f,
+                737f,
+                380f);
 
         boardTransform = new BoardTransform(boardArea);
     }
@@ -287,49 +293,79 @@ public class GameScreen extends BaseScreen {
         camera.update();
     }
 
- public void startGameAfterSelection() {
+    public void startGameAfterSelection() {
+        plantSlotsBar.remove();
+        plantSlotsBar.setOnRemoveRequested(null);
 
+        uiStage.clear();
+        plantSlotsBar.setMode(
+                PlantSlotsBar.Mode.GAMEPLAY
+        );
+        plantSlotsBar.setOnPlantSelected(
+                this::handlePlantSelectionChanged
+        );
 
-    plantSlotsBar.remove();
-    plantSlotsBar.setOnRemoveRequested(null);
+        gameHud = new GameHud(
+                game,
+                plantSlotsBar,
+                this::showPauseMenu
+        );
+        uiStage.addActor(gameHud);
 
-    uiStage.clear();
-    plantSlotsBar.setMode(PlantSlotsBar.Mode.GAMEPLAY);
-     plantSlotsBar.setOnPlantSelected(this::handlePlantSelectionChanged);
-    gameHud = new GameHud(game, plantSlotsBar, this::showPauseMenu);
-    uiStage.addActor(gameHud);
-    Game currentGame = App.getInstance().getCurrentGame();
+        Game currentGame =
+                App.getInstance()
+                        .getCurrentGame();
 
-    if (currentGame == null || currentGame.getGameState() == null) {
-        throw new IllegalStateException("Game state was not created.");
+        if (currentGame == null
+                || currentGame.getGameState() == null) {
+            throw new IllegalStateException(
+                    "Game state was not created."
+            );
+        }
+
+        Board board =
+                currentGame
+                        .getGameState()
+                        .getBoard();
+
+        boardView =
+                new BoardView(
+                        board,
+                        boardTransform
+                );
+
+        boardView.setOnTileClicked(
+                this::handleTileClick
+        );
+        boardView.setOnTileHovered(
+                this::handleTileHover
+        );
+
+        createPlacementHighlights();
+        worldStage.addActor(rowHighlight);
+        worldStage.addActor(columnHighlight);
+        worldStage.addActor(boardView);
+
+        plantViewManager =
+                new PlantViewManager(
+                        game,
+                        boardTransform
+                );
+        worldStage.addActor(plantViewManager);
+
+        placementPreview =
+                new PlantActor(game);
+        placementPreview.setPreviewMode(true);
+        worldStage.addActor(placementPreview);
+
+        gameTickAccumulator = 0f;
+        introState = IntroState.PAN_BACK_TO_MAIN;
+        stateTime = 0f;
     }
 
-
-    Board board = currentGame.getGameState().getBoard();
-
-    boardView = new BoardView(board, boardTransform);
-
-    boardView.setOnTileClicked(this::handleTileClick);
-     boardView.setOnTileHovered(this::handleTileHover);
-
-    createPlacementHighlights();
-    worldStage.addActor(rowHighlight);
-    worldStage.addActor(columnHighlight);
-    worldStage.addActor(boardView);
-     plantViewManager = new PlantViewManager(game, boardTransform);
-     worldStage.addActor(plantViewManager);
-    placementPreview = new PlantActor(game);
-    placementPreview.setPreviewMode(true);
-    worldStage.addActor(placementPreview);
-
-
-    gameTickAccumulator = 0f;
-
-    introState = IntroState.PAN_BACK_TO_MAIN;
-
-    stateTime = 0f;
-}
-    private void handlePlantSelectionChanged(PlantData plant) {
+    private void handlePlantSelectionChanged(
+            PlantData plant
+    ) {
         if (placementPreview == null) {
             return;
         }
@@ -362,12 +398,12 @@ public class GameScreen extends BaseScreen {
                         : levelTheme.getName();
 
         StartGameMenuPopup popup = new StartGameMenuPopup(
-                        game,
-                        this::continueAfterObjectives,
-                        chapterName,
-                        currentLevel.levelNumber(),
-                        currentLevel.description(),
-                        currentLevel.objectives().toArray(String[]::new));
+                game,
+                this::continueAfterObjectives,
+                chapterName,
+                currentLevel.levelNumber(),
+                currentLevel.description(),
+                currentLevel.objectives().toArray(String[]::new));
 
         showModal(popup);
         animateStartPopup(popup);

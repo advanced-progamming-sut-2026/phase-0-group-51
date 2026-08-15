@@ -2,6 +2,7 @@ package views.graphical.animation;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import lombok.Getter;
@@ -22,6 +23,7 @@ public class PamAnimationActor extends Actor {
 
     private float stateTime = 0f;
     private float playbackSpeed = 1f;
+    @Getter
     private boolean animationPaused = false;
 
     @Getter
@@ -85,6 +87,10 @@ public class PamAnimationActor extends Actor {
         }
     }
 
+    public float getStateTime() {
+        return stateTime;
+    }
+
     @Override
     public void act(float delta) {
         super.act(delta);
@@ -101,22 +107,57 @@ public class PamAnimationActor extends Actor {
     ) {
         Color oldColor = new Color(batch.getColor());
         Color color = getColor();
+        Matrix4 originalTransform =
+                new Matrix4(batch.getTransformMatrix());
+
         batch.setColor(
                 color.r,
                 color.g,
                 color.b,
                 color.a * parentAlpha
         );
-        pamPlayer.draw(
-                batch,
-                pamPath,
-                clip,
-                stateTime,
-                getX(),
-                getY(),
-                loop,
-                visibilityMap
-        );
-        batch.setColor(oldColor);
+
+        float scaleX = getScaleX();
+        float scaleY = getScaleY();
+
+        try {
+            if (scaleX != 1f || scaleY != 1f) {
+                Matrix4 scaledTransform =
+                        new Matrix4(originalTransform);
+
+                scaledTransform
+                        .translate(
+                                getX(),
+                                getY(),
+                                0f
+                        )
+                        .scale(
+                                scaleX,
+                                scaleY,
+                                1f
+                        )
+                        .translate(
+                                -getX(),
+                                -getY(),
+                                0f
+                        );
+
+                batch.setTransformMatrix(scaledTransform);
+            }
+
+            pamPlayer.draw(
+                    batch,
+                    pamPath,
+                    clip,
+                    stateTime,
+                    getX(),
+                    getY(),
+                    loop,
+                    visibilityMap
+            );
+        } finally {
+            batch.setTransformMatrix(originalTransform);
+            batch.setColor(oldColor);
+        }
     }
 }
