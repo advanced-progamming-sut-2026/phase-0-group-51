@@ -75,35 +75,51 @@ public enum Homing implements PlantType {
         if (target == null) {
             return;
         }
-        state.getBoard().addProjectile(Projectile.homing(
-                plant.getDamage(),
-                ElementType.NORMAL,
-                plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.45),
-                plant.getPosX(),
-                plant.getPosY(),
-                target,
-                new HomingMove()
-        ).withSource(plant));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.homing(
+                                plant.getDamage(),
+                                ElementType.NORMAL,
+                                plant.getPlantTags(),
+                                PlantEnumSupport.projectileSpeed(plant, 0.45),
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                target,
+                                new HomingMove()
+                        ),
+                        plant,
+                        state,
+                        0
+                )
+        );
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private static void hypnotizeOne(Plant plant, GameState state) {
         List<Zombie> targets = randomEligibleZombies(state, 1);
         if (!targets.isEmpty()) {
             Zombie target = targets.getFirst();
-            state.getBoard().addProjectile(Projectile.homing(
-                    0,
-                    ElementType.HYPNOTIZE,
-                    plant.getPlantTags(),
-                    Math.max(
-                            0.35,
-                            PlantEnumSupport.projectileSpeed(plant, 0.45)
-                    ),
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    target,
-                    new HomingMove()
-            ).withSource(plant));
+            state.getBoard().addProjectile(
+                    PlantEnumSupport.configureProjectileVisual(
+                            Projectile.homing(
+                                    0,
+                                    ElementType.HYPNOTIZE,
+                                    plant.getPlantTags(),
+                                    Math.max(
+                                            0.35,
+                                            PlantEnumSupport.projectileSpeed(plant, 0.45)
+                                    ),
+                                    plant.getPosX(),
+                                    plant.getPosY(),
+                                    target,
+                                    new HomingMove()
+                            ),
+                            plant,
+                            state,
+                            0
+                    )
+            );
+            plant.signalAction(PlantAction.ATTACK);
         }
     }
 

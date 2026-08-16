@@ -225,7 +225,8 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     plant.getPosY(),
-                    plant.getDamage()
+                    plant.getDamage(),
+                    i
             );
         }
         plant.signalAction(PlantAction.ATTACK);
@@ -237,9 +238,11 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     plant.getPosY(),
-                    plant.getDamage()
+                    plant.getDamage(),
+                    i
             );
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void shootSplitPea(Plant plant, GameState state) {
@@ -248,7 +251,8 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     plant.getPosY(),
-                    plant.getDamage()
+                    plant.getDamage(),
+                    0
             );
         }
         if (targetBehindInLane(plant, state)) {
@@ -256,15 +260,18 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     new double[]{-1, 0},
-                    plant.getDamage()
+                    plant.getDamage(),
+                    1
             );
             addDirectionalProjectile(
                     plant,
                     state,
                     new double[]{-1, 0},
-                    plant.getDamage()
+                    plant.getDamage(),
+                    1
             );
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void shootThreeLanes(Plant plant, GameState state) {
@@ -274,13 +281,28 @@ public enum Shooter implements PlantType {
                 plant.getPosY() + 1
         );
         for (int lane = firstLane; lane <= lastLane; lane++) {
-            addStraightProjectile(plant, state, lane, plant.getDamage());
+            int releaseId = Integer.compare(lane, plant.getPosY()) + 1;
+            addStraightProjectile(
+                    plant,
+                    state,
+                    lane,
+                    plant.getDamage(),
+                    releaseId
+            );
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void shootAllLanes(Plant plant, GameState state) {
         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
-            addStraightProjectile(plant, state, lane, plant.getDamage());
+            int releaseId = Integer.compare(lane, plant.getPosY()) + 1;
+            addStraightProjectile(
+                    plant,
+                    state,
+                    lane,
+                    plant.getDamage(),
+                    releaseId
+            );
         }
     }
 
@@ -301,17 +323,24 @@ public enum Shooter implements PlantType {
                 : plant.getDamage()
                 * BOWLING_DAMAGE_MULTIPLIERS[selectedSlot];
         double verticalSign = plant.getPosY() % 2 == 0 ? 1 : -1;
-        state.getBoard().addProjectile(Projectile.bouncing(
-                damage,
-                ElementType.NORMAL,
-                plant.getPlantTags(),
-                projectileSpeed(plant, 0.35),
-                plant.getPosX(),
-                plant.getPosY(),
-                verticalSign,
-                Integer.MAX_VALUE,
-                0
-        ).withSource(plant));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.bouncing(
+                                damage,
+                                ElementType.NORMAL,
+                                plant.getPlantTags(),
+                                projectileSpeed(plant, 0.35),
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                verticalSign,
+                                Integer.MAX_VALUE,
+                                0
+                        ),
+                        plant,
+                        state,
+                        selectedSlot
+                )
+        );
         int regenSeconds = BOWLING_REGEN_SECONDS[selectedSlot];
         if (plant.getLevel() >= 2) {
             regenSeconds = Math.max(1, regenSeconds - 1);
@@ -320,6 +349,7 @@ public enum Shooter implements PlantType {
                 selectedSlot,
                 regenSeconds * state.getTicksPerSecond()
         );
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void fireExplosiveBowlingBulbs(
@@ -329,31 +359,41 @@ public enum Shooter implements PlantType {
         for (int i = 0; i < 3; i++) {
             double sign = i == 0 ? -1 : i == 1 ? 1 :
                     (plant.getPosY() % 2 == 0 ? 1 : -1);
-            state.getBoard().addProjectile(Projectile.bouncing(
-                    Math.max(180, plant.getDamage() * 4),
-                    ElementType.NORMAL,
-                    plant.getPlantTags(),
-                    projectileSpeed(plant, 0.35),
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    sign,
-                    3,
-                    1.5
-            ).withSource(plant));
+            state.getBoard().addProjectile(
+                    PlantEnumSupport.configureProjectileVisual(
+                            Projectile.bouncing(
+                                    Math.max(180, plant.getDamage() * 4),
+                                    ElementType.NORMAL,
+                                    plant.getPlantTags(),
+                                    projectileSpeed(plant, 0.35),
+                                    plant.getPosX(),
+                                    plant.getPosY(),
+                                    sign,
+                                    3,
+                                    1.5
+                            ),
+                            plant,
+                            state,
+                            i
+                    )
+            );
         }
     }
 
     private void shootRotobagaDirections(Plant plant, GameState state) {
-        for (double[] direction : StarMove.ROTOBAGA_DIRECTIONS) {
+        for (int i = 0; i < StarMove.ROTOBAGA_DIRECTIONS.length; i++) {
+            double[] direction = StarMove.ROTOBAGA_DIRECTIONS[i];
             if (hasTargetInDirection(plant, state, direction)) {
                 addDirectionalProjectile(
                         plant,
                         state,
                         direction,
-                        plant.getDamage()
+                        plant.getDamage(),
+                        i
                 );
             }
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void shootDirections(
@@ -361,14 +401,16 @@ public enum Shooter implements PlantType {
             GameState state,
             double[][] directions
     ) {
-        for (double[] direction : directions) {
+        for (int i = 0; i < directions.length; i++) {
             addDirectionalProjectile(
                     plant,
                     state,
-                    direction,
-                    plant.getDamage()
+                    directions[i],
+                    plant.getDamage(),
+                    i
             );
         }
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void fireGiantPeas(Plant plant, GameState state) {
@@ -377,7 +419,8 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     plant.getPosY(),
-                    plant.getDamage() * 20
+                    plant.getDamage() * 20,
+                    i
             );
         }
     }
@@ -392,7 +435,8 @@ public enum Shooter implements PlantType {
                     plant,
                     state,
                     plant.getPosY(),
-                    plant.getDamage() * 20
+                    plant.getDamage() * 20,
+                    i
             );
         }
     }
@@ -455,19 +499,27 @@ public enum Shooter implements PlantType {
             Plant plant,
             GameState state,
             double[] direction,
-            int damage
+            int damage,
+            int releaseId
     ) {
-        state.getBoard().addProjectile(Projectile.directional(
-                damage,
-                element,
-                plant.getPlantTags(),
-                projectileSpeed(plant, 0.5),
-                plant.getPosX(),
-                plant.getPosY(),
-                direction[0],
-                direction[1],
-                new StarMove()
-        ).withSource(plant));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.directional(
+                                damage,
+                                element,
+                                plant.getPlantTags(),
+                                projectileSpeed(plant, 0.5),
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                direction[0],
+                                direction[1],
+                                new StarMove()
+                        ),
+                        plant,
+                        state,
+                        releaseId
+                )
+        );
     }
 
     private boolean hasStarfruitTarget(Plant plant, GameState state) {
@@ -573,19 +625,27 @@ public enum Shooter implements PlantType {
             Plant plant,
             GameState state,
             int lane,
-            int damage
+            int damage,
+            int releaseId
     ) {
-        state.getBoard().addProjectile(Projectile.straight(
-                damage,
-                element,
-                plant.getPlantTags(),
-                projectileSpeed(plant, 0.5),
-                plant.getPosX(),
-                lane,
-                new StraightMove(),
-                1,
-                effectDurationTicks(plant, state)
-        ).withSource(plant));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.straight(
+                                damage,
+                                element,
+                                plant.getPlantTags(),
+                                projectileSpeed(plant, 0.5),
+                                plant.getPosX(),
+                                lane,
+                                new StraightMove(),
+                                1,
+                                effectDurationTicks(plant, state)
+                        ),
+                        plant,
+                        state,
+                        releaseId
+                )
+        );
     }
 
     private int effectDurationTicks(Plant plant, GameState state) {

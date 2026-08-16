@@ -40,6 +40,7 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
@@ -107,6 +108,7 @@ public class GameScreen extends BaseScreen {
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
     private SunViewManager sunViewManager;
+    private ProjectileViewManager projectileViewManager;
 
     private Image rowHighlight;
     private Image columnHighlight;
@@ -378,6 +380,8 @@ public class GameScreen extends BaseScreen {
 
         plantViewManager = new PlantViewManager(game, boardTransform);
         worldStage.addActor(plantViewManager);
+        projectileViewManager = new ProjectileViewManager(game, boardTransform);
+        worldStage.addActor(projectileViewManager);
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
@@ -696,7 +700,11 @@ public class GameScreen extends BaseScreen {
                             board
                     );
                 }
-
+                if (projectileViewManager != null) {
+                    projectileViewManager.sync(
+                            board.getProjectiles()
+                    );
+                }
                 if (sunViewManager != null) {
                     sunViewManager.sync(
                             board.getActiveSuns(),

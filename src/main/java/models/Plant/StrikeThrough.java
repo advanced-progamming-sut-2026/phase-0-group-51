@@ -38,16 +38,23 @@ public enum StrikeThrough implements PlantType {
     @Override
     public void onFeed(Plant plant, GameState state) {
         if (this == CACTUS) {
-            state.getBoard().addProjectile(Projectile.straight(
-                    plant.getDamage() * 3,
-                    ElementType.NORMAL,
-                    plant.getPlantTags(),
-                    PlantEnumSupport.projectileSpeed(plant, 0.65),
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    new StraightMove(),
-                    Integer.MAX_VALUE
-            ).withSource(plant));
+            state.getBoard().addProjectile(
+                    PlantEnumSupport.configureProjectileVisual(
+                            Projectile.straight(
+                                    plant.getDamage() * 3,
+                                    ElementType.NORMAL,
+                                    plant.getPlantTags(),
+                                    PlantEnumSupport.projectileSpeed(plant, 0.65),
+                                    plant.getPosX(),
+                                    plant.getPosY(),
+                                    new StraightMove(),
+                                    Integer.MAX_VALUE
+                            ),
+                            plant,
+                            state,
+                            0
+                    )
+            );
             return;
         }
         double effectiveRange = PlantEnumSupport.upgradedRange(
@@ -81,16 +88,24 @@ public enum StrikeThrough implements PlantType {
             return;
         }
         int upgradePierce = Math.max(0, plant.getPlantStat().pierceCount() - 1);
-        state.getBoard().addProjectile(Projectile.straight(
-                plant.getDamage(),
-                ElementType.NORMAL,
-                plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.65),
-                plant.getPosX(),
-                plant.getPosY(),
-                new StraightMove(),
-                basePierce + upgradePierce
-        ));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.straight(
+                                plant.getDamage(),
+                                ElementType.NORMAL,
+                                plant.getPlantTags(),
+                                PlantEnumSupport.projectileSpeed(plant, 0.65),
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                new StraightMove(),
+                                basePierce + upgradePierce
+                        ),
+                        plant,
+                        state,
+                        0
+                )
+        );
+        plant.signalAction(PlantAction.ATTACK);
     }
 
     private void damageWithCloud(Plant plant, GameState state) {
