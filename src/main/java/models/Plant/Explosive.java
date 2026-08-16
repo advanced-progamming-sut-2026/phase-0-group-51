@@ -254,19 +254,27 @@ public enum Explosive implements PlantType {
         int hitCount = 3 + (plant.getLevel() >= 3 ? 1 : 0);
         int lifetime = GRAPESHOT_GRAPE_LIFETIME_SECONDS
                 * state.getTicksPerSecond();
-        for (double[] direction : directions) {
-            state.getBoard().addProjectile(Projectile.bouncing(
-                    GRAPESHOT_GRAPE_DAMAGE,
-                    ElementType.NORMAL,
-                    plant.getPlantTags(),
-                    0.5,
-                    plant.getPosX(),
-                    plant.getPosY(),
-                    direction[0],
-                    direction[1],
-                    hitCount,
-                    0
-            ).withSource(plant).withLifetime(lifetime));
+        for (int i = 0; i < directions.length; i++) {
+            double[] direction = directions[i];
+            Projectile grape = PlantEnumSupport.configureProjectileVisual(
+                    Projectile.bouncing(
+                            GRAPESHOT_GRAPE_DAMAGE,
+                            ElementType.NORMAL,
+                            plant.getPlantTags(),
+                            0.5,
+                            plant.getPosX(),
+                            plant.getPosY(),
+                            direction[0],
+                            direction[1],
+                            hitCount,
+                            0
+                    ),
+                    plant,
+                    state,
+                    i
+            ).withLifetime(lifetime);
+
+            state.getBoard().addProjectile(grape);
         }
     }
 

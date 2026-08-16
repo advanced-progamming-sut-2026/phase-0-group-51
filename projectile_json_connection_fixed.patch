@@ -1,0 +1,1276 @@
+diff --git a/src/main/java/Data/loader/PlantData.java b/src/main/java/Data/loader/PlantData.java
+--- a/src/main/java/Data/loader/PlantData.java
++++ b/src/main/java/Data/loader/PlantData.java
+@@ -28,7 +28,8 @@
+         String onPlantFoodDescription,
+         String overallDescription,
+         String funDescription,
+-        Map<String, PlantAnimationData> animations
++        Map<String, PlantAnimationData> animations,
++        Map<String, ProjectileVisualData> projectiles
+ ) {
+     public PlantAnimationData animation(String key) {
+         return animations.get(key);
+@@ -37,4 +38,12 @@
+     public boolean hasAnimation(String key) {
+         return animations.containsKey(key);
+     }
++
++    public ProjectileVisualData projectile(String key) {
++        return projectiles == null ? null : projectiles.get(key);
++    }
++
++    public boolean hasProjectiles() {
++        return projectiles != null && !projectiles.isEmpty();
++    }
+ }
+diff --git a/src/main/java/Data/loader/PlantLoader.java b/src/main/java/Data/loader/PlantLoader.java
+--- a/src/main/java/Data/loader/PlantLoader.java
++++ b/src/main/java/Data/loader/PlantLoader.java
+@@ -34,7 +34,7 @@
+                     obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")),
+                     requiredString(obj, "cardAssetId"), obj.getString("idlePamPath"),obj.optString("idleClip", "idle"),
+                     obj.optString("onPlantFoodDescription"), obj.optString("overallDescription"), obj.optString("funDescription"),
+-                    parseAnimations(obj)
++                    parseAnimations(obj), parseProjectiles(obj)
+             ));
+         }
+     }
+@@ -95,6 +95,42 @@
+         return Map.copyOf(result);
+     }
+ 
++    private static Map<String, ProjectileVisualData> parseProjectiles(JSONObject obj) {
++        JSONObject projectiles = obj.optJSONObject("projectiles");
++        if (projectiles == null) {
++            return Map.of();
++        }
++
++        Map<String, ProjectileVisualData> result = new LinkedHashMap<>();
++
++        for (String key : projectiles.keySet()) {
++            JSONObject projectile = projectiles.getJSONObject(key);
++            JSONArray releasesJson = projectile.optJSONArray("releases");
++            List<ProjectileReleaseData> releases = new ArrayList<>();
++
++            if (releasesJson != null) {
++                for (int i = 0; i < releasesJson.length(); i++) {
++                    JSONObject release = releasesJson.getJSONObject(i);
++                    releases.add(new ProjectileReleaseData(
++                            release.getInt("id"),
++                            (float) release.getDouble("time"),
++                            (float) release.getDouble("offsetX"),
++                            (float) release.getDouble("offsetY")
++                    ));
++                }
++            }
++
++            result.put(key, new ProjectileVisualData(
++                    requiredString(projectile, "pamPath"),
++                    requiredString(projectile, "clip"),
++                    (float) projectile.optDouble("scale", 1.0),
++                    List.copyOf(releases)
++            ));
++        }
++
++        return Map.copyOf(result);
++    }
++
+     private static String requiredString(
+             JSONObject obj,
+             String key
+diff --git a/src/main/java/models/Plant/Explosive.java b/src/main/java/models/Plant/Explosive.java
+index f4092d0..fb3527f 100644
+--- a/src/main/java/models/Plant/Explosive.java
++++ b/src/main/java/models/Plant/Explosive.java
+@@ -254,19 +254,27 @@ public enum Explosive implements PlantType {
+         int hitCount = 3 + (plant.getLevel() >= 3 ? 1 : 0);
+         int lifetime = GRAPESHOT_GRAPE_LIFETIME_SECONDS
+                 * state.getTicksPerSecond();
+-        for (double[] direction : directions) {
+-            state.getBoard().addProjectile(Projectile.bouncing(
+-                    GRAPESHOT_GRAPE_DAMAGE,
+-                    ElementType.NORMAL,
+-                    plant.getPlantTags(),
+-                    0.5,
+-                    plant.getPosX(),
+-                    plant.getPosY(),
+-                    direction[0],
+-                    direction[1],
+-                    hitCount,
+-                    0
+-            ).withSource(plant).withLifetime(lifetime));
++        for (int i = 0; i < directions.length; i++) {
++            double[] direction = directions[i];
++            Projectile grape = PlantEnumSupport.configureProjectileVisual(
++                    Projectile.bouncing(
++                            GRAPESHOT_GRAPE_DAMAGE,
++                            ElementType.NORMAL,
++                            plant.getPlantTags(),
++                            0.5,
++                            plant.getPosX(),
++                            plant.getPosY(),
++                            direction[0],
++                            direction[1],
++                            hitCount,
++                            0
++                    ),
++                    plant,
++                    state,
++                    i
++            ).withLifetime(lifetime);
++
++            state.getBoard().addProjectile(grape);
+         }
+     }
+ 
+diff --git a/src/main/java/models/Plant/Homing.java b/src/main/java/models/Plant/Homing.java
+index 598774f..4d791fe 100644
+--- a/src/main/java/models/Plant/Homing.java
++++ b/src/main/java/models/Plant/Homing.java
+@@ -75,35 +75,51 @@ public enum Homing implements PlantType {
+         if (target == null) {
+             return;
+         }
+-        state.getBoard().addProjectile(Projectile.homing(
+-                plant.getDamage(),
+-                ElementType.NORMAL,
+-                plant.getPlantTags(),
+-                PlantEnumSupport.projectileSpeed(plant, 0.45),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                target,
+-                new HomingMove()
+-        ).withSource(plant));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.homing(
++                                plant.getDamage(),
++                                ElementType.NORMAL,
++                                plant.getPlantTags(),
++                                PlantEnumSupport.projectileSpeed(plant, 0.45),
++                                plant.getPosX(),
++                                plant.getPosY(),
++                                target,
++                                new HomingMove()
++                        ),
++                        plant,
++                        state,
++                        0
++                )
++        );
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private static void hypnotizeOne(Plant plant, GameState state) {
+         List<Zombie> targets = randomEligibleZombies(state, 1);
+         if (!targets.isEmpty()) {
+             Zombie target = targets.getFirst();
+-            state.getBoard().addProjectile(Projectile.homing(
+-                    0,
+-                    ElementType.HYPNOTIZE,
+-                    plant.getPlantTags(),
+-                    Math.max(
+-                            0.35,
+-                            PlantEnumSupport.projectileSpeed(plant, 0.45)
+-                    ),
+-                    plant.getPosX(),
+-                    plant.getPosY(),
+-                    target,
+-                    new HomingMove()
+-            ).withSource(plant));
++            state.getBoard().addProjectile(
++                    PlantEnumSupport.configureProjectileVisual(
++                            Projectile.homing(
++                                    0,
++                                    ElementType.HYPNOTIZE,
++                                    plant.getPlantTags(),
++                                    Math.max(
++                                            0.35,
++                                            PlantEnumSupport.projectileSpeed(plant, 0.45)
++                                    ),
++                                    plant.getPosX(),
++                                    plant.getPosY(),
++                                    target,
++                                    new HomingMove()
++                            ),
++                            plant,
++                            state,
++                            0
++                    )
++            );
++            plant.signalAction(PlantAction.ATTACK);
+         }
+     }
+ 
+diff --git a/src/main/java/models/Plant/Lobber.java b/src/main/java/models/Plant/Lobber.java
+index 4c937c8..62c5339 100644
+--- a/src/main/java/models/Plant/Lobber.java
++++ b/src/main/java/models/Plant/Lobber.java
+@@ -163,19 +163,24 @@ public enum Lobber implements PlantType {
+         double splashRadius = plant.hasTag(PlantTag.AOE) ? areaRadius : 0;
+         int splashDamage = damage
+                 + (int) Math.round(plant.getPlantStat().aoeDamage());
+-        return Projectile.targeted(
+-                damage,
+-                splashDamage,
+-                shotElement,
+-                plant.getPlantTags(),
+-                PlantEnumSupport.projectileSpeed(plant, 0.35),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                targetX,
+-                targetLane,
+-                new ArcMove(),
+-                splashRadius
+-        ).withSource(plant);
++        return PlantEnumSupport.configureProjectileVisual(
++                Projectile.targeted(
++                        damage,
++                        splashDamage,
++                        shotElement,
++                        plant.getPlantTags(),
++                        PlantEnumSupport.projectileSpeed(plant, 0.35),
++                        plant.getPosX(),
++                        plant.getPosY(),
++                        targetX,
++                        targetLane,
++                        new ArcMove(),
++                        splashRadius
++                ),
++                plant,
++                state,
++                0
++        );
+     }
+ 
+     private void launchFoodProjectile(
+@@ -186,19 +191,26 @@ public enum Lobber implements PlantType {
+             int damage,
+             double splashRadius
+     ) {
+-        state.getBoard().addProjectile(Projectile.targeted(
+-                damage,
+-                damage,
+-                foodElement,
+-                plant.getPlantTags(),
+-                PlantEnumSupport.projectileSpeed(plant, 0.35),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                target.getX(),
+-                target.getLane(),
+-                new ArcMove(),
+-                splashRadius
+-        ).withSource(plant));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.targeted(
++                                damage,
++                                damage,
++                                foodElement,
++                                plant.getPlantTags(),
++                                PlantEnumSupport.projectileSpeed(plant, 0.35),
++                                plant.getPosX(),
++                                plant.getPosY(),
++                                target.getX(),
++                                target.getLane(),
++                                new ArcMove(),
++                                splashRadius
++                        ),
++                        plant,
++                        state,
++                        0
++                )
++        );
+     }
+ 
+     private boolean shouldLaunchButter(Plant plant, GameState state) {
+diff --git a/src/main/java/models/Plant/PlantEnumSupport.java b/src/main/java/models/Plant/PlantEnumSupport.java
+index cc83ba5..aee12b8 100644
+--- a/src/main/java/models/Plant/PlantEnumSupport.java
++++ b/src/main/java/models/Plant/PlantEnumSupport.java
+@@ -2,7 +2,11 @@ package models.Plant;
+ 
+ import Data.loader.PlantData;
+ import Data.loader.PlantRegistry;
++import Data.loader.ProjectileReleaseData;
++import Data.loader.ProjectileVisualData;
+ import models.projectile.ElementType;
++import models.projectile.Projectile;
++import models.games.GameState;
+ 
+ import java.util.Comparator;
+ import java.util.List;
+@@ -39,6 +43,42 @@ final class PlantEnumSupport {
+         );
+     }
+ 
++
++    static Projectile configureProjectileVisual(
++            Projectile projectile,
++            Plant plant,
++            GameState state,
++            int requestedReleaseId
++    ) {
++        projectile.withSource(plant);
++
++        PlantData data = PlantRegistry.getById(plant.getId());
++        if (data == null || !data.hasProjectiles()) {
++            return projectile;
++        }
++
++        ProjectileVisualData visual = data.projectile("default");
++        if (visual == null || visual.releases() == null || visual.releases().isEmpty()) {
++            return projectile;
++        }
++
++        ProjectileReleaseData release = visual.releases().stream()
++                .filter(candidate -> candidate.id() == requestedReleaseId)
++                .findFirst()
++                .orElse(visual.releases().getFirst());
++
++        int delayTicks = Math.max(
++                0,
++                Math.round(release.time() * state.getTicksPerSecond())
++        );
++
++        return projectile.withVisualRelease(
++                "default",
++                release.id(),
++                delayTicks
++        );
++    }
++
+     static double projectileSpeed(Plant plant, double fallback) {
+         double configured = plant.getPlantStat().projectileSpeed();
+         return configured > 0 ? configured : fallback;
+diff --git a/src/main/java/models/Plant/Shooter.java b/src/main/java/models/Plant/Shooter.java
+index 4bf715e..c63e426 100644
+--- a/src/main/java/models/Plant/Shooter.java
++++ b/src/main/java/models/Plant/Shooter.java
+@@ -225,7 +225,8 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     plant.getPosY(),
+-                    plant.getDamage()
++                    plant.getDamage(),
++                    i
+             );
+         }
+         plant.signalAction(PlantAction.ATTACK);
+@@ -237,9 +238,11 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     plant.getPosY(),
+-                    plant.getDamage()
++                    plant.getDamage(),
++                    i
+             );
+         }
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void shootSplitPea(Plant plant, GameState state) {
+@@ -248,7 +251,8 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     plant.getPosY(),
+-                    plant.getDamage()
++                    plant.getDamage(),
++                    0
+             );
+         }
+         if (targetBehindInLane(plant, state)) {
+@@ -256,15 +260,18 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     new double[]{-1, 0},
+-                    plant.getDamage()
++                    plant.getDamage(),
++                    1
+             );
+             addDirectionalProjectile(
+                     plant,
+                     state,
+                     new double[]{-1, 0},
+-                    plant.getDamage()
++                    plant.getDamage(),
++                    1
+             );
+         }
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void shootThreeLanes(Plant plant, GameState state) {
+@@ -274,13 +281,28 @@ public enum Shooter implements PlantType {
+                 plant.getPosY() + 1
+         );
+         for (int lane = firstLane; lane <= lastLane; lane++) {
+-            addStraightProjectile(plant, state, lane, plant.getDamage());
++            int releaseId = Integer.compare(lane, plant.getPosY()) + 1;
++            addStraightProjectile(
++                    plant,
++                    state,
++                    lane,
++                    plant.getDamage(),
++                    releaseId
++            );
+         }
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void shootAllLanes(Plant plant, GameState state) {
+         for (int lane = 0; lane < state.getBoard().getLaneCount(); lane++) {
+-            addStraightProjectile(plant, state, lane, plant.getDamage());
++            int releaseId = Integer.compare(lane, plant.getPosY()) + 1;
++            addStraightProjectile(
++                    plant,
++                    state,
++                    lane,
++                    plant.getDamage(),
++                    releaseId
++            );
+         }
+     }
+ 
+@@ -301,17 +323,24 @@ public enum Shooter implements PlantType {
+                 : plant.getDamage()
+                 * BOWLING_DAMAGE_MULTIPLIERS[selectedSlot];
+         double verticalSign = plant.getPosY() % 2 == 0 ? 1 : -1;
+-        state.getBoard().addProjectile(Projectile.bouncing(
+-                damage,
+-                ElementType.NORMAL,
+-                plant.getPlantTags(),
+-                projectileSpeed(plant, 0.35),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                verticalSign,
+-                Integer.MAX_VALUE,
+-                0
+-        ).withSource(plant));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.bouncing(
++                                damage,
++                                ElementType.NORMAL,
++                                plant.getPlantTags(),
++                                projectileSpeed(plant, 0.35),
++                                plant.getPosX(),
++                                plant.getPosY(),
++                                verticalSign,
++                                Integer.MAX_VALUE,
++                                0
++                        ),
++                        plant,
++                        state,
++                        selectedSlot
++                )
++        );
+         int regenSeconds = BOWLING_REGEN_SECONDS[selectedSlot];
+         if (plant.getLevel() >= 2) {
+             regenSeconds = Math.max(1, regenSeconds - 1);
+@@ -320,6 +349,7 @@ public enum Shooter implements PlantType {
+                 selectedSlot,
+                 regenSeconds * state.getTicksPerSecond()
+         );
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void fireExplosiveBowlingBulbs(
+@@ -329,31 +359,41 @@ public enum Shooter implements PlantType {
+         for (int i = 0; i < 3; i++) {
+             double sign = i == 0 ? -1 : i == 1 ? 1 :
+                     (plant.getPosY() % 2 == 0 ? 1 : -1);
+-            state.getBoard().addProjectile(Projectile.bouncing(
+-                    Math.max(180, plant.getDamage() * 4),
+-                    ElementType.NORMAL,
+-                    plant.getPlantTags(),
+-                    projectileSpeed(plant, 0.35),
+-                    plant.getPosX(),
+-                    plant.getPosY(),
+-                    sign,
+-                    3,
+-                    1.5
+-            ).withSource(plant));
++            state.getBoard().addProjectile(
++                    PlantEnumSupport.configureProjectileVisual(
++                            Projectile.bouncing(
++                                    Math.max(180, plant.getDamage() * 4),
++                                    ElementType.NORMAL,
++                                    plant.getPlantTags(),
++                                    projectileSpeed(plant, 0.35),
++                                    plant.getPosX(),
++                                    plant.getPosY(),
++                                    sign,
++                                    3,
++                                    1.5
++                            ),
++                            plant,
++                            state,
++                            i
++                    )
++            );
+         }
+     }
+ 
+     private void shootRotobagaDirections(Plant plant, GameState state) {
+-        for (double[] direction : StarMove.ROTOBAGA_DIRECTIONS) {
++        for (int i = 0; i < StarMove.ROTOBAGA_DIRECTIONS.length; i++) {
++            double[] direction = StarMove.ROTOBAGA_DIRECTIONS[i];
+             if (hasTargetInDirection(plant, state, direction)) {
+                 addDirectionalProjectile(
+                         plant,
+                         state,
+                         direction,
+-                        plant.getDamage()
++                        plant.getDamage(),
++                        i
+                 );
+             }
+         }
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void shootDirections(
+@@ -361,14 +401,16 @@ public enum Shooter implements PlantType {
+             GameState state,
+             double[][] directions
+     ) {
+-        for (double[] direction : directions) {
++        for (int i = 0; i < directions.length; i++) {
+             addDirectionalProjectile(
+                     plant,
+                     state,
+-                    direction,
+-                    plant.getDamage()
++                    directions[i],
++                    plant.getDamage(),
++                    i
+             );
+         }
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void fireGiantPeas(Plant plant, GameState state) {
+@@ -377,7 +419,8 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     plant.getPosY(),
+-                    plant.getDamage() * 20
++                    plant.getDamage() * 20,
++                    i
+             );
+         }
+     }
+@@ -392,7 +435,8 @@ public enum Shooter implements PlantType {
+                     plant,
+                     state,
+                     plant.getPosY(),
+-                    plant.getDamage() * 20
++                    plant.getDamage() * 20,
++                    i
+             );
+         }
+     }
+@@ -455,19 +499,27 @@ public enum Shooter implements PlantType {
+             Plant plant,
+             GameState state,
+             double[] direction,
+-            int damage
++            int damage,
++            int releaseId
+     ) {
+-        state.getBoard().addProjectile(Projectile.directional(
+-                damage,
+-                element,
+-                plant.getPlantTags(),
+-                projectileSpeed(plant, 0.5),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                direction[0],
+-                direction[1],
+-                new StarMove()
+-        ).withSource(plant));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.directional(
++                                damage,
++                                element,
++                                plant.getPlantTags(),
++                                projectileSpeed(plant, 0.5),
++                                plant.getPosX(),
++                                plant.getPosY(),
++                                direction[0],
++                                direction[1],
++                                new StarMove()
++                        ),
++                        plant,
++                        state,
++                        releaseId
++                )
++        );
+     }
+ 
+     private boolean hasStarfruitTarget(Plant plant, GameState state) {
+@@ -573,19 +625,27 @@ public enum Shooter implements PlantType {
+             Plant plant,
+             GameState state,
+             int lane,
+-            int damage
++            int damage,
++            int releaseId
+     ) {
+-        state.getBoard().addProjectile(Projectile.straight(
+-                damage,
+-                element,
+-                plant.getPlantTags(),
+-                projectileSpeed(plant, 0.5),
+-                plant.getPosX(),
+-                lane,
+-                new StraightMove(),
+-                1,
+-                effectDurationTicks(plant, state)
+-        ).withSource(plant));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.straight(
++                                damage,
++                                element,
++                                plant.getPlantTags(),
++                                projectileSpeed(plant, 0.5),
++                                plant.getPosX(),
++                                lane,
++                                new StraightMove(),
++                                1,
++                                effectDurationTicks(plant, state)
++                        ),
++                        plant,
++                        state,
++                        releaseId
++                )
++        );
+     }
+ 
+     private int effectDurationTicks(Plant plant, GameState state) {
+diff --git a/src/main/java/models/Plant/StrikeThrough.java b/src/main/java/models/Plant/StrikeThrough.java
+index ebe3455..7df373b 100644
+--- a/src/main/java/models/Plant/StrikeThrough.java
++++ b/src/main/java/models/Plant/StrikeThrough.java
+@@ -38,16 +38,23 @@ public enum StrikeThrough implements PlantType {
+     @Override
+     public void onFeed(Plant plant, GameState state) {
+         if (this == CACTUS) {
+-            state.getBoard().addProjectile(Projectile.straight(
+-                    plant.getDamage() * 3,
+-                    ElementType.NORMAL,
+-                    plant.getPlantTags(),
+-                    PlantEnumSupport.projectileSpeed(plant, 0.65),
+-                    plant.getPosX(),
+-                    plant.getPosY(),
+-                    new StraightMove(),
+-                    Integer.MAX_VALUE
+-            ).withSource(plant));
++            state.getBoard().addProjectile(
++                    PlantEnumSupport.configureProjectileVisual(
++                            Projectile.straight(
++                                    plant.getDamage() * 3,
++                                    ElementType.NORMAL,
++                                    plant.getPlantTags(),
++                                    PlantEnumSupport.projectileSpeed(plant, 0.65),
++                                    plant.getPosX(),
++                                    plant.getPosY(),
++                                    new StraightMove(),
++                                    Integer.MAX_VALUE
++                            ),
++                            plant,
++                            state,
++                            0
++                    )
++            );
+             return;
+         }
+         double effectiveRange = PlantEnumSupport.upgradedRange(
+@@ -81,16 +88,24 @@ public enum StrikeThrough implements PlantType {
+             return;
+         }
+         int upgradePierce = Math.max(0, plant.getPlantStat().pierceCount() - 1);
+-        state.getBoard().addProjectile(Projectile.straight(
+-                plant.getDamage(),
+-                ElementType.NORMAL,
+-                plant.getPlantTags(),
+-                PlantEnumSupport.projectileSpeed(plant, 0.65),
+-                plant.getPosX(),
+-                plant.getPosY(),
+-                new StraightMove(),
+-                basePierce + upgradePierce
+-        ));
++        state.getBoard().addProjectile(
++                PlantEnumSupport.configureProjectileVisual(
++                        Projectile.straight(
++                                plant.getDamage(),
++                                ElementType.NORMAL,
++                                plant.getPlantTags(),
++                                PlantEnumSupport.projectileSpeed(plant, 0.65),
++                                plant.getPosX(),
++                                plant.getPosY(),
++                                new StraightMove(),
++                                basePierce + upgradePierce
++                        ),
++                        plant,
++                        state,
++                        0
++                )
++        );
++        plant.signalAction(PlantAction.ATTACK);
+     }
+ 
+     private void damageWithCloud(Plant plant, GameState state) {
+diff --git a/src/main/java/models/projectile/Projectile.java b/src/main/java/models/projectile/Projectile.java
+index 82e5f0b..3e2231c 100644
+--- a/src/main/java/models/projectile/Projectile.java
++++ b/src/main/java/models/projectile/Projectile.java
+@@ -57,7 +57,15 @@ public class Projectile {
+     @Getter
+     private boolean markedForRemoval;
+     private boolean graveTarget;
++    @Getter
+     private Plant sourcePlant;
++    @Getter
++    private String visualProjectileKey = "default";
++    @Getter
++    private int visualReleaseId;
++    @Getter
++    private boolean launched = true;
++    private int launchDelayTicks;
+     private int remainingTicks = -1;
+     private final Set<Plant> passedModifiers = new HashSet<>();
+     private boolean torchwoodModified;
+@@ -366,6 +374,20 @@ public class Projectile {
+         return this;
+     }
+ 
++    public Projectile withVisualRelease(
++        String projectileKey,
++        int releaseId,
++        int delayTicks
++    ) {
++        visualProjectileKey = projectileKey == null || projectileKey.isBlank()
++            ? "default"
++            : projectileKey;
++        visualReleaseId = releaseId;
++        launchDelayTicks = Math.max(0, delayTicks);
++        launched = launchDelayTicks == 0;
++        return this;
++    }
++
+     public Projectile withGraveTarget() {
+         graveTarget = true;
+         return this;
+@@ -380,6 +402,15 @@ public class Projectile {
+         if (markedForRemoval) {
+             return;
+         }
++        if (!launched) {
++            if (launchDelayTicks > 0) {
++                launchDelayTicks--;
++            }
++            if (launchDelayTicks <= 0) {
++                launched = true;
++            }
++            return;
++        }
+         double previousX = posX;
+         double previousY = posY;
+         movingStrategy.move(this, reflected ? -speed : speed);
+diff --git a/src/main/java/views/graphical/gameplay/actors/PlantActor.java b/src/main/java/views/graphical/gameplay/actors/PlantActor.java
+index ba7323a..2ab7119 100644
+--- a/src/main/java/views/graphical/gameplay/actors/PlantActor.java
++++ b/src/main/java/views/graphical/gameplay/actors/PlantActor.java
+@@ -14,6 +14,7 @@ import views.graphical.animation.PamAnimationActor;
+ public class PlantActor extends Group {
+ 
+     private static final float PREVIEW_ALPHA = 0.58f;
++    public static final float BOARD_SCALE = 0.65f;
+ 
+     private final PvzGame game;
+     private String baseAnimationKey;
+@@ -93,7 +94,7 @@ public class PlantActor extends Group {
+                     1f,
+                     PREVIEW_ALPHA
+             );
+-            setScale(0.65f);
++            setScale(BOARD_SCALE);
+         } else {
+             animation.setColor(
+                     1f,
+@@ -101,7 +102,7 @@ public class PlantActor extends Group {
+                     1f,
+                     1f
+             );
+-            setScale(0.65f);
++            setScale(BOARD_SCALE);
+         }
+     }
+ 
+@@ -163,6 +164,14 @@ public class PlantActor extends Group {
+         animation.play(data.clip(), data.loop());
+     }
+ 
++    private void playFallbackIdle() {
++        if (plantData == null || animation == null) {
++            return;
++        }
++
++        animation.play(plantData.idleClip(), true);
++    }
++
+     public void clearPlant() {
+         clearChildren();
+ 
+diff --git a/src/main/java/views/graphical/gameplay/actors/ProjectileActor.java b/src/main/java/views/graphical/gameplay/actors/ProjectileActor.java
+index 436aa5f..f336bb4 100644
+--- a/src/main/java/views/graphical/gameplay/actors/ProjectileActor.java
++++ b/src/main/java/views/graphical/gameplay/actors/ProjectileActor.java
+@@ -1,92 +1,39 @@
+ package views.graphical.gameplay.actors;
+ 
+-import com.badlogic.gdx.graphics.Color;
++import Data.loader.ProjectileVisualData;
+ import com.badlogic.gdx.scenes.scene2d.Group;
+ import com.badlogic.gdx.scenes.scene2d.Touchable;
+-import com.badlogic.gdx.scenes.scene2d.ui.Image;
+ import graphics.PvzGame;
+-import models.Plant.PlantTag;
+ import models.projectile.Projectile;
+ import views.graphical.animation.PamAnimationActor;
+ 
+ public class ProjectileActor extends Group {
+ 
+-    private static final String PEA_PAM =
+-            "768/INITIAL/EFFECTS/SLINGPEA_PROJECTILE/SLINGPEA_PROJECTILE.PAM";
+-
+-    private static final String PEA_CLIP =
+-            "tier1";
+-
+-    private static final String CABBAGE_PAM =
+-            "768/INITIAL/EFFECTS/CABBAGEPULT_PLANTFOOD_PROJECTILE/CABBAGEPULT_PLANTFOOD_PROJECTILE.PAM";
+-
+-    private static final String CABBAGE_CLIP =
+-            "plantfood_cabbage";
+-
+-    private static final float PEA_SCALE = 0.7f;
+-    private static final float CABBAGE_SCALE = 0.4f;
+-
+     private final Projectile projectile;
+     private final PamAnimationActor animation;
+ 
+     public ProjectileActor(
+             PvzGame game,
+-            Projectile projectile
++            Projectile projectile,
++            ProjectileVisualData visual
+     ) {
+         this.projectile = projectile;
+ 
+         setTransform(true);
+         setTouchable(Touchable.disabled);
+ 
+-        String pamPath =
+-                resolvePamPath(projectile);
+-
+-        String clip =
+-                resolveClip(projectile);
+-
+-        game.getPamPlayer().loadSync(
+-                pamPath
+-        );
+-
+-        animation =
+-                game.createPamActor(
+-                        pamPath,
+-                        clip,
+-                        0f,
+-                        0f,
+-                        true
+-                );
++        game.getPamPlayer().loadSync(visual.pamPath());
+ 
+-        animation.setScale(
+-                resolveScale(projectile)
++        animation = game.createPamActor(
++                visual.pamPath(),
++                visual.clip(),
++                0f,
++                0f,
++                true
+         );
+ 
+-        animation.setTouchable(
+-                Touchable.disabled
+-        );
+-        Image originMarker =
+-                new Image(
+-                        game.getSkin()
+-                                .newDrawable(
+-                                        "white_pixel",
+-                                        Color.RED
+-                                )
+-                );
+-
+-        originMarker.setBounds(
+-                -3f,
+-                -3f,
+-                6f,
+-                6f
+-        );
+-
+-        originMarker.setTouchable(
+-                Touchable.disabled
+-        );
+-
+-        addActor(originMarker);
+-        addActor(animation);
+-
++        animation.setScale(visual.scale());
++        animation.setTouchable(Touchable.disabled);
+         addActor(animation);
+     }
+ 
+@@ -94,46 +41,6 @@ public class ProjectileActor extends Group {
+             float x,
+             float y
+     ) {
+-        setPosition(
+-                x,
+-                y
+-        );
+-    }
+-
+-    private String resolvePamPath(
+-            Projectile projectile
+-    ) {
+-        if (isCabbageTestProjectile(projectile)) {
+-            return CABBAGE_PAM;
+-        }
+-
+-        return PEA_PAM;
+-    }
+-
+-    private String resolveClip(
+-            Projectile projectile
+-    ) {
+-        if (isCabbageTestProjectile(projectile)) {
+-            return CABBAGE_CLIP;
+-        }
+-
+-        return PEA_CLIP;
+-    }
+-
+-    private float resolveScale(
+-            Projectile projectile
+-    ) {
+-        if (isCabbageTestProjectile(projectile)) {
+-            return CABBAGE_SCALE;
+-        }
+-
+-        return PEA_SCALE;
+-    }
+-
+-    private boolean isCabbageTestProjectile(
+-            Projectile projectile
+-    ) {
+-        return projectile.getTargetX() != null
+-                && projectile.getTargetY() != null;
++        setPosition(x, y);
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/views/graphical/gameplay/manager/PlantViewManager.java b/src/main/java/views/graphical/gameplay/manager/PlantViewManager.java
+--- a/src/main/java/views/graphical/gameplay/manager/PlantViewManager.java
++++ b/src/main/java/views/graphical/gameplay/manager/PlantViewManager.java
+@@ -75,7 +75,7 @@
+         }
+ 
+         switch (plant.getLastAction()) {
+-            case ATTACK -> actor.playTemporaryAnimation("attack");
++            case ATTACK -> actor.playTemporaryAnimation(resolveAttackAnimation(plant));
+             case PRODUCE -> actor.playTemporaryAnimation(resolveProduceAnimation(plant));
+             case EXPLODE -> actor.playTerminalAnimation("attack");
+             case NONE -> {
+@@ -83,6 +83,33 @@
+         }
+         lastSeenActionSerial.put(plant, plant.getActionSerial());
+     }
++    private String resolveAttackAnimation(Plant plant) {
++        PlantData data = PlantRegistry.getById(plant.getId());
++
++        if (data == null) {
++            return "attack";
++        }
++
++        if (data.hasAnimation("attack")) {
++            return "attack";
++        }
++
++        String stackedAttack = "attack" + plant.getStackCount();
++        if (data.hasAnimation(stackedAttack)) {
++            return stackedAttack;
++        }
++
++        if (data.hasAnimation("attackBoth")) {
++            return "attackBoth";
++        }
++
++        if (data.hasAnimation("attack1")) {
++            return "attack1";
++        }
++
++        return "attack";
++    }
++
+     private String resolveProduceAnimation(Plant plant) {
+         if (plant.getId() == 3) {
+             return "produce" + plant.getGrowthStage();
+diff --git a/src/main/java/views/graphical/gameplay/manager/ProjectileViewManager.java b/src/main/java/views/graphical/gameplay/manager/ProjectileViewManager.java
+index e5bc996..0dba1f2 100644
+--- a/src/main/java/views/graphical/gameplay/manager/ProjectileViewManager.java
++++ b/src/main/java/views/graphical/gameplay/manager/ProjectileViewManager.java
+@@ -1,8 +1,14 @@
+ package views.graphical.gameplay.manager;
+ 
++import Data.loader.PlantData;
++import Data.loader.PlantRegistry;
++import Data.loader.ProjectileReleaseData;
++import Data.loader.ProjectileVisualData;
+ import com.badlogic.gdx.scenes.scene2d.Group;
+ import graphics.PvzGame;
++import models.Plant.Plant;
+ import models.projectile.Projectile;
++import views.graphical.gameplay.actors.PlantActor;
+ import views.graphical.gameplay.actors.ProjectileActor;
+ import views.graphical.gameplay.board.BoardArea;
+ import views.graphical.gameplay.board.BoardTransform;
+@@ -18,8 +24,7 @@ public class ProjectileViewManager extends Group {
+     private final PvzGame game;
+     private final BoardTransform transform;
+ 
+-    private final Map<Projectile, ProjectileActor>
+-            projectileActors =
++    private final Map<Projectile, ProjectileActor> projectileActors =
+             new IdentityHashMap<>();
+ 
+     public ProjectileViewManager(
+@@ -30,62 +35,71 @@ public class ProjectileViewManager extends Group {
+         this.transform = transform;
+     }
+ 
+-    public void sync(
+-            Iterable<Projectile> projectiles
+-    ) {
++    public void sync(Iterable<Projectile> projectiles) {
+         Set<Projectile> active =
+-                Collections.newSetFromMap(
+-                        new IdentityHashMap<>()
+-                );
++                Collections.newSetFromMap(new IdentityHashMap<>());
+ 
+         for (Projectile projectile : projectiles) {
+-
+-            if (projectile.isMarkedForRemoval()) {
++            if (projectile.isMarkedForRemoval() || !projectile.isLaunched()) {
+                 continue;
+             }
+ 
+-            active.add(
+-                    projectile
+-            );
++            ProjectileVisualData visual = resolveVisual(projectile);
++            ProjectileReleaseData release = resolveRelease(projectile, visual);
++
++            if (visual == null || release == null) {
++                continue;
++            }
+ 
+-            ProjectileActor actor =
+-                    projectileActors.get(
+-                            projectile
+-                    );
++            active.add(projectile);
+ 
++            ProjectileActor actor = projectileActors.get(projectile);
+             if (actor == null) {
++                actor = new ProjectileActor(game, projectile, visual);
++                projectileActors.put(projectile, actor);
++                addActor(actor);
++            }
+ 
+-                actor =
+-                        new ProjectileActor(
+-                                game,
+-                                projectile
+-                        );
++            positionProjectile(projectile, actor, release);
++        }
+ 
+-                projectileActors.put(
+-                        projectile,
+-                        actor
+-                );
++        removeMissingProjectiles(active);
++    }
+ 
+-                addActor(actor);
+-            }
++    private ProjectileVisualData resolveVisual(Projectile projectile) {
++        Plant source = projectile.getSourcePlant();
++        if (source == null) {
++            return null;
++        }
+ 
+-            positionProjectile(
+-                    projectile,
+-                    actor
+-            );
++        PlantData plantData = PlantRegistry.getById(source.getId());
++        if (plantData == null) {
++            return null;
+         }
+ 
+-        removeMissingProjectiles(
+-                active
+-        );
++        return plantData.projectile(projectile.getVisualProjectileKey());
++    }
++
++    private ProjectileReleaseData resolveRelease(
++            Projectile projectile,
++            ProjectileVisualData visual
++    ) {
++        if (visual == null || visual.releases() == null || visual.releases().isEmpty()) {
++            return null;
++        }
++
++        return visual.releases().stream()
++                .filter(release -> release.id() == projectile.getVisualReleaseId())
++                .findFirst()
++                .orElse(visual.releases().getFirst());
+     }
+ 
+     private void positionProjectile(
+             Projectile projectile,
+-            ProjectileActor actor
++            ProjectileActor actor,
++            ProjectileReleaseData release
+     ) {
+-        BoardArea area =
+-                transform.getArea();
++        BoardArea area = transform.getArea();
+ 
+         float x =
+                 area.x()
+@@ -102,38 +116,54 @@ public class ProjectileViewManager extends Group {
+                 )
+                         * transform.tileHeight();
+ 
+-        y +=
+-                (float) projectile.getVisualArcOffset()
+-                        * transform.tileHeight();
++        float offsetFactor = launchOffsetFactor(projectile);
++
++        x += release.offsetX()
++                * PlantActor.BOARD_SCALE
++                * offsetFactor;
+ 
+-        actor.setProjectilePosition(
+-                x,
+-                y
+-        );
++        y += release.offsetY()
++                * PlantActor.BOARD_SCALE
++                * offsetFactor;
++
++        y += (float) projectile.getVisualArcOffset()
++                * transform.tileHeight();
++
++        actor.setProjectilePosition(x, y);
+     }
+ 
+-    private void removeMissingProjectiles(
+-            Set<Projectile> active
+-    ) {
+-        Iterator<Map.Entry<Projectile, ProjectileActor>>
+-                iterator =
+-                projectileActors
+-                        .entrySet()
+-                        .iterator();
++    private float launchOffsetFactor(Projectile projectile) {
++        Double targetX = projectile.getTargetX();
++        Plant source = projectile.getSourcePlant();
+ 
+-        while (iterator.hasNext()) {
++        if (targetX == null || source == null) {
++            return 1f;
++        }
++
++        double totalDistance = targetX - source.getPosX();
++        if (Math.abs(totalDistance) < 0.0001) {
++            return 0f;
++        }
+ 
+-            Map.Entry<Projectile, ProjectileActor>
+-                    entry =
+-                    iterator.next();
++        double progress =
++                (projectile.getPosX() - source.getPosX())
++                        / totalDistance;
+ 
+-            if (!active.contains(
+-                    entry.getKey()
+-            )) {
++        progress = Math.max(0.0, Math.min(1.0, progress));
++        return (float) (1.0 - progress);
++    }
++
++    private void removeMissingProjectiles(Set<Projectile> active) {
++        Iterator<Map.Entry<Projectile, ProjectileActor>> iterator =
++                projectileActors.entrySet().iterator();
++
++        while (iterator.hasNext()) {
++            Map.Entry<Projectile, ProjectileActor> entry = iterator.next();
+ 
++            if (!active.contains(entry.getKey())) {
+                 entry.getValue().remove();
+                 iterator.remove();
+             }
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/resources/plants.json b/src/main/resources/plants.json
+index 20b5cb4..f81d764 100644
+--- a/src/main/resources/plants.json
++++ b/src/main/resources/plants.json
+@@ -556,8 +556,9 @@
+     "tags": [
+       "PEA"
+     ],
+-    "projectile": {
+-      "pamPath": "768/INITIAL/EFFECTS/SLINGPEA_PROJECTILE/SLINGPEA_PROJECTILE.PAM",
++    "projectiles": {
++      "default": {
++        "pamPath": "768/INITIAL/EFFECTS/SLINGPEA_PROJECTILE/SLINGPEA_PROJECTILE.PAM",
+       "clip": "tier1",
+       "scale": 1.0,
+       "releases": [
+@@ -579,7 +580,8 @@
+           "offsetX": 70,
+           "offsetY": 20
+         }
+-      ]
++        ]
++      }
+     },
+     "cardAssetId":"IMAGE_UI_PACKETS_THREEPEATER",
+     "animations": {

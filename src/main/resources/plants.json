@@ -556,8 +556,9 @@
     "tags": [
       "PEA"
     ],
-    "projectile": {
-      "pamPath": "768/INITIAL/EFFECTS/SLINGPEA_PROJECTILE/SLINGPEA_PROJECTILE.PAM",
+    "projectiles": {
+      "default": {
+        "pamPath": "768/INITIAL/EFFECTS/SLINGPEA_PROJECTILE/SLINGPEA_PROJECTILE.PAM",
       "clip": "tier1",
       "scale": 1.0,
       "releases": [
@@ -579,7 +580,8 @@
           "offsetX": 70,
           "offsetY": 20
         }
-      ]
+        ]
+      }
     },
     "cardAssetId":"IMAGE_UI_PACKETS_THREEPEATER",
     "animations": {

@@ -57,7 +57,15 @@ public class Projectile {
     @Getter
     private boolean markedForRemoval;
     private boolean graveTarget;
+    @Getter
     private Plant sourcePlant;
+    @Getter
+    private String visualProjectileKey = "default";
+    @Getter
+    private int visualReleaseId;
+    @Getter
+    private boolean launched = true;
+    private int launchDelayTicks;
     private int remainingTicks = -1;
     private final Set<Plant> passedModifiers = new HashSet<>();
     private boolean torchwoodModified;
@@ -366,6 +374,20 @@ public class Projectile {
         return this;
     }
 
+    public Projectile withVisualRelease(
+        String projectileKey,
+        int releaseId,
+        int delayTicks
+    ) {
+        visualProjectileKey = projectileKey == null || projectileKey.isBlank()
+            ? "default"
+            : projectileKey;
+        visualReleaseId = releaseId;
+        launchDelayTicks = Math.max(0, delayTicks);
+        launched = launchDelayTicks == 0;
+        return this;
+    }
+
     public Projectile withGraveTarget() {
         graveTarget = true;
         return this;
@@ -378,6 +400,15 @@ public class Projectile {
 
     public void tick(GameState state) {
         if (markedForRemoval) {
+            return;
+        }
+        if (!launched) {
+            if (launchDelayTicks > 0) {
+                launchDelayTicks--;
+            }
+            if (launchDelayTicks <= 0) {
+                launched = true;
+            }
             return;
         }
         double previousX = posX;

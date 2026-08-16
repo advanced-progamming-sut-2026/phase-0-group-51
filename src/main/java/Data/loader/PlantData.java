@@ -28,7 +28,8 @@ public record PlantData(
         String onPlantFoodDescription,
         String overallDescription,
         String funDescription,
-        Map<String, PlantAnimationData> animations
+        Map<String, PlantAnimationData> animations,
+        Map<String, ProjectileVisualData> projectiles
 ) {
     public PlantAnimationData animation(String key) {
         return animations.get(key);
@@ -36,5 +37,13 @@ public record PlantData(
 
     public boolean hasAnimation(String key) {
         return animations.containsKey(key);
+    }
+
+    public ProjectileVisualData projectile(String key) {
+        return projectiles == null ? null : projectiles.get(key);
+    }
+
+    public boolean hasProjectiles() {
+        return projectiles != null && !projectiles.isEmpty();
     }
 }

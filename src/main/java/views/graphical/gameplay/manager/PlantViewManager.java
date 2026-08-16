@@ -75,7 +75,7 @@ public class PlantViewManager extends Group {
         }
 
         switch (plant.getLastAction()) {
-            case ATTACK -> actor.playTemporaryAnimation("attack");
+            case ATTACK -> actor.playTemporaryAnimation(resolveAttackAnimation(plant));
             case PRODUCE -> actor.playTemporaryAnimation(resolveProduceAnimation(plant));
             case EXPLODE -> actor.playTerminalAnimation("attack");
             case NONE -> {
@@ -83,6 +83,33 @@ public class PlantViewManager extends Group {
         }
         lastSeenActionSerial.put(plant, plant.getActionSerial());
     }
+    private String resolveAttackAnimation(Plant plant) {
+        PlantData data = PlantRegistry.getById(plant.getId());
+
+        if (data == null) {
+            return "attack";
+        }
+
+        if (data.hasAnimation("attack")) {
+            return "attack";
+        }
+
+        String stackedAttack = "attack" + plant.getStackCount();
+        if (data.hasAnimation(stackedAttack)) {
+            return stackedAttack;
+        }
+
+        if (data.hasAnimation("attackBoth")) {
+            return "attackBoth";
+        }
+
+        if (data.hasAnimation("attack1")) {
+            return "attack1";
+        }
+
+        return "attack";
+    }
+
     private String resolveProduceAnimation(Plant plant) {
         if (plant.getId() == 3) {
             return "produce" + plant.getGrowthStage();
