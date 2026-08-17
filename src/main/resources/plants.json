@@ -912,22 +912,22 @@
         "duration": 1.03
       },
       "attack2": {
-        "clip": "attack2",
+        "clip": "attack 2",
         "loop": false,
         "duration": 1.00
       },
       "attack3": {
-        "clip": "attack3",
+        "clip": "attack 3",
         "loop": false,
         "duration": 1.03
       },
       "attack4": {
-        "clip": "attack4",
+        "clip": "attack 4",
         "loop": false,
         "duration": 1.03
       },
       "attack5": {
-        "clip": "attack5",
+        "clip": "attack 5",
         "loop": false,
         "duration": 1.03
       }

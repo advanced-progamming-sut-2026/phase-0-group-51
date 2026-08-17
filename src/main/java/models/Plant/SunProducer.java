@@ -143,7 +143,8 @@ public enum SunProducer implements PlantType {
                 plant.getPosY(),
                 SunType.ORDINARY,
                 amount,
-                Integer.MAX_VALUE
+                Integer.MAX_VALUE,
+                plant
         );
         sun.setGrounded(true);
         state.getBoard().spawnSun(sun);

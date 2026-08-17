@@ -20,6 +20,7 @@ public class PlantViewManager extends Group {
 
     private final Map<Plant, PlantActor> plantActors = new IdentityHashMap<>();
     private final Map<Plant, Long> lastSeenActionSerial = new IdentityHashMap<>();
+    private final Map<PlantActor, Integer> actorLayers = new IdentityHashMap<>();
 
     public PlantViewManager(
             PvzGame game,
@@ -40,32 +41,34 @@ public class PlantViewManager extends Group {
                  column++) {
 
                 Tile tile = board.getTile(lane, column);
-
-                Plant plant = tile.getTopPlant();
-
-                if (plant == null) {
-                    continue;
-                }
-
-                plantsOnBoard.add(plant);
-
-                PlantActor actor = plantActors.get(plant);
-
-                if (actor == null) {
-                    actor = createPlantActor(plant);
-
-                    plantActors.put(plant, actor);
-                    lastSeenActionSerial.put(plant, plant.getActionSerial());
-                    addActor(actor);
-                }
-                syncPlantBaseAnimation(plant, actor);
-                syncPlantAction(plant, actor);
-                positionPlant(actor, lane, column);
+                syncPlant(tile.getLilyPadPlant(), lane, column, 0, plantsOnBoard);
+                syncPlant(tile.getTopPlant(), lane, column, 1, plantsOnBoard);
+                syncPlant(tile.getPumpkinPlant(), lane, column, 2, plantsOnBoard);
             }
         }
 
         removeMissingPlants(plantsOnBoard);
         sortPlantsByDepth();
+    }
+    private void syncPlant(Plant plant, int lane, int column, int layer, Set<Plant> plantsOnBoard) {
+        if (plant == null) {
+            return;
+        }
+
+        plantsOnBoard.add(plant);
+
+        PlantActor actor = plantActors.get(plant);
+
+        if (actor == null) {
+            actor = createPlantActor(plant);
+            plantActors.put(plant, actor);
+            lastSeenActionSerial.put(plant, plant.getActionSerial());
+            addActor(actor);
+        }
+        actorLayers.put(actor, layer);
+        syncPlantBaseAnimation(plant, actor);
+        syncPlantAction(plant, actor);
+        positionPlant(actor, lane, column);
     }
     private void syncPlantAction(Plant plant, PlantActor actor) {
         long lastSeen = lastSeenActionSerial.getOrDefault(plant, plant.getActionSerial());
@@ -117,7 +120,37 @@ public class PlantViewManager extends Group {
         return "produce";
     }
     private void sortPlantsByDepth() {
-        getChildren().sort((first, second) -> Float.compare(second.getY(), first.getY()));
+        getChildren().sort(
+                (first, second) -> {
+
+                    int rowOrder =
+                            Float.compare(
+                                    second.getY(),
+                                    first.getY()
+                            );
+
+                    if (rowOrder != 0) {
+                        return rowOrder;
+                    }
+
+                    int firstLayer =
+                            actorLayers.getOrDefault(
+                                    (PlantActor) first,
+                                    1
+                            );
+
+                    int secondLayer =
+                            actorLayers.getOrDefault(
+                                    (PlantActor) second,
+                                    1
+                            );
+
+                    return Integer.compare(
+                            firstLayer,
+                            secondLayer
+                    );
+                }
+        );
     }
     private void removeMissingPlants(Set<Plant> plantsOnBoard) {
         Iterator<Map.Entry<Plant, PlantActor>> iterator = plantActors.entrySet().iterator();
@@ -125,7 +158,13 @@ public class PlantViewManager extends Group {
             Map.Entry<Plant, PlantActor> entry = iterator.next();
             if (!plantsOnBoard.contains(entry.getKey())) {
                 Plant plant = entry.getKey();
-                entry.getValue().remove();
+
+                PlantActor actor = entry.getValue();
+
+                actor.remove();
+
+                actorLayers.remove(actor);
+
                 lastSeenActionSerial.remove(plant);
                 iterator.remove();
             }
