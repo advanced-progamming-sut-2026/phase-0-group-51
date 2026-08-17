@@ -27,7 +27,7 @@ import java.util.Set;
 
 public final class ZombieAnimationSystem {
 
-    public static final float DEFAULT_SCALE = 0.59f;
+    public static final float DEFAULT_SCALE = 0.57f;
 
     private static final String GROUND_PART = "ground_swatch";
 
@@ -35,6 +35,8 @@ public final class ZombieAnimationSystem {
     private static final float MIN_STEP_DISTANCE = 0.001f;
     private static final float MIN_WALK_PLAYBACK_SPEED = 0.10f;
     private static final float MAX_WALK_PLAYBACK_SPEED = 5.00f;
+    private static final float POSITION_EPSILON = 0.0001f;
+    private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
 
     private static final String EGYPT_BASIC_PAM =
         "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_BASIC/ZOMBIE_EGYPT_BASIC.PAM";
@@ -73,6 +75,8 @@ public final class ZombieAnimationSystem {
     private final Map<Zombie, ZombieVisual> visuals =
         new IdentityHashMap<>();
 
+    private int lastObservedModelTick = Integer.MIN_VALUE;
+
     public ZombieAnimationSystem(
         PamPlayer pamPlayer,
         Stage worldStage,
@@ -105,12 +109,27 @@ public final class ZombieAnimationSystem {
 
     public void update(
         float delta,
+        float partialTick,
+        int modelTick,
         Collection<Zombie> zombies
     ) {
         Collection<Zombie> safeZombies =
             zombies == null
                 ? Collections.emptyList()
                 : zombies;
+
+        boolean firstUpdate =
+            lastObservedModelTick == Integer.MIN_VALUE;
+
+        boolean modelAdvanced =
+            !firstUpdate
+                && modelTick != lastObservedModelTick;
+
+        partialTick = clamp(
+            partialTick,
+            0f,
+            1f
+        );
 
         Set<Zombie> active = Collections.newSetFromMap(
             new IdentityHashMap<>()
@@ -135,7 +154,17 @@ public final class ZombieAnimationSystem {
                 visuals.put(zombie, visual);
             }
 
-            updateLivingZombie(zombie, visual);
+            sampleModelPosition(
+                zombie,
+                visual,
+                modelAdvanced
+            );
+
+            updateLivingZombie(
+                zombie,
+                visual,
+                partialTick
+            );
         }
 
         Iterator<Map.Entry<Zombie, ZombieVisual>> iterator =
@@ -168,6 +197,8 @@ public final class ZombieAnimationSystem {
         }
 
         updateZombieDrawOrder();
+
+        lastObservedModelTick = modelTick;
     }
 
     public void clear() {
@@ -177,6 +208,7 @@ public final class ZombieAnimationSystem {
 
         visuals.clear();
         resolver.clearCache();
+        lastObservedModelTick = Integer.MIN_VALUE;
     }
 
     public int getVisibleZombieCount() {
@@ -279,7 +311,17 @@ public final class ZombieAnimationSystem {
                 animations
             );
 
-            updatePosition(zombie, actor);
+            initializeModelPosition(
+                zombie,
+                visual
+            );
+
+            updatePosition(
+                zombie,
+                visual,
+                1f
+            );
+
             return visual;
 
         } catch (RuntimeException e) {
@@ -613,13 +655,70 @@ public final class ZombieAnimationSystem {
         }
     }
 
-    private void updateLivingZombie(
+    private void initializeModelPosition(
         Zombie zombie,
         ZombieVisual visual
     ) {
+        float modelX = zombie.getX();
+
+        visual.previousModelX = modelX;
+        visual.currentModelX = modelX;
+        visual.positionInitialized = true;
+    }
+
+    private void sampleModelPosition(
+        Zombie zombie,
+        ZombieVisual visual,
+        boolean modelAdvanced
+    ) {
+        float modelX = zombie.getX();
+
+        if (!visual.positionInitialized) {
+            initializeModelPosition(
+                zombie,
+                visual
+            );
+            return;
+        }
+
+        if (!modelAdvanced) {
+            if (Math.abs(
+                modelX - visual.currentModelX
+            ) > POSITION_EPSILON) {
+                visual.previousModelX = modelX;
+                visual.currentModelX = modelX;
+            }
+            return;
+        }
+
+        float movement =
+            modelX - visual.currentModelX;
+
+        if (Math.abs(movement)
+            > MAX_INTERPOLATION_STEP_COLUMNS) {
+            visual.previousModelX = modelX;
+            visual.currentModelX = modelX;
+            return;
+        }
+
+        visual.previousModelX =
+            visual.currentModelX;
+
+        visual.currentModelX = modelX;
+    }
+
+    private void updateLivingZombie(
+        Zombie zombie,
+        ZombieVisual visual,
+        float partialTick
+    ) {
         PamAnimationActor actor = visual.actor;
 
-        updatePosition(zombie, actor);
+        updatePosition(
+            zombie,
+            visual,
+            partialTick
+        );
 
         EntityAnimationState state = zombie.isEating()
             ? EntityAnimationState.EAT
@@ -650,20 +749,34 @@ public final class ZombieAnimationSystem {
 
     private void updatePosition(
         Zombie zombie,
-        PamAnimationActor actor
+        ZombieVisual visual,
+        float partialTick
     ) {
-        float x = boardTransform.getArea().x()
-            + (zombie.getX() + 0.5f)
-            * boardTransform.tileWidth();
+        PamAnimationActor actor = visual.actor;
 
-        float y = boardTransform.tileY(zombie.getLane())
-            + boardTransform.tileHeight() * 0.5f;
+        float renderX =
+            visual.previousModelX
+                + (
+                visual.currentModelX
+                    - visual.previousModelX
+            ) * partialTick;
+
+        float x =
+            boardTransform.getArea().x()
+                + (renderX + 0.5f)
+                * boardTransform.tileWidth();
+
+        float y =
+            boardTransform.tileY(zombie.getLane())
+                + boardTransform.tileHeight()
+                * 0.5f;
 
         actor.setPosition(x, y);
 
-        float scaleX = zombie.getDirection() >= 0
-            ? scale
-            : -scale;
+        float scaleX =
+            zombie.getDirection() >= 0
+                ? scale
+                : -scale;
 
         actor.setScale(scaleX, scale);
     }
@@ -770,6 +883,10 @@ public final class ZombieAnimationSystem {
     private static final class ZombieVisual {
         private final PamAnimationActor actor;
         private final ZombieAnimationResolver.ResolvedAnimations animations;
+
+        private float previousModelX;
+        private float currentModelX;
+        private boolean positionInitialized;
 
         private boolean deathStarted;
         private float deathElapsed;
