@@ -34,7 +34,7 @@ public final class PlantLoader {
                     obj.optString("lvl3", ""), obj.optString("lvl4", ""), parseUpgrades(obj.optJSONArray("upgrades")),
                     requiredString(obj, "cardAssetId"), obj.getString("idlePamPath"),obj.optString("idleClip", "idle"),
                     obj.optString("onPlantFoodDescription"), obj.optString("overallDescription"), obj.optString("funDescription"),
-                    parseAnimations(obj)
+                    parseAnimations(obj), parseProjectiles(obj)
             ));
         }
     }
@@ -90,6 +90,42 @@ public final class PlantLoader {
             boolean loop = animation.optBoolean("loop", true);
             float duration = (float) animation.optDouble("duration", 0.0);
             result.put(key, new PlantAnimationData(clip, loop, duration));
+        }
+
+        return Map.copyOf(result);
+    }
+
+    private static Map<String, ProjectileVisualData> parseProjectiles(JSONObject obj) {
+        JSONObject projectiles = obj.optJSONObject("projectiles");
+        if (projectiles == null) {
+            return Map.of();
+        }
+
+        Map<String, ProjectileVisualData> result = new LinkedHashMap<>();
+
+        for (String key : projectiles.keySet()) {
+            JSONObject projectile = projectiles.getJSONObject(key);
+            JSONArray releasesJson = projectile.optJSONArray("releases");
+            List<ProjectileReleaseData> releases = new ArrayList<>();
+
+            if (releasesJson != null) {
+                for (int i = 0; i < releasesJson.length(); i++) {
+                    JSONObject release = releasesJson.getJSONObject(i);
+                    releases.add(new ProjectileReleaseData(
+                            release.getInt("id"),
+                            (float) release.getDouble("time"),
+                            (float) release.getDouble("offsetX"),
+                            (float) release.getDouble("offsetY")
+                    ));
+                }
+            }
+
+            result.put(key, new ProjectileVisualData(
+                    requiredString(projectile, "pamPath"),
+                    requiredString(projectile, "clip"),
+                    (float) projectile.optDouble("scale", 1.0),
+                    List.copyOf(releases)
+            ));
         }
 
         return Map.copyOf(result);

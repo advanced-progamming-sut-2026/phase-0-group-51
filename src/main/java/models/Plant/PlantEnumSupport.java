@@ -2,7 +2,11 @@ package models.Plant;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import Data.loader.ProjectileReleaseData;
+import Data.loader.ProjectileVisualData;
 import models.projectile.ElementType;
+import models.projectile.Projectile;
+import models.games.GameState;
 
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +40,42 @@ final class PlantEnumSupport {
                 stats,
                 upgrades,
                 data.tags()
+        );
+    }
+
+
+    static Projectile configureProjectileVisual(
+            Projectile projectile,
+            Plant plant,
+            GameState state,
+            int requestedReleaseId
+    ) {
+        projectile.withSource(plant);
+
+        PlantData data = PlantRegistry.getById(plant.getId());
+        if (data == null || !data.hasProjectiles()) {
+            return projectile;
+        }
+
+        ProjectileVisualData visual = data.projectile("default");
+        if (visual == null || visual.releases() == null || visual.releases().isEmpty()) {
+            return projectile;
+        }
+
+        ProjectileReleaseData release = visual.releases().stream()
+                .filter(candidate -> candidate.id() == requestedReleaseId)
+                .findFirst()
+                .orElse(visual.releases().getFirst());
+
+        int delayTicks = Math.max(
+                0,
+                Math.round(release.time() * state.getTicksPerSecond())
+        );
+
+        return projectile.withVisualRelease(
+                "default",
+                release.id(),
+                delayTicks
         );
     }
 

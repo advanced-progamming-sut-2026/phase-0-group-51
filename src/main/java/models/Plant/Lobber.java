@@ -163,19 +163,24 @@ public enum Lobber implements PlantType {
         double splashRadius = plant.hasTag(PlantTag.AOE) ? areaRadius : 0;
         int splashDamage = damage
                 + (int) Math.round(plant.getPlantStat().aoeDamage());
-        return Projectile.targeted(
-                damage,
-                splashDamage,
-                shotElement,
-                plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.35),
-                plant.getPosX(),
-                plant.getPosY(),
-                targetX,
-                targetLane,
-                new ArcMove(),
-                splashRadius
-        ).withSource(plant);
+        return PlantEnumSupport.configureProjectileVisual(
+                Projectile.targeted(
+                        damage,
+                        splashDamage,
+                        shotElement,
+                        plant.getPlantTags(),
+                        PlantEnumSupport.projectileSpeed(plant, 0.35),
+                        plant.getPosX(),
+                        plant.getPosY(),
+                        targetX,
+                        targetLane,
+                        new ArcMove(),
+                        splashRadius
+                ),
+                plant,
+                state,
+                0
+        );
     }
 
     private void launchFoodProjectile(
@@ -186,19 +191,26 @@ public enum Lobber implements PlantType {
             int damage,
             double splashRadius
     ) {
-        state.getBoard().addProjectile(Projectile.targeted(
-                damage,
-                damage,
-                foodElement,
-                plant.getPlantTags(),
-                PlantEnumSupport.projectileSpeed(plant, 0.35),
-                plant.getPosX(),
-                plant.getPosY(),
-                target.getX(),
-                target.getLane(),
-                new ArcMove(),
-                splashRadius
-        ).withSource(plant));
+        state.getBoard().addProjectile(
+                PlantEnumSupport.configureProjectileVisual(
+                        Projectile.targeted(
+                                damage,
+                                damage,
+                                foodElement,
+                                plant.getPlantTags(),
+                                PlantEnumSupport.projectileSpeed(plant, 0.35),
+                                plant.getPosX(),
+                                plant.getPosY(),
+                                target.getX(),
+                                target.getLane(),
+                                new ArcMove(),
+                                splashRadius
+                        ),
+                        plant,
+                        state,
+                        0
+                )
+        );
     }
 
     private boolean shouldLaunchButter(Plant plant, GameState state) {

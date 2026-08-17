@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
@@ -30,6 +31,7 @@ import models.Result;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
+import models.sun.Sun;
 
 
 import views.graphical.gameplay.actors.PlantActor;
@@ -40,6 +42,8 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.ProjectileViewManager;
+import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -76,7 +80,12 @@ public class GameScreen extends BaseScreen {
         NONE, START_OBJECTIVES, PAUSE, GAME_END
     }
 
+    private enum ToolMode {
+        NONE, SHOVEL, PLANT_FOOD
+    }
+
     private OverlayMode overlayMode = OverlayMode.NONE;
+    private ToolMode toolMode = ToolMode.NONE;
 
     private Table modalOverlay;
     private final Texture modalDimTexture;
@@ -109,9 +118,21 @@ public class GameScreen extends BaseScreen {
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
+    private SunViewManager sunViewManager;
+    private ProjectileViewManager projectileViewManager;
 
     private Image rowHighlight;
     private Image columnHighlight;
+
+    private static final String SHOVEL_CURSOR =
+            "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
+    private static final String PLANT_FOOD_CURSOR =
+            "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
+    private static final float TOOL_CURSOR_ALPHA = 0.58f;
+    private static final float TOOL_CURSOR_SCALE = 0.65f;
+
+    private Image toolCursorPreview;
+    private final Vector2 toolCursorPosition = new Vector2();
 
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
@@ -363,6 +384,12 @@ public class GameScreen extends BaseScreen {
             this::showPauseMenu
         );
         uiStage.addActor(gameHud);
+        gameHud.setOnShovelRequested(
+                this::toggleShovelMode
+        );
+        gameHud.setOnPlantFoodRequested(
+                this::togglePlantFoodMode
+        );
 
         Game currentGame =
             App.getInstance()
@@ -407,6 +434,11 @@ public class GameScreen extends BaseScreen {
                 boardTransform
             );
         worldStage.addActor(plantViewManager);
+        projectileViewManager = new ProjectileViewManager(game, boardTransform);
+        worldStage.addActor(projectileViewManager);
+        sunViewManager = new SunViewManager(game, boardTransform);
+        sunViewManager.setOnSunClicked(this::handleSunClicked);
+        worldStage.addActor(sunViewManager);
 
         placementPreview =
             new PlantActor(game);
@@ -427,12 +459,159 @@ public class GameScreen extends BaseScreen {
 
         if (plant == null) {
             placementPreview.clearPlant();
-            hidePlacementHighlights();
+            if (toolMode == ToolMode.NONE) {
+                hidePlacementHighlights();
+            }
             return;
         }
 
+        setToolMode(ToolMode.NONE);
         placementPreview.setPreviewMode(true);
         placementPreview.setPlant(plant);
+    }
+
+    private void toggleShovelMode() {
+        if (toolMode == ToolMode.SHOVEL) {
+            setToolMode(ToolMode.NONE);
+            return;
+        }
+
+        plantSlotsBar.clearPlantSelection();
+        setToolMode(ToolMode.SHOVEL);
+    }
+
+    private void togglePlantFoodMode() {
+        if (toolMode == ToolMode.PLANT_FOOD) {
+            setToolMode(ToolMode.NONE);
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null
+                || currentGame.getGameState() == null) {
+            return;
+        }
+
+        if (currentGame.getGameState().getPlantFoodCount() <= 0) {
+            game.notifyError("You do not have any Plant Food.");
+            return;
+        }
+
+        plantSlotsBar.clearPlantSelection();
+        setToolMode(ToolMode.PLANT_FOOD);
+    }
+
+    private void setToolMode(ToolMode mode) {
+        toolMode = mode;
+
+        if (gameHud != null) {
+            gameHud.setShovelSelected(
+                    mode == ToolMode.SHOVEL
+            );
+        }
+
+        switch (mode) {
+            case SHOVEL -> showToolCursor(SHOVEL_CURSOR);
+            case PLANT_FOOD -> showToolCursor(PLANT_FOOD_CURSOR);
+            case NONE -> hideToolCursor();
+        }
+
+        if (mode != ToolMode.NONE && placementPreview != null) {
+            placementPreview.clearPlant();
+        }
+
+        if (mode == ToolMode.NONE
+                && plantSlotsBar.getSelectedPlant() == null) {
+            hidePlacementHighlights();
+        }
+    }
+
+    private void showToolCursor(String assetId) {
+        TextureRegion region =
+                game.getTextureBank().region(assetId);
+
+        if (region == null) {
+            throw new IllegalStateException(
+                    "TextureBank region was not found: " + assetId
+            );
+        }
+
+        if (toolCursorPreview == null) {
+            toolCursorPreview = new Image();
+            toolCursorPreview.setTouchable(Touchable.disabled);
+            uiStage.addActor(toolCursorPreview);
+        }
+
+        toolCursorPreview.setDrawable(
+                new TextureRegionDrawable(region)
+        );
+        toolCursorPreview.setSize(
+                region.getRegionWidth() * TOOL_CURSOR_SCALE,
+                region.getRegionHeight() * TOOL_CURSOR_SCALE
+        );
+        toolCursorPreview.setColor(
+                1f,
+                1f,
+                1f,
+                TOOL_CURSOR_ALPHA
+        );
+        toolCursorPreview.setVisible(true);
+        toolCursorPreview.toFront();
+    }
+
+    private void hideToolCursor() {
+        if (toolCursorPreview != null) {
+            toolCursorPreview.setVisible(false);
+        }
+    }
+
+    private void updateToolCursorPreview() {
+        if (toolCursorPreview == null) {
+            return;
+        }
+
+        boolean shouldShow =
+                toolMode != ToolMode.NONE
+                        && introState == IntroState.PLAYING
+                        && overlayMode == OverlayMode.NONE;
+
+        toolCursorPreview.setVisible(shouldShow);
+        if (!shouldShow) {
+            return;
+        }
+
+        toolCursorPosition.set(
+                Gdx.input.getX(),
+                Gdx.input.getY()
+        );
+        uiStage.screenToStageCoordinates(toolCursorPosition);
+
+        toolCursorPreview.setPosition(
+                toolCursorPosition.x
+                        - toolCursorPreview.getWidth() / 2f,
+                toolCursorPosition.y
+                        - toolCursorPreview.getHeight() / 2f
+        );
+        toolCursorPreview.toFront();
+    }
+    private void handleSunClicked(Sun sun) {
+        if (sun == null || introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
+
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame == null || currentGame.getGameState() == null) {
+
+            return;
+        }
+
+        boolean collected = currentGame.getGameState().getBoard().collectSun(sun, currentGame.getGameState());
+
+        if (!collected) {
+            game.notifyError("Sun has expired or was already collected.");
+        }
     }
 
     private void showStartObjectives() {
@@ -618,7 +797,13 @@ public class GameScreen extends BaseScreen {
         columnHighlight.setVisible(false);
     }
     private void handleTileHover(Tile tile) {
-        if (tile == null || plantSlotsBar.getSelectedPlant() == null) {
+        boolean hasPlantSelection =
+                plantSlotsBar.getSelectedPlant() != null;
+        boolean hasToolSelection =
+                toolMode != ToolMode.NONE;
+
+        if (tile == null
+                || (!hasPlantSelection && !hasToolSelection)) {
             hidePlacementHighlights();
             return;
         }
@@ -666,6 +851,7 @@ public class GameScreen extends BaseScreen {
             }
         }
 
+        updateToolCursorPreview();
         uiStage.act(delta);
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
@@ -709,7 +895,19 @@ public class GameScreen extends BaseScreen {
 
                 if (plantViewManager != null) {
                     plantViewManager.sync(
-                        board
+                            board
+                    );
+                }
+                if (projectileViewManager != null) {
+                    projectileViewManager.sync(
+                            board.getProjectiles(),
+                            getRenderTickAlpha()
+                    );
+                }
+                if (sunViewManager != null) {
+                    sunViewManager.sync(
+                            board.getActiveSuns(),
+                            getRenderTickAlpha()
                     );
                 }
             }
@@ -835,11 +1033,67 @@ public class GameScreen extends BaseScreen {
         }
     }
 
+    private float getRenderTickAlpha() {
+        Game currentGame =
+            App.getInstance()
+                .getCurrentGame();
+
+        if (currentGame == null
+            || currentGame.getGameState() == null) {
+            return 0f;
+        }
+
+        int ticksPerSecond =
+            Math.max(
+                1,
+                currentGame
+                    .getGameState()
+                    .getTicksPerSecond()
+            );
+
+        float tickDuration =
+            1f / ticksPerSecond;
+
+        return Math.max(
+            0f,
+            Math.min(
+                1f,
+                gameTickAccumulator / tickDuration
+            )
+        );
+    }
+
     private void handleTileClick(
         Tile tile
     ) {
         if (introState != IntroState.PLAYING
-            || overlayMode != OverlayMode.NONE) {
+                || overlayMode != OverlayMode.NONE
+                || tile == null) {
+            return;
+        }
+
+        int x = tile.getColumn() + 1;
+        int y = tile.getLane() + 1;
+
+        if (toolMode == ToolMode.SHOVEL) {
+            Result result = gamingController.pluckPlant(x, y);
+            if (!result.success()) {
+                game.notifyError(result.message());
+                return;
+            }
+
+            setToolMode(ToolMode.NONE);
+            return;
+        }
+
+        if (toolMode == ToolMode.PLANT_FOOD) {
+            Result result = gamingController.feedPlant(x, y);
+            if (!result.success()) {
+                game.notifyError(result.message());
+                return;
+            }
+
+            setToolMode(ToolMode.NONE);
             return;
         }
 
@@ -847,13 +1101,19 @@ public class GameScreen extends BaseScreen {
         if (selectedPlant == null) {
             return;
         }
-        int x = tile.getColumn() + 1;
-        int y = tile.getLane() + 1;
-        Result result = gamingController.plantPlant(selectedPlant.name(), x, y);
+
+        Result result =
+                gamingController.plantPlant(
+                        selectedPlant.name(),
+                        x,
+                        y
+                );
+
         if (!result.success()) {
             game.notifyError(result.message());
             return;
         }
+
         plantSlotsBar.clearPlantSelection();
     }
 

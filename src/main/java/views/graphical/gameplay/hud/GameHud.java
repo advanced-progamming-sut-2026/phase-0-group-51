@@ -19,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import controllers.GamingController;
+import controllers.GameMenuController;
 import graphics.PvzGame;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,6 +29,7 @@ import models.User;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ZombieWaveManager;
+import views.graphical.ui.GameSettings;
 import views.graphical.ui.PlantSlotsBar;
 @Getter
 @Setter
@@ -54,6 +56,8 @@ public class GameHud extends Table {
     private static final String FLAG_BAR ="IMAGE_ZOMBIE_ZOMBIE_BIGHEAD_FLAG_ZOMBIE_BIGHEAD_FLAG_23X194";
     private static final int MAX_PLANT_FOOD = 3;
     private static final int CHEAT_SUN_AMOUNT = 25;
+    private static final int CHEAT_COIN_AMOUNT = 1000;
+    private static final int CHEAT_GEM_AMOUNT = 10;
     private static final float STATE_REFRESH = 0.10f;
     private static final float CURRENCY_REFRESH = 0.50f;
 
@@ -68,9 +72,12 @@ public class GameHud extends Table {
 
     private final Runnable onPauseRequested;
     private Runnable onShovelRequested;
+    private Runnable onPlantFoodRequested;
     private Runnable onSpeedRequested;
 
     private final GamingController gamingController = new GamingController();
+    private final GameMenuController gameMenuController =
+            new GameMenuController();
     private final UserRepository userRepository = new UserRepository();
 
     private Label sunLabel;
@@ -84,6 +91,8 @@ public class GameHud extends Table {
 
     private final PlantSlotsBar plantSlotsBar;
     private ImageButton shovelButton;
+    private ImageButton addSunButton;
+    private ImageButton addFoodButton;
 
     private float stateRefreshTimer;
     private float currencyRefreshTimer;
@@ -142,6 +151,7 @@ public class GameHud extends Table {
 
         setTouchable(Touchable.childrenOnly);
         buildHud();
+        refreshDebugControls();
         hideGameHud();
     }
 
@@ -202,7 +212,7 @@ public class GameHud extends Table {
 
         topLeft.top().left();
         Table sunRow = new Table();
-        ImageButton addSunButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
+        addSunButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
         addSunButton.addListener(
                 new ClickListener() {
                     @Override
@@ -236,7 +246,7 @@ public class GameHud extends Table {
         topLeft.add(sunRow).left().row();
 
         Table foodRow = new Table();
-        ImageButton addFoodButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
+        addFoodButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
 
         addFoodButton.addListener(
                 new ClickListener() {
@@ -252,6 +262,21 @@ public class GameHud extends Table {
         );
 
         Stack foodDisplay = new Stack();
+        foodDisplay.setTouchable(Touchable.enabled);
+        foodDisplay.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(
+                            InputEvent event,
+                            float x,
+                            float y
+                    ) {
+                        if (onPlantFoodRequested != null) {
+                            onPlantFoodRequested.run();
+                        }
+                    }
+                }
+        );
 
         Stack dotsBank = new Stack();
 
@@ -357,12 +382,30 @@ public class GameHud extends Table {
         gemLabel.setTouchable(Touchable.disabled);
         gemLabel.setFontScale(1.1f);
 
-        Group gemDisplay = createCurrencyDisplay(GEMS, GEMS_CLICKED, gemLabel);
+        Group gemDisplay = createCurrencyDisplay(
+                GEMS,
+                GEMS_CLICKED,
+                gemLabel,
+                () -> runCurrencyCheat(
+                        CHEAT_GEM_AMOUNT,
+                        "diamond"
+                )
+        );
+
         coinLabel = new Label("0", game.getSkin());
         coinLabel.setTouchable(Touchable.disabled);
         coinLabel.setFontScale(1.1f);
 
-        Group coinDisplay = createCurrencyDisplay(COIN, COIN_CLICKED, coinLabel);
+        Group coinDisplay = createCurrencyDisplay(
+                COIN,
+                COIN_CLICKED,
+                coinLabel,
+                () -> runCurrencyCheat(
+                        CHEAT_COIN_AMOUNT,
+                        "coin"
+                )
+        );
+
         shovelButton =createImageButton(SHOVEL, SHOVEL_CLICKED);
 
         shovelButton.addListener(
@@ -401,7 +444,6 @@ public class GameHud extends Table {
                 )
                 .padRight(8f);
 
-
         buttons.add(coinDisplay)
                 .size(
                         coinDisplay.getWidth(),
@@ -409,20 +451,93 @@ public class GameHud extends Table {
                 )
                 .padRight(10f);
 
-
         buttons.add(shovelButton)
                 .size(58f)
                 .padRight(5f);
 
-
         buttons.add(pauseButton)
                 .size(58f);
 
-
         topRight.add(buttons).right();
     }
-    private Group createCurrencyDisplay(String normalAsset, String pressedAsset, Label label) {
+
+    private void runCurrencyCheat(
+            int amount,
+            String kind
+    ) {
+        if (!GameSettings.debugMode) {
+            return;
+        }
+
+        if (App.getInstance().getLoggedInUser() == null) {
+            game.notifyError(
+                    "You must be logged in to use debug currency controls."
+            );
+            return;
+        }
+
+        Result result =
+                gameMenuController.cheatAdd(
+                        amount,
+                        kind
+                );
+
+        showResult(result);
+        refreshCurrencies();
+    }
+
+    private void refreshDebugControls() {
+        boolean visible =
+                GameSettings.debugMode;
+
+        setDebugButtonVisible(
+                addSunButton,
+                visible
+        );
+        setDebugButtonVisible(
+                addFoodButton,
+                visible
+        );
+    }
+
+    private void setDebugButtonVisible(
+            ImageButton button,
+            boolean visible
+    ) {
+        if (button == null) {
+            return;
+        }
+
+        button.setVisible(visible);
+        button.setTouchable(
+                visible
+                        ? Touchable.enabled
+                        : Touchable.disabled
+        );
+    }
+
+    private Group createCurrencyDisplay(
+            String normalAsset,
+            String pressedAsset,
+            Label label,
+            Runnable onDebugClick
+    ) {
         ImageButton button = createCurrencyButton(normalAsset, pressedAsset);
+
+        button.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(
+                            InputEvent event,
+                            float x,
+                            float y
+                    ) {
+                        if (onDebugClick != null) {
+                            onDebugClick.run();
+                        }
+                    }
+                }
+        );
 
         float width = button.getPrefWidth();
         float height = button.getPrefHeight();
@@ -641,6 +756,7 @@ public class GameHud extends Table {
             return;
         }
 
+        refreshDebugControls();
 
         stateRefreshTimer += delta;
 
@@ -763,6 +879,7 @@ public class GameHud extends Table {
 
         refreshGameplayState();
         refreshCurrencies();
+        refreshDebugControls();
 
         setVisible(true);
 

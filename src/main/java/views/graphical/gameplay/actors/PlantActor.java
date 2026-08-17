@@ -14,6 +14,7 @@ import views.graphical.animation.PamAnimationActor;
 public class PlantActor extends Group {
 
     private static final float PREVIEW_ALPHA = 0.58f;
+    public static final float BOARD_SCALE = 0.65f;
 
     private final PvzGame game;
     private String baseAnimationKey;
@@ -93,7 +94,7 @@ public class PlantActor extends Group {
                     1f,
                     PREVIEW_ALPHA
             );
-            setScale(0.65f);
+            setScale(BOARD_SCALE);
         } else {
             animation.setColor(
                     1f,
@@ -101,7 +102,7 @@ public class PlantActor extends Group {
                     1f,
                     1f
             );
-            setScale(0.65f);
+            setScale(BOARD_SCALE);
         }
     }
 
