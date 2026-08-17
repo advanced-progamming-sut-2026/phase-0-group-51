@@ -141,7 +141,16 @@ public class IZombieController extends GamingController {
             .append('\n');
         return success(output.toString());
     }
+    public void recordGraphicalResult() {
+        IZombie game = activeGame();
+        if (game == null || game.getGameState() == null || !game.getGameState().isFinished()) {
+            return;
+        }
 
+        if (game.getGameState().isWon()) {
+            progressService.recordWin(MinigameType.IZOMBIE, game.getStage().getStageNumber());
+        }
+    }
     public Result showMap() {
         IZombie game = activeGame();
         if (game == null) {
