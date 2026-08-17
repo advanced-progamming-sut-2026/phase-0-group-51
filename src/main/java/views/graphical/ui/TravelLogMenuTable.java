@@ -19,6 +19,7 @@ import com.badlogic.gdx.utils.Scaling;
 import controllers.TravelLogController;
 import graphics.PvzGame;
 import models.App;
+import models.Result;
 import models.User;
 import models.quests.QuestType;
 
@@ -244,16 +245,37 @@ public final class TravelLogMenuTable extends Table {
                             entry,
                             controller.getQuestDescription(
                                     entry
-                            )
+                            ),
+                            controller.getQuestRewardText(
+                                    entry
+                            ),
+                            () -> claimQuest(entry)
                     );
 
             contentList.add(card)
                     .growX()
-                    .height(105f)
+                    .height(120f)
                     .padLeft(160f)
                     .padRight(160f)
                     .padBottom(12f)
                     .row();
+        }
+    }
+
+
+    private void claimQuest(
+            QuestsRepository.QuestEntry entry
+    ) {
+        Result result =
+                controller.claimQuest(
+                        entry.quest().getId()
+                );
+
+        if (result.success()) {
+            game.notifyInfo(result.message());
+            showQuests();
+        } else {
+            game.notifyError(result.message());
         }
     }
 

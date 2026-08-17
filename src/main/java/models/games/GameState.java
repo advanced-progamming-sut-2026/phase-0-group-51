@@ -14,6 +14,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.games.specialLevelConfig.TimedBattleConfig;
 import models.items.Mower;
+import models.effects.VisualEffectEvent;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
 import models.games.specialLevelConfig.SaveOurSeedsConfig;
@@ -64,10 +65,29 @@ public class GameState {
     boolean mowerEnabled =true;
     private int plantLossLimit = -1;
     private boolean plantLossLimitReached;
+    private final List<VisualEffectEvent> pendingVisualEffects = new ArrayList<>();
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
         }
+    }
+
+    public void emitVisualEffect(VisualEffectEvent event) {
+        if (event != null) {
+            pendingVisualEffects.add(event);
+        }
+    }
+
+    public List<VisualEffectEvent> consumeVisualEffects() {
+        if (pendingVisualEffects.isEmpty()) {
+            return List.of();
+        }
+
+        List<VisualEffectEvent> events =
+                List.copyOf(pendingVisualEffects);
+
+        pendingVisualEffects.clear();
+        return events;
     }
     public GameState(Board board, ChapterTheme chapterTheme) {
         this(board, chapterTheme, true);
