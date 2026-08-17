@@ -12,8 +12,8 @@ import java.util.Map;
 
 @Getter
 public class SunStealBehavior implements PersistableBehavior {
-    private static final int MIN_SPAWN_AGE_TICKS = 3 * 10;
-    private static final int PULL_DURATION_TICKS = 12;
+    private static final int MIN_SPAWN_AGE_TICKS = 2 * 10;
+    private static final int PULL_DURATION_TICKS = 10;
 
     private final int maxAmount;
     private final int intervalTicks;
