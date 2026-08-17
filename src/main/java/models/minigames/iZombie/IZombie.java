@@ -15,6 +15,8 @@ import models.Zombie.Zombie;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
+import models.sun.Sun;
+import models.sun.SunType;
 
 import java.util.*;
 
@@ -120,6 +122,7 @@ public class IZombie extends Game {
             zombie.onTick(state);
         }
         state.getBoard().tickLoots(state);
+        state.getBoard().tickSuns(state);
         produceSun();
         updateBrains();
         endState();
@@ -304,19 +307,37 @@ public class IZombie extends Game {
 
     private void produceSun() {
         GameState state = getGameState();
+        Board board = state.getBoard();
         for (SunProducer producer : sunProducers) {
             if (producer.zombie.isDead()) {
                 continue;
             }
             producer.ticksUntilProduction--;
-            if (producer.ticksUntilProduction <= 0) {
-                state.setSun(state.getSun() + SUN_PER_PRODUCTION);
-                producer.intervalTicks = Math.max(
-                    MIN_INTERVAL_TICKS, producer.intervalTicks - INTERVAL_STEP_TICKS);
-                producer.ticksUntilProduction = producer.intervalTicks;
-                state.logEvent("A sun producer zombie made " + SUN_PER_PRODUCTION
-                    + " sun. Total sun: " + state.getSun() + ".\n");
+            if (producer.ticksUntilProduction > 0) {
+                continue;
             }
+            int lane = producer.zombie.getLane();
+            float x = producer.zombie.getX();
+            Sun sun = new Sun(
+                            x,
+                            lane,
+                            lane,
+                            SunType.ORDINARY,
+                            SUN_PER_PRODUCTION,
+                            SunType.ORDINARY
+                                    .getLifeTicks()
+                    );
+
+
+            sun.setGrounded(true);
+            board.spawnSun(sun);
+            producer.intervalTicks = Math.max(MIN_INTERVAL_TICKS, producer.intervalTicks - INTERVAL_STEP_TICKS);
+            producer.ticksUntilProduction = producer.intervalTicks;
+            state.logEvent(
+                    "A sun producer zombie made "
+                            + SUN_PER_PRODUCTION
+                            + " collectible sun.\n"
+            );
         }
     }
 
