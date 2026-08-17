@@ -4,7 +4,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import models.Board.Board;
 import models.Board.Tile;
-import models.Plant.Plant;
 import models.games.ChapterTheme;
 import models.games.ancientEgypt.Grave;
 import pvz.libpvz.pam.PamPlayer;
@@ -26,7 +25,6 @@ public final class GraveAnimationSystem extends Group {
 
     public static final float DEFAULT_SCALE = 0.55f;
 
-    private static final int GRAVE_BUSTER_ID = 60;
     private static final float GRAVE_Y_OFFSET = 1f;
     private static final float STATE_HOLD_MARGIN = 0.08f;
 
@@ -41,9 +39,6 @@ public final class GraveAnimationSystem extends Group {
 
     private static final String DARK_SUN_PAM =
         "768/FULL/GRAVESTONES/DARK_SUN/DARK_SUN.PAM";
-
-    private static final String GRAVE_BUSTER_DIRT_PAM =
-        "768/INITIAL/EFFECTS/GRAVEBUSTER_DIRT/GRAVEBUSTER_DIRT.PAM";
 
     private static final String GRAVE_BUSTER_EXPLOSION_PAM =
         "768/INITIAL/EFFECTS/GRAVEBUSTER_EXPLOSION_POTATOMINE/GRAVEBUSTER_EXPLOSION_POTATOMINE.PAM";
@@ -173,10 +168,6 @@ public final class GraveAnimationSystem extends Group {
                             deadVisual.remove();
                         }
 
-                        playNormalRemovalEffect(
-                            lane,
-                            column
-                        );
                     }
 
                     continue;
@@ -239,10 +230,6 @@ public final class GraveAnimationSystem extends Group {
                     visual
                 );
 
-                syncGraveBusterDirt(
-                    tile,
-                    visual
-                );
             }
         }
 
@@ -273,10 +260,6 @@ public final class GraveAnimationSystem extends Group {
             visual.remove();
             iterator.remove();
 
-            playNormalRemovalEffect(
-                lane,
-                column
-            );
         }
 
         visuallyDestroyed.retainAll(
@@ -312,6 +295,26 @@ public final class GraveAnimationSystem extends Group {
             visual.stateFrozen = true;
         }
 
+        for (
+            EffectVisual effect :
+            effects
+        ) {
+            if (effect.frozen) {
+                continue;
+            }
+
+            float nextStateTime =
+                effect.actor.getStateTime()
+                    + safeDelta
+                    * effect.actor.getPlaybackSpeed();
+
+            if (nextStateTime
+                >= effect.freezeAt) {
+                effect.actor.pauseAnimation();
+                effect.frozen = true;
+            }
+        }
+
         super.act(delta);
 
         Iterator<EffectVisual> iterator =
@@ -321,8 +324,21 @@ public final class GraveAnimationSystem extends Group {
             EffectVisual effect =
                 iterator.next();
 
-            if (effect.actor.getStateTime()
-                < effect.duration) {
+            if (!effect.frozen
+                && effect.actor.getStateTime()
+                >= effect.freezeAt) {
+                effect.actor.pauseAnimation();
+                effect.frozen = true;
+            }
+
+            if (!effect.frozen) {
+                continue;
+            }
+
+            effect.holdElapsed += safeDelta;
+
+            if (effect.holdElapsed
+                < effect.holdSeconds) {
                 continue;
             }
 
@@ -518,118 +534,6 @@ public final class GraveAnimationSystem extends Group {
         return 4;
     }
 
-    private void syncGraveBusterDirt(
-        Tile tile,
-        GraveVisual visual
-    ) {
-        Plant plant =
-            tile.getTopPlant();
-
-        boolean graveBusterActive =
-            plant != null
-                && plant.getId()
-                == GRAVE_BUSTER_ID
-                && !plant.isDead()
-                && !plant.isMarkedForRemoval();
-
-        if (!graveBusterActive) {
-            if (visual.dirtActor != null) {
-                visual.dirtActor.remove();
-                visual.dirtActor = null;
-            }
-
-            return;
-        }
-
-        if (visual.dirtActor != null) {
-            positionActor(
-                visual.dirtActor,
-                tile.getLane(),
-                tile.getColumn()
-            );
-
-            return;
-        }
-
-        try {
-            List<String> clips =
-                loadEffectClips(
-                    GRAVE_BUSTER_DIRT_PAM
-                );
-
-            String clip =
-                findClip(
-                    clips,
-                    "dirt",
-                    "loop",
-                    "idle",
-                    "effect",
-                    "animation",
-                    "anim"
-                );
-
-            if (clip == null) {
-                clip =
-                    clips.get(0);
-            }
-
-            PamAnimationActor actor =
-                new PamAnimationActor(
-                    pamPlayer,
-                    GRAVE_BUSTER_DIRT_PAM,
-                    clip,
-                    true
-                );
-
-            forceAllPartsVisible(
-                GRAVE_BUSTER_DIRT_PAM,
-                actor
-            );
-
-            actor.setScale(
-                scale,
-                scale
-            );
-
-            positionActor(
-                actor,
-                tile.getLane(),
-                tile.getColumn()
-            );
-
-            addActor(actor);
-
-            visual.dirtActor =
-                actor;
-
-        } catch (RuntimeException e) {
-            if (Gdx.app != null) {
-                Gdx.app.error(
-                    "GraveAnimation",
-                    "Could not create Grave Buster dirt effect",
-                    e
-                );
-            }
-        }
-    }
-
-    private void playNormalRemovalEffect(
-        int lane,
-        int column
-    ) {
-        playOneShotEffect(
-            GRAVE_BUSTER_DIRT_PAM,
-            lane,
-            column,
-            0.6f,
-            "dirt",
-            "effect",
-            "animation",
-            "anim",
-            "idle"
-        );
-    }
-
     public void playExplosionEffect(
         int lane,
         int column
@@ -679,6 +583,11 @@ public final class GraveAnimationSystem extends Group {
                     false
                 );
 
+            forceAllPartsVisible(
+                pamPath,
+                actor
+            );
+
             actor.setScale(
                 scale,
                 scale
@@ -692,14 +601,21 @@ public final class GraveAnimationSystem extends Group {
 
             addActor(actor);
 
+            float duration =
+                safeDuration(
+                    pamPath,
+                    clip,
+                    fallbackDuration
+                );
+
             effects.add(
                 new EffectVisual(
                     actor,
-                    safeDuration(
-                        pamPath,
-                        clip,
-                        fallbackDuration
-                    )
+                    Math.max(
+                        0.01f,
+                        duration - 0.03f
+                    ),
+                    0.15f
                 )
             );
 
@@ -1171,8 +1087,6 @@ public final class GraveAnimationSystem extends Group {
         private final PamAnimationActor actor;
         private final int maxHealth;
 
-        private PamAnimationActor dirtActor;
-
         private int lane;
         private int column;
         private int damageStage;
@@ -1204,24 +1118,27 @@ public final class GraveAnimationSystem extends Group {
 
         private void remove() {
             actor.remove();
-
-            if (dirtActor != null) {
-                dirtActor.remove();
-                dirtActor = null;
-            }
         }
     }
 
     private static final class EffectVisual {
         private final PamAnimationActor actor;
-        private final float duration;
+        private final float freezeAt;
+        private final float holdSeconds;
+
+        private boolean frozen;
+        private float holdElapsed;
 
         private EffectVisual(
             PamAnimationActor actor,
-            float duration
+            float freezeAt,
+            float holdSeconds
         ) {
             this.actor = actor;
-            this.duration = duration;
+            this.freezeAt = freezeAt;
+            this.holdSeconds = holdSeconds;
+            this.frozen = false;
+            this.holdElapsed = 0f;
         }
     }
 }
