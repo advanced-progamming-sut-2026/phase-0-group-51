@@ -189,6 +189,63 @@ public class CollectionMenuController {
         };
     }
 
+    public Result unlockForTesting(String plantName) {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure(
+                    "You must log in before using the testing unlock.\n"
+            );
+        }
+
+        PlantData plant =
+                PlantRegistry.getByName(
+                        cleanName(plantName)
+                );
+
+        if (plant == null) {
+            return failure(
+                    "No plant named '"
+                            + cleanName(plantName)
+                            + "' was found.\n"
+            );
+        }
+
+        Set<Integer> unlocked =
+                PlantRepository.loadUnlockedPlants(
+                        user.getId()
+                );
+
+        if (unlocked.contains(plant.id())) {
+            return success(
+                    "CHEAT: " + plant.name()
+                            + " is already unlocked for testing.\n"
+            );
+        }
+
+        PlantRepository.unlockPlant(
+                user.getId(),
+                plant.id()
+        );
+
+        if (!PlantRepository.loadUnlockedPlants(
+                user.getId()
+        ).contains(plant.id())) {
+            return failure(
+                    "The testing unlock could not be saved in the database.\n"
+            );
+        }
+
+        newsRepository.createNewsForUser(
+                user.getId(),
+                "Testing unlock: " + plant.name() + "."
+        );
+
+        return success(
+                "CHEAT: " + plant.name()
+                        + " was unlocked for testing.\n"
+        );
+    }
+
     public Result upgrade(String plantName) {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {

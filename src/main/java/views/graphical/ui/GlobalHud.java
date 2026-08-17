@@ -11,12 +11,14 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import controllers.NewsMenuController;
+import controllers.GameMenuController;
 import graphics.PvzGame;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import Data.database.UserRepository;
 import models.App;
+import models.Result;
 import models.User;
 import views.graphical.ui.ShopPopup;
 
@@ -28,9 +30,14 @@ public final class GlobalHud extends Table {
     private final PvzGame game;
     private final Skin skin;
 
+    private static final int CHEAT_COIN_AMOUNT = 1000;
+    private static final int CHEAT_GEM_AMOUNT = 10;
+
     private Label coinLabel;
     private Label gemLabel;
     private final UserRepository userRepository = new UserRepository();
+    private final GameMenuController gameMenuController =
+            new GameMenuController();
     private float currencyRefreshTimer = 0f;
 
     private static final float CURRENCY_REFRESH = 0.25f;
@@ -331,17 +338,32 @@ public final class GlobalHud extends Table {
         gemLabel.setTouchable(Touchable.disabled);
         gemLabel.setFontScale(1.1f);
 
-        Group gemDisplay = createCurrencyDisplay(GEMS, GEMS_CLICKED, gemLabel);
+        Group gemDisplay = createCurrencyDisplay(
+                GEMS,
+                GEMS_CLICKED,
+                gemLabel,
+                () -> runCurrencyCheat(
+                        CHEAT_GEM_AMOUNT,
+                        "diamond"
+                )
+        );
         bar.add(gemDisplay).size(gemDisplay.getWidth(), gemDisplay.getHeight()).padRight(15f);
 
         coinLabel = new Label("0", skin);
         coinLabel.setTouchable(Touchable.disabled);
         coinLabel.setFontScale(1.1f);
 
-        Group coinDisplay = createCurrencyDisplay(COIN, COIN_CLICKED, coinLabel);
+        Group coinDisplay = createCurrencyDisplay(
+                COIN,
+                COIN_CLICKED,
+                coinLabel,
+                () -> runCurrencyCheat(
+                        CHEAT_COIN_AMOUNT,
+                        "coin"
+                )
+        );
         bar.add(coinDisplay).size(coinDisplay.getWidth(), coinDisplay.getHeight());
 
-        
         Actor shopButton = gameIcon(SHOP, SHOP_CLICKED, "SHOP");
 
         shopButton.addListener(new ClickListener() {
@@ -364,8 +386,62 @@ public final class GlobalHud extends Table {
         return bar;
     }
 
-    private Group createCurrencyDisplay(String normalAsset, String pressedAsset, Label label) {
+    private void runCurrencyCheat(
+            int amount,
+            String kind
+    ) {
+        if (!GameSettings.debugMode) {
+            return;
+        }
+
+        if (App.getInstance().getLoggedInUser() == null) {
+            game.notifyError(
+                    "You must be logged in to use debug currency controls."
+            );
+            return;
+        }
+
+        Result result =
+                gameMenuController.cheatAdd(
+                        amount,
+                        kind
+                );
+
+        if (result.success()) {
+            game.notifyInfo(
+                    result.message()
+            );
+        } else {
+            game.notifyError(
+                    result.message()
+            );
+        }
+
+        refreshCurrencyLabels();
+    }
+
+    private Group createCurrencyDisplay(
+            String normalAsset,
+            String pressedAsset,
+            Label label,
+            Runnable onDebugClick
+    ) {
         ImageButton button = createCurrencyButton(normalAsset, pressedAsset);
+
+        button.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(
+                            InputEvent event,
+                            float x,
+                            float y
+                    ) {
+                        if (onDebugClick != null) {
+                            onDebugClick.run();
+                        }
+                    }
+                }
+        );
         float width = button.getPrefWidth();
         float height = button.getPrefHeight();
 

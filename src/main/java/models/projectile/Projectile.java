@@ -38,6 +38,9 @@ public class Projectile {
     @Getter
     @Setter
     private double visualArcOffset;
+    private double previousRenderPosX;
+    private double previousRenderPosY;
+    private double previousRenderArcOffset;
     @Getter
     private final double dirX;
     @Getter
@@ -358,6 +361,9 @@ public class Projectile {
         this.speed = speed;
         this.posX = posX;
         this.posY = posY;
+        this.previousRenderPosX = posX;
+        this.previousRenderPosY = posY;
+        this.previousRenderArcOffset = 0.0;
         this.dirX = dirX;
         this.dirY = dirY;
         this.movingStrategy = movingStrategy;
@@ -411,6 +417,7 @@ public class Projectile {
             }
             return;
         }
+        capturePreviousRenderState();
         double previousX = posX;
         double previousY = posY;
         movingStrategy.move(this, reflected ? -speed : speed);
@@ -448,6 +455,33 @@ public class Projectile {
             }
             impact(state, contact);
         }
+    }
+
+
+    private void capturePreviousRenderState() {
+        previousRenderPosX = posX;
+        previousRenderPosY = posY;
+        previousRenderArcOffset = visualArcOffset;
+    }
+
+    public double getRenderPosX(float partialTick) {
+        double alpha = clampPartialTick(partialTick);
+        return previousRenderPosX + (posX - previousRenderPosX) * alpha;
+    }
+
+    public double getRenderPosY(float partialTick) {
+        double alpha = clampPartialTick(partialTick);
+        return previousRenderPosY + (posY - previousRenderPosY) * alpha;
+    }
+
+    public double getRenderArcOffset(float partialTick) {
+        double alpha = clampPartialTick(partialTick);
+        return previousRenderArcOffset
+            + (visualArcOffset - previousRenderArcOffset) * alpha;
+    }
+
+    private double clampPartialTick(float partialTick) {
+        return Math.max(0.0, Math.min(1.0, partialTick));
     }
 
     private void applyTorchwoodIfCrossed(

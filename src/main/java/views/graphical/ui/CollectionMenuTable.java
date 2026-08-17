@@ -296,8 +296,9 @@ public final class CollectionMenuTable extends Table {
                         game,
                         card.getData(),
                         () -> {
-                            setVisible(true);
                             card.setChecked(false);
+                            showPlants();
+                            setVisible(true);
                         }
                 );
 
@@ -429,8 +430,9 @@ public final class CollectionMenuTable extends Table {
                         game,
                         card.getData(),
                         () -> {
-                            setVisible(true);
                             card.setChecked(false);
+                            showPlants();
+                            setVisible(true);
                         }
                 );
 

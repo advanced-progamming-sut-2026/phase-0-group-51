@@ -15,6 +15,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
 import controllers.PlantSelectionController;
+import controllers.CollectionMenuController;
 import graphics.PvzGame;
 import models.App;
 import models.Result;
@@ -46,6 +47,8 @@ public final class PlantSelectionMenuTable extends Table {
     private final Table previewContent;
     private final PlantSelectionController controller =
             new PlantSelectionController();
+    private final CollectionMenuController collectionController =
+            new CollectionMenuController();
 
     private final Map<Integer, PlantCard> gridCardsByPlantId =
             new HashMap<>();
@@ -586,6 +589,38 @@ public final class PlantSelectionMenuTable extends Table {
                 game.getSkin()
         );
 
+        upgradeButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        handlePlantManagementResult(
+                                collectionController.upgrade(
+                                        plant.name()
+                                )
+                        );
+                    }
+                }
+        );
+
+        boostButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        handlePlantManagementResult(
+                                controller.boostPlant(
+                                        plant.name()
+                                )
+                        );
+                    }
+                }
+        );
+
         buttonsRow.add(upgradeButton)
                 .padRight(10f);
 
@@ -596,6 +631,30 @@ public final class PlantSelectionMenuTable extends Table {
                 .padLeft(15f)
                 .padTop(5f)
                 .padBottom(10f);
+    }
+
+    private void handlePlantManagementResult(
+            Result result
+    ) {
+        if (result == null) {
+            return;
+        }
+
+        if (!result.success()) {
+            game.notifyError(
+                    result.message()
+            );
+            return;
+        }
+
+        game.notifyInfo(
+                result.message()
+        );
+
+        refreshPlantData();
+        loadExistingSelectedPlants();
+        showPlants();
+        buildPreviewPlaceholder();
     }
 
     private Drawable drawable(

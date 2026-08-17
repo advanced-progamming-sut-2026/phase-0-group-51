@@ -35,7 +35,10 @@ public class ProjectileViewManager extends Group {
         this.transform = transform;
     }
 
-    public void sync(Iterable<Projectile> projectiles) {
+    public void sync(
+            Iterable<Projectile> projectiles,
+            float partialTick
+    ) {
         Set<Projectile> active =
                 Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -60,7 +63,12 @@ public class ProjectileViewManager extends Group {
                 addActor(actor);
             }
 
-            positionProjectile(projectile, actor, release);
+            positionProjectile(
+                    projectile,
+                    actor,
+                    release,
+                    partialTick
+            );
         }
 
         removeMissingProjectiles(active);
@@ -97,13 +105,20 @@ public class ProjectileViewManager extends Group {
     private void positionProjectile(
             Projectile projectile,
             ProjectileActor actor,
-            ProjectileReleaseData release
+            ProjectileReleaseData release,
+            float partialTick
     ) {
         BoardArea area = transform.getArea();
 
+        double renderPosX =
+                projectile.getRenderPosX(partialTick);
+
+        double renderPosY =
+                projectile.getRenderPosY(partialTick);
+
         float x =
                 area.x()
-                        + ((float) projectile.getPosX() + 0.5f)
+                        + ((float) renderPosX + 0.5f)
                         * transform.tileWidth();
 
         float y =
@@ -111,12 +126,16 @@ public class ProjectileViewManager extends Group {
                         + (
                         BoardTransform.ROWS
                                 - 1f
-                                - (float) projectile.getPosY()
+                                - (float) renderPosY
                                 + 0.5f
                 )
                         * transform.tileHeight();
 
-        float offsetFactor = launchOffsetFactor(projectile);
+        float offsetFactor =
+                launchOffsetFactor(
+                        projectile,
+                        renderPosX
+                );
 
         x += release.offsetX()
                 * PlantActor.BOARD_SCALE
@@ -126,13 +145,16 @@ public class ProjectileViewManager extends Group {
                 * PlantActor.BOARD_SCALE
                 * offsetFactor;
 
-        y += (float) projectile.getVisualArcOffset()
+        y += (float) projectile.getRenderArcOffset(partialTick)
                 * transform.tileHeight();
 
         actor.setProjectilePosition(x, y);
     }
 
-    private float launchOffsetFactor(Projectile projectile) {
+    private float launchOffsetFactor(
+            Projectile projectile,
+            double renderPosX
+    ) {
         Double targetX = projectile.getTargetX();
         Plant source = projectile.getSourcePlant();
 
@@ -146,7 +168,7 @@ public class ProjectileViewManager extends Group {
         }
 
         double progress =
-                (projectile.getPosX() - source.getPosX())
+                (renderPosX - source.getPosX())
                         / totalDistance;
 
         progress = Math.max(0.0, Math.min(1.0, progress));

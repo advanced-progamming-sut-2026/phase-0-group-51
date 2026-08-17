@@ -9,7 +9,10 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
+import controllers.CollectionMenuController;
+import Data.loader.PlantRegistry;
 import graphics.PvzGame;
+import models.Result;
 
 public final class PlantDetailsTable extends Table {
 
@@ -27,6 +30,8 @@ public final class PlantDetailsTable extends Table {
 
     private final PvzGame game;
     private final PlantCard.ViewData data;
+    private final CollectionMenuController controller =
+            new CollectionMenuController();
 
     public PlantDetailsTable(
             PvzGame game,
@@ -55,7 +60,7 @@ public final class PlantDetailsTable extends Table {
         this.data = data;
 
         setFillParent(true);
-        setTouchable(Touchable.childrenOnly);
+        setTouchable(Touchable.enabled);
 
         setBackground(
                 game.getSkin().newDrawable(
@@ -110,7 +115,7 @@ public final class PlantDetailsTable extends Table {
         Table body = new Table();
 
         Table leftSide =
-                createLeftSide();
+                createLeftSide(onBack);
 
         Table rightSide = createRightSide();
         ScrollPane cardsScroll = new ScrollPane(
@@ -447,7 +452,9 @@ public final class PlantDetailsTable extends Table {
         return placeholder;
     }
 
-    private Table createLeftSide() {
+    private Table createLeftSide(
+            Runnable onBack
+    ) {
         Table left = new Table();
         left.top();
 
@@ -525,9 +532,238 @@ public final class PlantDetailsTable extends Table {
 
         left.add(findMoreButton)
                 .width(220f)
-                .padTop(15f);
+                .padTop(15f)
+                .row();
+
+        left.add(
+                        createCollectionActionButton(
+                                onBack
+                        )
+                )
+                .width(300f)
+                .padTop(10f);
 
         return left;
+    }
+
+    private Actor createCollectionActionButton(
+            Runnable onBack
+    ) {
+        Table actionArea = new Table();
+
+        if (!data.unlocked()) {
+            PlantRegistry.UnlockRule unlockRule =
+                    PlantRegistry.getUnlockRule(
+                            data.plant().id()
+                    );
+
+            if (!unlockRule.isPurchasable()) {
+                Label unlockInfo =
+                        new Label(
+                                unlockRule.description(),
+                                game.getSkin()
+                        );
+                unlockInfo.setWrap(true);
+
+                actionArea.add(unlockInfo)
+                        .width(280f)
+                        .row();
+
+                if (GameSettings.debugMode) {
+                    TextButton testUnlockButton =
+                            new TextButton(
+                                    "TEST UNLOCK",
+                                    game.getSkin(),
+                                    "green"
+                            );
+
+                    testUnlockButton.addListener(
+                            new ChangeListener() {
+                                @Override
+                                public void changed(
+                                        ChangeEvent event,
+                                        Actor actor
+                                ) {
+                                    handleCollectionAction(
+                                            controller.unlockForTesting(
+                                                    data.plant().name()
+                                            ),
+                                            onBack
+                                    );
+                                }
+                            }
+                    );
+
+                    actionArea.add(testUnlockButton)
+                            .width(130f)
+                            .height(34f)
+                            .padTop(6f);
+                }
+
+                return actionArea;
+            }
+
+            TextButton buyButton =
+                    new TextButton(
+                            "BUY",
+                            game.getSkin(),
+                            "green"
+                    );
+
+            buyButton.addListener(
+                    new ChangeListener() {
+                        @Override
+                        public void changed(
+                                ChangeEvent event,
+                                Actor actor
+                        ) {
+                            handleCollectionAction(
+                                    controller.purchase(
+                                            data.plant().name()
+                                    ),
+                                    onBack
+                            );
+                        }
+                    }
+            );
+
+            Label priceLabel =
+                    new Label(
+                            unlockRule.purchaseCost()
+                                    + " COINS",
+                            game.getSkin()
+                    );
+
+            actionArea.add(buyButton)
+                    .width(160f)
+                    .row();
+            actionArea.add(priceLabel)
+                    .padTop(4f);
+
+            return actionArea;
+        }
+
+        int maximumLevel =
+                data.plant().upgrades() == null
+                        ? 1
+                        : data.plant().upgrades().size() + 1;
+
+        if (data.level() >= maximumLevel) {
+            Label maxLevelLabel =
+                    new Label(
+                            "MAX LEVEL",
+                            game.getSkin()
+                    );
+
+            actionArea.add(maxLevelLabel);
+            return actionArea;
+        }
+
+        int targetLevel =
+                data.level() + 1;
+
+        int coinCost =
+                coinCostForLevel(
+                        targetLevel
+                );
+
+        int packetCost =
+                requiredSeedPacketsForLevel(
+                        targetLevel
+                );
+
+        TextButton upgradeButton =
+                new TextButton(
+                        "UPGRADE",
+                        game.getSkin(),
+                        "green"
+                );
+
+        upgradeButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        handleCollectionAction(
+                                controller.upgrade(
+                                        data.plant().name()
+                                ),
+                                onBack
+                        );
+                    }
+                }
+        );
+
+        Label upgradeInfo =
+                new Label(
+                        "TO LV." + targetLevel
+                                + " | " + coinCost + " COINS"
+                                + " | " + packetCost + " PACKETS",
+                        game.getSkin()
+                );
+
+        actionArea.add(upgradeButton)
+                .width(160f)
+                .row();
+        actionArea.add(upgradeInfo)
+                .padTop(4f);
+
+        return actionArea;
+    }
+
+    private void handleCollectionAction(
+            Result result,
+            Runnable onBack
+    ) {
+        if (result == null) {
+            return;
+        }
+
+        if (!result.success()) {
+            game.notifyError(
+                    result.message()
+            );
+            return;
+        }
+
+        game.notifyInfo(
+                result.message()
+        );
+
+        remove();
+        onBack.run();
+    }
+
+    private int coinCostForLevel(
+            int targetLevel
+    ) {
+        return switch (targetLevel) {
+            case 2 -> 1000;
+            case 3 -> 2000;
+            case 4 -> 4000;
+            default ->
+                    4000 * Math.max(
+                            1,
+                            targetLevel - 3
+                    );
+        };
+    }
+
+    private int requiredSeedPacketsForLevel(
+            int targetLevel
+    ) {
+        return switch (targetLevel) {
+            case 2 -> 5;
+            case 3 -> 10;
+            case 4 -> 20;
+            default ->
+                    20 * Math.max(
+                            1,
+                            targetLevel - 3
+                    );
+        };
     }
 
     private ProgressBar createProgressBar() {
