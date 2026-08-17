@@ -41,7 +41,8 @@ public class Zombie {
     private final int weight;
     private int lane;
     private float x;
-    private int direction = 1; // 1 = walking normal, -1 = reversed
+    private int direction = 1;// 1 = walking normal, -1 = reversed
+    private float speedDecrease = 0.85f;
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
@@ -277,7 +278,7 @@ public class Zombie {
             if (!movementSuppressed) {
                 float chillFactor = isChilled() ? CHILL_SPEED_FACTOR : 1.0f;
                 float previousX = x;
-                x -= direction * (baseSpeed * speedMultiplier * chillFactor) / gs.getTicksPerSecond();
+                x -=  speedDecrease * direction * (baseSpeed * speedMultiplier * chillFactor) / gs.getTicksPerSecond();
                 gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
             }
         }
