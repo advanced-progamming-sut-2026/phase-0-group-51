@@ -19,11 +19,13 @@ import models.games.ChapterTheme;
 import models.minigames.MinigameType;
 import models.minigames.iZombie.IZombie;
 import models.minigames.vaseBreaker.Brain;
+import models.sun.Sun;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
+import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
 import views.graphical.screens.minigamesScreen.minigames;
@@ -50,15 +52,10 @@ public class IZombieScreen extends BaseMinigameScreen {
     private IZombieBar zombieBar;
     private String selectedZombieAlias;
     private final ZombieAnimationSystem zombieAnimationSystem;
-    private static final float BRAIN_EATER_REMOVE_DELAY = 1f;
-
-    private final Set<Brain> observedEatenBrains =
-            java.util.Collections.newSetFromMap(
-                    new IdentityHashMap<>()
-            );
-
-    private final Map<Zombie, Float> brainEaterTimers =
+    private static final float BRAIN_CROSS_REMOVE_DELAY = 2f;
+    private final Map<Zombie, Float> brainCrossTimers =
             new IdentityHashMap<>();
+    private float renderDelta = 0f;
 
     public IZombieScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
@@ -81,6 +78,8 @@ public class IZombieScreen extends BaseMinigameScreen {
         buildBoard();
         buildZombieBar();
     }
+
+    private SunViewManager sunViewManager;
     private void buildZombieBar() {
         zombieBar = new IZombieBar(game, iZombie, alias -> selectedZombieAlias = alias);
         float gapFromBrain = 12f;
@@ -101,16 +100,41 @@ public class IZombieScreen extends BaseMinigameScreen {
         worldStage.addActor(plantViewManager);
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
         worldStage.addActor(projectileViewManager);
+        sunViewManager = new SunViewManager(game, boardTransform);
+        sunViewManager.setOnSunClicked(this::handleSunClicked);
+        worldStage.addActor(sunViewManager);
         syncViews();
+    }
+    private void handleSunClicked(Sun sun) {
+        boolean collected =
+                iZombie
+                        .getGameState()
+                        .getBoard()
+                        .collectSun(
+                                sun,
+                                iZombie.getGameState()
+                        );
+
+
+        if (!collected) {
+            game.notifyError(
+                    "Sun has expired or was already collected."
+            );
+
+            return;
+        }
+
+
+        if (zombieBar != null) {
+            zombieBar.refresh();
+        }
     }
     @Override
     public void render(float delta) {
+        renderDelta = Math.min(delta, 0.25f);
+
         if (isPlaying() && !isPaused()) {
-        updateBrainEaterRemoval(delta);
-            Set<Zombie> renderableZombies =
-                    new HashSet<>(iZombie.getGameState().getZombiesInTheGame());
-            renderableZombies.removeIf(zombie -> IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias()));
-            zombieAnimationSystem.update(delta, renderableZombies);
+            updateBrainCrossRemoval(renderDelta);
         }
 
         super.render(delta);
@@ -139,7 +163,6 @@ public class IZombieScreen extends BaseMinigameScreen {
     private void syncViews() {
         Board board = iZombie.getGameState().getBoard();
         plantViewManager.sync(board);
-        projectileViewManager.sync(board.getProjectiles());
         refreshBrains();
     }
 
@@ -147,14 +170,56 @@ public class IZombieScreen extends BaseMinigameScreen {
     @Override
     protected void onGameTick() {
         syncViews();
-        trackNewBrainEaters();
+        trackZombiesPastBrain();
         if (zombieBar != null) {
             zombieBar.refresh();
         }
     }
 
+    private float getRenderTickAlpha() {
+        int ticksPerSecond = Math.max(
+                1,
+                iZombie.getGameState().getTicksPerSecond()
+        );
+
+        float tickDuration = 1f / ticksPerSecond;
+
+        return Math.max(
+                0f,
+                Math.min(
+                        1f,
+                        gameTickAccumulator / tickDuration
+                )
+        );
+    }
+
     @Override
     protected void renderWorldUnderlay() {
+        if (isPlaying() && !isPaused()) {
+            float partialTick = getRenderTickAlpha();
+
+            projectileViewManager.sync(
+                    iZombie.getGameState().getBoard().getProjectiles(),
+                    partialTick
+            );
+
+            Set<Zombie> renderableZombies =
+                    new HashSet<>(
+                            iZombie.getGameState().getZombiesInTheGame()
+                    );
+
+            renderableZombies.removeIf(
+                    zombie -> IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias())
+            );
+
+            zombieAnimationSystem.update(
+                    renderDelta,
+                    partialTick,
+                    iZombie.getGameState().getTickCounter(),
+                    renderableZombies
+            );
+        }
+
         float redLineX = boardTransform.tileX(IZombie.RED_LINE_COLUMN);
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -163,8 +228,7 @@ public class IZombieScreen extends BaseMinigameScreen {
                 redLineX,
                 boardArea.y(),
                 redLineX,
-                boardArea.y()
-                        + boardArea.height(),
+                boardArea.y() + boardArea.height(),
                 4f
         );
         shapeRenderer.end();
@@ -186,65 +250,33 @@ public class IZombieScreen extends BaseMinigameScreen {
         );
     }
 
-    private void trackNewBrainEaters() {
-        for (Brain brain : iZombie.getBrains()) {
-            if (!brain.isEaten()) {
+    private void trackZombiesPastBrain() {
+
+        for (Zombie zombie :
+                iZombie
+                        .getGameState()
+                        .getZombiesInTheGame()) {
+
+            if (zombie.isDead()) {
                 continue;
             }
 
-            if (!observedEatenBrains.add(brain)) {
+            if (zombie.getX() > 0) {
                 continue;
             }
 
-
-            int lane = brain.getRow() - 1;
-            Zombie eater =
-                    iZombie
-                            .getGameState()
-                            .getZombiesInTheGame()
-                            .stream()
-
-                            .filter(zombie ->
-                                    !zombie.isDead()
-                            )
-
-                            .filter(zombie ->
-                                    zombie.getLane() == lane
-                            )
-
-                            .filter(zombie ->
-                                    zombie.getX() <= 0
-                            )
-
-                            .filter(zombie ->
-                                    !brainEaterTimers
-                                            .containsKey(zombie)
-                            )
-
-                            .max(
-                                    java.util.Comparator
-                                            .comparingDouble(
-                                                    Zombie::getX
-                                            )
-                            )
-
-                            .orElse(null);
-
-
-            if (eater != null) {
-                brainEaterTimers.put(
-                        eater,
-                        0f
-                );
-            }
+            brainCrossTimers.putIfAbsent(
+                    zombie,
+                    0f
+            );
         }
     }
-    private void updateBrainEaterRemoval(
+    private void updateBrainCrossRemoval(
             float delta
     ) {
 
         Iterator<Map.Entry<Zombie, Float>> iterator =
-                brainEaterTimers
+                brainCrossTimers
                         .entrySet()
                         .iterator();
 
@@ -254,18 +286,30 @@ public class IZombieScreen extends BaseMinigameScreen {
             Map.Entry<Zombie, Float> entry =
                     iterator.next();
 
+            Zombie zombie =
+                    entry.getKey();
+
+
+            if (!iZombie
+                    .getGameState()
+                    .getZombiesInTheGame()
+                    .contains(zombie)) {
+
+                iterator.remove();
+                continue;
+            }
+
 
             float elapsed =
-                    entry.getValue() + delta;
+                    entry.getValue()
+                            + delta;
 
 
-            if (elapsed >= BRAIN_EATER_REMOVE_DELAY) {
+            if (elapsed >= BRAIN_CROSS_REMOVE_DELAY) {
 
                 iZombie
                         .getGameState()
-                        .removeZombie(
-                                entry.getKey()
-                        );
+                        .removeZombie(zombie);
 
                 iterator.remove();
 
@@ -446,6 +490,7 @@ public class IZombieScreen extends BaseMinigameScreen {
     }
     @Override
     protected void onGameFinished(boolean won) {
+        controller.recordGraphicalResult();
 
         if (won) {
             showIZombieWin();

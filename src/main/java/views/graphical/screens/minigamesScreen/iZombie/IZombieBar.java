@@ -25,7 +25,7 @@ public class IZombieBar extends Table {
     private final Map<String, ZombieCard> cards = new LinkedHashMap<>();
     private final Map<String, Label> statusLabels = new LinkedHashMap<>();
     private String selectedZombieAlias;
-    private static final float SCALE = 0.35f;
+    private static final float SCALE = 0.6f;
     private static final float GAP = 5f;
     public IZombieBar(PvzGame game, IZombie iZombie, Consumer<String> onZombieSelected) {
         this.iZombie = iZombie;
@@ -329,9 +329,6 @@ public class IZombieBar extends Table {
 
             } else if (!enoughSun) {
 
-                statusLabel.setText(
-                        "No Sun"
-                );
 
             } else {
 
