@@ -31,21 +31,24 @@ import models.Result;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
-
-
 import models.sun.Sun;
+
+
 import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
+import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
+import views.graphical.ui.GameOverPopup;
+import views.graphical.ui.GameWinPopup;
 import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
@@ -74,7 +77,7 @@ public class GameScreen extends BaseScreen {
     }
 
     private enum OverlayMode {
-        NONE, START_OBJECTIVES, PAUSE
+        NONE, START_OBJECTIVES, PAUSE, GAME_END
     }
 
     private enum ToolMode {
@@ -104,12 +107,17 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
+    private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
 
 
     private final GamingController gamingController = new GamingController();
 
     private float gameTickAccumulator;
+    private int renderInterpolationModelTick = Integer.MIN_VALUE;
+    private float renderInterpolationElapsed;
+    private float renderInterpolationDuration = 0.1f;
+    private boolean gameEndShown;
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
@@ -120,9 +128,9 @@ public class GameScreen extends BaseScreen {
     private Image columnHighlight;
 
     private static final String SHOVEL_CURSOR =
-            "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
+        "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
     private static final String PLANT_FOOD_CURSOR =
-            "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
+        "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
     private static final float TOOL_CURSOR_ALPHA = 0.58f;
     private static final float TOOL_CURSOR_SCALE = 0.65f;
 
@@ -134,21 +142,22 @@ public class GameScreen extends BaseScreen {
         super(game);
         this.theme = theme;
         this.currentLevel = theme.getLevels().stream()
-                .filter(l -> l.levelNumber() == levelNumber)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Level " + levelNumber + " not found!"));
+            .filter(l -> l.levelNumber() == levelNumber)
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Level " + levelNumber + " not found!"));
 
         Game currentGame = new Game();
         int chapterIndex = currentGame.getChapters().indexOf(theme);
         int levelIndex = theme.getLevels().indexOf(currentLevel);
         if (chapterIndex < 0 || levelIndex < 0) {
             throw new IllegalStateException(
-                    "Could not resolve selected chapter/level."
+                "Could not resolve selected chapter/level."
             );
         }
 
         currentGame.setCurrentChapterIndex(chapterIndex);
         currentGame.setCurrentLevelIndex(levelIndex);
+        currentGame.loadLevelForPreview();
 
         App.getInstance().setCurrentGame(currentGame);
 
@@ -176,45 +185,64 @@ public class GameScreen extends BaseScreen {
         shapeRenderer = new ShapeRenderer();
 
         Pixmap modalDimPixmap =
-                new Pixmap(
-                        1,
-                        1,
-                        Pixmap.Format.RGBA8888
-                );
+            new Pixmap(
+                1,
+                1,
+                Pixmap.Format.RGBA8888
+            );
 
         modalDimPixmap.setColor(Color.WHITE);
         modalDimPixmap.fill();
 
         modalDimTexture =
-                new Texture(modalDimPixmap);
+            new Texture(modalDimPixmap);
 
         modalDimPixmap.dispose();
 
         boardArea = new BoardArea(
-                533f,
-                62f,
-                737f,
-                380f);
+            533f,
+            62f,
+            737f,
+            380f);
 
         boardTransform = new BoardTransform(boardArea);
         zombieAnimationSystem = new ZombieAnimationSystem(
-                game.getPamPlayer(),
-                worldStage,
-                boardTransform,
-                theme
+            game.getPamPlayer(),
+            worldStage,
+            boardTransform,
+            theme
         );
 
+        graveAnimationSystem = new GraveAnimationSystem(
+            game.getPamPlayer(),
+            boardTransform,
+            theme
+        );
+
+        worldStage.addActor(
+            graveAnimationSystem
+        );
+
+        if (currentGame.getGameState() != null
+            && currentGame.getGameState().getBoard() != null) {
+            graveAnimationSystem.sync(
+                currentGame
+                    .getGameState()
+                    .getBoard()
+            );
+        }
+
         zombieLevelPreview = new ZombieLevelPreview(
-                game.getPamPlayer(),
-                worldStage,
-                theme,
-                cameraRightX
+            game.getPamPlayer(),
+            worldStage,
+            theme,
+            cameraRightX
         );
 
         zombieLevelPreview.show(
-                currentLevel.resolveAllowedZombies(
-                        theme.getAllowedZombies()
-                )
+            currentLevel.resolveAllowedZombies(
+                theme.getAllowedZombies()
+            )
         );
     }
 
@@ -273,7 +301,7 @@ public class GameScreen extends BaseScreen {
         }
 
         if (introState == IntroState.PLAYING
-                || introState == IntroState.WAITING_FOR_SELECTION) {
+            || introState == IntroState.WAITING_FOR_SELECTION) {
             return;
         }
 
@@ -347,52 +375,52 @@ public class GameScreen extends BaseScreen {
 
         uiStage.clear();
         plantSlotsBar.setMode(
-                PlantSlotsBar.Mode.GAMEPLAY
+            PlantSlotsBar.Mode.GAMEPLAY
         );
         plantSlotsBar.setOnPlantSelected(
-                this::handlePlantSelectionChanged
+            this::handlePlantSelectionChanged
         );
 
         gameHud = new GameHud(
-                game,
-                plantSlotsBar,
-                this::showPauseMenu
+            game,
+            plantSlotsBar,
+            this::showPauseMenu
         );
         uiStage.addActor(gameHud);
         gameHud.setOnShovelRequested(
-                this::toggleShovelMode
+            this::toggleShovelMode
         );
         gameHud.setOnPlantFoodRequested(
-                this::togglePlantFoodMode
+            this::togglePlantFoodMode
         );
 
         Game currentGame =
-                App.getInstance()
-                        .getCurrentGame();
+            App.getInstance()
+                .getCurrentGame();
 
         if (currentGame == null
-                || currentGame.getGameState() == null) {
+            || currentGame.getGameState() == null) {
             throw new IllegalStateException(
-                    "Game state was not created."
+                "Game state was not created."
             );
         }
 
         Board board =
-                currentGame
-                        .getGameState()
-                        .getBoard();
+            currentGame
+                .getGameState()
+                .getBoard();
 
         boardView =
-                new BoardView(
-                        board,
-                        boardTransform
-                );
+            new BoardView(
+                board,
+                boardTransform
+            );
 
         boardView.setOnTileClicked(
-                this::handleTileClick
+            this::handleTileClick
         );
         boardView.setOnTileHovered(
-                this::handleTileHover
+            this::handleTileHover
         );
 
         createPlacementHighlights();
@@ -400,7 +428,14 @@ public class GameScreen extends BaseScreen {
         worldStage.addActor(columnHighlight);
         worldStage.addActor(boardView);
 
-        plantViewManager = new PlantViewManager(game, boardTransform);
+        graveAnimationSystem.toFront();
+        graveAnimationSystem.sync(board);
+
+        plantViewManager =
+            new PlantViewManager(
+                game,
+                boardTransform
+            );
         worldStage.addActor(plantViewManager);
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
         worldStage.addActor(projectileViewManager);
@@ -408,17 +443,19 @@ public class GameScreen extends BaseScreen {
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
 
-        placementPreview = new PlantActor(game);
+        placementPreview =
+            new PlantActor(game);
         placementPreview.setPreviewMode(true);
         worldStage.addActor(placementPreview);
 
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
 
     private void handlePlantSelectionChanged(
-            PlantData plant
+        PlantData plant
     ) {
         if (placementPreview == null) {
             return;
@@ -455,7 +492,7 @@ public class GameScreen extends BaseScreen {
 
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null
-                || currentGame.getGameState() == null) {
+            || currentGame.getGameState() == null) {
             return;
         }
 
@@ -473,7 +510,7 @@ public class GameScreen extends BaseScreen {
 
         if (gameHud != null) {
             gameHud.setShovelSelected(
-                    mode == ToolMode.SHOVEL
+                mode == ToolMode.SHOVEL
             );
         }
 
@@ -488,18 +525,18 @@ public class GameScreen extends BaseScreen {
         }
 
         if (mode == ToolMode.NONE
-                && plantSlotsBar.getSelectedPlant() == null) {
+            && plantSlotsBar.getSelectedPlant() == null) {
             hidePlacementHighlights();
         }
     }
 
     private void showToolCursor(String assetId) {
         TextureRegion region =
-                game.getTextureBank().region(assetId);
+            game.getTextureBank().region(assetId);
 
         if (region == null) {
             throw new IllegalStateException(
-                    "TextureBank region was not found: " + assetId
+                "TextureBank region was not found: " + assetId
             );
         }
 
@@ -510,17 +547,17 @@ public class GameScreen extends BaseScreen {
         }
 
         toolCursorPreview.setDrawable(
-                new TextureRegionDrawable(region)
+            new TextureRegionDrawable(region)
         );
         toolCursorPreview.setSize(
-                region.getRegionWidth() * TOOL_CURSOR_SCALE,
-                region.getRegionHeight() * TOOL_CURSOR_SCALE
+            region.getRegionWidth() * TOOL_CURSOR_SCALE,
+            region.getRegionHeight() * TOOL_CURSOR_SCALE
         );
         toolCursorPreview.setColor(
-                1f,
-                1f,
-                1f,
-                TOOL_CURSOR_ALPHA
+            1f,
+            1f,
+            1f,
+            TOOL_CURSOR_ALPHA
         );
         toolCursorPreview.setVisible(true);
         toolCursorPreview.toFront();
@@ -538,9 +575,9 @@ public class GameScreen extends BaseScreen {
         }
 
         boolean shouldShow =
-                toolMode != ToolMode.NONE
-                        && introState == IntroState.PLAYING
-                        && overlayMode == OverlayMode.NONE;
+            toolMode != ToolMode.NONE
+                && introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE;
 
         toolCursorPreview.setVisible(shouldShow);
         if (!shouldShow) {
@@ -548,16 +585,16 @@ public class GameScreen extends BaseScreen {
         }
 
         toolCursorPosition.set(
-                Gdx.input.getX(),
-                Gdx.input.getY()
+            Gdx.input.getX(),
+            Gdx.input.getY()
         );
         uiStage.screenToStageCoordinates(toolCursorPosition);
 
         toolCursorPreview.setPosition(
-                toolCursorPosition.x
-                        - toolCursorPreview.getWidth() / 2f,
-                toolCursorPosition.y
-                        - toolCursorPreview.getHeight() / 2f
+            toolCursorPosition.x
+                - toolCursorPreview.getWidth() / 2f,
+            toolCursorPosition.y
+                - toolCursorPreview.getHeight() / 2f
         );
         toolCursorPreview.toFront();
     }
@@ -589,22 +626,23 @@ public class GameScreen extends BaseScreen {
         overlayMode = OverlayMode.START_OBJECTIVES;
 
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
 
         ChapterTheme levelTheme =
-                currentLevel.chapterTheme();
+            currentLevel.chapterTheme();
 
         String chapterName =
-                levelTheme == null
-                        ? theme.getName()
-                        : levelTheme.getName();
+            levelTheme == null
+                ? theme.getName()
+                : levelTheme.getName();
 
         StartGameMenuPopup popup = new StartGameMenuPopup(
-                game,
-                this::continueAfterObjectives,
-                chapterName,
-                currentLevel.levelNumber(),
-                currentLevel.description(),
-                currentLevel.objectives().toArray(String[]::new));
+            game,
+            this::continueAfterObjectives,
+            chapterName,
+            currentLevel.levelNumber(),
+            currentLevel.description(),
+            currentLevel.objectives().toArray(String[]::new));
 
         showModal(popup);
         animateStartPopup(popup);
@@ -625,6 +663,7 @@ public class GameScreen extends BaseScreen {
 
         overlayMode = OverlayMode.NONE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         stateTime = 0f;
     }
     private void showModal(Actor popup) {
@@ -635,36 +674,36 @@ public class GameScreen extends BaseScreen {
         overlay.setTouchable(Touchable.enabled);
 
         TextureRegionDrawable dimBackground =
-                new TextureRegionDrawable(
-                        new TextureRegion(
-                                modalDimTexture
-                        )
-                );
+            new TextureRegionDrawable(
+                new TextureRegion(
+                    modalDimTexture
+                )
+            );
 
         overlay.setBackground(
-                dimBackground.tint(
-                        new Color(
-                                0f,
-                                0f,
-                                0f,
-                                0.62f
-                        )
+            dimBackground.tint(
+                new Color(
+                    0f,
+                    0f,
+                    0f,
+                    0.62f
                 )
+            )
         );
 
         overlay.addListener(
-                new InputListener() {
-                    @Override
-                    public boolean touchDown(
-                            InputEvent event,
-                            float x,
-                            float y,
-                            int pointer,
-                            int button
-                    ) {
-                        return true;
-                    }
+            new InputListener() {
+                @Override
+                public boolean touchDown(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    int button
+                ) {
+                    return true;
                 }
+            }
         );
 
         overlay.add(popup).center();
@@ -692,27 +731,28 @@ public class GameScreen extends BaseScreen {
         }
 
         if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE) {
+            && overlayMode == OverlayMode.NONE) {
             showPauseMenu();
         }
     }
 
     private void showPauseMenu() {
         if (introState != IntroState.PLAYING
-                || overlayMode != OverlayMode.NONE) {
+            || overlayMode != OverlayMode.NONE) {
             return;
         }
 
         overlayMode = OverlayMode.PAUSE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
 
         PauseMenuPopup popup =
-                new PauseMenuPopup(
-                        game,
-                        this::saveAndExit,
-                        this::restartLevel,
-                        this::resumeGame
-                );
+            new PauseMenuPopup(
+                game,
+                this::saveAndExit,
+                this::restartLevel,
+                this::resumeGame
+            );
 
         showModal(popup);
     }
@@ -725,19 +765,20 @@ public class GameScreen extends BaseScreen {
         removeModal();
         overlayMode = OverlayMode.NONE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
     }
 
     private void restartLevel() {
         removeModal();
 
         Gdx.app.postRunnable(
-                () -> game.showScreen(
-                        new GameScreen(
-                                game,
-                                theme,
-                                currentLevel.levelNumber()
-                        )
+            () -> game.showScreen(
+                new GameScreen(
+                    game,
+                    theme,
+                    currentLevel.levelNumber()
                 )
+            )
         );
     }
 
@@ -749,9 +790,9 @@ public class GameScreen extends BaseScreen {
         }
 
         Gdx.app.postRunnable(
-                () -> game.showScreen(
-                        new MainMenuScreen(game)
-                )
+            () -> game.showScreen(
+                new MainMenuScreen(game)
+            )
         );
     }
     private void createPlacementHighlights() {
@@ -765,27 +806,27 @@ public class GameScreen extends BaseScreen {
     }
     private void handleTileHover(Tile tile) {
         boolean hasPlantSelection =
-                plantSlotsBar.getSelectedPlant() != null;
+            plantSlotsBar.getSelectedPlant() != null;
         boolean hasToolSelection =
-                toolMode != ToolMode.NONE;
+            toolMode != ToolMode.NONE;
 
         if (tile == null
-                || (!hasPlantSelection && !hasToolSelection)) {
+            || (!hasPlantSelection && !hasToolSelection)) {
             hidePlacementHighlights();
             return;
         }
         BoardArea area = boardTransform.getArea();
         rowHighlight.setBounds(area.x(),
-                boardTransform.tileY(tile.getLane()),
-                area.width(),
-                boardTransform.tileHeight()
+            boardTransform.tileY(tile.getLane()),
+            area.width(),
+            boardTransform.tileHeight()
         );
 
         columnHighlight.setBounds(
-                boardTransform.tileX(tile.getColumn()),
-                area.y(),
-                boardTransform.tileWidth(),
-                area.height()
+            boardTransform.tileX(tile.getColumn()),
+            area.y(),
+            boardTransform.tileWidth(),
+            area.height()
         );
 
         rowHighlight.setVisible(true);
@@ -805,14 +846,18 @@ public class GameScreen extends BaseScreen {
         handlePauseShortcut();
         updateCutscene(delta);
         updateGameplayTicks(delta);
+        updateRenderTickInterpolation(delta);
+        checkGameEnd();
 
         if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE) {
+            && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
-                        delta,
-                        currentGame.getGameState().getZombiesInTheGame()
+                    delta,
+                    getRenderTickAlpha(),
+                    currentGame.getGameState().getTickCounter(),
+                    currentGame.getGameState().getZombiesInTheGame()
                 );
             }
         }
@@ -839,42 +884,49 @@ public class GameScreen extends BaseScreen {
 
         game.getBatch().end();
         boolean animateZombiePreview =
-                introState == IntroState.PAN_TO_ZOMBIES
-                        || introState == IntroState.WAIT_AT_ZOMBIES
-                        || introState == IntroState.PAN_TO_SELECTION
-                        || introState == IntroState.WAITING_FOR_SELECTION;
+            introState == IntroState.PAN_TO_ZOMBIES
+                || introState == IntroState.WAIT_AT_ZOMBIES
+                || introState == IntroState.PAN_TO_SELECTION
+                || introState == IntroState.WAITING_FOR_SELECTION;
 
         if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE) {
+            && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
+
             if (currentGame != null
-                    && currentGame.getGameState() != null) {
+                && currentGame.getGameState() != null) {
                 Board board =
-                        currentGame.getGameState().getBoard();
+                    currentGame
+                        .getGameState()
+                        .getBoard();
+
+                graveAnimationSystem.sync(
+                    board
+                );
 
                 if (plantViewManager != null) {
                     plantViewManager.sync(
-                            board
+                        board
                     );
                 }
                 if (projectileViewManager != null) {
                     projectileViewManager.sync(
-                            board.getProjectiles(),
-                            getRenderTickAlpha()
+                        board.getProjectiles(),
+                        getRenderTickAlpha()
                     );
                 }
                 if (sunViewManager != null) {
                     sunViewManager.sync(
-                            board.getActiveSuns(),
-                            getRenderTickAlpha()
+                        board.getActiveSuns(),
+                        getRenderTickAlpha()
                     );
                 }
             }
         }
 
         if (overlayMode == OverlayMode.NONE
-                && (introState == IntroState.PLAYING
-                || animateZombiePreview)) {
+            && (introState == IntroState.PLAYING
+            || animateZombiePreview)) {
             worldStage.act(delta);
         }
 
@@ -884,32 +936,84 @@ public class GameScreen extends BaseScreen {
         game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
     }
-    private float getRenderTickAlpha() {
-        Game currentGame =
-                App.getInstance()
-                        .getCurrentGame();
 
-        if (currentGame == null
-                || currentGame.getGameState() == null) {
-            return 0f;
+    private void checkGameEnd() {
+        if (gameEndShown
+            || introState != IntroState.PLAYING) {
+            return;
         }
 
-        int ticksPerSecond =
-                Math.max(
-                        1,
-                        currentGame
-                                .getGameState()
-                                .getTicksPerSecond()
-                );
+        Game currentGame =
+            App.getInstance()
+                .getCurrentGame();
 
-        float tickDuration =
-                1f / ticksPerSecond;
+        if (currentGame == null
+            || currentGame.getGameState() == null
+            || !currentGame.getGameState().isFinished()) {
+            return;
+        }
 
-        return Math.min(
-                1f,
-                gameTickAccumulator
-                        / tickDuration
+        gameEndShown = true;
+        overlayMode = OverlayMode.GAME_END;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
+
+        hidePlacementHighlights();
+
+        if (placementPreview != null) {
+            placementPreview.clearPlant();
+            placementPreview.setVisible(false);
+        }
+
+        plantSlotsBar.clearPlantSelection();
+
+        if (gameHud != null) {
+            gameHud.hideGameHud();
+        }
+
+        Actor popup =
+            currentGame.getGameState().isWon()
+                ? new GameWinPopup(
+                game,
+                theme,
+                currentLevel.levelNumber()
+            )
+                : new GameOverPopup(
+                game,
+                theme,
+                currentLevel.levelNumber()
+            );
+
+        showGameEndModal(popup);
+    }
+
+    private void showGameEndModal(Actor popup) {
+        removeModal();
+
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.setTouchable(Touchable.enabled);
+
+        overlay.addListener(
+            new InputListener() {
+                @Override
+                public boolean touchDown(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    int button
+                ) {
+                    return true;
+                }
+            }
         );
+
+        overlay.add(popup).grow();
+
+        modalOverlay = overlay;
+        uiStage.addActor(modalOverlay);
+        modalOverlay.toFront();
     }
 
     private void updateGameplayTicks(float delta) {
@@ -920,8 +1024,8 @@ public class GameScreen extends BaseScreen {
         Game currentGame = App.getInstance().getCurrentGame();
 
         if (currentGame == null
-                || currentGame.getGameState() == null
-                || currentGame.getGameState().isFinished()) {
+            || currentGame.getGameState() == null
+            || currentGame.getGameState().isFinished()) {
             return;
         }
 
@@ -934,6 +1038,7 @@ public class GameScreen extends BaseScreen {
         while (gameTickAccumulator >= tickDuration) {
             if (currentGame.getGameState().isFinished()) {
                 gameTickAccumulator = 0f;
+                resetRenderTickInterpolation();
                 break;
             }
             currentGame.forward(1);
@@ -941,12 +1046,171 @@ public class GameScreen extends BaseScreen {
         }
     }
 
-    private void handleTileClick(
-            Tile tile
+    private void updateRenderTickInterpolation(
+        float delta
     ) {
         if (introState != IntroState.PLAYING
-                || overlayMode != OverlayMode.NONE
-                || tile == null) {
+            || overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        Game currentGame =
+            App.getInstance()
+                .getCurrentGame();
+
+        if (currentGame == null
+            || currentGame.getGameState() == null
+            || currentGame.getGameState().isFinished()) {
+            resetRenderTickInterpolation();
+            return;
+        }
+
+        int modelTick =
+            currentGame
+                .getGameState()
+                .getTickCounter();
+
+        float safeDelta =
+            Math.max(
+                0f,
+                Math.min(
+                    delta,
+                    0.25f
+                )
+            );
+
+        if (renderInterpolationModelTick
+            == Integer.MIN_VALUE) {
+            renderInterpolationModelTick =
+                modelTick;
+
+            renderInterpolationElapsed =
+                Math.max(
+                    0f,
+                    gameTickAccumulator
+                );
+
+            renderInterpolationDuration =
+                secondsUntilNextModelTick(
+                    currentGame
+                );
+
+            return;
+        }
+
+        if (modelTick
+            != renderInterpolationModelTick) {
+            renderInterpolationModelTick =
+                modelTick;
+
+            renderInterpolationElapsed =
+                Math.max(
+                    0f,
+                    gameTickAccumulator
+                );
+
+            renderInterpolationDuration =
+                secondsUntilNextModelTick(
+                    currentGame
+                );
+
+            return;
+        }
+
+        renderInterpolationElapsed =
+            Math.min(
+                renderInterpolationDuration,
+                renderInterpolationElapsed
+                    + safeDelta
+            );
+    }
+
+    private float secondsUntilNextModelTick(
+        Game currentGame
+    ) {
+        int ticksPerSecond =
+            Math.max(
+                1,
+                currentGame
+                    .getGameState()
+                    .getTicksPerSecond()
+            );
+
+        int difficultyLevel =
+            App.getInstance().getLoggedInUser() == null
+                ? 3
+                : App.getInstance()
+                  .getLoggedInUser()
+                  .getDifficultyLevel();
+
+        difficultyLevel =
+            Math.max(
+                1,
+                Math.min(
+                    3,
+                    difficultyLevel
+                )
+            );
+
+        long pendingScaledTicks =
+            Math.floorMod(
+                currentGame.getPendingScaledTicks(),
+                3L
+            );
+
+        long scaledTicksNeeded =
+            3L
+                - pendingScaledTicks;
+
+        int requestedTicksUntilNextModelTick =
+            (int) (
+                (
+                    scaledTicksNeeded
+                        + difficultyLevel
+                        - 1L
+                )
+                    / difficultyLevel
+            );
+
+        float requestedTickDuration =
+            1f / ticksPerSecond;
+
+        return Math.max(
+            requestedTickDuration,
+            requestedTicksUntilNextModelTick
+                * requestedTickDuration
+        );
+    }
+
+    private float getRenderTickAlpha() {
+        if (renderInterpolationDuration <= 0f) {
+            return 0f;
+        }
+
+        return Math.max(
+            0f,
+            Math.min(
+                1f,
+                renderInterpolationElapsed
+                    / renderInterpolationDuration
+            )
+        );
+    }
+
+    private void resetRenderTickInterpolation() {
+        renderInterpolationModelTick =
+            Integer.MIN_VALUE;
+
+        renderInterpolationElapsed = 0f;
+        renderInterpolationDuration = 0.1f;
+    }
+
+    private void handleTileClick(
+        Tile tile
+    ) {
+        if (introState != IntroState.PLAYING
+            || overlayMode != OverlayMode.NONE
+            || tile == null) {
             return;
         }
 
@@ -981,11 +1245,11 @@ public class GameScreen extends BaseScreen {
         }
 
         Result result =
-                gamingController.plantPlant(
-                        selectedPlant.name(),
-                        x,
-                        y
-                );
+            gamingController.plantPlant(
+                selectedPlant.name(),
+                x,
+                y
+            );
 
         if (!result.success()) {
             game.notifyError(result.message());
@@ -1037,6 +1301,7 @@ public class GameScreen extends BaseScreen {
         }
         zombieLevelPreview.clear();
         zombieAnimationSystem.clear();
+        graveAnimationSystem.clearVisuals();
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();

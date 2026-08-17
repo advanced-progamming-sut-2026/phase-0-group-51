@@ -26,8 +26,10 @@ public class IZombie extends Game {
     private final List<SunProducer> sunProducers = new ArrayList<>();
 
     public static final int START_SUN = 150;
-    public static final int PLANT_COLUMNS = 6;
-    public static final int RED_LINE_COLUMN = PLANT_COLUMNS;
+    public static final int BRAIN_COLUMN = 1;
+    public static final int PLANT_START_COLUMN = 2;
+    public static final int PLANT_END_COLUMN = 6;
+    public static final int RED_LINE_COLUMN = 6;
     private final float plantTileChance;
 
     public static final float SUN_PRODUCER_HP = 1290f;
@@ -37,7 +39,7 @@ public class IZombie extends Game {
     private static final int START_INTERVAL_TICKS = 100;
     private static final int MIN_INTERVAL_TICKS = 20;
     private static final int INTERVAL_STEP_TICKS = 5;
-
+    private final Map<String, Integer> zombieReadyAtTick = new HashMap<>();
     private static MinigameStage findIZombieStage(int stageNumber) {
         return MinigameStage.getStages(MinigameType.IZOMBIE).stream()
             .filter(candidate -> candidate.getStageNumber() == stageNumber)
@@ -84,6 +86,7 @@ public class IZombie extends Game {
         brains.clear();
         sunProducers.clear();
         roster.clear();
+        zombieReadyAtTick.clear();
         roster.putAll(LevelConfig.forStage(stage.getStageNumber()).roster());
         roster.keySet().removeIf(alias -> ZombieRegistry.getTemplate(alias) == null);
         if (roster.isEmpty()) {
@@ -141,6 +144,15 @@ public class IZombie extends Game {
         }
         GameState state = getGameState();
         int cost = roster.get(alias);
+        int cooldownRemaining = getZombieCooldownTicks(alias);
+        if (cooldownRemaining > 0) {
+            throw new IllegalStateException(
+                    alias
+                            + " is recharging for "
+                            + cooldownRemaining
+                            + " more ticks."
+            );
+        }
         if (cost > state.getSun()) {
             throw new IllegalStateException(
                 "Not enough sun to place " + alias + " (costs " + cost
@@ -159,12 +171,42 @@ public class IZombie extends Game {
         zombie.setColumn(x - 1);
         state.addZombie(zombie);
         state.setSun(state.getSun() - cost);
+        zombieReadyAtTick.put(alias, state.getTickCounter() + getZombieCooldownTotalTicks(alias));
         state.logEvent("Zombie " + alias + " placed at (" + x + ", " + y
             + ") for " + cost + " sun.\n");
         endState();
         return zombie;
     }
+    public int getZombieCooldownTicks(String zombieName) {
+        String alias = resolveZombieAlias(zombieName);
+        if (alias == null) {
+            throw new IllegalArgumentException(
+                    "Zombie " + zombieName + " is not available."
+            );
+        }
+        int readyAt = zombieReadyAtTick.getOrDefault(alias, 0);
+        return Math.max(0, readyAt - getGameState().getTickCounter());
+    }
 
+
+    public int getZombieCooldownTotalTicks(String zombieName) {
+        String alias = resolveZombieAlias(zombieName);
+
+        if (alias == null) {
+            throw new IllegalArgumentException(
+                    "Zombie " + zombieName + " is not available."
+            );
+        }
+
+        int cost = roster.get(alias);
+        int seconds = Math.max(3, Math.min(12, 2 + cost / 25));
+        return seconds * Math.max(1, getGameState().getTicksPerSecond());
+    }
+
+
+    public boolean isZombieReady(String zombieName) {
+        return getZombieCooldownTicks(zombieName) == 0;
+    }
     public boolean hasWon() {
         if (getGameState() == null) {
             return false;
@@ -207,21 +249,22 @@ public class IZombie extends Game {
     }
 
     public int getLivingSunProducerCount() {
-        return (int) sunProducers.stream()
-            .filter(producer -> !producer.zombie.isDead()).count();
+        return (int) sunProducers.stream().filter(producer -> !producer.zombie.isDead()).count();
     }
-
     private void generateLevel() {
         Board board = getGameState().getBoard();
         for (int y = 1; y <= board.getLaneCount(); y++) {
             boolean planted = false;
-            for (int x = 1; x <= PLANT_COLUMNS; x++) {
+            for (int x = PLANT_START_COLUMN; x <= PLANT_END_COLUMN; x++) {
                 if (random.nextFloat() < plantTileChance) {
                     planted |= plantRandomPlant(x, y);
                 }
             }
+
+
             if (!planted) {
-                plantRandomPlant(1 + random.nextInt(PLANT_COLUMNS), y);
+                int plantColumn = PLANT_START_COLUMN + random.nextInt(PLANT_END_COLUMN - PLANT_START_COLUMN + 1);
+                plantRandomPlant(plantColumn, y);
             }
             spawnSunProducer(y - 1, board.getColumnCount() - 1);
         }
@@ -283,7 +326,7 @@ public class IZombie extends Game {
             if (zombie.isDead()) {
                 continue;
             }
-            if (zombie.getX() >= 0) {
+            if (zombie.getX() > 0) {
                 continue;
             }
             int lane = zombie.getLane();

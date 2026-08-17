@@ -24,27 +24,27 @@ public class SunViewManager extends Group {
     private final BoardTransform transform;
 
     private final Map<Sun, SunActor> sunActors =
-            new IdentityHashMap<>();
+        new IdentityHashMap<>();
 
     @Setter
     private Consumer<Sun> onSunClicked;
 
     public SunViewManager(
-            PvzGame game,
-            BoardTransform transform
+        PvzGame game,
+        BoardTransform transform
     ) {
         this.game = game;
         this.transform = transform;
     }
 
     public void sync(
-            Iterable<Sun> suns,
-            float partialTick
+        Iterable<Sun> suns,
+        float partialTick
     ) {
         Set<Sun> activeSuns =
-                Collections.newSetFromMap(
-                        new IdentityHashMap<>()
-                );
+            Collections.newSetFromMap(
+                new IdentityHashMap<>()
+            );
 
         for (Sun sun : suns) {
             if (!sun.isActive()) {
@@ -52,54 +52,54 @@ public class SunViewManager extends Group {
             }
 
             activeSuns.add(
-                    sun
+                sun
             );
 
             SunActor actor =
-                    sunActors.get(sun);
+                sunActors.get(sun);
 
             if (actor == null) {
                 actor = new SunActor(
-                        game,
-                        sun,
-                        this::handleSunCollected
+                    game,
+                    sun,
+                    this::handleSunCollected
                 );
 
                 sunActors.put(
-                        sun,
-                        actor
+                    sun,
+                    actor
                 );
 
                 addActor(actor);
             }
             actor.syncVisualState();
             positionSun(
-                    sun,
-                    actor,
-                    partialTick
+                sun,
+                actor,
+                partialTick
             );
         }
 
         removeMissingSuns(
-                activeSuns
+            activeSuns
         );
     }
 
     private void positionSun(
-            Sun sun,
-            SunActor actor,
-            float partialTick
+        Sun sun,
+        SunActor actor,
+        float partialTick
     ) {
         int column =
-                (int) sun.getX();
+            (int) sun.getX();
 
         float tileX =
-                transform.tileX(column);
+            transform.tileX(column);
 
         float tileY =
-                transform.tileY(
-                        sun.getLane()
-                );
+            transform.tileY(
+                sun.getLane()
+            );
 
         float centerX;
         float groundY;
@@ -107,94 +107,94 @@ public class SunViewManager extends Group {
         if (sun.getSourcePlant() != null) {
 
             centerX =
-                    tileX
-                            + transform.tileWidth()
-                            * 0.78f;
+                tileX
+                    + transform.tileWidth()
+                    * 0.78f;
 
             groundY =
-                    tileY
-                            + transform.tileHeight()
-                            * 0.22f;
+                tileY
+                    + transform.tileHeight()
+                    * 0.22f;
 
         } else {
 
             centerX =
-                    tileX
-                            + transform.tileWidth()
-                            / 2f;
+                tileX
+                    + transform.tileWidth()
+                    / 2f;
 
             groundY =
-                    tileY
-                            + transform.tileHeight()
-                            / 2f;
+                tileY
+                    + transform.tileHeight()
+                    / 2f;
         }
         float centerY;
 
         if (sun.getSourcePlant() != null
-                || sun.isGrounded()) {
+            || sun.isGrounded()) {
 
             centerY = groundY;
 
         } else {
             BoardArea area =
-                    transform.getArea();
+                transform.getArea();
 
             float startY =
-                    area.y()
-                            + area.height()
-                            + SKY_START_OFFSET;
+                area.y()
+                    + area.height()
+                    + SKY_START_OFFSET;
 
             float progress =
-                    sun.getFallProgress(
-                            partialTick
-                    );
+                sun.getFallProgress(
+                    partialTick
+                );
 
             centerY =
-                    Interpolation.smooth.apply(
-                            startY,
-                            groundY,
-                            progress
-                    );
+                Interpolation.smooth.apply(
+                    startY,
+                    groundY,
+                    progress
+                );
         }
 
         actor.setCenterPosition(
-                centerX,
-                centerY
+            centerX,
+            centerY
         );
     }
 
     private void handleSunCollected(
-            Sun sun
+        Sun sun
     ) {
         if (onSunClicked != null) {
             onSunClicked.accept(
-                    sun
+                sun
             );
         }
     }
 
     private void removeMissingSuns(
-            Set<Sun> activeSuns
+        Set<Sun> activeSuns
     ) {
         Iterator<Map.Entry<Sun, SunActor>>
-                iterator =
-                sunActors
-                        .entrySet()
-                        .iterator();
+            iterator =
+            sunActors
+                .entrySet()
+                .iterator();
 
         while (iterator.hasNext()) {
 
             Map.Entry<Sun, SunActor> entry =
-                    iterator.next();
+                iterator.next();
 
             if (activeSuns.contains(
-                    entry.getKey()
+                entry.getKey()
             )) {
                 continue;
             }
 
             SunActor actor =
-                    entry.getValue();
+                entry.getValue();
 
             if (actor.isTerminalVisual()) {
 
