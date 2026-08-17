@@ -125,9 +125,9 @@ public class GameScreen extends BaseScreen {
     private Image columnHighlight;
 
     private static final String SHOVEL_CURSOR =
-            "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
+        "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
     private static final String PLANT_FOOD_CURSOR =
-            "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
+        "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
     private static final float TOOL_CURSOR_ALPHA = 0.58f;
     private static final float TOOL_CURSOR_SCALE = 0.65f;
 
@@ -385,10 +385,10 @@ public class GameScreen extends BaseScreen {
         );
         uiStage.addActor(gameHud);
         gameHud.setOnShovelRequested(
-                this::toggleShovelMode
+            this::toggleShovelMode
         );
         gameHud.setOnPlantFoodRequested(
-                this::togglePlantFoodMode
+            this::togglePlantFoodMode
         );
 
         Game currentGame =
@@ -488,7 +488,7 @@ public class GameScreen extends BaseScreen {
 
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null
-                || currentGame.getGameState() == null) {
+            || currentGame.getGameState() == null) {
             return;
         }
 
@@ -506,7 +506,7 @@ public class GameScreen extends BaseScreen {
 
         if (gameHud != null) {
             gameHud.setShovelSelected(
-                    mode == ToolMode.SHOVEL
+                mode == ToolMode.SHOVEL
             );
         }
 
@@ -521,18 +521,18 @@ public class GameScreen extends BaseScreen {
         }
 
         if (mode == ToolMode.NONE
-                && plantSlotsBar.getSelectedPlant() == null) {
+            && plantSlotsBar.getSelectedPlant() == null) {
             hidePlacementHighlights();
         }
     }
 
     private void showToolCursor(String assetId) {
         TextureRegion region =
-                game.getTextureBank().region(assetId);
+            game.getTextureBank().region(assetId);
 
         if (region == null) {
             throw new IllegalStateException(
-                    "TextureBank region was not found: " + assetId
+                "TextureBank region was not found: " + assetId
             );
         }
 
@@ -543,17 +543,17 @@ public class GameScreen extends BaseScreen {
         }
 
         toolCursorPreview.setDrawable(
-                new TextureRegionDrawable(region)
+            new TextureRegionDrawable(region)
         );
         toolCursorPreview.setSize(
-                region.getRegionWidth() * TOOL_CURSOR_SCALE,
-                region.getRegionHeight() * TOOL_CURSOR_SCALE
+            region.getRegionWidth() * TOOL_CURSOR_SCALE,
+            region.getRegionHeight() * TOOL_CURSOR_SCALE
         );
         toolCursorPreview.setColor(
-                1f,
-                1f,
-                1f,
-                TOOL_CURSOR_ALPHA
+            1f,
+            1f,
+            1f,
+            TOOL_CURSOR_ALPHA
         );
         toolCursorPreview.setVisible(true);
         toolCursorPreview.toFront();
@@ -571,9 +571,9 @@ public class GameScreen extends BaseScreen {
         }
 
         boolean shouldShow =
-                toolMode != ToolMode.NONE
-                        && introState == IntroState.PLAYING
-                        && overlayMode == OverlayMode.NONE;
+            toolMode != ToolMode.NONE
+                && introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE;
 
         toolCursorPreview.setVisible(shouldShow);
         if (!shouldShow) {
@@ -581,16 +581,16 @@ public class GameScreen extends BaseScreen {
         }
 
         toolCursorPosition.set(
-                Gdx.input.getX(),
-                Gdx.input.getY()
+            Gdx.input.getX(),
+            Gdx.input.getY()
         );
         uiStage.screenToStageCoordinates(toolCursorPosition);
 
         toolCursorPreview.setPosition(
-                toolCursorPosition.x
-                        - toolCursorPreview.getWidth() / 2f,
-                toolCursorPosition.y
-                        - toolCursorPreview.getHeight() / 2f
+            toolCursorPosition.x
+                - toolCursorPreview.getWidth() / 2f,
+            toolCursorPosition.y
+                - toolCursorPreview.getHeight() / 2f
         );
         toolCursorPreview.toFront();
     }
@@ -798,12 +798,12 @@ public class GameScreen extends BaseScreen {
     }
     private void handleTileHover(Tile tile) {
         boolean hasPlantSelection =
-                plantSlotsBar.getSelectedPlant() != null;
+            plantSlotsBar.getSelectedPlant() != null;
         boolean hasToolSelection =
-                toolMode != ToolMode.NONE;
+            toolMode != ToolMode.NONE;
 
         if (tile == null
-                || (!hasPlantSelection && !hasToolSelection)) {
+            || (!hasPlantSelection && !hasToolSelection)) {
             hidePlacementHighlights();
             return;
         }
@@ -846,6 +846,8 @@ public class GameScreen extends BaseScreen {
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
                     delta,
+                    getRenderTickAlpha(),
+                    currentGame.getGameState().getTickCounter(),
                     currentGame.getGameState().getZombiesInTheGame()
                 );
             }
@@ -895,19 +897,19 @@ public class GameScreen extends BaseScreen {
 
                 if (plantViewManager != null) {
                     plantViewManager.sync(
-                            board
+                        board
                     );
                 }
                 if (projectileViewManager != null) {
                     projectileViewManager.sync(
-                            board.getProjectiles(),
-                            getRenderTickAlpha()
+                        board.getProjectiles(),
+                        getRenderTickAlpha()
                     );
                 }
                 if (sunViewManager != null) {
                     sunViewManager.sync(
-                            board.getActiveSuns(),
-                            getRenderTickAlpha()
+                        board.getActiveSuns(),
+                        getRenderTickAlpha()
                     );
                 }
             }
@@ -1067,8 +1069,8 @@ public class GameScreen extends BaseScreen {
         Tile tile
     ) {
         if (introState != IntroState.PLAYING
-                || overlayMode != OverlayMode.NONE
-                || tile == null) {
+            || overlayMode != OverlayMode.NONE
+            || tile == null) {
             return;
         }
 
@@ -1103,11 +1105,11 @@ public class GameScreen extends BaseScreen {
         }
 
         Result result =
-                gamingController.plantPlant(
-                        selectedPlant.name(),
-                        x,
-                        y
-                );
+            gamingController.plantPlant(
+                selectedPlant.name(),
+                x,
+                y
+            );
 
         if (!result.success()) {
             game.notifyError(result.message());
