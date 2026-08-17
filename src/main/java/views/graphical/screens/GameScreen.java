@@ -114,6 +114,9 @@ public class GameScreen extends BaseScreen {
     private final GamingController gamingController = new GamingController();
 
     private float gameTickAccumulator;
+    private int renderInterpolationModelTick = Integer.MIN_VALUE;
+    private float renderInterpolationElapsed;
+    private float renderInterpolationDuration = 0.1f;
     private boolean gameEndShown;
 
     private PlantActor placementPreview;
@@ -154,7 +157,7 @@ public class GameScreen extends BaseScreen {
 
         currentGame.setCurrentChapterIndex(chapterIndex);
         currentGame.setCurrentLevelIndex(levelIndex);
-        currentGame.loadLevel();
+        currentGame.loadLevelForPreview();
 
         App.getInstance().setCurrentGame(currentGame);
 
@@ -446,6 +449,7 @@ public class GameScreen extends BaseScreen {
         worldStage.addActor(placementPreview);
 
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
@@ -622,6 +626,7 @@ public class GameScreen extends BaseScreen {
         overlayMode = OverlayMode.START_OBJECTIVES;
 
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
 
         ChapterTheme levelTheme =
             currentLevel.chapterTheme();
@@ -658,6 +663,7 @@ public class GameScreen extends BaseScreen {
 
         overlayMode = OverlayMode.NONE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         stateTime = 0f;
     }
     private void showModal(Actor popup) {
@@ -738,6 +744,7 @@ public class GameScreen extends BaseScreen {
 
         overlayMode = OverlayMode.PAUSE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
 
         PauseMenuPopup popup =
             new PauseMenuPopup(
@@ -758,6 +765,7 @@ public class GameScreen extends BaseScreen {
         removeModal();
         overlayMode = OverlayMode.NONE;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
     }
 
     private void restartLevel() {
@@ -838,6 +846,7 @@ public class GameScreen extends BaseScreen {
         handlePauseShortcut();
         updateCutscene(delta);
         updateGameplayTicks(delta);
+        updateRenderTickInterpolation(delta);
         checkGameEnd();
 
         if (introState == IntroState.PLAYING
@@ -947,6 +956,7 @@ public class GameScreen extends BaseScreen {
         gameEndShown = true;
         overlayMode = OverlayMode.GAME_END;
         gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
 
         hidePlacementHighlights();
 
@@ -1028,6 +1038,7 @@ public class GameScreen extends BaseScreen {
         while (gameTickAccumulator >= tickDuration) {
             if (currentGame.getGameState().isFinished()) {
                 gameTickAccumulator = 0f;
+                resetRenderTickInterpolation();
                 break;
             }
             currentGame.forward(1);
@@ -1035,16 +1046,88 @@ public class GameScreen extends BaseScreen {
         }
     }
 
-    private float getRenderTickAlpha() {
+    private void updateRenderTickInterpolation(
+        float delta
+    ) {
+        if (introState != IntroState.PLAYING
+            || overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
         Game currentGame =
             App.getInstance()
                 .getCurrentGame();
 
         if (currentGame == null
-            || currentGame.getGameState() == null) {
-            return 0f;
+            || currentGame.getGameState() == null
+            || currentGame.getGameState().isFinished()) {
+            resetRenderTickInterpolation();
+            return;
         }
 
+        int modelTick =
+            currentGame
+                .getGameState()
+                .getTickCounter();
+
+        float safeDelta =
+            Math.max(
+                0f,
+                Math.min(
+                    delta,
+                    0.25f
+                )
+            );
+
+        if (renderInterpolationModelTick
+            == Integer.MIN_VALUE) {
+            renderInterpolationModelTick =
+                modelTick;
+
+            renderInterpolationElapsed =
+                Math.max(
+                    0f,
+                    gameTickAccumulator
+                );
+
+            renderInterpolationDuration =
+                secondsUntilNextModelTick(
+                    currentGame
+                );
+
+            return;
+        }
+
+        if (modelTick
+            != renderInterpolationModelTick) {
+            renderInterpolationModelTick =
+                modelTick;
+
+            renderInterpolationElapsed =
+                Math.max(
+                    0f,
+                    gameTickAccumulator
+                );
+
+            renderInterpolationDuration =
+                secondsUntilNextModelTick(
+                    currentGame
+                );
+
+            return;
+        }
+
+        renderInterpolationElapsed =
+            Math.min(
+                renderInterpolationDuration,
+                renderInterpolationElapsed
+                    + safeDelta
+            );
+    }
+
+    private float secondsUntilNextModelTick(
+        Game currentGame
+    ) {
         int ticksPerSecond =
             Math.max(
                 1,
@@ -1053,16 +1136,73 @@ public class GameScreen extends BaseScreen {
                     .getTicksPerSecond()
             );
 
-        float tickDuration =
+        int difficultyLevel =
+            App.getInstance().getLoggedInUser() == null
+                ? 3
+                : App.getInstance()
+                  .getLoggedInUser()
+                  .getDifficultyLevel();
+
+        difficultyLevel =
+            Math.max(
+                1,
+                Math.min(
+                    3,
+                    difficultyLevel
+                )
+            );
+
+        long pendingScaledTicks =
+            Math.floorMod(
+                currentGame.getPendingScaledTicks(),
+                3L
+            );
+
+        long scaledTicksNeeded =
+            3L
+                - pendingScaledTicks;
+
+        int requestedTicksUntilNextModelTick =
+            (int) (
+                (
+                    scaledTicksNeeded
+                        + difficultyLevel
+                        - 1L
+                )
+                    / difficultyLevel
+            );
+
+        float requestedTickDuration =
             1f / ticksPerSecond;
+
+        return Math.max(
+            requestedTickDuration,
+            requestedTicksUntilNextModelTick
+                * requestedTickDuration
+        );
+    }
+
+    private float getRenderTickAlpha() {
+        if (renderInterpolationDuration <= 0f) {
+            return 0f;
+        }
 
         return Math.max(
             0f,
             Math.min(
                 1f,
-                gameTickAccumulator / tickDuration
+                renderInterpolationElapsed
+                    / renderInterpolationDuration
             )
         );
+    }
+
+    private void resetRenderTickInterpolation() {
+        renderInterpolationModelTick =
+            Integer.MIN_VALUE;
+
+        renderInterpolationElapsed = 0f;
+        renderInterpolationDuration = 0.1f;
     }
 
     private void handleTileClick(
