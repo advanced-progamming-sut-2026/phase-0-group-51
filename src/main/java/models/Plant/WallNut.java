@@ -2,6 +2,7 @@ package models.Plant;
 
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.effects.VisualEffectEvent;
 import models.sun.Sun;
 import models.sun.SunType;
 
@@ -16,6 +17,13 @@ public enum WallNut implements PlantType {
     EXPLODE_O_NUT(49, DefenseMode.EXPLODE) {
         @Override
         public void onDeath(Plant plant, GameState state) {
+            state.emitVisualEffect(
+                    VisualEffectEvent.plantExplosion(
+                            plant.getPosX(),
+                            plant.getPosY()
+                    )
+            );
+
             int damage = plant.getDamage();
             if (plant.getLevel() >= 3) {
                 damage += 200;

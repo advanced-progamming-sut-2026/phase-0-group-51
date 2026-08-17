@@ -8,6 +8,7 @@ import models.Plant.PlantTag;
 import models.Zombie.Zombie;
 import models.Zombie.Behavior.DamageReactionBehavior;
 import models.games.GameState;
+import models.effects.VisualEffectEvent;
 import models.games.ancientEgypt.Grave;
 import models.projectile.move.MovingStrategy;
 import models.projectile.move.BounceMove;
@@ -531,6 +532,11 @@ public class Projectile {
         if (frozenPlant == null) {
             return false;
         }
+        emitImpactEffect(
+                state,
+                frozenPlant.getPosX(),
+                frozenPlant.getPosY()
+        );
         frozenPlant.damageIce(damage, elementType, state);
         state.logEvent("Ice around " + frozenPlant.getName() + " has "
             + frozenPlant.getIceHealth() + " health left.\n");
@@ -564,6 +570,11 @@ public class Projectile {
         if (graveTile == null) {
             return false;
         }
+        emitImpactEffect(
+                state,
+                graveTile.getColumn(),
+                graveTile.getLane()
+        );
         damageGrave(state, graveTile);
         destroy(state);
         return true;
@@ -637,6 +648,18 @@ public class Projectile {
     }
 
     private void impact(GameState state, Zombie primaryTarget) {
+        double impactX =
+                primaryTarget != null
+                        ? primaryTarget.getX()
+                        : targetX != null ? targetX : posX;
+
+        double impactY =
+                primaryTarget != null
+                        ? primaryTarget.getLane()
+                        : targetY != null ? targetY : posY;
+
+        emitImpactEffect(state, impactX, impactY);
+
         if (graveTarget) {
             hitLandingTarget(state);
         } else if (aoeRadius > 0 && primaryTarget != null) {
@@ -813,6 +836,7 @@ public class Projectile {
                 continue;
             }
             Plant plant = tile.getTopPlant();
+            emitImpactEffect(state, column, lane);
             if (plant.isFrozenByIce()) {
                 plant.damageIce(damage, elementType, state);
                 state.logEvent("A reflected projectile hit the ice around "
@@ -829,6 +853,19 @@ public class Projectile {
             destroy(state);
             return;
         }
+    }
+
+    private void emitImpactEffect(
+            GameState state,
+            double impactX,
+            double impactY
+    ) {
+        state.emitVisualEffect(
+                VisualEffectEvent.projectileImpact(
+                        impactX,
+                        impactY
+                )
+        );
     }
 
     private boolean isOutOfBounds(GameState state) {

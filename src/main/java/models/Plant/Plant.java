@@ -63,6 +63,9 @@ public class Plant {
     @Getter
     private long actionSerial = 0;
 
+    @Getter
+    private long plantFoodVisualSerial = 0;
+
     private int damage;
 
     public Plant(int id, String name, PlantType plantType, PlantStats plantStat,
@@ -125,6 +128,7 @@ public class Plant {
         if (markedForRemoval || isDead() || isFrozenByIce() || hasOctopus() || isOnPlantFood()) {
             return;
         }
+        plantFoodVisualSerial++;
         plantType.onFeed(this, gameState);
         ticksOfPlantFood = Math.max(
                 0,

@@ -146,6 +146,7 @@ public enum SunProducer implements PlantType {
                 Integer.MAX_VALUE,
                 plant
         );
+        plant.signalAction(PlantAction.PRODUCE);
         sun.setGrounded(true);
         state.getBoard().spawnSun(sun);
         state.recordTimedBattleSunProduced(amount);

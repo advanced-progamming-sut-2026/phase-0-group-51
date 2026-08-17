@@ -20,6 +20,8 @@ public class PlantViewManager extends Group {
 
     private final Map<Plant, PlantActor> plantActors = new IdentityHashMap<>();
     private final Map<Plant, Long> lastSeenActionSerial = new IdentityHashMap<>();
+    private final Map<Plant, Long> lastSeenPlantFoodSerial = new IdentityHashMap<>();
+    private final Map<Plant, Integer> lastSeenHealth = new IdentityHashMap<>();
     private final Map<PlantActor, Integer> actorLayers = new IdentityHashMap<>();
 
     public PlantViewManager(
@@ -63,11 +65,14 @@ public class PlantViewManager extends Group {
             actor = createPlantActor(plant);
             plantActors.put(plant, actor);
             lastSeenActionSerial.put(plant, plant.getActionSerial());
+            lastSeenHealth.put(plant, plant.getCurrentHP());
             addActor(actor);
         }
         actorLayers.put(actor, layer);
         syncPlantBaseAnimation(plant, actor);
         syncPlantAction(plant, actor);
+        syncPlantFoodEffect(plant, actor);
+        syncDamageFlash(plant, actor);
         positionPlant(actor, lane, column);
     }
     private void syncPlantAction(Plant plant, PlantActor actor) {
@@ -85,6 +90,34 @@ public class PlantViewManager extends Group {
             }
         }
         lastSeenActionSerial.put(plant, plant.getActionSerial());
+    }
+
+    private void syncPlantFoodEffect(
+            Plant plant,
+            PlantActor actor
+    ) {
+        long current = plant.getPlantFoodVisualSerial();
+        long lastSeen = lastSeenPlantFoodSerial.getOrDefault(plant, 0L);
+
+        if (current > lastSeen) {
+            actor.playPlantFoodEffect();
+        }
+
+        lastSeenPlantFoodSerial.put(plant, current);
+    }
+
+    private void syncDamageFlash(
+            Plant plant,
+            PlantActor actor
+    ) {
+        int currentHealth = plant.getCurrentHP();
+        int previousHealth = lastSeenHealth.getOrDefault(plant, currentHealth);
+
+        if (currentHealth < previousHealth && currentHealth > 0) {
+            actor.flashDamage();
+        }
+
+        lastSeenHealth.put(plant, currentHealth);
     }
     private String resolveAttackAnimation(Plant plant) {
         PlantData data = PlantRegistry.getById(plant.getId());
@@ -166,6 +199,8 @@ public class PlantViewManager extends Group {
                 actorLayers.remove(actor);
 
                 lastSeenActionSerial.remove(plant);
+                lastSeenPlantFoodSerial.remove(plant);
+                lastSeenHealth.remove(plant);
                 iterator.remove();
             }
         }

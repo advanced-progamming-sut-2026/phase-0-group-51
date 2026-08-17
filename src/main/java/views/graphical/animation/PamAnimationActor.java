@@ -1,6 +1,7 @@
 package views.graphical.animation;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -23,6 +24,10 @@ public class PamAnimationActor extends Actor {
     private float stateTime = 0f;
     private float playbackSpeed = 1f;
     private boolean animationPaused = false;
+
+    private float additiveFlashRemaining = 0f;
+    private float additiveFlashDuration = 0f;
+    private float additiveFlashAlpha = 0f;
 
     private final Map<String, Boolean> visibilityMap =
             new HashMap<>();
@@ -84,6 +89,15 @@ public class PamAnimationActor extends Actor {
 
     public float getStateTime() {
         return stateTime;
+    }
+
+    public void flashAdditive(
+            float duration,
+            float alpha
+    ) {
+        additiveFlashDuration = Math.max(0.01f, duration);
+        additiveFlashRemaining = additiveFlashDuration;
+        additiveFlashAlpha = Math.max(0f, Math.min(1f, alpha));
     }
 
     public String getClip() {
@@ -202,6 +216,13 @@ public class PamAnimationActor extends Actor {
         if (!animationPaused) {
             stateTime += delta * playbackSpeed;
         }
+
+        if (additiveFlashRemaining > 0f) {
+            additiveFlashRemaining = Math.max(
+                    0f,
+                    additiveFlashRemaining - Math.max(0f, delta)
+            );
+        }
     }
 
     @Override
@@ -239,7 +260,52 @@ public class PamAnimationActor extends Actor {
                     loop,
                     visibilityMap
             );
+
+            if (additiveFlashRemaining > 0f
+                    && additiveFlashDuration > 0f
+                    && additiveFlashAlpha > 0f) {
+                float progress =
+                        additiveFlashRemaining
+                                / additiveFlashDuration;
+
+                batch.setBlendFunction(
+                        GL20.GL_SRC_ALPHA,
+                        GL20.GL_ONE
+                );
+
+                batch.setColor(
+                        1f,
+                        1f,
+                        1f,
+                        additiveFlashAlpha
+                                * progress
+                                * actorColor.a
+                                * parentAlpha
+                );
+
+                pamPlayer.draw(
+                        batch,
+                        pamPath,
+                        clip,
+                        stateTime,
+                        drawX,
+                        getY(),
+                        getScaleX(),
+                        getScaleY(),
+                        loop,
+                        visibilityMap
+                );
+
+                batch.setBlendFunction(
+                        GL20.GL_SRC_ALPHA,
+                        GL20.GL_ONE_MINUS_SRC_ALPHA
+                );
+            }
         } finally {
+            batch.setBlendFunction(
+                    GL20.GL_SRC_ALPHA,
+                    GL20.GL_ONE_MINUS_SRC_ALPHA
+            );
             batch.setColor(oldColor);
         }
     }
