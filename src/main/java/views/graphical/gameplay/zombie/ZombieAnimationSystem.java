@@ -919,6 +919,22 @@ public final class ZombieAnimationSystem {
             );
         }
 
+        if (ZombieType.RA.getAlias().equals(alias)) {
+            SunStealBehavior sunSteal =
+                zombie.getBehavior(SunStealBehavior.class);
+
+            if (sunSteal != null && sunSteal.isStealing()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "power",
+                        EntityAnimationState.SPECIAL
+                    ),
+                    false
+                );
+            }
+        }
+
         if (ZombieType.DARK_KING.getAlias().equals(alias)) {
             return new BaseAnimation(
                 visual.animations.clip(EntityAnimationState.IDLE),
@@ -988,7 +1004,7 @@ public final class ZombieAnimationSystem {
         SunStealBehavior sunSteal =
             zombie.getBehavior(SunStealBehavior.class);
         if (sunSteal != null) {
-            visual.lastSunStealCooldown = sunSteal.getCooldownTicks();
+            visual.lastSunStealing = sunSteal.isStealing();
         }
 
         WorldEffectBehavior worldEffect =
@@ -1111,16 +1127,21 @@ public final class ZombieAnimationSystem {
         SunStealBehavior sunSteal =
             zombie.getBehavior(SunStealBehavior.class);
         if (sunSteal != null) {
-            int currentCooldown = sunSteal.getCooldownTicks();
-            if (currentCooldown > visual.lastSunStealCooldown) {
-                enqueueSpecialSequence(
+            boolean stealing = sunSteal.isStealing();
+
+            if (!visual.lastSunStealing && stealing) {
+                enqueueSpecialClip(
                     visual,
-                    "power_up",
-                    "power",
+                    "power_up"
+                );
+            } else if (visual.lastSunStealing && !stealing) {
+                enqueueSpecialClip(
+                    visual,
                     "power_down"
                 );
             }
-            visual.lastSunStealCooldown = currentCooldown;
+
+            visual.lastSunStealing = stealing;
         }
 
         WorldEffectBehavior worldEffect =
@@ -1482,7 +1503,7 @@ public final class ZombieAnimationSystem {
         private boolean lastHasKilled;
         private boolean lastImpFired;
         private int lastRangedCooldown;
-        private int lastSunStealCooldown;
+        private boolean lastSunStealing;
         private int lastWorldEffectCooldown;
         private int lastAuraTimer;
         private int lastTransformCooldown;
