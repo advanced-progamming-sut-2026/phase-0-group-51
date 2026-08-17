@@ -106,8 +106,7 @@ public class Sun {
     public void beginSteal(Zombie zombie) {
         if (!isActive()
             || zombie == null
-            || sunType == SunType.RADIOACTIVE
-            || !grounded) {
+            || sunType == SunType.RADIOACTIVE) {
             return;
         }
 

@@ -771,7 +771,7 @@ public final class ZombieAnimationSystem {
 
             actor.play(
                 base.clip,
-                true
+                base.loop
             );
 
             if (base.walkSpeedSynced) {
@@ -922,6 +922,7 @@ public final class ZombieAnimationSystem {
                         "power",
                         EntityAnimationState.SPECIAL
                     ),
+                    false,
                     false
                 );
             }
@@ -1476,13 +1477,27 @@ public final class ZombieAnimationSystem {
     private static final class BaseAnimation {
         private final String clip;
         private final boolean walkSpeedSynced;
+        private final boolean loop;
 
         private BaseAnimation(
             String clip,
             boolean walkSpeedSynced
         ) {
+            this(
+                clip,
+                walkSpeedSynced,
+                true
+            );
+        }
+
+        private BaseAnimation(
+            String clip,
+            boolean walkSpeedSynced,
+            boolean loop
+        ) {
             this.clip = clip;
             this.walkSpeedSynced = walkSpeedSynced;
+            this.loop = loop;
         }
     }
 

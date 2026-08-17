@@ -8,8 +8,8 @@ import models.games.GameState;
 import java.util.Map;
 
 public class WorldEffectBehavior implements PersistableBehavior {
-    public static final int TOMB_CAST_TICKS = 10;
-    public static final int TOMB_EFFECT_TICK = 6;
+    public static final int TOMB_CAST_TICKS = 20;
+    public static final int TOMB_EFFECT_TICK = 13;
 
     private final WorldEffectType type;
     private final int intervalTicks;

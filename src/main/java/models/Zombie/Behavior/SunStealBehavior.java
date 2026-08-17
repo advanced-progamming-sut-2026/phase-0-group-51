@@ -12,7 +12,7 @@ import java.util.Map;
 
 @Getter
 public class SunStealBehavior implements PersistableBehavior {
-    private static final int MIN_GROUNDED_TICKS = 8;
+    private static final int MIN_SPAWN_AGE_TICKS = 3 * 10;
     private static final int PULL_DURATION_TICKS = 12;
 
     private final int maxAmount;
@@ -71,8 +71,7 @@ public class SunStealBehavior implements PersistableBehavior {
         for (Sun sun : new ArrayList<>(board.getActiveSuns())) {
             if (!sun.isActive()
                 || sun.getSunType() == SunType.RADIOACTIVE
-                || !sun.isGrounded()
-                || sun.getGroundedTicks() < MIN_GROUNDED_TICKS
+                || sun.getLivedTicks() < MIN_SPAWN_AGE_TICKS
                 || sun.isBeingStolen()) {
                 continue;
             }
