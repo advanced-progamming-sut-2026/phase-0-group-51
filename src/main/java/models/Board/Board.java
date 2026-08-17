@@ -89,8 +89,8 @@ public class Board {
             Plant plant = tile.getPlant();
             float distance = fromX - plant.getPosX();
             if (distance >= 0.0f
-                    && distance <= range
-                    && distance < nearestDistance) {
+                && distance <= range
+                && distance < nearestDistance) {
                 nearestPlant = plant;
                 nearestDistance = distance;
             }
@@ -149,6 +149,10 @@ public class Board {
         return blocked;
     }
     public void removeSun(Sun sun) {
+        if (sun == null) {
+            return;
+        }
+        sun.cancelSteal();
         if (sun.getSourcePlant() != null) {
             sun.getSourcePlant().setPendingSun(false);
         }
@@ -163,8 +167,11 @@ public class Board {
         return result;
     }
     public boolean collectSun(Sun sun, GameState game) {
-        if (!sun.isActive())
+        if (sun == null || !sun.isActive())
             return false;
+        if (sun.isBeingStolen()) {
+            sun.cancelSteal();
+        }
         if (sun.getSunType() == SunType.RADIOACTIVE && !sun.isGrounded()) {
             explodeRadioactiveSun(sun,game);
         } else {
@@ -265,8 +272,8 @@ public class Board {
             loot.tick();
             if (loot.isExpired()) {
                 state.logEvent(
-                        "The " + loot.getDisplayName() + " at (" + (loot.getColumn() + 1) + ", " + (loot.getLane() + 1)
-                                + ") expired.\n");
+                    "The " + loot.getDisplayName() + " at (" + (loot.getColumn() + 1) + ", " + (loot.getLane() + 1)
+                        + ") expired.\n");
                 iterator.remove();
             } else if (loot.isCollected()) {
                 iterator.remove();
@@ -352,24 +359,24 @@ public class Board {
     }
 
     public Plant getFirstTorchwoodCrossed(
-            int lane,
-            double fromX,
-            double toX,
-            Set<Plant> excluded
+        int lane,
+        double fromX,
+        double toX,
+        Set<Plant> excluded
     ) {
         int step = toX >= fromX ? 1 : -1;
         int column = (int) Math.floor(fromX) + step;
         int end = (int) Math.floor(toX);
         while ((step > 0 && column <= end)
-                || (step < 0 && column >= end)) {
+            || (step < 0 && column >= end)) {
             Tile tile = getTile(lane, column);
             if (tile != null) {
                 for (Plant candidate : tile.getPlants()) {
                     if (candidate.getId() == 52
-                            && !candidate.isDead()
-                            && !candidate.isMarkedForRemoval()
-                            && (excluded == null
-                            || !excluded.contains(candidate))) {
+                        && !candidate.isDead()
+                        && !candidate.isMarkedForRemoval()
+                        && (excluded == null
+                        || !excluded.contains(candidate))) {
                         return candidate;
                     }
                 }
@@ -413,10 +420,10 @@ public class Board {
     }
 
     public List<Zombie> getZombiesInSquare(
-            double centerLane,
-            double centerColumn,
-            int laneRadius,
-            int columnRadius
+        double centerLane,
+        double centerColumn,
+        int laneRadius,
+        int columnRadius
     ) {
         List<Zombie> result = new ArrayList<>();
         for (Zombie zombie : zombies) {
@@ -427,7 +434,7 @@ public class Board {
             int zombieColumn = (int) Math.floor(zombie.getX());
             int squareCenterColumn = (int) Math.floor(centerColumn);
             boolean insideColumns = Math.abs(zombieColumn - squareCenterColumn)
-                    <= columnRadius;
+                <= columnRadius;
             if (insideRows && insideColumns) {
                 result.add(zombie);
             }
@@ -479,19 +486,19 @@ public class Board {
             for (int column = 0; column < columnCount; column++) {
                 Tile tile = getTile(lane, column);
                 if (tile.isWater()
-                        && !tile.hasPlant()
-                        && !tile.hasGrave()
-                        && !tile.isIceBlocked()
-                        && !tile.isCrater()
-                        && tile.getIceFloorDirection() == null) {
+                    && !tile.hasPlant()
+                    && !tile.hasGrave()
+                    && !tile.isIceBlocked()
+                    && !tile.isCrater()
+                    && tile.getIceFloorDirection() == null) {
                     candidates.add(tile);
                 }
             }
         }
         java.util.Collections.shuffle(candidates, random);
         return new ArrayList<>(candidates.subList(
-                0,
-                Math.min(requestedCount, candidates.size())
+            0,
+            Math.min(requestedCount, candidates.size())
         ));
     }
 
@@ -504,8 +511,8 @@ public class Board {
             for (int j = 0; j < columnCount; j++) {
                 Tile tile = tiles[i][j];
                 if (tile.getTopPlant() == plant
-                        || tile.getLilyPadPlant() == plant
-                        || tile.getPumpkinPlant() == plant) {
+                    || tile.getLilyPadPlant() == plant
+                    || tile.getPumpkinPlant() == plant) {
                     return tile;
                 }
             }
@@ -565,8 +572,8 @@ public class Board {
         double closestDistance = Double.MAX_VALUE;
         for (Zombie zombie : getZombiesInRadius(lane, column, radius)) {
             double distance = Math.hypot(
-                    zombie.getLane() - lane,
-                    zombie.getX() - column
+                zombie.getLane() - lane,
+                zombie.getX() - column
             );
             if (distance < closestDistance) {
                 closest = zombie;
@@ -594,7 +601,7 @@ public class Board {
             if (tile.isIceBlocked()) {
                 tile.setIceBlocked(false);
                 state.logEvent("Ice block at (" + (column + 1) + ", "
-                        + (lane + 1) + ") melted.\n");
+                    + (lane + 1) + ") melted.\n");
             }
             if (tile.hasPlant() && tile.getPlant().isFrozenByIce()) {
                 tile.getPlant().damageIce(0, ElementType.FIRE, state);
@@ -607,10 +614,10 @@ public class Board {
     }
 
     public void warmArea(
-            int centerLane,
-            int centerColumn,
-            double radius,
-            GameState state
+        int centerLane,
+        int centerColumn,
+        double radius,
+        GameState state
     ) {
         int laneRadius = (int) Math.ceil(radius);
         int columnRadius = (int) Math.ceil(radius);
@@ -619,13 +626,13 @@ public class Board {
              lane++) {
             for (int column = Math.max(0, centerColumn - columnRadius);
                  column <= Math.min(
-                         columnCount - 1,
-                         centerColumn + columnRadius
+                     columnCount - 1,
+                     centerColumn + columnRadius
                  );
                  column++) {
                 if (Math.hypot(
-                        lane - centerLane,
-                        column - centerColumn
+                    lane - centerLane,
+                    column - centerColumn
                 ) > radius) {
                     continue;
                 }
@@ -660,8 +667,8 @@ public class Board {
                     continue;
                 }
                 Tile tile = getTile(
-                        frozenPlant.getPosY() + laneOffset,
-                        frozenPlant.getPosX() + columnOffset
+                    frozenPlant.getPosY() + laneOffset,
+                    frozenPlant.getPosX() + columnOffset
                 );
                 if (tile != null && tile.hasPlant() && tile.getPlant().hasTag(PlantTag.FIRE)) {
                     return true;
@@ -687,10 +694,10 @@ public class Board {
 
 
     public Tile getFirstGraveCrossed(
-            double fromX,
-            double fromY,
-            double toX,
-            double toY
+        double fromX,
+        double fromY,
+        double toX,
+        double toY
     ) {
         Tile closest = null;
         double closestProgress = Double.MAX_VALUE;
@@ -709,7 +716,7 @@ public class Board {
                 double relativeX = column - fromX;
                 double relativeY = lane - fromY;
                 double progress = (relativeX * segmentX + relativeY * segmentY)
-                        / lengthSquared;
+                    / lengthSquared;
                 if (progress < 0 || progress > 1) {
                     continue;
                 }
@@ -726,10 +733,10 @@ public class Board {
     }
 
     public void applyIceFloorIfCrossed(
-            Zombie zombie,
-            double previousX,
-            double currentX,
-            GameState state
+        Zombie zombie,
+        double previousX,
+        double currentX,
+        GameState state
     ) {
         if (zombie.ignoresIceFloors()) {
             return;
@@ -745,7 +752,7 @@ public class Board {
         }
         zombie.setLane(targetLane);
         state.logEvent(zombie.getAlias() + " slipped from row " + (oldLane + 1)
-                + " to row " + (targetLane + 1) + ".\n");
+            + " to row " + (targetLane + 1) + ".\n");
     }
 
     private Tile getFirstIceFloorCrossed(int lane, double fromX, double toX) {
@@ -786,8 +793,8 @@ public class Board {
             for (int col = 0; col < columnCount; col++) {
                 getTile(lane, col).setWater(col >= this.leftmostWaterColumn);
             }
-            }
         }
+    }
 
     public int getWaterColumnCount() {
         return columnCount - leftmostWaterColumn;
@@ -821,7 +828,7 @@ public class Board {
         int newLane = candidates.get(random.nextInt(candidates.size()));
         zombie.setLane(newLane);
         state.logEvent(zombie.getAlias() + " moved from row "
-                + (oldLane + 1) + " to row " + (newLane + 1) + ".\n");
+            + (oldLane + 1) + " to row " + (newLane + 1) + ".\n");
         return true;
     }
 
