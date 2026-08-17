@@ -908,6 +908,25 @@ public final class ZombieAnimationSystem {
             }
         }
 
+        if (ZombieType.TOMB_RAISER.getAlias().equals(alias)) {
+            WorldEffectBehavior worldEffect =
+                zombie.getBehavior(WorldEffectBehavior.class);
+
+            if (worldEffect != null
+                && worldEffect.getType()
+                == WorldEffectBehavior.WorldEffectType.SPAWN_TOMB
+                && worldEffect.isCasting()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "power",
+                        EntityAnimationState.SPECIAL
+                    ),
+                    false
+                );
+            }
+        }
+
         if (ZombieType.PIANO.getAlias().equals(alias)) {
             return new BaseAnimation(
                 clipOrFallback(
@@ -1005,12 +1024,6 @@ public final class ZombieAnimationSystem {
             zombie.getBehavior(SunStealBehavior.class);
         if (sunSteal != null) {
             visual.lastSunStealing = sunSteal.isStealing();
-        }
-
-        WorldEffectBehavior worldEffect =
-            zombie.getBehavior(WorldEffectBehavior.class);
-        if (worldEffect != null) {
-            visual.lastWorldEffectCooldown = worldEffect.getCooldown();
         }
 
         AuraBehavior aura =
@@ -1142,18 +1155,6 @@ public final class ZombieAnimationSystem {
             }
 
             visual.lastSunStealing = stealing;
-        }
-
-        WorldEffectBehavior worldEffect =
-            zombie.getBehavior(WorldEffectBehavior.class);
-        if (worldEffect != null) {
-            int currentCooldown = worldEffect.getCooldown();
-            if (currentCooldown > visual.lastWorldEffectCooldown
-                && worldEffect.getType()
-                == WorldEffectBehavior.WorldEffectType.SPAWN_TOMB) {
-                enqueueSpecialClip(visual, "power");
-            }
-            visual.lastWorldEffectCooldown = currentCooldown;
         }
 
         AuraBehavior aura =
@@ -1504,7 +1505,6 @@ public final class ZombieAnimationSystem {
         private boolean lastImpFired;
         private int lastRangedCooldown;
         private boolean lastSunStealing;
-        private int lastWorldEffectCooldown;
         private int lastAuraTimer;
         private int lastTransformCooldown;
         private boolean lastDynamiteExploded;
