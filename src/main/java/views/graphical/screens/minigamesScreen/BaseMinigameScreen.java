@@ -44,27 +44,25 @@ public abstract class BaseMinigameScreen extends BaseScreen {
     protected float stateTime = 0f;
     protected float waitDuration = 1.0f;
     protected float panDuration = 1.5f;
-
+    private static final float GAME_END_DELAY = 1.3f;
+    private float gameEndTimer = 0f;
+    private boolean gameEndHandled = false;
+    protected enum OverlayMode {
+        NONE,
+        START_OBJECTIVES,
+        PAUSE,
+        RESULT
+    }
 
     protected enum IntroState {
-
         WAIT_AT_MAIN,
-
         PAN_TO_PREVIEW,
-
         WAIT_AT_PREVIEW,
-
         PAN_BACK_TO_GAMEPLAY,
-
         PLAYING
     }
     protected IntroState introState = IntroState.WAIT_AT_MAIN;
 
-    protected enum OverlayMode {
-        NONE,
-        START_OBJECTIVES,
-        PAUSE
-    }
 
 
     protected OverlayMode overlayMode = OverlayMode.NONE;
@@ -103,17 +101,45 @@ public abstract class BaseMinigameScreen extends BaseScreen {
         modalDimTexture = new Texture(pixmap);
         pixmap.dispose();
     }
+    private void updateGameEnd(float delta) {
+        if (gameEndHandled) {
+            return;
+        }
 
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return;
+        }
+
+
+        if (!currentGame.getGameState().isFinished()) {
+            gameEndTimer = 0f;
+            return;
+        }
+
+        gameEndTimer += delta;
+        if (gameEndTimer < GAME_END_DELAY) {
+            return;
+        }
+        gameEndHandled = true;
+
+        overlayMode = OverlayMode.RESULT;
+        onGameFinished(currentGame.getGameState().isWon());
+    }
     @Override
     public InputMultiplexer getInputProcessor() {
         return inputMultiplexer;
+    }
+
+    protected void onGameFinished(boolean won) {
+
     }
 
     @Override
     public void show() {
         game.hideHud();
             gameHud.showGameHud();
-        Gdx.input.setInputProcessor(inputMultiplexer);
+
         Actor startPopup = createStartPopup(this::continueAfterObjectives);
         if (startPopup != null) {
             overlayMode = OverlayMode.START_OBJECTIVES;
@@ -352,6 +378,7 @@ public abstract class BaseMinigameScreen extends BaseScreen {
         handlePauseShortcut();
         updateIntro(safeDelta);
         updateGameplayTicks(safeDelta);
+        updateGameEnd(safeDelta);
         uiStage.act(safeDelta);
 
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
@@ -359,7 +386,12 @@ public abstract class BaseMinigameScreen extends BaseScreen {
                 GL20.GL_COLOR_BUFFER_BIT
         );
 
-        game.getBatch().setProjectionMatrix(camera.combined);
+
+        worldViewport.apply();
+
+        game.getBatch().setProjectionMatrix(
+                camera.combined
+        );
         game.getBatch().begin();
         float currentX = 0f;
 
@@ -379,9 +411,11 @@ public abstract class BaseMinigameScreen extends BaseScreen {
         if (overlayMode == OverlayMode.NONE) {
             worldStage.act(safeDelta);
         }
-
+        renderWorldUnderlay();
+        worldViewport.apply();
         worldStage.draw();
         renderWorldOverlay();
+        uiStage.getViewport().apply();
         uiStage.draw();
     }
 
@@ -392,7 +426,9 @@ public abstract class BaseMinigameScreen extends BaseScreen {
     protected void onGameplayStarted() {
 
     }
+    protected void renderWorldUnderlay() {
 
+    }
 
     protected final boolean isPlaying() {
         return introState == IntroState.PLAYING;

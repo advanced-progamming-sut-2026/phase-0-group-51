@@ -24,27 +24,42 @@ public class GameOverPopup extends Table {
     private final PvzGame game;
     private final ChapterTheme theme;
     private final int levelNumber;
+    private final String titleText;
+    private final String exitText;
+    private final String retryText;
 
+    private final Runnable exitAction;
+    private final Runnable retryAction;
     public GameOverPopup(PvzGame game, ChapterTheme theme, int levelNumber) {
+    this(game, "THE ZOMBIES\nATE YOUR\nBRAINS!", "EXIT TO MAP", () -> Gdx.app.postRunnable(() -> game.showScreen(new ChapterMapScreen(game, theme))), "RETRY",
+            () -> Gdx.app.postRunnable(() -> game.showScreen(new GameScreen(game, theme, levelNumber))));
+    }
+    public GameOverPopup(PvzGame game, String titleText, String exitText, Runnable exitAction, String retryText, Runnable retryAction) {
+
         this.game = game;
-        this.theme = theme;
-        this.levelNumber = levelNumber;
+        this.theme = null;
+        this.levelNumber = 0;
+        this.titleText = titleText;
+        this.exitText = exitText;
+        this.exitAction = exitAction;
+        this.retryText = retryText;
+        this.retryAction = retryAction;
 
         setFillParent(true);
 
-        setBackground(game.getSkin().newDrawable("white_pixel", new Color(0f, 0f, 0f, 1f)));
+        setBackground(
+                game.getSkin().newDrawable("white_pixel", new Color(0f, 0f, 0f, 1f))
+        );
 
         getColor().a = 0f;
-        addAction(Actions.fadeIn(2.0f));
-
+        addAction(Actions.fadeIn(2f));
         buildUi();
     }
-
     private void buildUi() {
         BitmapFont terrorFont = game.getSkin().getFont("FBUSV8C5EI_2");
         Label.LabelStyle titleStyle = new Label.LabelStyle(terrorFont, Color.valueOf("39FF14"));
 
-        Label titleLbl = new Label("THE ZOMBIES\nATE YOUR\nBRAINS!", titleStyle);
+        Label titleLbl = new Label(titleText, titleStyle);
         titleLbl.setAlignment(Align.center);
         titleLbl.setFontScale(2.1f);
 
@@ -54,24 +69,30 @@ public class GameOverPopup extends Table {
 
         Table btnTable = new Table();
 
-        TextButton exitBtn = createCustomButton("EXIT TO MAP", "IMAGE_UI_GENERIC_BROWNBUTTON");
-        exitBtn.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.postRunnable(() -> {
-                    game.showScreen(new ChapterMapScreen(game, theme));
-                });
-            }
-        });
-        TextButton retryBtn = createCustomButton("RETRY", "IMAGE_UI_GENERIC_PURPLEBUTTON");
-        retryBtn.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.postRunnable(() -> {
-                    game.showScreen(new GameScreen(game, theme, levelNumber));
-                });
-            }
-        });
+        TextButton exitBtn = createCustomButton(exitText, "IMAGE_UI_GENERIC_BROWNBUTTON");
+        exitBtn.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        if (exitAction != null) {
+                            exitAction.run();
+                        }
+                    }
+                }
+        );
+
+
+        TextButton retryBtn = createCustomButton(retryText, "IMAGE_UI_GENERIC_PURPLEBUTTON");
+        retryBtn.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        if (retryAction != null) {
+                            retryAction.run();
+                        }
+                    }
+                }
+        );
 
         btnTable.add(exitBtn).size(180, 60).padRight(30);
         btnTable.add(retryBtn).size(180, 60);

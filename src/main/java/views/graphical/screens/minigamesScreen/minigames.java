@@ -37,6 +37,7 @@ import models.minigames.MinigameType;
 
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.MainMenuScreen;
+import views.graphical.screens.minigamesScreen.iZombie.IZombieScreen;
 import views.graphical.screens.minigamesScreen.vaseBreaker.VaseBreakerScreen;
 
 public class minigames extends BaseScreen {
@@ -614,6 +615,10 @@ public class minigames extends BaseScreen {
     private void startStage(int stageNumber) {
         if (minigameType == MinigameType.VASEBREAKER) {
             Gdx.app.postRunnable(() -> game.showScreen(new VaseBreakerScreen(game, stageNumber)));
+            return;
+        }
+        if (minigameType == MinigameType.IZOMBIE) {
+            Gdx.app.postRunnable(() -> game.showScreen(new IZombieScreen(game, stageNumber)));
             return;
         }
         Result result;
