@@ -28,6 +28,7 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
@@ -53,6 +54,8 @@ import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
+
+import java.util.List;
 
 public class GameScreen extends BaseScreen {
 
@@ -1307,4 +1310,5 @@ public class GameScreen extends BaseScreen {
         shapeRenderer.dispose();
         modalDimTexture.dispose();
     }
+
 }
