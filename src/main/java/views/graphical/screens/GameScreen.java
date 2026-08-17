@@ -28,6 +28,7 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.Level;
@@ -53,6 +54,8 @@ import views.graphical.ui.PauseMenuPopup;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
+
+import java.util.List;
 
 public class GameScreen extends BaseScreen {
 
@@ -244,6 +247,7 @@ public class GameScreen extends BaseScreen {
                 theme.getAllowedZombies()
             )
         );
+        dumpAllZombieAnimations();
     }
 
     private void loadBackgroundAssets() {
@@ -1124,6 +1128,55 @@ public class GameScreen extends BaseScreen {
                     + safeDelta
             );
     }
+    private void dumpAllZombieAnimations() {
+        for (ChapterTheme chapter : ChapterTheme.values()) {
+            Gdx.app.log(
+                "ZOMBIE_CLIPS",
+                "========== " + chapter + " =========="
+            );
+
+            for (ZombieType type : ZombieType.values()) {
+                String pamPath =
+                    ZombieAnimationSystem.resolvePamPath(
+                        chapter,
+                        type
+                    );
+
+                if (pamPath == null || pamPath.isBlank()) {
+                    Gdx.app.log(
+                        "ZOMBIE_CLIPS",
+                        type + " -> NO PAM"
+                    );
+                    continue;
+                }
+
+                try {
+                    game.getPamPlayer().loadSync(pamPath);
+
+                    List<String> clips =
+                        game.getPamPlayer().clips(pamPath);
+
+                    Gdx.app.log(
+                        "ZOMBIE_CLIPS",
+                        type
+                            + "\nPAM: "
+                            + pamPath
+                            + "\nCLIPS: "
+                            + clips
+                            + "\n"
+                    );
+                } catch (RuntimeException e) {
+                    Gdx.app.error(
+                        "ZOMBIE_CLIPS",
+                        type
+                            + " -> FAILED: "
+                            + pamPath,
+                        e
+                    );
+                }
+            }
+        }
+    }
 
     private float secondsUntilNextModelTick(
         Game currentGame
@@ -1307,4 +1360,5 @@ public class GameScreen extends BaseScreen {
         shapeRenderer.dispose();
         modalDimTexture.dispose();
     }
+
 }
