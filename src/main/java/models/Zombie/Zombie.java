@@ -42,7 +42,7 @@ public class Zombie {
     private int lane;
     private float x;
     private int direction = 1;// 1 = walking normal, -1 = reversed
-    private float speedDecrease = 0.85f;
+    private float speedDecrease = 0.83f;
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
