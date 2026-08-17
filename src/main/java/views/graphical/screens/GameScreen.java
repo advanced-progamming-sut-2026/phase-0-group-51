@@ -247,7 +247,6 @@ public class GameScreen extends BaseScreen {
                 theme.getAllowedZombies()
             )
         );
-        dumpAllZombieAnimations();
     }
 
     private void loadBackgroundAssets() {
@@ -1127,55 +1126,6 @@ public class GameScreen extends BaseScreen {
                 renderInterpolationElapsed
                     + safeDelta
             );
-    }
-    private void dumpAllZombieAnimations() {
-        for (ChapterTheme chapter : ChapterTheme.values()) {
-            Gdx.app.log(
-                "ZOMBIE_CLIPS",
-                "========== " + chapter + " =========="
-            );
-
-            for (ZombieType type : ZombieType.values()) {
-                String pamPath =
-                    ZombieAnimationSystem.resolvePamPath(
-                        chapter,
-                        type
-                    );
-
-                if (pamPath == null || pamPath.isBlank()) {
-                    Gdx.app.log(
-                        "ZOMBIE_CLIPS",
-                        type + " -> NO PAM"
-                    );
-                    continue;
-                }
-
-                try {
-                    game.getPamPlayer().loadSync(pamPath);
-
-                    List<String> clips =
-                        game.getPamPlayer().clips(pamPath);
-
-                    Gdx.app.log(
-                        "ZOMBIE_CLIPS",
-                        type
-                            + "\nPAM: "
-                            + pamPath
-                            + "\nCLIPS: "
-                            + clips
-                            + "\n"
-                    );
-                } catch (RuntimeException e) {
-                    Gdx.app.error(
-                        "ZOMBIE_CLIPS",
-                        type
-                            + " -> FAILED: "
-                            + pamPath,
-                        e
-                    );
-                }
-            }
-        }
     }
 
     private float secondsUntilNextModelTick(
