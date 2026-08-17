@@ -30,15 +30,15 @@ public class PlantSelectionController {
         Game game = App.getInstance().getCurrentGame();
         StringBuilder result = new StringBuilder();
         PlantRegistry.getAll().stream()
-                .sorted(Comparator.comparingInt(PlantData::id))
-                .filter(plant -> !isForbiddenForCurrentLevel(plant))
-                .forEach(plant -> result
-                        .append(plant.name())
-                        .append(selectionStatus(game, plant))
-                        .append("\n"));
+            .sorted(Comparator.comparingInt(PlantData::id))
+            .filter(plant -> !isForbiddenForCurrentLevel(plant))
+            .forEach(plant -> result
+                .append(plant.name())
+                .append(selectionStatus(game, plant))
+                .append("\n"));
 
         return new Result(true, result.toString(), null);
-            }
+    }
 
     public Result showAvailablePlants(){
         Game game = App.getInstance().getCurrentGame();
@@ -49,27 +49,27 @@ public class PlantSelectionController {
             StringBuilder forcedPlants = new StringBuilder();
             for (PlantData plant : game.getSelectedPlantsForThisGame()) {
                 forcedPlants.append(plant.name()).append(" [forced]\n");
-        }
+            }
             return new Result(true, forcedPlants.toString(), null);
-    }
+        }
 
         Set<Integer> unlockedPlantIds = PlantRepository.loadUnlockedPlants(
-                App.getInstance().getLoggedInUser().getId()
+            App.getInstance().getLoggedInUser().getId()
         );
         StringBuilder result = new StringBuilder();
 
         unlockedPlantIds.stream()
-                .map(PlantRegistry::getById)
-                .filter(plant -> plant != null)
-                .sorted(Comparator.comparingInt(PlantData::id))
-                .filter(plant -> !isForbiddenForCurrentLevel(plant))
-                .filter(plant -> !game.isPlantLockedByFamilyMode(plant))
-                .forEach(plant -> result
-                        .append(plant.name())
-                        .append(game.isFamilyChoicePlant(plant)
-                                ? " [family choice]"
-                                : "")
-                        .append("\n"));
+            .map(PlantRegistry::getById)
+            .filter(plant -> plant != null)
+            .sorted(Comparator.comparingInt(PlantData::id))
+            .filter(plant -> !isForbiddenForCurrentLevel(plant))
+            .filter(plant -> !game.isPlantLockedByFamilyMode(plant))
+            .forEach(plant -> result
+                .append(plant.name())
+                .append(game.isFamilyChoicePlant(plant)
+                    ? " [family choice]"
+                    : "")
+                .append("\n"));
 
         return new Result(true, result.toString(), null);
     }
@@ -82,23 +82,23 @@ public class PlantSelectionController {
         PlantData plant = imitaterRequest ? PlantRegistry.getById(IMITATER_ID) : PlantRegistry.getByName(plantType);
         if (imitaterRequest && imitaterTarget == null) {
             return new Result(
-                    false, "Use add plant -t Imitater:<plant name> and choose a valid "
-                    + "non-Imitater plant to copy.", null);}
+                false, "Use add plant -t Imitater:<plant name> and choose a valid "
+                + "non-Imitater plant to copy.", null);}
         if (plant == null) return new Result(false, "Plant does not exist.", null);
         if (game.isForcedLoadoutMode()) {
             return new Result(false, "All eight plant are filled and locked in Forced Plants mode."
-                    , null);}
+                , null);}
         if (isForbiddenForCurrentLevel(plant)) {
             return new Result(
-                    false, "Sun-producing and water-only plants cannot be selected "
-                            + "in the dry Plant What You Get level.", null);
+                false, "Sun-producing and water-only plants cannot be selected "
+                + "in the dry Plant What You Get level.", null);
         }
         if (game.isPlantLockedByFamilyMode(plant)) {
             PlantData allowedPlant = game.getAllowedPlantForFamily(plant);
             String allowedName = allowedPlant == null ? "another plant" : allowedPlant.name();
             return new Result(false,
-                    plant.name() + " is locked in Family Lock mode. Only "
-                            + allowedName + " is available from the " + plant.category() + " family.", null);
+                plant.name() + " is locked in Family Lock mode. Only "
+                    + allowedName + " is available from the " + plant.category() + " family.", null);
         }
         Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
         if (!unlocked.contains(plant.id())) {
@@ -108,112 +108,111 @@ public class PlantSelectionController {
         if (selected.contains(plant)) {
             if (plant.id() == IMITATER_ID && game.getImitaterTarget() != null) {
                 return new Result(false,
-                        "Imitater is already selected and copies "
-                                + game.getImitaterTarget().name() + ".", null);}
+                    "Imitater is already selected and copies "
+                        + game.getImitaterTarget().name() + ".", null);}
             return new Result(false, "Plant already selected.", null);}
         if (imitaterRequest && !selected.contains(imitaterTarget)) {
             return new Result(false, "Select " + imitaterTarget.name()
-                            + " first, then add Imitater to create the second card.", null);}
+                + " first, then add Imitater to create the second card.", null);}
         if (selected.size() >= 8) {return new Result(false, "Plant selection is full.", null);}
         selected.add(plant);
         if (imitaterRequest) {
             game.setImitaterTarget(imitaterTarget);
             return new Result(true,
-            "Imitater added successfully and will copy " + imitaterTarget.name() + ".", null);
+                "Imitater added successfully and will copy " + imitaterTarget.name() + ".", null);
         }
         return new Result(true, "Plant added successfully.", null);
     }
-public Result removePlant(String plantType){
+    public Result removePlant(String plantType){
         Game game = App.getInstance().getCurrentGame();
         if (game == null) {
             return new Result(false, "No level is selected.", null);
         }
 
-    PlantData plant = isImitaterRequest(plantType)
+        PlantData plant = isImitaterRequest(plantType)
             ? PlantRegistry.getById(IMITATER_ID)
             : PlantRegistry.getByName(plantType);
-    if (plant == null) {
-        return new Result(false, "Plant does not exist.", null);
-    }
+        if (plant == null) {
+            return new Result(false, "Plant does not exist.", null);
+        }
 
         if (game.isForcedLockedPlant(plant)) {
             return new Result(
-                    false, plant.name() + " is locked in a forced slot and cannot be removed.",
-                    null
+                false, plant.name() + " is locked in a forced slot and cannot be removed.",
+                null
             );
         }
-    List<PlantData> selected = game.getSelectedPlantsForThisGame();
-    PlantData imitaterTarget = game.getImitaterTarget();
-    PlantData imitater = PlantRegistry.getById(IMITATER_ID);
-    if (imitaterTarget != null
+        List<PlantData> selected = game.getSelectedPlantsForThisGame();
+        PlantData imitaterTarget = game.getImitaterTarget();
+        PlantData imitater = PlantRegistry.getById(IMITATER_ID);
+        if (imitaterTarget != null
             && imitaterTarget.equals(plant)
             && selected.contains(imitater)) {
-        return new Result(false,
+            return new Result(false,
                 "Remove Imitater before removing the plant it copies.", null
-        );
-    }
-    if (!selected.remove(plant)) {
-        return new Result(false, "Plant is not selected.", null);
-    }
-    if (plant.id() == IMITATER_ID) {
-        game.setImitaterTarget(null);}
-    return new Result(true, "Plant removed successfully.", null);
-}
-// for testing all plants
-public Result unlockAllPlantsForTesting() {
-    User user = App.getInstance().getLoggedInUser();
-    if (user == null) {
-        return new Result(false, "You must be logged in.", null);
-    }
-
-    Set<Integer> unlockedBefore = PlantRepository.loadUnlockedPlants(user.getId());
-    for (PlantData plant : PlantRegistry.getAll()) {
-        if (!unlockedBefore.contains(plant.id())) {
-            PlantRepository.unlockPlant(user.getId(), plant.id());
+            );
         }
+        if (!selected.remove(plant)) {
+            return new Result(false, "Plant is not selected.", null);
+        }
+        if (plant.id() == IMITATER_ID) {
+            game.setImitaterTarget(null);}
+        return new Result(true, "Plant removed successfully.", null);
     }
+    public Result unlockAllPlantsForTesting() {
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return new Result(false, "You must be logged in.", null);
+        }
 
-    Set<Integer> unlockedAfter = PlantRepository.loadUnlockedPlants(user.getId());
-    int newlyUnlocked = unlockedAfter.size() - unlockedBefore.size();
-    if (newlyUnlocked == 0) {
-        return new Result(
+        Set<Integer> unlockedBefore = PlantRepository.loadUnlockedPlants(user.getId());
+        for (PlantData plant : PlantRegistry.getAll()) {
+            if (!unlockedBefore.contains(plant.id())) {
+                PlantRepository.unlockPlant(user.getId(), plant.id());
+            }
+        }
+
+        Set<Integer> unlockedAfter = PlantRepository.loadUnlockedPlants(user.getId());
+        int newlyUnlocked = unlockedAfter.size() - unlockedBefore.size();
+        if (newlyUnlocked == 0) {
+            return new Result(
                 true,
                 "CHEAT: All plants are already unlocked for testing.",
                 null
+            );
+        }
+
+        return new Result(
+            true,
+            "CHEAT: " + newlyUnlocked
+                + " plants were unlocked for testing. All registered plants "
+                + "are now available in plant selection.",
+            null
         );
     }
 
-    return new Result(
-            true,
-            "CHEAT: " + newlyUnlocked
-                    + " plants were unlocked for testing. All registered plants "
-                    + "are now available in plant selection.",
-            null
-    );
-}
-
-public Result boostPlant(String plantType){
-    PlantData plant = PlantRegistry.getByName(plantType);
-    if (plant == null) {
-        return new Result(false, "Plant does not exist.", null);
+    public Result boostPlant(String plantType){
+        PlantData plant = PlantRegistry.getByName(plantType);
+        if (plant == null) {
+            return new Result(false, "Plant does not exist.", null);
+        }
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
+        if (!unlocked.contains(plant.id())) {
+            return new Result(false, "Plant is locked.", null);
+        }
+        if (App.getInstance().getLoggedInUser().getGems()<2) {
+            return new Result(false, "Not enough gems.", null);
+        }
+        if (PlantBoostRepository.hasBoost(App.getInstance().getLoggedInUser().getId(), plant.id())) {
+            return new Result(false, "This plant already has a stored boost.", null);
+        }
+        App.getInstance().getLoggedInUser().setGems(App.getInstance().getLoggedInUser().getGems() - 2);
+        userRepository.updateStats(App.getInstance().getLoggedInUser());
+        PlantBoostRepository.addBoost(App.getInstance().getLoggedInUser().getId(), plant.id());
+        return new Result(true, "Plant boosted successfully.", null);
     }
-    Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
-    if (!unlocked.contains(plant.id())) {
-        return new Result(false, "Plant is locked.", null);
-    }
-    if (App.getInstance().getLoggedInUser().getGems()<2) {
-        return new Result(false, "Not enough gems.", null);
-    }
-    if (PlantBoostRepository.hasBoost(App.getInstance().getLoggedInUser().getId(), plant.id())) {
-        return new Result(false, "This plant already has a stored boost.", null);
-    }
-    App.getInstance().getLoggedInUser().setGems(App.getInstance().getLoggedInUser().getGems() - 2);
-    userRepository.updateStats(App.getInstance().getLoggedInUser());
-    PlantBoostRepository.addBoost(App.getInstance().getLoggedInUser().getId(), plant.id());
-    return new Result(true, "Plant boosted successfully.", null);
-}
-public Result startGame(){
-    Game currentGame = App.getInstance().getCurrentGame();
+    public Result startGame(){
+        Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null) {
             return new Result(false, "No level is selected.", null);
         }
@@ -227,74 +226,76 @@ public Result startGame(){
 
     private Result validateGameStart(Game currentGame) {
         if (currentGame.isLockedPlantsLevel()
-                && !currentGame.hasChosenLockedPlantsMode()) {
+            && !currentGame.hasChosenLockedPlantsMode()) {
             return new Result(
-                    false,
-                    "Choose Family Lock or Forced Plants before starting the level.",
-                    null
+                false,
+                "Choose Family Lock or Forced Plants before starting the level.",
+                null
             );
         }
 
         if (currentGame.isForcedLoadoutMode()
-                && currentGame.getSelectedPlantsForThisGame().size() != 8) {
+            && currentGame.getSelectedPlantsForThisGame().size() != 8) {
             return new Result(
-                    false,
-                    "Forced Plants mode requires exactly eight locked plants.",
-                    null
+                false,
+                "Forced Plants mode requires exactly eight locked plants.",
+                null
             );
         }
 
         if (currentGame.getSelectedPlantsForThisGame().stream()
-                .anyMatch(currentGame::isPlantLockedByFamilyMode)) {
+            .anyMatch(currentGame::isPlantLockedByFamilyMode)) {
             return new Result(
-                    false,
-                    "Remove every plant that is locked by Family Lock mode.",
-                    null
+                false,
+                "Remove every plant that is locked by Family Lock mode.",
+                null
             );
         }
         return validateSelectedPlants(currentGame);
     }
 
     private Result validateSelectedPlants(Game currentGame) {
-    if (currentGame.getSelectedPlantsForThisGame().stream()
+        if (currentGame.getSelectedPlantsForThisGame().stream()
             .anyMatch(this::isForbiddenForCurrentLevel)) {
-        return new Result(
+            return new Result(
                 false,
                 "Remove all sun-producing and water-only plants before starting "
-                        + "Plant What You Get.",
+                    + "Plant What You Get.",
                 null
-        );
-    }
-    if (currentGame.getSelectedPlantsForThisGame().isEmpty()) {
-        return new Result(false,
-                    "Select some plants before starting the game.",
-                    null
             );
-    }
-    PlantData imitater = PlantRegistry.getById(IMITATER_ID);
-    if (currentGame.getSelectedPlantsForThisGame().contains(imitater)) {
-        PlantData target = currentGame.getImitaterTarget();
-        if (target == null
+        }
+        if (currentGame.getSelectedPlantsForThisGame().isEmpty()) {
+            return new Result(false,
+                "Select some plants before starting the game.",
+                null
+            );
+        }
+        PlantData imitater = PlantRegistry.getById(IMITATER_ID);
+        if (currentGame.getSelectedPlantsForThisGame().contains(imitater)) {
+            PlantData target = currentGame.getImitaterTarget();
+            if (target == null
                 || !currentGame.getSelectedPlantsForThisGame().contains(target)) {
-            return new Result(
+                return new Result(
                     false,
                     "Imitater must have one selected plant to copy before the game starts.",
                     null
-            );
+                );
+            }
         }
-    }
         return null;
     }
 
     private Result loadAndStartGame(Game currentGame) {
         try {
-     currentGame.loadLevel();
-     currentGame.start();
+            if (currentGame.getGameState() == null) {
+                currentGame.loadLevel();
+            }
+            currentGame.start();
             if (currentGame.getSelectedLevel().type() == LevelType.LOVE_YOUR_PLANTS) {
                 return new Result(
-                        true, "Game started successfully.\n"
-                        + "Special rule: you lose when " + currentGame.getSelectedLevel().plantLossLimit()
-                        + " plants are destroyed or eaten.\n", null);
+                    true, "Game started successfully.\n"
+                    + "Special rule: you lose when " + currentGame.getSelectedLevel().plantLossLimit()
+                    + " plants are destroyed or eaten.\n", null);
             }
         } catch (RuntimeException exception) {
             String message = exception.getMessage();
@@ -303,60 +304,60 @@ public Result startGame(){
             }
             return new Result(false, message, null);
         }
-    App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
-    if (currentGame.getGameState().isTimedBattleActive()) {
-        return new Result(
+        App.getInstance().setCurrentMenu(Menu.GAME_VIEW);
+        if (currentGame.getGameState().isTimedBattleActive()) {
+            return new Result(
                 true,
                 "Timed Battle started. Complete both objectives before time runs out.\n"
-                        + currentGame.getGameState().timedBattleStatusLine(),
+                    + currentGame.getGameState().timedBattleStatusLine(),
                 null
-        );
-    }
-    if (currentGame.getGameState().isSaveOurSeedsActive()) {
-        return new Result(
+            );
+        }
+        if (currentGame.getGameState().isSaveOurSeedsActive()) {
+            return new Result(
                 true,
                 "Save Our Seeds started. "
-                        + currentGame.getGameState().getSaveOurSeedsStatus()
-                        + " Losing any protected plant loses the level immediately. "
-                        + "Use 'show map' to see the warning rows and E markers.",
+                    + currentGame.getGameState().getSaveOurSeedsStatus()
+                    + " Losing any protected plant loses the level immediately. "
+                    + "Use 'show map' to see the warning rows and E markers.",
                 null
-        );
-    }
-    if (currentGame.isPreparingPlantWhatYouGet()) {
-        return new Result(
+            );
+        }
+        if (currentGame.isPreparingPlantWhatYouGet()) {
+            return new Result(
                 true,
                 "Plant What You Get preparation started with "
-                        + currentGame.getGameState().getSun()
-                        + " sun. The lawn is dry and zombie waves are paused. "
-                        + "Plant without recharge, then use 'start zombie waves'.",
+                    + currentGame.getGameState().getSun()
+                    + " sun. The lawn is dry and zombie waves are paused. "
+                    + "Plant without recharge, then use 'start zombie waves'.",
                 null
-        );
+            );
+        }
+        return new Result(true, "Game started successfully.", null);
     }
-    return new Result(true, "Game started successfully.", null);
-}
-public Result showCurrentMenu(){
+    public Result showCurrentMenu(){
         Game game = App.getInstance().getCurrentGame();
         if (game != null && game.hasChosenLockedPlantsMode()) {
             return new Result(
-                    true,
-                    "You are in the Plant Selection Menu. Locked Plants mode: "
-                            + game.getLockedPlantsMode().getCommandName() + ".\n",
-                    null
-            );
-}
-        return new Result(
                 true,
-                "You are now in the Plant Selection Menu.\n",
+                "You are in the Plant Selection Menu. Locked Plants mode: "
+                    + game.getLockedPlantsMode().getCommandName() + ".\n",
                 null
+            );
+        }
+        return new Result(
+            true,
+            "You are now in the Plant Selection Menu.\n",
+            null
         );
     }
 
-public void exitMenu(){
-    Game currentGame = App.getInstance().getCurrentGame();
-    boolean scoringGame = currentGame instanceof ScoringGame;
-    App.getInstance().setCurrentGame(null);
+    public void exitMenu(){
+        Game currentGame = App.getInstance().getCurrentGame();
+        boolean scoringGame = currentGame instanceof ScoringGame;
+        App.getInstance().setCurrentGame(null);
         App.getInstance().setCurrentMenu(
-                scoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU
+            scoringGame ? Menu.MAIN_MENU : Menu.GAME_MENU
         );
     }
 
@@ -365,95 +366,95 @@ public void exitMenu(){
             return "";
         }
         if (plant.id() == IMITATER_ID
-                && game.getSelectedPlantsForThisGame().contains(plant)
-                && game.getImitaterTarget() != null) {
+            && game.getSelectedPlantsForThisGame().contains(plant)
+            && game.getImitaterTarget() != null) {
             return " [selected; copies " + game.getImitaterTarget().name() + "]";
         }
         if (game.isForcedLoadoutMode()) {
             return game.isForcedLockedPlant(plant)
-                    ? " [forced]"
-                    : " [locked in Forced Plants mode]";
+                ? " [forced]"
+                : " [locked in Forced Plants mode]";
         }
         if (game.isPlantLockedByFamilyMode(plant)) {
             PlantData allowedPlant = game.getAllowedPlantForFamily(plant);
             String allowedName = allowedPlant == null
-                    ? "another plant"
-                    : allowedPlant.name();
+                ? "another plant"
+                : allowedPlant.name();
             return " [locked; " + allowedName + " is the family choice]";
         }
         if (game.isFamilyChoicePlant(plant)) {
             return " [family choice]";
         }
         return "";
-}
-
-private boolean isImitaterRequest(String input) {
-    if (input == null) {
-        return false;
     }
-    String normalized = input.trim();
-    return normalized.equalsIgnoreCase("Imitater")
+
+    private boolean isImitaterRequest(String input) {
+        if (input == null) {
+            return false;
+        }
+        String normalized = input.trim();
+        return normalized.equalsIgnoreCase("Imitater")
             || normalized.regionMatches(
-                    true,
-                    0,
-                    IMITATER_PREFIX,
-                    0,
-                    IMITATER_PREFIX.length()
-            );
-}
-
-private PlantData parseImitaterTarget(String input) {
-    if (input == null) {
-        return null;
-    }
-    String normalized = input.trim();
-    if (!normalized.regionMatches(
             true,
             0,
             IMITATER_PREFIX,
             0,
             IMITATER_PREFIX.length()
-    )) {
-        return null;
+        );
     }
-    String copiedName = normalized.substring(IMITATER_PREFIX.length()).trim();
-    if (copiedName.isEmpty()) {
-        return null;
-    }
-    PlantData target = PlantRegistry.getByName(copiedName);
-    if (target == null || target.id() == IMITATER_ID) {
-        return null;
-    }
-    return target;
-}
 
-private boolean isForbiddenForCurrentLevel(PlantData plant) {
-    Game game = App.getInstance().getCurrentGame();
-    if (game == null || plant == null) {
-        return false;
+    private PlantData parseImitaterTarget(String input) {
+        if (input == null) {
+            return null;
+        }
+        String normalized = input.trim();
+        if (!normalized.regionMatches(
+            true,
+            0,
+            IMITATER_PREFIX,
+            0,
+            IMITATER_PREFIX.length()
+        )) {
+            return null;
+        }
+        String copiedName = normalized.substring(IMITATER_PREFIX.length()).trim();
+        if (copiedName.isEmpty()) {
+            return null;
+        }
+        PlantData target = PlantRegistry.getByName(copiedName);
+        if (target == null || target.id() == IMITATER_ID) {
+            return null;
+        }
+        return target;
     }
-    int chapterIndex = game.getCurrentChapterIndex();
-    int levelIndex = game.getCurrentLevelIndex();
+
+    private boolean isForbiddenForCurrentLevel(PlantData plant) {
+        Game game = App.getInstance().getCurrentGame();
+        if (game == null || plant == null) {
+            return false;
+        }
+        int chapterIndex = game.getCurrentChapterIndex();
+        int levelIndex = game.getCurrentLevelIndex();
         if (chapterIndex < 0 || chapterIndex >= game.getChapters().size()) {
-        return false;
-    }
+            return false;
+        }
         if (levelIndex < 0
-                || levelIndex >= game.getChapters().get(chapterIndex).getLevels().size()) {
+            || levelIndex >= game.getChapters().get(chapterIndex).getLevels().size()) {
             return false;
         }
 
-    LevelType type = game.getChapters().get(chapterIndex).getLevels().get(levelIndex)
+        LevelType type = game.getChapters().get(chapterIndex).getLevels().get(levelIndex)
             .type();
-    return type == LevelType.PLANT_WHAT_YOU_GET && (isSunProducer(plant)
+        return type == LevelType.PLANT_WHAT_YOU_GET && (isSunProducer(plant)
             || plant.id() == 58 || plant.tags().contains(PlantTag.WATER));
-}
+    }
 
-private boolean isSunProducer(PlantData plant) {
-    String category = plant.category() == null ? ""
+    private boolean isSunProducer(PlantData plant) {
+        String category = plant.category() == null ? ""
             : plant.category().replaceAll("[^A-Za-z]", "").toLowerCase();
-    return category.equals("sunproducer") || plant.tags().contains(PlantTag.SUN) ||
+        return category.equals("sunproducer") || plant.tags().contains(PlantTag.SUN) ||
             (plant.id() >= 1 && plant.id() <= 5);
-}
+    }
 
 
 }
