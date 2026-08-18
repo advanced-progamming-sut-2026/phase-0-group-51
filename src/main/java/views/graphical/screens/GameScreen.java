@@ -50,6 +50,7 @@ import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
+import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -116,6 +117,7 @@ public class GameScreen extends BaseScreen {
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
+    private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
 
@@ -238,6 +240,14 @@ public class GameScreen extends BaseScreen {
                 game.getPamPlayer(),
                 worldStage,
                 zombieAnimationSystem,
+                theme
+            );
+
+        mowerAnimationSystem =
+            new MowerAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
                 theme
             );
 
@@ -472,6 +482,13 @@ public class GameScreen extends BaseScreen {
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
+
+        mowerAnimationSystem.update(
+            0f,
+            0f,
+            currentGame.getGameState().getTickCounter(),
+            currentGame.getGameState()
+        );
 
         placementPreview =
             new PlantActor(game);
@@ -976,6 +993,8 @@ public class GameScreen extends BaseScreen {
         updateRenderTickInterpolation(delta);
         checkGameEnd();
 
+        float gameplayDelta = scaledGameplayDelta(delta);
+
         Game renderGame = App.getInstance().getCurrentGame();
         if (introState == IntroState.PLAYING
             && overlayMode == OverlayMode.NONE
@@ -988,14 +1007,21 @@ public class GameScreen extends BaseScreen {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
-                    delta,
+                    gameplayDelta,
                     getRenderTickAlpha(),
                     currentGame.getGameState().getTickCounter(),
                     currentGame.getGameState().getZombiesInTheGame()
                 );
 
+                mowerAnimationSystem.update(
+                    gameplayDelta,
+                    getRenderTickAlpha(),
+                    currentGame.getGameState().getTickCounter(),
+                    currentGame.getGameState()
+                );
+
                 sandstormAnimationSystem.update(
-                    delta,
+                    gameplayDelta,
                     currentGame
                         .getGameState()
                         .getZombiesInTheGame()
@@ -1079,7 +1105,11 @@ public class GameScreen extends BaseScreen {
         if (overlayMode == OverlayMode.NONE
             && (introState == IntroState.PLAYING
             || animateZombiePreview)) {
-            worldStage.act(delta);
+            worldStage.act(
+                introState == IntroState.PLAYING
+                    ? gameplayDelta
+                    : delta
+            );
         }
 
         worldStage.draw();
@@ -1169,6 +1199,12 @@ public class GameScreen extends BaseScreen {
         modalOverlay.toFront();
     }
 
+    private float scaledGameplayDelta(float delta) {
+        float safeDelta = Math.max(0f, Math.min(delta, 0.25f));
+        int speed = Math.max(1, Math.min(3, GameSettings.gameSpeed));
+        return safeDelta * speed;
+    }
+
     private void updateGameplayTicks(float delta) {
         if (introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
             return;
@@ -1186,7 +1222,7 @@ public class GameScreen extends BaseScreen {
 
         float tickDuration = 1f / ticksPerSecond;
 
-        gameTickAccumulator += Math.min(delta, 0.25f);
+        gameTickAccumulator += scaledGameplayDelta(delta);
 
         while (gameTickAccumulator >= tickDuration) {
             if (currentGame.getGameState().isFinished()) {
@@ -1223,14 +1259,7 @@ public class GameScreen extends BaseScreen {
                 .getGameState()
                 .getTickCounter();
 
-        float safeDelta =
-            Math.max(
-                0f,
-                Math.min(
-                    delta,
-                    0.25f
-                )
-            );
+        float safeDelta = scaledGameplayDelta(delta);
 
         if (renderInterpolationModelTick
             == Integer.MIN_VALUE) {
@@ -1454,6 +1483,7 @@ public class GameScreen extends BaseScreen {
         }
         zombieLevelPreview.clear();
         sandstormAnimationSystem.clear();
+        mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
         uiStage.dispose();
