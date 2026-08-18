@@ -50,6 +50,7 @@ import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
+import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -116,6 +117,7 @@ public class GameScreen extends BaseScreen {
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
+    private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
 
@@ -238,6 +240,14 @@ public class GameScreen extends BaseScreen {
                 game.getPamPlayer(),
                 worldStage,
                 zombieAnimationSystem,
+                theme
+            );
+
+        mowerAnimationSystem =
+            new MowerAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
                 theme
             );
 
@@ -472,6 +482,13 @@ public class GameScreen extends BaseScreen {
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
+
+        mowerAnimationSystem.update(
+            0f,
+            0f,
+            currentGame.getGameState().getTickCounter(),
+            currentGame.getGameState()
+        );
 
         placementPreview =
             new PlantActor(game);
@@ -996,6 +1013,13 @@ public class GameScreen extends BaseScreen {
                     currentGame.getGameState().getZombiesInTheGame()
                 );
 
+                mowerAnimationSystem.update(
+                    gameplayDelta,
+                    getRenderTickAlpha(),
+                    currentGame.getGameState().getTickCounter(),
+                    currentGame.getGameState()
+                );
+
                 sandstormAnimationSystem.update(
                     gameplayDelta,
                     currentGame
@@ -1459,6 +1483,7 @@ public class GameScreen extends BaseScreen {
         }
         zombieLevelPreview.clear();
         sandstormAnimationSystem.clear();
+        mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
         uiStage.dispose();
