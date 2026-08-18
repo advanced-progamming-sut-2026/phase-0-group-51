@@ -6,6 +6,7 @@ import lombok.Setter;
 import models.Board.Tile;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.Zombie.Behavior.SandstormTransportBehavior;
 import models.items.Wave;
 import models.quests.QuestKillSourceType;
 
@@ -19,6 +20,7 @@ import java.util.function.IntConsumer;
 @Setter
 public class ZombieWaveManager {
     private static final float BACKWATER_MAX_ZOMBIE_COST = 700f;
+    private static final int SANDSTORM_TRANSPORT_TICKS = 10;
     private final GameState gs;
     private final List<ZombieType> allowedAliases; // this chapter zombies
     private final int totalWaves;
@@ -36,27 +38,27 @@ public class ZombieWaveManager {
     private int firstWaveDelayTicks = 0;
 
     public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases,
-            int totalWaves, float baseDifficulty
+                             int totalWaves, float baseDifficulty
     ) {
         this(gs, allowedAliases, totalWaves, baseDifficulty, true, new Random(), false, Float.MAX_VALUE
         );
     }
 
     public ZombieWaveManager(GameState gs, List<ZombieType> allowedAliases, int totalWaves,
-            float baseDifficulty, boolean autoStart, Random random
+                             float baseDifficulty, boolean autoStart, Random random
     ) {
         this(gs, allowedAliases, totalWaves, baseDifficulty, autoStart, random, false, Float.MAX_VALUE);
     }
 
     private ZombieWaveManager(
-            GameState gs, List<ZombieType> allowedAliases, int totalWaves, float baseDifficulty, boolean autoStart,
-            Random random,
-            boolean endless,
-            float maxDifficulty
+        GameState gs, List<ZombieType> allowedAliases, int totalWaves, float baseDifficulty, boolean autoStart,
+        Random random,
+        boolean endless,
+        float maxDifficulty
     ) {
         this.gs = Objects.requireNonNull(gs, "GameState cannot be null.");
         this.allowedAliases = List.copyOf(
-                Objects.requireNonNull(allowedAliases, "Allowed zombies cannot be null."));
+            Objects.requireNonNull(allowedAliases, "Allowed zombies cannot be null."));
         this.random = Objects.requireNonNull(random, "Random cannot be null.");
         if (allowedAliases.isEmpty()) {
             throw new IllegalArgumentException("Allowed zombies cannot be empty.");
@@ -80,10 +82,10 @@ public class ZombieWaveManager {
     }
 
     public static ZombieWaveManager endless(GameState state,
-            List<ZombieType> allowedZombies, float baseDifficulty, float maxDifficulty, Random random) {
+                                            List<ZombieType> allowedZombies, float baseDifficulty, float maxDifficulty, Random random) {
         return new ZombieWaveManager(
-                state, allowedZombies, Integer.MAX_VALUE, baseDifficulty, true, random, true,
-                maxDifficulty);
+            state, allowedZombies, Integer.MAX_VALUE, baseDifficulty, true, random, true,
+            maxDifficulty);
     }
     public void start() {
         started = true;
@@ -170,11 +172,34 @@ public class ZombieWaveManager {
 
             int lane = random.nextInt(lanes);
             float x = spawnColumn;
-            if (wave.isFinalWave() && tornadoFinalWave && random.nextBoolean()) {
-                int movedColumns = 1 + random.nextInt(4);
-                x -= movedColumns;
-                gs.logEvent("A tornado moved " + zombie.getAlias() + " "
-                        + movedColumns + " columns forward.\n");
+
+            if (wave.isFinalWave()
+                && tornadoFinalWave
+                && random.nextBoolean()) {
+
+                int movedColumns =
+                    1 + random.nextInt(4);
+
+                float targetX = Math.max(
+                    0f,
+                    spawnColumn - movedColumns
+                );
+
+                zombie.addBehavior(
+                    new SandstormTransportBehavior(
+                        spawnColumn,
+                        targetX,
+                        SANDSTORM_TRANSPORT_TICKS
+                    )
+                );
+
+                gs.logEvent(
+                    "A sandstorm is carrying "
+                        + zombie.getAlias()
+                        + " "
+                        + movedColumns
+                        + " columns forward.\n"
+                );
             }
 
             zombie.setGlowing(random.nextInt(100) < 5);
@@ -191,8 +216,8 @@ public class ZombieWaveManager {
         }
         if (wave.getZombies().isEmpty()) {
             throw new IllegalStateException(
-                    "Wave " + wave.getWaveNumber() + " could not spawn any zombie. " + "Its difficulty budget is "
-                            + wave.getDifficulty() + "."
+                "Wave " + wave.getWaveNumber() + " could not spawn any zombie. " + "Its difficulty budget is "
+                    + wave.getDifficulty() + "."
             );
         }
     }
@@ -244,11 +269,11 @@ public class ZombieWaveManager {
             currentWave.addZombie(zombie);
         }
         gs.logEvent(
-                "Necromancy summoned "
-                        + zombie.getAlias()
-                        + " from the grave at (" + (graveTile.getColumn() + 1)
-                        + ", " + (graveTile.getLane() + 1) + ") during wave "
-                        + waveNumber + ".\n"
+            "Necromancy summoned "
+                + zombie.getAlias()
+                + " from the grave at (" + (graveTile.getColumn() + 1)
+                + ", " + (graveTile.getLane() + 1) + ") during wave "
+                + waveNumber + ".\n"
         );
 
         return zombie;
@@ -267,11 +292,11 @@ public class ZombieWaveManager {
         if (currentWave != null) {
             currentWave.addZombie(zombie);}
         gs.logEvent(
-                "Backwater spawned " + zombie.getAlias()
-                        + " from below the low shore at ("
-                        + (shoreTile.getColumn() + 1) + ", "
-                        + (shoreTile.getLane() + 1) + ") during wave "
-                        + waveNumber + ".\n"
+            "Backwater spawned " + zombie.getAlias()
+                + " from below the low shore at ("
+                + (shoreTile.getColumn() + 1) + ", "
+                + (shoreTile.getLane() + 1) + ") during wave "
+                + waveNumber + ".\n"
         );
         return zombie;
     }

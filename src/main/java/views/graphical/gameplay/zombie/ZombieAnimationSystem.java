@@ -14,6 +14,7 @@ import models.Zombie.Behavior.InstantKillBehavior;
 import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.PushObjectBehavior;
 import models.Zombie.Behavior.RangedAttackBehavior;
+import models.Zombie.Behavior.SandstormTransportBehavior;
 import models.Zombie.Behavior.SunStealBehavior;
 import models.Zombie.Behavior.TransformBehavior;
 import models.Zombie.Behavior.TurquoiseLaserBehavior;
@@ -251,6 +252,15 @@ public final class ZombieAnimationSystem {
 
     public int getVisibleZombieCount() {
         return visuals.size();
+    }
+
+    public PamAnimationActor getActor(Zombie zombie) {
+        if (zombie == null) {
+            return null;
+        }
+
+        ZombieVisual visual = visuals.get(zombie);
+        return visual == null ? null : visual.actor;
     }
 
     private void updateZombieDrawOrder() {
@@ -797,6 +807,20 @@ public final class ZombieAnimationSystem {
         Zombie zombie,
         ZombieVisual visual
     ) {
+        SandstormTransportBehavior sandstorm =
+            zombie.getBehavior(
+                SandstormTransportBehavior.class
+            );
+
+        if (sandstorm != null && sandstorm.isActive()) {
+            return new BaseAnimation(
+                visual.animations.clip(
+                    EntityAnimationState.IDLE
+                ),
+                false
+            );
+        }
+
         EntityAnimationState fallbackState = zombie.isEating()
             ? EntityAnimationState.EAT
             : EntityAnimationState.WALK;
