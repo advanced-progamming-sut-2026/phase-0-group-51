@@ -45,6 +45,7 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
+import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
@@ -114,6 +115,7 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
+    private final SandstormAnimationSystem sandstormAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
 
@@ -230,6 +232,14 @@ public class GameScreen extends BaseScreen {
             boardTransform,
             theme
         );
+
+        sandstormAnimationSystem =
+            new SandstormAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                zombieAnimationSystem,
+                theme
+            );
 
         graveAnimationSystem = new GraveAnimationSystem(
             game.getPamPlayer(),
@@ -817,8 +827,8 @@ public class GameScreen extends BaseScreen {
     }
     private void createPlacementHighlights() {
         Drawable highlightDrawable = game.getSkin().newDrawable(
-                "white_pixel",
-                new Color(1f, 1f, 1f, 0.70f)
+            "white_pixel",
+            new Color(1f, 1f, 1f, 0.70f)
         );
         rowHighlight = new Image(highlightDrawable);
         columnHighlight = new Image(highlightDrawable);
@@ -875,28 +885,28 @@ public class GameScreen extends BaseScreen {
 
             if (event.type() == VisualEffectEvent.Type.PLANT_EXPLOSION) {
                 startScreenShake(
-                        EXPLOSION_SHAKE_DURATION,
-                        EXPLOSION_SHAKE_MAGNITUDE
+                    EXPLOSION_SHAKE_DURATION,
+                    EXPLOSION_SHAKE_MAGNITUDE
                 );
             }
         }
     }
 
     private void startScreenShake(
-            float duration,
-            float magnitude
+        float duration,
+        float magnitude
     ) {
         screenShakeDuration = Math.max(
-                screenShakeDuration,
-                Math.max(0.01f, duration)
+            screenShakeDuration,
+            Math.max(0.01f, duration)
         );
         screenShakeRemaining = Math.max(
-                screenShakeRemaining,
-                Math.max(0.01f, duration)
+            screenShakeRemaining,
+            Math.max(0.01f, duration)
         );
         screenShakeMagnitude = Math.max(
-                screenShakeMagnitude,
-                Math.max(0f, magnitude)
+            screenShakeMagnitude,
+            Math.max(0f, magnitude)
         );
     }
 
@@ -904,36 +914,36 @@ public class GameScreen extends BaseScreen {
         screenShakeApplied = false;
 
         if (introState != IntroState.PLAYING
-                || overlayMode != OverlayMode.NONE
-                || screenShakeRemaining <= 0f
-                || screenShakeDuration <= 0f) {
+            || overlayMode != OverlayMode.NONE
+            || screenShakeRemaining <= 0f
+            || screenShakeDuration <= 0f) {
             return;
         }
 
         screenShakeRemaining = Math.max(
-                0f,
-                screenShakeRemaining - Math.max(0f, delta)
+            0f,
+            screenShakeRemaining - Math.max(0f, delta)
         );
 
         float strength =
-                screenShakeRemaining / screenShakeDuration;
+            screenShakeRemaining / screenShakeDuration;
 
         screenShakeBaseX = camera.position.x;
         screenShakeBaseY = camera.position.y;
 
         camera.position.x =
-                screenShakeBaseX
-                        + MathUtils.random(
-                        -screenShakeMagnitude,
-                        screenShakeMagnitude
-                ) * strength;
+            screenShakeBaseX
+                + MathUtils.random(
+                -screenShakeMagnitude,
+                screenShakeMagnitude
+            ) * strength;
 
         camera.position.y =
-                screenShakeBaseY
-                        + MathUtils.random(
-                        -screenShakeMagnitude,
-                        screenShakeMagnitude
-                ) * strength;
+            screenShakeBaseY
+                + MathUtils.random(
+                -screenShakeMagnitude,
+                screenShakeMagnitude
+            ) * strength;
 
         camera.update();
         screenShakeApplied = true;
@@ -950,9 +960,9 @@ public class GameScreen extends BaseScreen {
         }
 
         camera.position.set(
-                screenShakeBaseX,
-                screenShakeBaseY,
-                camera.position.z
+            screenShakeBaseX,
+            screenShakeBaseY,
+            camera.position.z
         );
         camera.update();
         screenShakeApplied = false;
@@ -968,8 +978,8 @@ public class GameScreen extends BaseScreen {
 
         Game renderGame = App.getInstance().getCurrentGame();
         if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE
-                && renderGame != null) {
+            && overlayMode == OverlayMode.NONE
+            && renderGame != null) {
             processVisualEffects(renderGame.getGameState());
         }
 
@@ -982,6 +992,13 @@ public class GameScreen extends BaseScreen {
                     getRenderTickAlpha(),
                     currentGame.getGameState().getTickCounter(),
                     currentGame.getGameState().getZombiesInTheGame()
+                );
+
+                sandstormAnimationSystem.update(
+                    delta,
+                    currentGame
+                        .getGameState()
+                        .getZombiesInTheGame()
                 );
             }
         }
@@ -1436,6 +1453,7 @@ public class GameScreen extends BaseScreen {
             gameHud.dispose();
         }
         zombieLevelPreview.clear();
+        sandstormAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
         uiStage.dispose();

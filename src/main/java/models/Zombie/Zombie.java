@@ -9,6 +9,7 @@ import models.Plant.Plant;
 import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.MovementBehavior;
+import models.Zombie.Behavior.SandstormTransportBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.enums.LootType;
 import models.games.GameState;
@@ -42,10 +43,10 @@ public class Zombie {
     private int lane;
     private float x;
     private int direction = 1;// 1 = walking normal, -1 = reversed
-    private float speedDecrease = 0.83f;
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
+    private float speedDecreaseMultiplier = 0.75f;
 
     private boolean eating = false;
     private boolean dead = false;
@@ -236,8 +237,23 @@ public class Zombie {
 
     public void onTick(GameState gs) {
         if (dead || hasIceShell()) return;
+
         tickEffects();
         tickPoison(gs);
+
+        if (dead) {
+            return;
+        }
+
+        SandstormTransportBehavior sandstorm =
+            getBehavior(SandstormTransportBehavior.class);
+
+        if (sandstorm != null && sandstorm.isActive()) {
+            eating = false;
+            sandstorm.onTick(this, gs);
+            return;
+        }
+
         if (isFrozen() || isButtered()) return;
         if (hypnotized) {
             tickHypnotized(gs);
@@ -278,7 +294,7 @@ public class Zombie {
             if (!movementSuppressed) {
                 float chillFactor = isChilled() ? CHILL_SPEED_FACTOR : 1.0f;
                 float previousX = x;
-                x -=  speedDecrease * direction * (baseSpeed * speedMultiplier * chillFactor) / gs.getTicksPerSecond();
+                x -=  speedDecreaseMultiplier * direction * (baseSpeed * speedMultiplier * chillFactor) / gs.getTicksPerSecond();
                 gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
             }
         }

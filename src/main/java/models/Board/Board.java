@@ -184,30 +184,103 @@ public class Board {
         suns.remove(sun);
         return true;
     }
-
-    private void explodeRadioactiveSun(Sun sun,GameState gs) {
+    private void explodeRadioactiveSun(
+        Sun sun,
+        GameState gs
+    ) {
         int sunLane = sun.getLane();
-        int sunColumn = (int) Math.floor(sun.getX());
 
-        for (Zombie zombie : gs.getZombiesInTheGame()) {
-            int zombieLane = zombie.getLane();
-            int zombieColumn = (int) Math.floor(zombie.getX());
-            if (Math.abs(zombieLane - sunLane) <= 2 && Math.abs(zombieColumn - sunColumn) <= 2) {
-                zombie.takeDamage(150, gs, null);
+        int sunColumn =
+            (int) Math.floor(
+                sun.getX()
+            );
+
+        List<Zombie> zombies =
+            new ArrayList<>(
+                gs.getZombiesInTheGame()
+            );
+
+        for (Zombie zombie : zombies) {
+
+            if (zombie == null
+                || zombie.isDead()) {
+                continue;
+            }
+
+            int zombieLane =
+                zombie.getLane();
+
+            int zombieColumn =
+                (int) Math.floor(
+                    zombie.getX()
+                );
+
+            if (
+                Math.abs(
+                    zombieLane - sunLane
+                ) <= 2
+                    &&
+                    Math.abs(
+                        zombieColumn - sunColumn
+                    ) <= 2
+            ) {
+                zombie.takeDamage(
+                    150,
+                    gs,
+                    null
+                );
             }
         }
 
-        int startLane = Math.max(0, sunLane - 1);
-        int endLane = Math.min(laneCount - 1, sunLane + 1);
-        int startCol = Math.max(0, sunColumn - 1);
-        int endCol = Math.min(columnCount - 1,sunColumn + 1);
+        int startLane =
+            Math.max(
+                0,
+                sunLane - 1
+            );
 
-        for (int r = startLane; r <= endLane; r++) {
-            for (int c = startCol; c <= endCol; c++) {
-                Tile tile = tiles[r][c];
-                if (tile.hasPlant()) {
-                    Plant p = tile.getPlant();
-                    p.takeDamage(80, gs);
+        int endLane =
+            Math.min(
+                laneCount - 1,
+                sunLane + 1
+            );
+
+        int startCol =
+            Math.max(
+                0,
+                sunColumn - 1
+            );
+
+        int endCol =
+            Math.min(
+                columnCount - 1,
+                sunColumn + 1
+            );
+
+        for (
+            int r = startLane;
+            r <= endLane;
+            r++
+        ) {
+            for (
+                int c = startCol;
+                c <= endCol;
+                c++
+            ) {
+                Tile tile =
+                    tiles[r][c];
+
+                if (!tile.hasPlant()) {
+                    continue;
+                }
+
+                Plant plant =
+                    tile.getPlant();
+
+                if (plant != null) {
+                    plant.takeDamage(
+                        80,
+                        gs
+                    );
                 }
             }
         }
