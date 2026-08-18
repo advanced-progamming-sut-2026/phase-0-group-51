@@ -159,66 +159,79 @@ public class ZombieWaveManager {
         spawnZombies(currentWave);
     }
 
+    private static final float ZOMBIE_SPAWN_X_OFFSET = 1f;
+
     private void spawnZombies(Wave wave) {
-        float remaining = wave.getDifficulty();
-        int lanes = gs.getBoard().getLaneCount();
-        int spawnColumn = gs.getBoard().getColumnCount() - 1;
+
+        float remaining =
+            wave.getDifficulty();
+
+        int lanes =
+            gs.getBoard()
+                .getLaneCount();
+
+        int spawnColumn =
+            gs.getBoard()
+                .getColumnCount() - 1;
+
+        float spawnX =
+            spawnColumn
+                + ZOMBIE_SPAWN_X_OFFSET;
 
         while (true) {
-            Zombie zombie = pickAffordableZombie(remaining);
+
+            Zombie zombie =
+                pickAffordableZombie(
+                    remaining
+                );
+
             if (zombie == null) {
                 break;
             }
 
-            int lane = random.nextInt(lanes);
-            float x = spawnColumn;
+            int lane =
+                random.nextInt(lanes);
 
-            if (wave.isFinalWave()
-                && tornadoFinalWave
-                && random.nextBoolean()) {
+            float x = spawnX;
+
+            if (
+                wave.isFinalWave()
+                    && tornadoFinalWave
+                    && random.nextBoolean()
+            ) {
 
                 int movedColumns =
                     1 + random.nextInt(4);
 
-                float targetX = Math.max(
-                    0f,
-                    spawnColumn - movedColumns
-                );
+                float targetX =
+                    Math.max(
+                        0f,
+                        spawnX
+                            - movedColumns
+                    );
 
                 zombie.addBehavior(
                     new SandstormTransportBehavior(
-                        spawnColumn,
+                        spawnX,
                         targetX,
                         SANDSTORM_TRANSPORT_TICKS
                     )
                 );
-
-                gs.logEvent(
-                    "A sandstorm is carrying "
-                        + zombie.getAlias()
-                        + " "
-                        + movedColumns
-                        + " columns forward.\n"
-                );
             }
 
-            zombie.setGlowing(random.nextInt(100) < 5);
+            zombie.setGlowing(
+                random.nextInt(100) < 5
+            );
+
             zombie.setLane(lane);
-            zombie.setX(Math.max(0f, x));
+
+            zombie.setX(x);
+
             gs.addZombie(zombie);
             wave.addZombie(zombie);
-            remaining -= zombie.getWavePointCost();
 
-            gs.logEvent("Zombie " + zombie.getAlias()
-                + " spawned at wave " + wave.getWaveNumber()
-                + " in lane " + (lane + 1)
-                + " which cost " + zombie.getWavePointCost() + ".\n");
-        }
-        if (wave.getZombies().isEmpty()) {
-            throw new IllegalStateException(
-                "Wave " + wave.getWaveNumber() + " could not spawn any zombie. " + "Its difficulty budget is "
-                    + wave.getDifficulty() + "."
-            );
+            remaining -=
+                zombie.getWavePointCost();
         }
     }
 

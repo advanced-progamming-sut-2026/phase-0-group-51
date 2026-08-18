@@ -796,11 +796,45 @@ public final class ZombieAnimationSystem {
             }
         }
 
+        updateColdTint(zombie, actor);
+
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
         } else {
             actor.resumeAnimation();
         }
+    }
+
+    private void updateColdTint(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (zombie.isFrozen()) {
+            actor.setColor(
+                0.55f,
+                0.78f,
+                1.00f,
+                1.00f
+            );
+            return;
+        }
+
+        if (zombie.isChilled()) {
+            actor.setColor(
+                0.72f,
+                0.88f,
+                1.00f,
+                1.00f
+            );
+            return;
+        }
+
+        actor.setColor(
+            1.00f,
+            1.00f,
+            1.00f,
+            1.00f
+        );
     }
 
     private BaseAnimation resolveBaseAnimation(
@@ -1456,6 +1490,12 @@ public final class ZombieAnimationSystem {
         );
 
         visual.actor.clearGroundingKeepingVisualPosition();
+        visual.actor.setColor(
+            1.00f,
+            1.00f,
+            1.00f,
+            1.00f
+        );
 
         visual.actor.resumeAnimation();
         visual.actor.setPlaybackSpeed(1f);
