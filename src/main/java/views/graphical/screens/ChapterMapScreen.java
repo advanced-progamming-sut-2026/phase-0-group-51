@@ -1,7 +1,6 @@
 package views.graphical.screens;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -415,9 +414,11 @@ public class ChapterMapScreen extends BaseScreen {
         game.showHud(0, 0, true, () -> game.showScreen(new ChapterSelectScreen(game)));
 
         if (stage != null) {
-            // استفاده از InputMultiplexer برای اینکه هم کلیک‌های نقشه و هم دکمه‌های HUD کار کنند
-            Gdx.input.setInputProcessor(new InputMultiplexer(stage, Gdx.input.getInputProcessor()));
-            stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+            stage.getViewport().update(
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight(),
+                true
+            );
         }
     }
 

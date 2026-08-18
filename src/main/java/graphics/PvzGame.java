@@ -38,7 +38,7 @@ public final class PvzGame extends Game {
     public static final float VIRTUAL_HEIGHT = 720f;
 
     private final InputMultiplexer inputMultiplexer =
-            new InputMultiplexer();
+        new InputMultiplexer();
 
     private SpriteBatch batch;
     private Skin skin;
@@ -53,13 +53,13 @@ public final class PvzGame extends Game {
         String assetsPath = System.getProperty("pvz.assets");
         if (assetsPath == null || assetsPath.isBlank()) {
             throw new IllegalStateException(
-                    "pvz.assets is not configured."
+                "pvz.assets is not configured."
             );
         }
         FileHandle assetsFolder = Gdx.files.absolute(assetsPath);
         if (!assetsFolder.exists() || !assetsFolder.isDirectory()) {
             throw new IllegalStateException(
-                    "Invalid PVZ assets directory: " + assetsPath
+                "Invalid PVZ assets directory: " + assetsPath
             );
         }
         App.getInstance();
@@ -67,24 +67,24 @@ public final class PvzGame extends Game {
         textureBank = new TextureBank("768", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
         globalUiLayer = new GlobalUiLayer(
-                this,
-                skin
+            this,
+            skin
         );
         globalUiLayer.resize(
-                Gdx.graphics.getWidth(),
-                Gdx.graphics.getHeight()
+            Gdx.graphics.getWidth(),
+            Gdx.graphics.getHeight()
         );
 
         Gdx.input.setInputProcessor(
-                inputMultiplexer
+            inputMultiplexer
         );
-                showFirstMenu();
+        showFirstMenu();
     }
 
     public void showScreen(BaseScreen nextScreen) {
         if (nextScreen == null) {
             throw new IllegalArgumentException(
-                    "nextScreen cannot be null"
+                "nextScreen cannot be null"
             );
         }
 
@@ -97,7 +97,7 @@ public final class PvzGame extends Game {
         setScreen(nextScreen);
 
         configureInput(
-                nextScreen.getInputProcessor()
+            nextScreen.getInputProcessor()
         );
 
         if (previousScreen != null) {
@@ -106,68 +106,74 @@ public final class PvzGame extends Game {
     }
 
     private void configureInput(
-            InputProcessor screenInputProcessor
+        InputProcessor screenInputProcessor
     ) {
         inputMultiplexer.clear();
 
         if (globalUiLayer != null) {
             inputMultiplexer.addProcessor(
-                    globalUiLayer.getInputProcessor()
+                globalUiLayer.getInputProcessor()
             );
         }
 
         if (screenInputProcessor != null) {
             inputMultiplexer.addProcessor(
-                    screenInputProcessor
+                screenInputProcessor
+            );
+        }
+
+        if (Gdx.input != null) {
+            Gdx.input.setInputProcessor(
+                inputMultiplexer
             );
         }
     }
-        public void render() {
+    public void render() {
 
-            if (textureBank != null) {
-                textureBank.update();
-            }
-
-            super.render();
-
-            if (globalUiLayer != null) {
-                globalUiLayer.render(
-                        Gdx.graphics.getDeltaTime()
-                );
-            }
+        if (textureBank != null) {
+            textureBank.update();
         }
 
+        super.render();
+
+        if (globalUiLayer != null) {
+            globalUiLayer.render(
+                Gdx.graphics.getDeltaTime()
+            );
+        }
+    }
+
     public PamAnimationActor createPamActor(
-            String pamPath,
-            String clip,
-            float x,
-            float y,
-            boolean loop
+        String pamPath,
+        String clip,
+        float x,
+        float y,
+        boolean loop
     ) {
         return createPamActor(
-                pamPath,
-                clip,
-                x,
-                y,
-                loop,
-                List.of()
+            pamPath,
+            clip,
+            x,
+            y,
+            loop,
+            List.of()
         );
     }
     public PamAnimationActor createPamActor(
-            String pamPath,
-            String clip,
-            float x,
-            float y,
-            boolean loop,
-            List<String> visibleParts
+        String pamPath,
+        String clip,
+        float x,
+        float y,
+        boolean loop,
+        List<String> visibleParts
     ) {
         PamAnimationActor actor =
-                new PamAnimationActor(
-                        pamPlayer,
-                        pamPath,
-                        clip,
-                        loop
-                );
+            new PamAnimationActor(
+                pamPlayer,
+                pamPath,
+                clip,
+                loop
+            );
 
         actor.setPosition(x, y);
         actor.setVisibleParts(visibleParts);
@@ -177,30 +183,30 @@ public final class PvzGame extends Game {
 
     @Override
     public void resize(
-            int width,
-            int height
+        int width,
+        int height
     ) {
         super.resize(width, height);
 
         if (globalUiLayer != null) {
             globalUiLayer.resize(
-                    width,
-                    height
+                width,
+                height
             );
         }
     }
 
     public void showHud(
-            int coins,
-            int gems,
-            boolean showBackButton,
-            Runnable backAction
+        int coins,
+        int gems,
+        boolean showBackButton,
+        Runnable backAction
     ) {
         globalUiLayer.showHud(
-                coins,
-                gems,
-                showBackButton,
-                backAction
+            coins,
+            gems,
+            showBackButton,
+            backAction
         );
     }
 
@@ -209,12 +215,12 @@ public final class PvzGame extends Game {
     }
 
     public void updateCurrencies(
-            int coins,
-            int gems
+        int coins,
+        int gems
     ) {
         globalUiLayer.updateCurrencies(
-                coins,
-                gems
+            coins,
+            gems
         );
     }
 
@@ -229,7 +235,7 @@ public final class PvzGame extends Game {
     public SpriteBatch getBatch() {
         if (batch == null) {
             throw new IllegalStateException(
-                    "SpriteBatch is not initialized yet."
+                "SpriteBatch is not initialized yet."
             );
         }
 
@@ -239,7 +245,7 @@ public final class PvzGame extends Game {
     public Skin getSkin() {
         if (skin == null) {
             throw new IllegalStateException(
-                    "Skin is not initialized yet."
+                "Skin is not initialized yet."
             );
         }
 
@@ -276,8 +282,8 @@ public final class PvzGame extends Game {
         if (skin.getAtlas() != null) {
             for (Texture texture : skin.getAtlas().getTextures()) {
                 texture.setFilter(
-                        Texture.TextureFilter.Linear,
-                        Texture.TextureFilter.Linear
+                    Texture.TextureFilter.Linear,
+                    Texture.TextureFilter.Linear
                 );
             }
         }
@@ -285,8 +291,8 @@ public final class PvzGame extends Game {
         for (BitmapFont font : skin.getAll(BitmapFont.class).values()) {
             for (TextureRegion region : font.getRegions()) {
                 region.getTexture().setFilter(
-                        Texture.TextureFilter.Linear,
-                        Texture.TextureFilter.Linear
+                    Texture.TextureFilter.Linear,
+                    Texture.TextureFilter.Linear
                 );
             }
         }

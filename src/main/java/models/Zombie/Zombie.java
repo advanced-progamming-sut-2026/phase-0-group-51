@@ -46,7 +46,7 @@ public class Zombie {
 
     private float speedMultiplier = 1.0f;
     private float damageMultiplier = 1.0f;
-    private float speedDecreaseMultiplier = 0.75f;
+    private float speedDecreaseMultiplier = 0.65f;
 
     private boolean eating = false;
     private boolean dead = false;
