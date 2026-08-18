@@ -7,14 +7,26 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import graphics.PvzGame;
 import lombok.Getter;
 import views.graphical.animation.PamAnimationActor;
+import views.graphical.gameplay.effects.EffectPamFactory;
 
 public class PlantActor extends Group {
 
     private static final float PREVIEW_ALPHA = 0.58f;
     public static final float BOARD_SCALE = 0.65f;
+
+    private static final String PLANT_FOOD_EFFECT_PAM =
+            "768/INITIAL/EFFECTS/PLANTFOOD_FX/PLANTFOOD_FX.PAM";
+
+    private static final float DAMAGE_FLASH_DURATION = 0.15f;
+    private static final float DAMAGE_FLASH_ALPHA = 0.65f;
+    private static final float DAMAGE_FLASH_COOLDOWN = 0.4f;
+    private static final float PLANT_FOOD_EFFECT_SCALE = 1.35f;
+    private static final float PLANT_FOOD_EFFECT_OFFSET_X = 20f;
+    private static final float PLANT_FOOD_EFFECT_OFFSET_Y = 120f;
 
     private final PvzGame game;
     private String baseAnimationKey;
@@ -26,6 +38,8 @@ public class PlantActor extends Group {
     @Getter
     private PlantData plantData;
     private PamAnimationActor animation;
+    private PamAnimationActor plantFoodEffect;
+    private float damageFlashCooldownRemaining;
 
     private boolean previewMode;
 
@@ -116,6 +130,71 @@ public class PlantActor extends Group {
         setScale(scale);
     }
 
+    public void flashDamage() {
+        if (animation == null
+                || previewMode
+                || damageFlashCooldownRemaining > 0f) {
+            return;
+        }
+
+        animation.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+        );
+
+        damageFlashCooldownRemaining =
+                DAMAGE_FLASH_COOLDOWN;
+    }
+
+    public void playPlantFoodEffect() {
+        if (previewMode || plantData == null) {
+            return;
+        }
+
+        if (plantFoodEffect != null) {
+            plantFoodEffect.remove();
+            plantFoodEffect = null;
+        }
+
+        try {
+            EffectPamFactory.OneShot effect =
+                    EffectPamFactory.create(
+                            game,
+                            PLANT_FOOD_EFFECT_PAM,
+                            PLANT_FOOD_EFFECT_SCALE,
+                            1.0f,
+                            "plantfood",
+                            "plant_food",
+                            "effect",
+                            "animation",
+                            "anim"
+                    );
+
+            plantFoodEffect = effect.actor();
+            plantFoodEffect.setPosition(
+                    PLANT_FOOD_EFFECT_OFFSET_X,
+                    PLANT_FOOD_EFFECT_OFFSET_Y
+            );
+            addActorAt(0, plantFoodEffect);
+
+            plantFoodEffect.addAction(
+                    Actions.sequence(
+                            Actions.delay(effect.duration()),
+                            Actions.run(() -> plantFoodEffect = null),
+                            Actions.removeActor()
+                    )
+            );
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                        "PlantActor",
+                        "Could not play Plant Food effect.",
+                        e
+                );
+            }
+        }
+    }
+
     public void setBaseAnimation(String key) {
         if (key != null && key.equals(baseAnimationKey)) {
             return;
@@ -182,12 +261,14 @@ public class PlantActor extends Group {
         clearChildren();
 
         animation = null;
+        plantFoodEffect = null;
         plantData = null;
 
         baseAnimationKey = null;
         temporaryAnimation = false;
         terminalAnimation = false;
         animationTimeRemaining = 0f;
+        damageFlashCooldownRemaining = 0f;
 
         setVisible(false);
     }
@@ -195,6 +276,13 @@ public class PlantActor extends Group {
     @Override
     public void act(float delta) {
         super.act(delta);
+
+        if (damageFlashCooldownRemaining > 0f) {
+            damageFlashCooldownRemaining = Math.max(
+                    0f,
+                    damageFlashCooldownRemaining - Math.max(0f, delta)
+            );
+        }
 
         if (!previewMode) {
             updateAnimationState(delta);

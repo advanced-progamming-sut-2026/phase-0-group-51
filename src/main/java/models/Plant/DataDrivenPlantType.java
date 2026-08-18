@@ -3,6 +3,7 @@ package models.Plant;
 import Data.loader.PlantData;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.effects.VisualEffectEvent;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
 import models.projectile.move.ArcMove;
@@ -252,6 +253,13 @@ public final class DataDrivenPlantType implements PlantType {
     }
 
     private void explode(Plant plant, GameState state, double radius) {
+        state.emitVisualEffect(
+                VisualEffectEvent.plantExplosion(
+                        plant.getPosX(),
+                        plant.getPosY()
+                )
+        );
+
         List<Zombie> targets;
         if (radius > 10) {
             targets = state.getBoard().getZombiesInLane(plant.getPosY());

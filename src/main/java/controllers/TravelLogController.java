@@ -161,7 +161,9 @@ public class TravelLogController {
             return List.of();
         }
 
-        return questService.getPage(user, type);
+        return questService.getPage(user, type).stream()
+                .filter(this::shouldDisplayQuestCard)
+                .toList();
     }
 
     public String getQuestDescription(
@@ -182,26 +184,9 @@ public class TravelLogController {
         List<QuestsRepository.QuestEntry> entries =
                 new java.util.ArrayList<>();
 
-        entries.addAll(
-                questService.getPage(
-                        user,
-                        QuestType.MAIN
-                )
-        );
-
-        entries.addAll(
-                questService.getPage(
-                        user,
-                        QuestType.DAILY
-                )
-        );
-
-        entries.addAll(
-                questService.getPage(
-                        user,
-                        QuestType.EPIC
-                )
-        );
+        entries.addAll(getQuestEntries(QuestType.MAIN));
+        entries.addAll(getQuestEntries(QuestType.DAILY));
+        entries.addAll(getQuestEntries(QuestType.EPIC));
 
         entries.sort(
                 java.util.Comparator
@@ -219,6 +204,30 @@ public class TravelLogController {
         );
 
         return entries;
+    }
+
+
+    public String getQuestRewardText(
+            QuestsRepository.QuestEntry entry
+    ) {
+        if (entry == null) {
+            return "";
+        }
+
+        return rewardText(
+                entry.quest(),
+                entry.userQuest()
+        );
+    }
+
+    private boolean shouldDisplayQuestCard(
+            QuestsRepository.QuestEntry entry
+    ) {
+        if (!entry.userQuest().isClaimed()) {
+            return true;
+        }
+
+        return entry.quest().getType() == QuestType.DAILY;
     }
 
     private Result success(String message) {

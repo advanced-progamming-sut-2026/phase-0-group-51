@@ -3,6 +3,7 @@ package models.Plant;
 import models.Board.Tile;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.effects.VisualEffectEvent;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
 
@@ -147,10 +148,11 @@ public enum Explosive implements PlantType {
         if (trigger == null) {
             return;
         }
+        emitExplosionEffect(plant, state);
         if (mode == ExplosionMode.TRAP_SINGLE) {
             damageZombie(plant, state, trigger);
         } else {
-            explodeThreeByThree(plant, state);
+            damageThreeByThree(plant, state);
         }
         removePlant(plant, state);
     }
@@ -223,6 +225,8 @@ public enum Explosive implements PlantType {
     }
 
     private void explode(Plant plant, GameState state) {
+        emitExplosionEffect(plant, state);
+
         if (mode == ExplosionMode.INSTANT_LANE) {
             state.getBoard().meltIceInLane(plant.getPosY(), state);
             for (Zombie zombie : state.getBoard().getZombiesInLane(plant.getPosY())) {
@@ -242,7 +246,7 @@ public enum Explosive implements PlantType {
                 tile.setCrater(true);
             }
         } else {
-            explodeThreeByThree(plant, state);
+            damageThreeByThree(plant, state);
         }
     }
 
@@ -321,6 +325,11 @@ public enum Explosive implements PlantType {
     }
 
     private void explodeThreeByThree(Plant plant, GameState state) {
+        emitExplosionEffect(plant, state);
+        damageThreeByThree(plant, state);
+    }
+
+    private void damageThreeByThree(Plant plant, GameState state) {
         List<Zombie> zombies = state.getBoard().getZombiesInSquare(
                 plant.getPosY(),
                 plant.getPosX(),
@@ -330,6 +339,18 @@ public enum Explosive implements PlantType {
         for (Zombie zombie : zombies) {
             damageZombie(plant, state, zombie);
         }
+    }
+
+    private void emitExplosionEffect(
+            Plant plant,
+            GameState state
+    ) {
+        state.emitVisualEffect(
+                VisualEffectEvent.plantExplosion(
+                        plant.getPosX(),
+                        plant.getPosY()
+                )
+        );
     }
 
     private void crushRandomZombies(Plant plant, GameState state, int count) {

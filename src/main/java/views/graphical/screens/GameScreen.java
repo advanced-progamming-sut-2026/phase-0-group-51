@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -28,9 +29,11 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.effects.VisualEffectEvent;
 import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.Game;
+import models.games.GameState;
 import models.games.Level;
 import models.sun.Sun;
 
@@ -45,6 +48,7 @@ import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
+import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -126,6 +130,17 @@ public class GameScreen extends BaseScreen {
     private PlantViewManager plantViewManager;
     private SunViewManager sunViewManager;
     private ProjectileViewManager projectileViewManager;
+    private WorldEffectManager worldEffectManager;
+
+    private static final float EXPLOSION_SHAKE_DURATION = 0.28f;
+    private static final float EXPLOSION_SHAKE_MAGNITUDE = 8f;
+
+    private float screenShakeRemaining;
+    private float screenShakeDuration;
+    private float screenShakeMagnitude;
+    private float screenShakeBaseX;
+    private float screenShakeBaseY;
+    private boolean screenShakeApplied;
 
     private Image rowHighlight;
     private Image columnHighlight;
@@ -442,6 +457,8 @@ public class GameScreen extends BaseScreen {
         worldStage.addActor(plantViewManager);
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
         worldStage.addActor(projectileViewManager);
+        worldEffectManager = new WorldEffectManager(game, boardTransform);
+        worldStage.addActor(worldEffectManager);
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
@@ -799,7 +816,10 @@ public class GameScreen extends BaseScreen {
         );
     }
     private void createPlacementHighlights() {
-        Drawable highlightDrawable = game.getSkin().newDrawable("white_pixel", new Color(1f, 1f, 1f, 0.70f));
+        Drawable highlightDrawable = game.getSkin().newDrawable(
+                "white_pixel",
+                new Color(1f, 1f, 1f, 0.70f)
+        );
         rowHighlight = new Image(highlightDrawable);
         columnHighlight = new Image(highlightDrawable);
         rowHighlight.setTouchable(Touchable.disabled);
@@ -844,6 +864,100 @@ public class GameScreen extends BaseScreen {
             columnHighlight.setVisible(false);
         }
     }
+
+    private void processVisualEffects(GameState state) {
+        if (state == null || worldEffectManager == null) {
+            return;
+        }
+
+        for (VisualEffectEvent event : state.consumeVisualEffects()) {
+            worldEffectManager.play(event);
+
+            if (event.type() == VisualEffectEvent.Type.PLANT_EXPLOSION) {
+                startScreenShake(
+                        EXPLOSION_SHAKE_DURATION,
+                        EXPLOSION_SHAKE_MAGNITUDE
+                );
+            }
+        }
+    }
+
+    private void startScreenShake(
+            float duration,
+            float magnitude
+    ) {
+        screenShakeDuration = Math.max(
+                screenShakeDuration,
+                Math.max(0.01f, duration)
+        );
+        screenShakeRemaining = Math.max(
+                screenShakeRemaining,
+                Math.max(0.01f, duration)
+        );
+        screenShakeMagnitude = Math.max(
+                screenShakeMagnitude,
+                Math.max(0f, magnitude)
+        );
+    }
+
+    private void applyScreenShake(float delta) {
+        screenShakeApplied = false;
+
+        if (introState != IntroState.PLAYING
+                || overlayMode != OverlayMode.NONE
+                || screenShakeRemaining <= 0f
+                || screenShakeDuration <= 0f) {
+            return;
+        }
+
+        screenShakeRemaining = Math.max(
+                0f,
+                screenShakeRemaining - Math.max(0f, delta)
+        );
+
+        float strength =
+                screenShakeRemaining / screenShakeDuration;
+
+        screenShakeBaseX = camera.position.x;
+        screenShakeBaseY = camera.position.y;
+
+        camera.position.x =
+                screenShakeBaseX
+                        + MathUtils.random(
+                        -screenShakeMagnitude,
+                        screenShakeMagnitude
+                ) * strength;
+
+        camera.position.y =
+                screenShakeBaseY
+                        + MathUtils.random(
+                        -screenShakeMagnitude,
+                        screenShakeMagnitude
+                ) * strength;
+
+        camera.update();
+        screenShakeApplied = true;
+
+        if (screenShakeRemaining <= 0f) {
+            screenShakeMagnitude = 0f;
+            screenShakeDuration = 0f;
+        }
+    }
+
+    private void restoreScreenShake() {
+        if (!screenShakeApplied) {
+            return;
+        }
+
+        camera.position.set(
+                screenShakeBaseX,
+                screenShakeBaseY,
+                camera.position.z
+        );
+        camera.update();
+        screenShakeApplied = false;
+    }
+
     @Override
     public void render(float delta) {
         handlePauseShortcut();
@@ -851,6 +965,13 @@ public class GameScreen extends BaseScreen {
         updateGameplayTicks(delta);
         updateRenderTickInterpolation(delta);
         checkGameEnd();
+
+        Game renderGame = App.getInstance().getCurrentGame();
+        if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE
+                && renderGame != null) {
+            processVisualEffects(renderGame.getGameState());
+        }
 
         if (introState == IntroState.PLAYING
             && overlayMode == OverlayMode.NONE) {
@@ -867,6 +988,7 @@ public class GameScreen extends BaseScreen {
 
         updateToolCursorPreview();
         uiStage.act(delta);
+        applyScreenShake(delta);
 
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -924,6 +1046,16 @@ public class GameScreen extends BaseScreen {
                         getRenderTickAlpha()
                     );
                 }
+
+                if (worldEffectManager != null) {
+                    worldEffectManager.toFront();
+                }
+                if (sunViewManager != null) {
+                    sunViewManager.toFront();
+                }
+                if (placementPreview != null) {
+                    placementPreview.toFront();
+                }
             }
         }
 
@@ -936,6 +1068,7 @@ public class GameScreen extends BaseScreen {
         worldStage.draw();
 
         drawDebugGrid();
+        restoreScreenShake();
         game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
     }
