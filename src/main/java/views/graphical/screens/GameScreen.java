@@ -976,6 +976,8 @@ public class GameScreen extends BaseScreen {
         updateRenderTickInterpolation(delta);
         checkGameEnd();
 
+        float gameplayDelta = scaledGameplayDelta(delta);
+
         Game renderGame = App.getInstance().getCurrentGame();
         if (introState == IntroState.PLAYING
             && overlayMode == OverlayMode.NONE
@@ -988,14 +990,14 @@ public class GameScreen extends BaseScreen {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
-                    delta,
+                    gameplayDelta,
                     getRenderTickAlpha(),
                     currentGame.getGameState().getTickCounter(),
                     currentGame.getGameState().getZombiesInTheGame()
                 );
 
                 sandstormAnimationSystem.update(
-                    delta,
+                    gameplayDelta,
                     currentGame
                         .getGameState()
                         .getZombiesInTheGame()
@@ -1079,7 +1081,11 @@ public class GameScreen extends BaseScreen {
         if (overlayMode == OverlayMode.NONE
             && (introState == IntroState.PLAYING
             || animateZombiePreview)) {
-            worldStage.act(delta);
+            worldStage.act(
+                introState == IntroState.PLAYING
+                    ? gameplayDelta
+                    : delta
+            );
         }
 
         worldStage.draw();
@@ -1169,6 +1175,12 @@ public class GameScreen extends BaseScreen {
         modalOverlay.toFront();
     }
 
+    private float scaledGameplayDelta(float delta) {
+        float safeDelta = Math.max(0f, Math.min(delta, 0.25f));
+        int speed = Math.max(1, Math.min(3, GameSettings.gameSpeed));
+        return safeDelta * speed;
+    }
+
     private void updateGameplayTicks(float delta) {
         if (introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
             return;
@@ -1186,7 +1198,7 @@ public class GameScreen extends BaseScreen {
 
         float tickDuration = 1f / ticksPerSecond;
 
-        gameTickAccumulator += Math.min(delta, 0.25f);
+        gameTickAccumulator += scaledGameplayDelta(delta);
 
         while (gameTickAccumulator >= tickDuration) {
             if (currentGame.getGameState().isFinished()) {
@@ -1223,14 +1235,7 @@ public class GameScreen extends BaseScreen {
                 .getGameState()
                 .getTickCounter();
 
-        float safeDelta =
-            Math.max(
-                0f,
-                Math.min(
-                    delta,
-                    0.25f
-                )
-            );
+        float safeDelta = scaledGameplayDelta(delta);
 
         if (renderInterpolationModelTick
             == Integer.MIN_VALUE) {
