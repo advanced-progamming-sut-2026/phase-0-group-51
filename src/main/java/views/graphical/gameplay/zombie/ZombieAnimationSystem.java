@@ -7,6 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.Zombie.Behavior.AuraBehavior;
+import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.DamageReactionBehavior;
 import models.Zombie.Behavior.DynamiteBehavior;
 import models.Zombie.Behavior.ImpThrowBehavior;
@@ -52,6 +53,11 @@ public final class ZombieAnimationSystem {
     private static final float MAX_WALK_PLAYBACK_SPEED = 5.00f;
     private static final float POSITION_EPSILON = 0.0001f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
+
+    private static final String DARK_KNIGHT_CROWN_ARMOR =
+        "CrownDefault@ArmorTypes";
+    private static final String DARK_KNIGHT_SHOULDER_ARMOR =
+        "ShoulderArmorDefault@ArmorTypes";
 
     private static final String EGYPT_BASIC_PAM =
         "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_BASIC/ZOMBIE_EGYPT_BASIC.PAM";
@@ -773,6 +779,8 @@ public final class ZombieAnimationSystem {
             partialTick
         );
 
+        syncDarkKnightVisual(zombie, visual);
+
         if (!updateSpecialClip(visual)) {
             BaseAnimation base = resolveBaseAnimation(
                 zombie,
@@ -803,6 +811,57 @@ public final class ZombieAnimationSystem {
         } else {
             actor.resumeAnimation();
         }
+    }
+
+    private void syncDarkKnightVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (theme != ChapterTheme.DARK_AGES
+            || !ZombieType.DEFAULT.getAlias().equals(zombie.getAlias())) {
+            return;
+        }
+
+        boolean knighted = hasActiveDarkKnightArmor(zombie);
+
+        if (visual.darkKnightVisual == knighted) {
+            return;
+        }
+
+        String visualAlias = knighted
+            ? ZombieType.DARK_ARMOR_3.getAlias()
+            : ZombieType.DEFAULT.getAlias();
+
+        List<String> visibleParts = resolveVisibleParts(
+            pamPlayer,
+            DARK_BASIC_PAM,
+            visualAlias
+        );
+
+        if (!visibleParts.isEmpty()) {
+            visual.actor.setVisibleParts(visibleParts);
+        }
+
+        visual.darkKnightVisual = knighted;
+    }
+
+    private boolean hasActiveDarkKnightArmor(Zombie zombie) {
+        for (var behavior : zombie.getBehaviors()) {
+            if (!(behavior instanceof ArmorBehavior armor)
+                || armor.isGone()
+                || armor.getDefinition() == null) {
+                continue;
+            }
+
+            String armorAlias = armor.getDefinition().getAlias();
+
+            if (DARK_KNIGHT_CROWN_ARMOR.equals(armorAlias)
+                || DARK_KNIGHT_SHOULDER_ARMOR.equals(armorAlias)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void updateColdTint(
@@ -1589,6 +1648,7 @@ public final class ZombieAnimationSystem {
         private boolean lastDynamiteExploded;
         private boolean lastDodoFly;
         private boolean lastLaserStealing;
+        private boolean darkKnightVisual;
 
         private boolean deathStarted;
         private float deathElapsed;
