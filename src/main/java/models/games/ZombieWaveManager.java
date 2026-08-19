@@ -394,7 +394,7 @@ public class ZombieWaveManager {
                 float targetX =
                     Math.max(
                         0f,
-                        spawnX
+                        spawnColumn
                             - movedColumns
                     );
 
