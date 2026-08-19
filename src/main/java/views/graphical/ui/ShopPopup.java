@@ -575,10 +575,6 @@ public class ShopPopup extends BorderedPanel {
                 Result result = shopController.shopBuy(String.valueOf(itemId), "1", null);
                 handlePurchaseResult(result, () -> {
                     updateTopBar();
-                    if (item.getType() == ShopItemType.POT
-                        && game.getScreen() instanceof GreenHouseScreen greenHouseScreen) {
-                        greenHouseScreen.refreshGreenHouse();
-                    }
                 });
             });
         }
