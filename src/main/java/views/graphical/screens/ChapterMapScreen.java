@@ -70,14 +70,14 @@ public class ChapterMapScreen extends BaseScreen {
         else if (chapter == ChapterTheme.BIG_WAVE_BEACH) chapterIndex = 3;
         else if (chapter == ChapterTheme.DARK_AGES) chapterIndex = 4;
 
-//        if (chapterIndex < progress[0]) {
-//            currentActiveLevel = 999;
-//        } else if (chapterIndex == progress[0]) {
-//            currentActiveLevel = progress[1];
-//        } else {
-//            currentActiveLevel = 0;
-//        }
-        currentActiveLevel = 999;
+        if (chapterIndex < progress[0]) {
+            currentActiveLevel = 999;
+        } else if (chapterIndex == progress[0]) {
+            currentActiveLevel = progress[1];
+        } else {
+            currentActiveLevel = 0;
+        }
+        //currentActiveLevel = 999;
 
         buildUi();
     }
