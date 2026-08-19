@@ -10,6 +10,7 @@ import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.SandstormTransportBehavior;
+import models.Zombie.Behavior.SnowstormTransportBehavior;
 import models.Zombie.Behavior.ZombieBehavior;
 import models.enums.LootType;
 import models.games.GameState;
@@ -246,11 +247,32 @@ public class Zombie {
         }
 
         SandstormTransportBehavior sandstorm =
-            getBehavior(SandstormTransportBehavior.class);
+            getBehavior(
+                SandstormTransportBehavior.class
+            );
 
-        if (sandstorm != null && sandstorm.isActive()) {
+        if (sandstorm != null
+            && sandstorm.isActive()) {
             eating = false;
-            sandstorm.onTick(this, gs);
+            sandstorm.onTick(
+                this,
+                gs
+            );
+            return;
+        }
+
+        SnowstormTransportBehavior snowstorm =
+            getBehavior(
+                SnowstormTransportBehavior.class
+            );
+
+        if (snowstorm != null
+            && snowstorm.isActive()) {
+            eating = false;
+            snowstorm.onTick(
+                this,
+                gs
+            );
             return;
         }
 

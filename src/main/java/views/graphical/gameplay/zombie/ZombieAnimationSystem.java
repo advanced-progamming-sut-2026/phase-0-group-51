@@ -16,6 +16,7 @@ import models.Zombie.Behavior.MovementBehavior;
 import models.Zombie.Behavior.PushObjectBehavior;
 import models.Zombie.Behavior.RangedAttackBehavior;
 import models.Zombie.Behavior.SandstormTransportBehavior;
+import models.Zombie.Behavior.SnowstormTransportBehavior;
 import models.Zombie.Behavior.SunStealBehavior;
 import models.Zombie.Behavior.TransformBehavior;
 import models.Zombie.Behavior.TurquoiseLaserBehavior;
@@ -505,6 +506,9 @@ public final class ZombieAnimationSystem {
         if (ZombieType.ARMOR_2.getAlias().equals(alias)) {
             return 2;
         }
+        if (ZombieType.DARK_ARMOR_3.getAlias().equals(alias)) {
+            return 3;
+        }
         if (ZombieType.ARMOR_4.getAlias().equals(alias)) {
             return 4;
         }
@@ -905,7 +909,18 @@ public final class ZombieAnimationSystem {
                 SandstormTransportBehavior.class
             );
 
-        if (sandstorm != null && sandstorm.isActive()) {
+        SnowstormTransportBehavior snowstorm =
+            zombie.getBehavior(
+                SnowstormTransportBehavior.class
+            );
+
+        boolean transported =
+            sandstorm != null
+                && sandstorm.isActive()
+                || snowstorm != null
+                && snowstorm.isActive();
+
+        if (transported) {
             return new BaseAnimation(
                 visual.animations.clip(
                     EntityAnimationState.IDLE

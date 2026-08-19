@@ -883,7 +883,7 @@ public class GameHud extends Table {
 
         Table content = lovePlantsPanel.getContent();
         content.clearChildren();
-        content.pad(20f, 12f, 1f, 12f);
+        content.pad(12f, 12f, 9f, 12f);
         content.top();
 
         lovePlantsTitleLabel = new Label(
@@ -1193,9 +1193,9 @@ public class GameHud extends Table {
 
         content.clearChildren();
         content.pad(
-            20f,
+            12f,
             14f,
-            4f,
+            12f,
             14f
         );
         content.top();

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import models.Board.Tile;
 import models.Zombie.Behavior.SandstormTransportBehavior;
+import models.Zombie.Behavior.SnowstormTransportBehavior;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.items.Wave;
@@ -25,6 +26,7 @@ public class ZombieWaveManager {
     private static final float BACKWATER_MAX_ZOMBIE_COST = 700f;
 
     private static final int SANDSTORM_TRANSPORT_TICKS = 10;
+    private static final int SNOWSTORM_TRANSPORT_TICKS = 10;
 
     private static final float ZOMBIE_SPAWN_X_OFFSET = 1.3f;
 
@@ -48,6 +50,8 @@ public class ZombieWaveManager {
     private boolean started;
 
     private boolean tornadoFinalWave = false;
+
+    private List<Integer> snowstormLanesForNextWave = List.of();
 
     private IntConsumer onWaveStart = null;
 
@@ -342,12 +346,46 @@ public class ZombieWaveManager {
         );
     }
 
+    public void setSnowstormLanesForNextWave(
+        List<Integer> lanes
+    ) {
+        if (lanes == null
+            || lanes.isEmpty()) {
+            snowstormLanesForNextWave =
+                List.of();
+            return;
+        }
+
+        int laneCount =
+            gs.getBoard()
+                .getLaneCount();
+
+        snowstormLanesForNextWave =
+            lanes.stream()
+                .filter(
+                    lane ->
+                        lane != null
+                            && lane >= 0
+                            && lane < laneCount
+                )
+                .distinct()
+                .toList();
+    }
+
     private void prepareWaveSpawns(
         Wave wave
     ) {
         pendingSpawns.clear();
 
         spawnDelayTicks = 0;
+
+        List<Integer> activeSnowstormLanes =
+            snowstormLanesForNextWave;
+
+        snowstormLanesForNextWave =
+            List.of();
+
+        int preparedZombieCount = 0;
 
         float remaining =
             wave.getDifficulty();
@@ -375,13 +413,56 @@ public class ZombieWaveManager {
                 break;
             }
 
+            boolean snowstormTransport =
+                !activeSnowstormLanes.isEmpty()
+                    && (
+                    preparedZombieCount == 0
+                        || random.nextBoolean()
+                );
+
             int lane =
-                random.nextInt(
+                snowstormTransport
+                    ? activeSnowstormLanes.get(
+                    random.nextInt(
+                        activeSnowstormLanes.size()
+                    )
+                )
+                    : random.nextInt(
                     lanes
                 );
 
             float x =
                 spawnX;
+
+            if (snowstormTransport) {
+                int movedColumns =
+                    1 + random.nextInt(3);
+
+                float targetX =
+                    Math.max(
+                        0f,
+                        spawnColumn
+                            - movedColumns
+                    );
+
+                zombie.addBehavior(
+                    new SnowstormTransportBehavior(
+                        spawnX,
+                        targetX,
+                        SNOWSTORM_TRANSPORT_TICKS
+                    )
+                );
+
+                gs.logEvent(
+                    "A snowstorm is carrying "
+                        + zombie.getAlias()
+                        + " "
+                        + movedColumns
+                        + " columns forward in lane "
+                        + (lane + 1)
+                        + ".\n"
+                );
+            }
 
             if (
                 wave.isFinalWave()
@@ -394,7 +475,7 @@ public class ZombieWaveManager {
                 float targetX =
                     Math.max(
                         0f,
-                        spawnColumn
+                        spawnX
                             - movedColumns
                     );
 
@@ -429,6 +510,8 @@ public class ZombieWaveManager {
 
             remaining -=
                 zombie.getWavePointCost();
+
+            preparedZombieCount++;
         }
     }
 

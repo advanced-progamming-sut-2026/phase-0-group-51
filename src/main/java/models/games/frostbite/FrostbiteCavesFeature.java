@@ -4,6 +4,7 @@ import Data.loader.ZombieRegistry;
 import models.Board.Board;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.games.ZombieWaveManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,14 +15,42 @@ public class FrostbiteCavesFeature {
     private final GameState state;
     private final FrostbiteLevelConfig config;
     private final Random random;
+    private final ZombieWaveManager waveManager;
 
-    public FrostbiteCavesFeature(GameState state, FrostbiteLevelConfig config) {
-        this(state, config, new Random());
+    public FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config
+    ) {
+        this(
+            state,
+            config,
+            null,
+            new Random()
+        );
     }
 
-    FrostbiteCavesFeature(GameState state, FrostbiteLevelConfig config, Random random) {
+    public FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config,
+        ZombieWaveManager waveManager
+    ) {
+        this(
+            state,
+            config,
+            waveManager,
+            new Random()
+        );
+    }
+
+    FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config,
+        ZombieWaveManager waveManager,
+        Random random
+    ) {
         this.state = state;
         this.config = config;
+        this.waveManager = waveManager;
         this.random = random;
     }
 
@@ -36,18 +65,35 @@ public class FrostbiteCavesFeature {
         }
         List<Integer> lanes = chooseWindLanes();
         for (int lane : lanes) {
-            state.getBoard().addFrostToLane(lane, state, "icy wind");
+            state.getBoard().addFrostToLane(
+                lane,
+                state,
+                "icy wind"
+            );
         }
-        state.logEvent("Icy wind wooopshed rows " + formatLanes(lanes) + " at wave " + waveNumber + ".\n");
+
+        if (waveManager != null) {
+            waveManager.setSnowstormLanesForNextWave(
+                lanes
+            );
+        }
+
+        state.logEvent(
+            "Icy wind swept rows "
+                + formatLanes(lanes)
+                + " at wave "
+                + waveNumber
+                + ".\n"
+        );
     }
 
     private void placeIceFloors() {
         Board board = state.getBoard();
         for (FrostbiteLevelConfig.IceFloorPlacement placement : config.iceFloors()) {
             board.placeIceFloor(
-                    placement.laneIndex(),
-                    placement.columnIndex(),
-                    placement.direction()
+                placement.laneIndex(),
+                placement.columnIndex(),
+                placement.direction()
             );
         }
     }
@@ -60,7 +106,7 @@ public class FrostbiteCavesFeature {
             zombie.freezeInIce();
             state.addZombie(zombie);
             state.logEvent("Frozen zombie " + zombie.getAlias() + " started at ("
-                    + (placement.columnIndex() + 1) + ", " + (placement.laneIndex() + 1) + ").\n");
+                + (placement.columnIndex() + 1) + ", " + (placement.laneIndex() + 1) + ").\n");
         }
     }
 
@@ -82,9 +128,9 @@ public class FrostbiteCavesFeature {
 
     private String formatLanes(List<Integer> lanes) {
         List<Integer> userLanes = lanes.stream()
-                .map(lane -> lane + 1)
-                .sorted()
-                .toList();
+            .map(lane -> lane + 1)
+            .sorted()
+            .toList();
         return userLanes.toString();
     }
 }
