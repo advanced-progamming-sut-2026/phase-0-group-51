@@ -38,9 +38,9 @@ public class IZombie extends Game {
     public static final String SUN_PRODUCER_ALIAS = "IZombieSunProducer";
     private static final int SUN_PER_PRODUCTION = 25;
 
-    private static final int START_INTERVAL_TICKS = 100;
-    private static final int MIN_INTERVAL_TICKS = 20;
-    private static final int INTERVAL_STEP_TICKS = 5;
+    private static final int START_INTERVAL_TICKS = 250;
+    private static final int MIN_INTERVAL_TICKS = 100;
+    private static final int INTERVAL_STEP_TICKS = 15;
     private final Map<String, Integer> zombieReadyAtTick = new HashMap<>();
     private static MinigameStage findIZombieStage(int stageNumber) {
         return MinigameStage.getStages(MinigameType.IZOMBIE).stream()
@@ -305,39 +305,69 @@ public class IZombie extends Game {
         return pool.get(random.nextInt(pool.size())).name();
     }
 
+
     private void produceSun() {
+
         GameState state = getGameState();
         Board board = state.getBoard();
+
         for (SunProducer producer : sunProducers) {
+
             if (producer.zombie.isDead()) {
                 continue;
             }
+
             producer.ticksUntilProduction--;
+
             if (producer.ticksUntilProduction > 0) {
                 continue;
             }
-            int lane = producer.zombie.getLane();
-            float x = producer.zombie.getX();
-            Sun sun = new Sun(
-                            x,
+
+
+            int lane =
+                    producer.zombie.getLane();
+
+            int firstZombieColumn =
+                    RED_LINE_COLUMN;
+
+            int lastColumn =
+                    board.getColumnCount() - 1;
+
+
+            int sunColumn =
+                    firstZombieColumn
+                            + random.nextInt(
+                            lastColumn
+                                    - firstZombieColumn
+                                    + 1
+                    );
+
+
+            Sun sun =
+                    new Sun(
+                            sunColumn,
                             lane,
                             lane,
                             SunType.ORDINARY,
                             SUN_PER_PRODUCTION,
-                            SunType.ORDINARY
-                                    .getLifeTicks()
+                            SunType.ORDINARY.getLifeTicks()
                     );
 
 
             sun.setGrounded(true);
+
             board.spawnSun(sun);
-            producer.intervalTicks = Math.max(MIN_INTERVAL_TICKS, producer.intervalTicks - INTERVAL_STEP_TICKS);
-            producer.ticksUntilProduction = producer.intervalTicks;
-            state.logEvent(
-                    "A sun producer zombie made "
-                            + SUN_PER_PRODUCTION
-                            + " collectible sun.\n"
-            );
+
+
+            producer.intervalTicks =
+                    Math.max(
+                            MIN_INTERVAL_TICKS,
+                            producer.intervalTicks
+                                    - INTERVAL_STEP_TICKS
+                    );
+
+            producer.ticksUntilProduction =
+                    producer.intervalTicks;
         }
     }
 

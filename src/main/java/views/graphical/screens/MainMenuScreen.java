@@ -19,6 +19,7 @@ import controllers.MainMenuController;
 import graphics.PvzGame;
 import models.Result;
 import models.minigames.MinigameType;
+import views.graphical.screens.minigamesScreen.meowPoint.MeowPointScreen;
 import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.CollectionMenuTable;
 import views.graphical.ui.NotificationOverlay;
@@ -156,7 +157,9 @@ public class MainMenuScreen extends BaseScreen{
         cards.get(6).addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // game.showScreen(new AdventureScreen(game));
+                Gdx.app.postRunnable(() ->
+                        game.showScreen(new MeowPointScreen(game))
+                );
             }
         });
 

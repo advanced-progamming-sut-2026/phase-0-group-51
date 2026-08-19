@@ -28,6 +28,7 @@ import models.Result;
 import models.User;
 import models.games.Game;
 import models.games.GameState;
+import models.games.ScoringGame;
 import models.games.ZombieWaveManager;
 import views.graphical.ui.GameSettings;
 import views.graphical.ui.PlantSlotsBar;
@@ -48,6 +49,7 @@ public class GameHud extends Table {
     private static final String COIN_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_SELECTED";
     private static final String GEMS = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL";
     private static final String GEMS_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_SELECTED";
+    private static final String MEOW_POINT = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER";
     private static final String PLANT_FOOD = "IMAGE_UI_ALMANAC_PLANT_FOOD_STAT_ICON";
     private static final String PLANT_FOOD_RECTANGLE = "IMAGE_UI_HUD_INGAME_DEMO";
     private static final String PLANT_FOOD_DOT_FILL = "IMAGE_UI_GENERIC_NAVDOT_FILL";
@@ -83,6 +85,9 @@ public class GameHud extends Table {
     private Label sunLabel;
     private Label coinLabel;
     private Label gemLabel;
+    private Label meowPointLabel;
+    private Group meowPointDisplay;
+    private Container<Group> meowPointContainer;
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
@@ -378,6 +383,15 @@ public class GameHud extends Table {
     private void buildRightControls() {
         topRight.top().right();
         Table buttons = new Table();
+
+        meowPointLabel = new Label("0", game.getSkin());
+        meowPointLabel.setTouchable(Touchable.disabled);
+        meowPointLabel.setFontScale(1.1f);
+
+        meowPointDisplay = createMeowPointDisplay(meowPointLabel);
+        meowPointContainer = new Container<>();
+        meowPointContainer.setTouchable(Touchable.childrenOnly);
+
         gemLabel = new Label("0", game.getSkin());
         gemLabel.setTouchable(Touchable.disabled);
         gemLabel.setFontScale(1.1f);
@@ -436,6 +450,9 @@ public class GameHud extends Table {
                     }
                 }
         );
+
+        buttons.add(meowPointContainer)
+                .padRight(8f);
 
         buttons.add(gemDisplay)
                 .size(
@@ -514,6 +531,60 @@ public class GameHud extends Table {
                         ? Touchable.enabled
                         : Touchable.disabled
         );
+    }
+
+    private Group createMeowPointDisplay(Label label) {
+        ImageButton button = createCurrencyButton(
+                MEOW_POINT,
+                MEOW_POINT
+        );
+
+        button.addListener(new ClickListener() {
+            @Override
+            public void enter(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor fromActor
+            ) {
+                button.getImage().getColor().a = 0.52f;
+            }
+
+            @Override
+            public void exit(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor toActor
+            ) {
+                button.getImage().getColor().a = 1f;
+            }
+        });
+
+        float width = button.getPrefWidth();
+        float height = button.getPrefHeight();
+
+        Group group = new Group();
+        group.setSize(width, height);
+
+        button.setBounds(
+                0f,
+                0f,
+                width,
+                height
+        );
+
+        label.setPosition(
+                70f,
+                20f
+        );
+
+        group.addActor(button);
+        group.addActor(label);
+
+        return group;
     }
 
     private Group createCurrencyDisplay(
@@ -781,6 +852,8 @@ public class GameHud extends Table {
     }
 
     private void refreshGameplayState() {
+        refreshMeowPointDisplay();
+
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null
                 || currentGame.getGameState() == null) {
@@ -837,6 +910,35 @@ public class GameHud extends Table {
                 completed / (float) total;
 
         updateWaveFill(progress);
+    }
+
+
+    private void refreshMeowPointDisplay() {
+        if (meowPointContainer == null
+                || meowPointDisplay == null
+                || meowPointLabel == null) {
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame instanceof ScoringGame scoringGame) {
+            if (meowPointContainer.getActor() != meowPointDisplay) {
+                meowPointContainer.setActor(meowPointDisplay);
+            }
+
+            meowPointLabel.setText(
+                    String.format(
+                            "%,d",
+                            scoringGame.getScoreTracker().currentTotal()
+                    )
+            );
+            return;
+        }
+
+        if (meowPointContainer.getActor() != null) {
+            meowPointContainer.setActor(null);
+        }
     }
 
 

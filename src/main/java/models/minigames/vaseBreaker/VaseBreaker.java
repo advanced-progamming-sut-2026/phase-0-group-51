@@ -98,6 +98,7 @@ public class VaseBreaker extends Game {
             zombie.onTick(state);
         }
         state.getBoard().tickLoots(state);
+        state.getBoard().tickSuns(state);
         updateBrains();
         endState();
     }

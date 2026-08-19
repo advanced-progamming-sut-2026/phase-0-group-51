@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import graphics.PvzGame;
@@ -79,24 +80,45 @@ public class IZombieBar extends Table {
                     );
 
 
-            Table wrapper =
-                    new Table();
 
 
-            wrapper.add(card)
-                    .center()
-                    .row();
+            Stack cardStack = new Stack();
+            cardStack.add(card);
+            Table textOverlay = new Table();
+            textOverlay.setTouchable(Touchable.disabled);
+            textOverlay.bottom();
+            textOverlay.add(
+                            costLabel
+                    )
+                    .left()
+                    .expandX()
+                    .padLeft(12f)
+                    .padBottom(8f);
 
 
-            wrapper.add(costLabel)
-                    .center()
-                    .padTop(1f)
-                    .row();
+            textOverlay.add(
+                            statusLabel
+                    )
+                    .right()
+                    .padRight(12f)
+                    .padBottom(8f);
 
 
-            wrapper.add(statusLabel)
-                    .center();
+            cardStack.add(
+                    textOverlay
+            );
 
+
+            Table wrapper = new Table();
+
+
+            wrapper.add(
+                            cardStack
+                    )
+                    .size(
+                            card.getPrefWidth(),
+                            card.getPrefHeight()
+                    );
 
             wrapper.pack();
 

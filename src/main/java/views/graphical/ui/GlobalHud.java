@@ -20,6 +20,8 @@ import Data.database.UserRepository;
 import models.App;
 import models.Result;
 import models.User;
+import models.games.Game;
+import models.games.ScoringGame;
 import views.graphical.ui.ShopPopup;
 
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -35,6 +37,8 @@ public final class GlobalHud extends Table {
 
     private Label coinLabel;
     private Label gemLabel;
+    private Label meowPointLabel;
+    private Group meowPointDisplay;
     private final UserRepository userRepository = new UserRepository();
     private final GameMenuController gameMenuController =
             new GameMenuController();
@@ -53,7 +57,8 @@ public final class GlobalHud extends Table {
     private static final String NEWS_SELECTED = "IMAGE_UI_HUD_NEWSBUTTON_BUTTONS_HUD_NEWS_SELECTED";
     private static final String SHOP = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_NORMAL";
     private static final String SHOP_CLICKED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED";
-
+    private static final String MEOW_POINT = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER";
+    private static final String MEOW_POINT_SELECTED = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER_DOWN";
     private final NewsMenuController newsController = new NewsMenuController();
     private Label unreadNewsLabel;
     private Table unreadNews;
@@ -264,6 +269,7 @@ public final class GlobalHud extends Table {
         setVisible(true);
         currencyRefreshTimer = 0f;
         refreshCurrencyLabels();
+        refreshMeowPointLabel();
         newsRefreshTimer = 0f;
         refreshUnreadNews();
     }
@@ -328,11 +334,73 @@ public final class GlobalHud extends Table {
             getStage().addActor(settingsPopup);
         }
     }
+    private Group createMeowPointDisplay(Label label) {
+        ImageButton button = createCurrencyButton(
+                MEOW_POINT,
+                MEOW_POINT
+        );
 
+        button.addListener(new ClickListener() {
+            @Override
+            public void enter(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor fromActor
+            ) {
+                button.getImage().getColor().a = 0.52f;
+            }
+
+            @Override
+            public void exit(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    Actor toActor
+            ) {
+                button.getImage().getColor().a = 1f;
+            }
+        });
+
+        float width = button.getPrefWidth();
+        float height = button.getPrefHeight();
+
+        Group group = new Group();
+        group.setSize(width, height);
+
+        button.setBounds(
+                0f,
+                0f,
+                width,
+                height
+        );
+
+        label.setPosition(
+                70f,
+                20f
+        );
+
+        group.addActor(button);
+        group.addActor(label);
+
+        return group;
+    }
     private Table buildCurrencyBar() {
 
         Table bar = new Table();
         bar.setTouchable(Touchable.childrenOnly);
+
+        meowPointLabel = new Label("0", skin);
+        meowPointLabel.setTouchable(Touchable.disabled);
+        meowPointLabel.setFontScale(1.1f);
+
+         meowPointDisplay =
+                createMeowPointDisplay(meowPointLabel);
+        bar.add(meowPointDisplay)
+                .size(meowPointDisplay.getWidth(), meowPointDisplay.getHeight())
+                .padRight(15f);
 
         gemLabel = new Label("0", skin);
         gemLabel.setTouchable(Touchable.disabled);
@@ -506,6 +574,29 @@ public final class GlobalHud extends Table {
         gemLabel.setText(String.format("%,d", balance.gems()));
     }
 
+    private void refreshMeowPointLabel() {
+        if (meowPointDisplay == null || meowPointLabel == null) {
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+
+
+
+        if (currentGame != null) {
+            meowPointDisplay.setVisible(false);
+            meowPointDisplay.setTouchable(Touchable.disabled);
+            return;
+        }
+
+        meowPointDisplay.setVisible(true);
+        meowPointDisplay.setTouchable(Touchable.enabled);
+
+        User user = App.getInstance().getLoggedInUser();
+        int bestMeowPoint = user == null ? 0 : Math.max(0, user.getMostMeowPoint());
+        meowPointLabel.setText(String.format("%,d", bestMeowPoint));
+    }
+
     @Override
     public void act(float delta) {
         super.act(delta);
@@ -513,6 +604,8 @@ public final class GlobalHud extends Table {
             return;
         }
         currencyRefreshTimer += delta;
+        refreshMeowPointLabel();
+
         if (currencyRefreshTimer >= CURRENCY_REFRESH) {
             currencyRefreshTimer = 0f;
             refreshCurrencyLabels();
