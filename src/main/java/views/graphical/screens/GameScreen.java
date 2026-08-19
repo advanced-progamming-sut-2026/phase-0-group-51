@@ -56,7 +56,10 @@ import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
+import views.graphical.dialogue.LevelDialogueRegistry;
+import views.graphical.dialogue.NpcDialogueSequence;
 import views.graphical.ui.GameSettings;
+import views.graphical.ui.NpcDialogueOverlay;
 import views.graphical.ui.GameOverPopup;
 import views.graphical.ui.GameWinPopup;
 import views.graphical.ui.PauseMenuPopup;
@@ -90,7 +93,7 @@ public class GameScreen extends BaseScreen {
     }
 
     private enum OverlayMode {
-        NONE, START_OBJECTIVES, PAUSE, GAME_END
+        NONE, NPC_DIALOGUE, START_OBJECTIVES, PAUSE, GAME_END
     }
 
     private enum ToolMode {
@@ -381,6 +384,51 @@ public class GameScreen extends BaseScreen {
     @Override
     public void show() {
         game.hideHud();
+        showLevelIntro();
+    }
+
+    private void showLevelIntro() {
+        NpcDialogueSequence dialogue = LevelDialogueRegistry.find(
+                theme,
+                currentLevel.levelNumber()
+        );
+
+        if (dialogue == null) {
+            showStartObjectives();
+            return;
+        }
+
+        showNpcDialogue(dialogue);
+    }
+
+    private void showNpcDialogue(NpcDialogueSequence dialogue) {
+        if (overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        overlayMode = OverlayMode.NPC_DIALOGUE;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
+
+        NpcDialogueOverlay npcDialogueOverlay = new NpcDialogueOverlay(
+                game,
+                dialogue,
+                this::finishNpcDialogue
+        );
+        uiStage.addActor(npcDialogueOverlay);
+        uiStage.setKeyboardFocus(npcDialogueOverlay);
+        npcDialogueOverlay.toFront();
+    }
+
+    private void finishNpcDialogue() {
+        if (overlayMode != OverlayMode.NPC_DIALOGUE) {
+            return;
+        }
+
+        uiStage.setKeyboardFocus(null);
+        overlayMode = OverlayMode.NONE;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         showStartObjectives();
     }
 
