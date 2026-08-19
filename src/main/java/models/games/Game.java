@@ -492,7 +492,8 @@ public class Game{
         }
         FrostbiteCavesFeature feature = new FrostbiteCavesFeature(
             gameState,
-            level.frostbiteConfig()
+            level.frostbiteConfig(),
+            waveManager
         );
         feature.initialize();
         waveManager.setOnWaveStart(feature::onWaveStart);

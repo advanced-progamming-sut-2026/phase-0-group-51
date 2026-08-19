@@ -254,7 +254,7 @@ public class GameScreen extends BaseScreen {
             new FrostbiteSnowstormAnimationSystem(
                 game.getPamPlayer(),
                 worldStage,
-                boardTransform,
+                zombieAnimationSystem,
                 theme
             );
 
@@ -340,8 +340,8 @@ public class GameScreen extends BaseScreen {
     }
     private float getMiddleBackgroundYOffset() {
         return theme == ChapterTheme.FROSTBITE_CAVES
-                ? FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET
-                : 0f;
+            ? FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET
+            : 0f;
     }
     private void loadBackgroundAssets() {
         switch (theme) {
@@ -970,11 +970,6 @@ public class GameScreen extends BaseScreen {
         }
 
         for (VisualEffectEvent event : state.consumeVisualEffects()) {
-            if (event.type() == VisualEffectEvent.Type.ICY_WIND) {
-                frostbiteSnowstormAnimationSystem.play();
-                continue;
-            }
-
             if (worldEffectManager != null) {
                 worldEffectManager.play(event);
             }
@@ -1107,7 +1102,10 @@ public class GameScreen extends BaseScreen {
                 );
 
                 frostbiteSnowstormAnimationSystem.update(
-                    gameplayDelta
+                    gameplayDelta,
+                    currentGame
+                        .getGameState()
+                        .getZombiesInTheGame()
                 );
             }
         }

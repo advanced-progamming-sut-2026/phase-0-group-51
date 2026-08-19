@@ -3,8 +3,8 @@ package models.games.frostbite;
 import Data.loader.ZombieRegistry;
 import models.Board.Board;
 import models.Zombie.Zombie;
-import models.effects.VisualEffectEvent;
 import models.games.GameState;
+import models.games.ZombieWaveManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,14 +15,42 @@ public class FrostbiteCavesFeature {
     private final GameState state;
     private final FrostbiteLevelConfig config;
     private final Random random;
+    private final ZombieWaveManager waveManager;
 
-    public FrostbiteCavesFeature(GameState state, FrostbiteLevelConfig config) {
-        this(state, config, new Random());
+    public FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config
+    ) {
+        this(
+            state,
+            config,
+            null,
+            new Random()
+        );
     }
 
-    FrostbiteCavesFeature(GameState state, FrostbiteLevelConfig config, Random random) {
+    public FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config,
+        ZombieWaveManager waveManager
+    ) {
+        this(
+            state,
+            config,
+            waveManager,
+            new Random()
+        );
+    }
+
+    FrostbiteCavesFeature(
+        GameState state,
+        FrostbiteLevelConfig config,
+        ZombieWaveManager waveManager,
+        Random random
+    ) {
         this.state = state;
         this.config = config;
+        this.waveManager = waveManager;
         this.random = random;
     }
 
@@ -37,14 +65,26 @@ public class FrostbiteCavesFeature {
         }
         List<Integer> lanes = chooseWindLanes();
         for (int lane : lanes) {
-            state.getBoard().addFrostToLane(lane, state, "icy wind");
+            state.getBoard().addFrostToLane(
+                lane,
+                state,
+                "icy wind"
+            );
         }
 
-        state.emitVisualEffect(
-            VisualEffectEvent.icyWind()
-        );
+        if (waveManager != null) {
+            waveManager.setSnowstormLanesForNextWave(
+                lanes
+            );
+        }
 
-        state.logEvent("Icy wind wooopshed rows " + formatLanes(lanes) + " at wave " + waveNumber + ".\n");
+        state.logEvent(
+            "Icy wind swept rows "
+                + formatLanes(lanes)
+                + " at wave "
+                + waveNumber
+                + ".\n"
+        );
     }
 
     private void placeIceFloors() {
