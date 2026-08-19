@@ -22,6 +22,7 @@ import models.shop.Shop;
 import models.shop.ShopItem;
 import models.shop.ShopItemType;
 import models.shop.Currency;
+import views.graphical.screens.GreenHouseScreen;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import Data.database.PlantRepository;
@@ -533,7 +534,11 @@ public class ShopPopup extends BorderedPanel {
 
     private void handlePurchaseResult(Result result, Runnable onSuccess) {
         if (result.success()) {
-            showPopup("Success", "Purchase completed successfully!");
+            String message = result.message();
+            if (message == null || message.isBlank()) {
+                message = "Purchase completed successfully!";
+            }
+            showPopup("Success", message);
             onSuccess.run();
         } else {
             showPopup("Error", result.message());
@@ -558,6 +563,10 @@ public class ShopPopup extends BorderedPanel {
                 Result result = shopController.shopBuy(String.valueOf(itemId), "1", null);
                 handlePurchaseResult(result, () -> {
                     updateTopBar();
+                    if (item.getType() == ShopItemType.POT
+                        && game.getScreen() instanceof GreenHouseScreen greenHouseScreen) {
+                        greenHouseScreen.refreshGreenHouse();
+                    }
                 });
             });
         }

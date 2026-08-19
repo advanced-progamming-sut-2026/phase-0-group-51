@@ -44,6 +44,7 @@ public class Game{
     private ConveyorBeltLevel conveyorBeltLevel;
     private long pendingScaledTicks;
     private boolean zombieWavesManuallyStarted;
+    private boolean purchasedPlantFoodClaimedForCurrentGame;
     private LockedPlantsMode lockedPlantsMode;
     private final Map<String, Integer> allowedPlantByLockedFamily = new LinkedHashMap<>();
     private final Random random = new Random();
@@ -52,6 +53,7 @@ public class Game{
         if (gameState == null || gameState.getZombieWaveManager() == null) {
             return;
         }
+        claimPurchasedPlantFoodForGameplay();
         if (isPlantWhatYouGetLevel()) {
             zombieWavesManuallyStarted = false;
             gameState.logEvent(
@@ -257,6 +259,7 @@ public class Game{
         }
         Board board = new Board();
         this.zombieWavesManuallyStarted = false;
+        this.purchasedPlantFoodClaimedForCurrentGame = false;
         this.gameState = new GameState(board, theme);
         this.gameState.setCurrentLevel(level);
         this.gameState.setSun(level.startingSun());
@@ -278,21 +281,40 @@ public class Game{
         applyChapterFeatures(theme, level, board, waveManager);
         level.type().initialize(this.gameState);
         initializeConveyorBeltLevel(level);
-        loadPurchasedPlantFood();
     }
 
-    private void loadPurchasedPlantFood() {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null || gameState == null) {
+    private void claimPurchasedPlantFoodForGameplay() {
+        if (purchasedPlantFoodClaimedForCurrentGame || gameState == null) {
             return;
         }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            purchasedPlantFoodClaimedForCurrentGame = true;
+            return;
+        }
+
         int storedPlantFood = new UserRepository().claimStoredPlantFood(user.getId());
         if (storedPlantFood < 0) {
             gameState.logEvent("Stored Plant Food could not be loaded.\n");
             return;
         }
-        gameState.setPlantFoodCount(storedPlantFood);
+
+        int startingPlantFood = Math.min(
+            3,
+            Math.max(0, gameState.getPlantFoodCount()) + storedPlantFood
+        );
+
+        gameState.setPlantFoodCount(startingPlantFood);
         user.setPlantFoodNum(0);
+        purchasedPlantFoodClaimedForCurrentGame = true;
+
+        if (storedPlantFood > 0) {
+            gameState.logEvent(
+                "Loaded " + storedPlantFood
+                    + " purchased Plant Food into this game.\n"
+            );
+        }
     }
 
     private void initializeConveyorBeltLevel(Level level) {

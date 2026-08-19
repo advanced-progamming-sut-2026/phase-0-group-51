@@ -47,6 +47,7 @@ import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
@@ -132,6 +133,7 @@ public class GameScreen extends BaseScreen {
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
+    private ProtectedPlantOverlayManager protectedPlantOverlayManager;
     private SunViewManager sunViewManager;
     private ProjectileViewManager projectileViewManager;
     private WorldEffectManager worldEffectManager;
@@ -264,6 +266,33 @@ public class GameScreen extends BaseScreen {
         if (currentGame.getGameState() != null
             && currentGame.getGameState().getBoard() != null) {
             graveAnimationSystem.sync(
+                currentGame
+                    .getGameState()
+                    .getBoard()
+            );
+
+            protectedPlantOverlayManager =
+                new ProtectedPlantOverlayManager(
+                    game,
+                    boardTransform
+                );
+            worldStage.addActor(
+                protectedPlantOverlayManager
+            );
+
+            plantViewManager =
+                new PlantViewManager(
+                    game,
+                    boardTransform
+                );
+            worldStage.addActor(
+                plantViewManager
+            );
+
+            protectedPlantOverlayManager.sync(
+                currentGame.getGameState()
+            );
+            plantViewManager.sync(
                 currentGame
                     .getGameState()
                     .getBoard()
@@ -469,12 +498,17 @@ public class GameScreen extends BaseScreen {
         graveAnimationSystem.toFront();
         graveAnimationSystem.sync(board);
 
-        plantViewManager =
-            new PlantViewManager(
-                game,
-                boardTransform
+        if (protectedPlantOverlayManager != null) {
+            protectedPlantOverlayManager.sync(
+                currentGame.getGameState()
             );
-        worldStage.addActor(plantViewManager);
+        }
+        if (plantViewManager != null) {
+            plantViewManager.sync(
+                board
+            );
+        }
+
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
         worldStage.addActor(projectileViewManager);
         worldEffectManager = new WorldEffectManager(game, boardTransform);
@@ -1057,26 +1091,32 @@ public class GameScreen extends BaseScreen {
                 || introState == IntroState.PAN_TO_SELECTION
                 || introState == IntroState.WAITING_FOR_SELECTION;
 
-        if (introState == IntroState.PLAYING
-            && overlayMode == OverlayMode.NONE) {
-            Game currentGame = App.getInstance().getCurrentGame();
+        Game currentGameForVisuals = App.getInstance().getCurrentGame();
+        if (currentGameForVisuals != null
+            && currentGameForVisuals.getGameState() != null) {
+            Board board =
+                currentGameForVisuals
+                    .getGameState()
+                    .getBoard();
 
-            if (currentGame != null
-                && currentGame.getGameState() != null) {
-                Board board =
-                    currentGame
-                        .getGameState()
-                        .getBoard();
+            graveAnimationSystem.sync(
+                board
+            );
 
-                graveAnimationSystem.sync(
+            if (protectedPlantOverlayManager != null) {
+                protectedPlantOverlayManager.sync(
+                    currentGameForVisuals.getGameState()
+                );
+            }
+
+            if (plantViewManager != null) {
+                plantViewManager.sync(
                     board
                 );
+            }
 
-                if (plantViewManager != null) {
-                    plantViewManager.sync(
-                        board
-                    );
-                }
+            if (introState == IntroState.PLAYING
+                && overlayMode == OverlayMode.NONE) {
                 if (projectileViewManager != null) {
                     projectileViewManager.sync(
                         board.getProjectiles(),
@@ -1486,6 +1526,9 @@ public class GameScreen extends BaseScreen {
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
+        if (protectedPlantOverlayManager != null) {
+            protectedPlantOverlayManager.clearVisuals();
+        }
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();
