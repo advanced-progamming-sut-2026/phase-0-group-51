@@ -285,7 +285,7 @@ public class ZombieBehaviorFactory {
         List<ZombieBehavior> behaviors
     ) {
         int interval = (int) (
-            data.path("TimeBetweenRaisings").asDouble(15)
+            data.path("TimeBetweenRaisings").asDouble(23)
                 * TICKS_PER_SECOND
         );
         behaviors.add(new WorldEffectBehavior(

@@ -14,6 +14,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.games.specialLevelConfig.TimedBattleConfig;
 import models.items.Mower;
+import models.effects.VisualEffectEvent;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
 import models.games.specialLevelConfig.SaveOurSeedsConfig;
@@ -53,7 +54,7 @@ public class GameState {
     private int deadlineColumn = -1;
     private boolean deadlineBreached;
     private final Set<Plant> protectedPlants = Collections.newSetFromMap(
-            new IdentityHashMap<>()
+        new IdentityHashMap<>()
     );
     private boolean protectedPlantLost;
     private TimedBattleConfig timedBattleConfig = TimedBattleConfig.none();
@@ -64,10 +65,29 @@ public class GameState {
     boolean mowerEnabled =true;
     private int plantLossLimit = -1;
     private boolean plantLossLimitReached;
+    private final List<VisualEffectEvent> pendingVisualEffects = new ArrayList<>();
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
         }
+    }
+
+    public void emitVisualEffect(VisualEffectEvent event) {
+        if (event != null) {
+            pendingVisualEffects.add(event);
+        }
+    }
+
+    public List<VisualEffectEvent> consumeVisualEffects() {
+        if (pendingVisualEffects.isEmpty()) {
+            return List.of();
+        }
+
+        List<VisualEffectEvent> events =
+            List.copyOf(pendingVisualEffects);
+
+        pendingVisualEffects.clear();
+        return events;
     }
     public GameState(Board board, ChapterTheme chapterTheme) {
         this(board, chapterTheme, true);
@@ -94,7 +114,15 @@ public class GameState {
             if (!zombie.isDead() && zombie.getX() < 0) {
                 int lane = zombie.getLane();
                 Mower mower = lawnMowers[lane];
-                if (mower.isActivated() || mower.isDestroyed()) {
+                boolean passedActiveMower =
+                    mower != null
+                        && mower.isActivated()
+                        && zombie.getX()
+                        < mower.getX() - Mower.HIT_RADIUS_COLUMNS;
+
+                if (mower == null
+                    || mower.isDestroyed()
+                    || passedActiveMower) {
                     logEvent("The zombie ate your brain; LOSER!!!\n");
                     return true;
                 }
@@ -112,17 +140,17 @@ public class GameState {
         List<SaveOurSeedsConfig.ProtectedPlantPlacement> placements = resolveProtectedPlantPlacements(config);
         for (SaveOurSeedsConfig.ProtectedPlantPlacement placement : placements) {
             Tile tile = board.getTileAtUserCoordinates(
-                    placement.column() - 1, placement.row() - 1);
+                placement.column() - 1, placement.row() - 1);
             if (tile == null) {
                 throw new IllegalArgumentException(
-                        "Protected plant coordinates are outside the board: ("
-                                + placement.column() + ", " + placement.row() + ")."
+                    "Protected plant coordinates are outside the board: ("
+                        + placement.column() + ", " + placement.row() + ")."
                 );
             }
             PlantData data = PlantRegistry.getById(placement.plantId());
             if (data == null) {
                 throw new IllegalArgumentException(
-                        "Unknown protected plant id: " + placement.plantId());
+                    "Unknown protected plant id: " + placement.plantId());
             }
 
             Plant plant = PlantFactory.create(data, placement.level());
@@ -137,7 +165,7 @@ public class GameState {
                 protectedPlants.remove(plant);
                 board.removePlant(plant);
                 throw new IllegalArgumentException(
-                        data.name() + " cannot be used as a protected starting plant."
+                    data.name() + " cannot be used as a protected starting plant."
                 );
             }
         }
@@ -152,17 +180,17 @@ public class GameState {
         int maximumColumn = board.getColumnCount() - rule.excludedRightColumns();
         if (rule.minimumColumn() > maximumColumn) {
             throw new IllegalArgumentException(
-                    "No columns remain for random protected-plant placement.");
+                "No columns remain for random protected-plant placement.");
         }
         if (rule.distinctRows() && rule.count() > board.getLaneCount()) {
             throw new IllegalArgumentException(
-                    "Not enough rows for distinct protected-plant placement.");
+                "Not enough rows for distinct protected-plant placement.");
         }
         List<Tile> candidates = new ArrayList<>();
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
             for (int column = rule.minimumColumn() - 1;
-                    column < maximumColumn;
-                    column++) {
+                 column < maximumColumn;
+                 column++) {
                 Tile tile = board.getTile(lane, column);
                 if (tile != null && tile.isOccupiable()) {
                     candidates.add(tile);
@@ -175,10 +203,10 @@ public class GameState {
         for (Tile tile : candidates) {
             if (rule.distinctRows() && !usedRows.add(tile.getLane())) continue;
             placements.add(new SaveOurSeedsConfig.ProtectedPlantPlacement(
-                    rule.plantId(),
-                    tile.getColumn() + 1,
-                    tile.getLane() + 1,
-                    rule.level()
+                rule.plantId(),
+                tile.getColumn() + 1,
+                tile.getLane() + 1,
+                rule.level()
             ));
             if (placements.size() == rule.count()) break;
 
@@ -186,7 +214,7 @@ public class GameState {
 
         if (placements.size() < rule.count()) {
             throw new IllegalArgumentException(
-                    "Not enough eligible tiles for random protected plants."
+                "Not enough eligible tiles for random protected plants."
             );
         }
         return List.copyOf(placements);
@@ -194,7 +222,7 @@ public class GameState {
 
     public boolean isSaveOurSeedsActive() {
         return currentLevel != null
-                && currentLevel.type() == LevelType.SAVE_OUR_SEEDS;
+            && currentLevel.type() == LevelType.SAVE_OUR_SEEDS;
     }
 
     public boolean isProtectedPlant(Plant plant) {
@@ -221,8 +249,8 @@ public class GameState {
         if (!protectedPlantLost) {
             for (Plant plant : protectedPlants) {
                 if (plant.isDead()
-                        || plant.isMarkedForRemoval()
-                        || board.getTileForPlant(plant) == null) {
+                    || plant.isMarkedForRemoval()
+                    || board.getTileForPlant(plant) == null) {
                     onPlantDestroyed(plant);
                     break;
                 }
@@ -237,10 +265,10 @@ public class GameState {
         }
         protectedPlantLost = true;
         logEvent(
-                "SAVE OUR SEEDS FAILED: protected " + plant.getName()
-                        + " at (" + (plant.getPosX() + 1) + ", "
-                        + (plant.getPosY() + 1)
-                        + ") was destroyed. You lose immediately.\n"
+            "SAVE OUR SEEDS FAILED: protected " + plant.getName()
+                + " at (" + (plant.getPosX() + 1) + ", "
+                + (plant.getPosY() + 1)
+                + ") was destroyed. You lose immediately.\n"
         );
     }
 
@@ -249,30 +277,30 @@ public class GameState {
             return "";
         }
         List<Plant> ordered = protectedPlants.stream()
-                .sorted(
-                        Comparator.comparingInt(Plant::getPosY)
-                                .thenComparingInt(Plant::getPosX)
-                )
-                .toList();
+            .sorted(
+                Comparator.comparingInt(Plant::getPosY)
+                    .thenComparingInt(Plant::getPosX)
+            )
+            .toList();
         long surviving = ordered.stream()
-                .filter(plant -> !plant.isDead()
-                        && !plant.isMarkedForRemoval()
-                        && board.getTileForPlant(plant) != null)
-                .count();
+            .filter(plant -> !plant.isDead()
+                && !plant.isMarkedForRemoval()
+                && board.getTileForPlant(plant) != null)
+            .count();
         String locations = ordered.stream()
-                .map(plant -> plant.getName() + " ("
-                        + (plant.getPosX() + 1) + ", "
-                        + (plant.getPosY() + 1) + ")")
-                .reduce((left, right) -> left + ", " + right)
-                .orElse("none");
+            .map(plant -> plant.getName() + " ("
+                + (plant.getPosX() + 1) + ", "
+                + (plant.getPosY() + 1) + ")")
+            .reduce((left, right) -> left + ", " + right)
+            .orElse("none");
         return "Save Our Seeds: " + surviving + "/" + ordered.size()
-                + " protected plants alive. Protect: " + locations + ".";
+            + " protected plants alive. Protect: " + locations + ".";
     }
 
     public void configureTimedBattle(TimedBattleConfig config) {
         if (config == null || !config.isEnabled()) {
             throw new IllegalArgumentException(
-                    "Timed Battle requires at least one objective."
+                "Timed Battle requires at least one objective."
             );
         }
         timedBattleConfig = config;
@@ -285,8 +313,8 @@ public class GameState {
 
     public boolean isTimedBattleActive() {
         return currentLevel != null
-                && currentLevel.type() == LevelType.TIMED_BATTLE
-                && timedBattleConfig.isEnabled();
+            && currentLevel.type() == LevelType.TIMED_BATTLE
+            && timedBattleConfig.isEnabled();
     }
 
     public int getTimedBattleRemainingTicks() {
@@ -294,7 +322,7 @@ public class GameState {
             return 0;
         }
         int durationTicks = timedBattleConfig.durationSeconds()
-                * ticksPerSecond;
+            * ticksPerSecond;
         int elapsedTicks = tickCounter - timedBattleStartTick;
         return Math.max(0, durationTicks - elapsedTicks);
     }
@@ -305,12 +333,12 @@ public class GameState {
 
     public boolean isTimedBattleKillObjectiveComplete() {
         return !timedBattleConfig.requiresZombieKills()
-                || timedBattleZombieKills >= timedBattleConfig.zombieKillTarget();
+            || timedBattleZombieKills >= timedBattleConfig.zombieKillTarget();
     }
 
     public boolean isTimedBattleSunObjectiveComplete() {
         return !timedBattleConfig.requiresSunProduction()
-                || timedBattleSunProduced >= timedBattleConfig.sunProductionTarget();
+            || timedBattleSunProduced >= timedBattleConfig.sunProductionTarget();
     }
 
     public boolean isTimedBattleComplete() {
@@ -329,37 +357,37 @@ public class GameState {
         }
         timedBattleFailed = true;
         logEvent(
-                "Timed Battle failed: time is up. "
-                        + timedBattleStatusLine()
+            "Timed Battle failed: time is up. "
+                + timedBattleStatusLine()
         );
         return true;
     }
 
     public void recordTimedBattleZombieKill(
-            Zombie zombie,
-            QuestKillSourceType sourceType
+        Zombie zombie,
+        QuestKillSourceType sourceType
     ) {
         if (!isTimedBattleActive()
-                || !timedBattleConfig.requiresZombieKills() || zombie == null
-                || zombie.isHypnotized() || !zombie.isQuestEligible()
-                || sourceType == QuestKillSourceType.CHEAT || isTimedBattleKillObjectiveComplete()) {
+            || !timedBattleConfig.requiresZombieKills() || zombie == null
+            || zombie.isHypnotized() || !zombie.isQuestEligible()
+            || sourceType == QuestKillSourceType.CHEAT || isTimedBattleKillObjectiveComplete()) {
             return;
         }
         timedBattleZombieKills = Math.min(
-                timedBattleConfig.zombieKillTarget(),
-                timedBattleZombieKills + 1
+            timedBattleConfig.zombieKillTarget(),
+            timedBattleZombieKills + 1
         );
         logTimedBattleProgress();
     }
 
     public void recordTimedBattleSunProduced(int amount) {
         if (!isTimedBattleActive()
-                || !timedBattleConfig.requiresSunProduction() || amount <= 0 || isTimedBattleSunObjectiveComplete()) {
+            || !timedBattleConfig.requiresSunProduction() || amount <= 0 || isTimedBattleSunObjectiveComplete()) {
             return;
         }
         timedBattleSunProduced = Math.min(
-                timedBattleConfig.sunProductionTarget(),
-                timedBattleSunProduced + amount
+            timedBattleConfig.sunProductionTarget(),
+            timedBattleSunProduced + amount
         );
         logTimedBattleProgress();
     }
@@ -371,27 +399,27 @@ public class GameState {
         StringBuilder status = new StringBuilder("Timed Battle: ");
         if (timedBattleConfig.requiresZombieKills()) {
             status.append("Kills ")
-                    .append(timedBattleZombieKills)
-                    .append('/')
-                    .append(timedBattleConfig.zombieKillTarget());
+                .append(timedBattleZombieKills)
+                .append('/')
+                .append(timedBattleConfig.zombieKillTarget());
         }
         if (timedBattleConfig.requiresZombieKills()
-                && timedBattleConfig.requiresSunProduction()) {
+            && timedBattleConfig.requiresSunProduction()) {
             status.append(" | ");
         }
         if (timedBattleConfig.requiresSunProduction()) {
             status.append("Plant-produced sun ")
-                    .append(timedBattleSunProduced)
-                    .append('/')
-                    .append(timedBattleConfig.sunProductionTarget());
+                .append(timedBattleSunProduced)
+                .append('/')
+                .append(timedBattleConfig.sunProductionTarget());
         }
         status.append(" | Time left: ")
-                .append(String.format(
-                        Locale.US,
-                        "%.1f",
-                        getTimedBattleRemainingSeconds()
-                ))
-                .append(" seconds.\n");
+            .append(String.format(
+                Locale.US,
+                "%.1f",
+                getTimedBattleRemainingSeconds()
+            ))
+            .append(" seconds.\n");
         return status.toString();
     }
 
@@ -399,13 +427,13 @@ public class GameState {
         logEvent(timedBattleStatusLine());
         if (isTimedBattleComplete()) {
             logEvent(
-                    "Both Timed Battle objectives completed with "
-                            + String.format(
-                                    Locale.US,
-                                    "%.1f",
-                                    getTimedBattleRemainingSeconds()
-                            )
-                            + " seconds remaining.\n"
+                "Both Timed Battle objectives completed with "
+                    + String.format(
+                    Locale.US,
+                    "%.1f",
+                    getTimedBattleRemainingSeconds()
+                )
+                    + " seconds remaining.\n"
             );
         }
     }
@@ -413,14 +441,14 @@ public class GameState {
     public void configureDeadline(int userFacingColumn) {
         if (userFacingColumn < 1 || userFacingColumn > board.getColumnCount()) {
             throw new IllegalArgumentException(
-                    "Deadline column must be inside the board."
+                "Deadline column must be inside the board."
             );
         }
         deadlineColumn = userFacingColumn;
         deadlineBreached = false;
         logEvent(
-                "Deadline is haunting you : zombies must not cross the line before column "
-                        + deadlineColumn + ".\n"
+            "Deadline is haunting you : zombies must not cross the line before column "
+                + deadlineColumn + ".\n"
         );
     }
 
@@ -444,9 +472,9 @@ public class GameState {
             if (zombie.getX() < deadlineX) {
                 deadlineBreached = true;
                 logEvent(
-                        zombie.getAlias() + " crossed the Dead Line before column "
-                                + deadlineColumn + " in row "
-                                + (zombie.getLane() + 1) + "; YOU ARE PASSED YOUR DEADLINE LOSER!!!\n"
+                    zombie.getAlias() + " crossed the Dead Line before column "
+                        + deadlineColumn + " in row "
+                        + (zombie.getLane() + 1) + "; YOU ARE PASSED YOUR DEADLINE LOSER!!!\n"
                 );
                 return true;
             }
@@ -467,7 +495,7 @@ public class GameState {
         plantLossLimit = limit;
         plantLossLimitReached = false;
         logEvent("Plants You Love started. You lose when "
-                        + plantLossLimit + " plants are destroyed.\n");
+            + plantLossLimit + " plants are destroyed.\n");
     }
 
     public boolean hasPlantLossLimit() {
@@ -488,7 +516,7 @@ public class GameState {
         }
         plantLossLimitReached = true;
         logEvent(
-                "You lost " + plantsLost + " plants out of the allowed " + plantLossLimit + "; LOSER!!!\n"
+            "You lost " + plantsLost + " plants out of the allowed " + plantLossLimit + "; LOSER!!!\n"
         );
 
         return true;
@@ -556,7 +584,7 @@ public class GameState {
         }
         decreaseSunBalance(cost);
         existing.setRefundableSunCost(
-                existing.getRefundableSunCost() + cost
+            existing.getRefundableSunCost() + cost
         );
         addition.setPosX(existing.getPosX());
         addition.setPosY(existing.getPosY());
@@ -578,7 +606,7 @@ public class GameState {
             throw new IllegalStateException("Lily Pad can only be planted on water");
         }
         if (tile.hasPlant() || tile.hasGrave() || tile.isIceBlocked()
-                || tile.isCrater() || tile.getIceFloorDirection() != null) {
+            || tile.isCrater() || tile.getIceFloorDirection() != null) {
             throw new IllegalStateException("Tile is not available for a Lily Pad");
         }
         int cost = lilyPad.getPlantStat().cost();
@@ -625,7 +653,7 @@ public class GameState {
         }
         if (!tile.hasPlant() || tile.hasPumpkin()) {
             throw new IllegalStateException(
-                    "Pumpkin requires a plant without another Pumpkin"
+                "Pumpkin requires a plant without another Pumpkin"
             );
         }
         int cost = pumpkin.getPlantStat().cost();
@@ -661,7 +689,7 @@ public class GameState {
     public void plantOnGrave(Plant plant, Tile tile) {
         if (plant == null || tile == null || !tile.hasGrave()) {
             throw new IllegalStateException(
-                    "Grave Buster must be planted on a grave"
+                "Grave Buster must be planted on a grave"
             );
         }
         if (tile.hasPlant()) {
@@ -682,13 +710,13 @@ public class GameState {
     }
     private void validatePlantPlacement(Plant plant, Tile tile) {
 
-       if (plant == null || tile == null) {
-                throw new IllegalArgumentException("Plant and tile are required");
-       }
+        if (plant == null || tile == null) {
+            throw new IllegalArgumentException("Plant and tile are required");
+        }
 
-       if (!tile.isOccupiable()) {
-                throw new IllegalStateException("Tile is not occupiable");
-       }
+        if (!tile.isOccupiable()) {
+            throw new IllegalStateException("Tile is not occupiable");
+        }
 
     }
 
@@ -703,8 +731,8 @@ public class GameState {
 
     private void activateEntryPlantFood(Plant plant) {
         if (plant.isAutoPlantFoodOnEntry()
-                && !plant.isMarkedForRemoval()
-                && !plant.isDead()) {
+            && !plant.isMarkedForRemoval()
+            && !plant.isDead()) {
             plant.feed(this);
         }
     }
@@ -714,7 +742,7 @@ public class GameState {
         }
         if (isProtectedPlant(plant)) {
             throw new IllegalStateException(
-                    "Protected plants cannot be plucked in Save Our Seeds"
+                "Protected plants cannot be plucked in Save Our Seeds"
             );
         }
         int refund = Math.max(0, plant.getRefundableSunCost());
@@ -758,32 +786,32 @@ public class GameState {
     }
 
     public Zombie findNearestHypnotizedZombieInRange(
-            Zombie self,
-            int lane,
-            float x,
-            int range
+        Zombie self,
+        int lane,
+        float x,
+        int range
     ) {
         return findNearestHypnotizedZombieInRange(
-                self,
-                lane,
-                x,
-                (float) range
+            self,
+            lane,
+            x,
+            (float) range
         );
     }
 
     public Zombie findNearestHypnotizedZombieInRange(
-            Zombie self,
-            int lane,
-            float x,
-            float range
+        Zombie self,
+        int lane,
+        float x,
+        float range
     ) {
         Zombie nearest = null;
         float nearestDistance = Float.MAX_VALUE;
         for (Zombie other : zombiesInTheGame) {
             if (other == self
-                    || !other.isHypnotized()
-                    || other.isDead()
-                    || other.getLane() != lane) {
+                || !other.isHypnotized()
+                || other.isDead()
+                || other.getLane() != lane) {
                 continue;
             }
 

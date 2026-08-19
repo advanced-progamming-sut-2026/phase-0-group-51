@@ -851,7 +851,7 @@
       },
       "Speed": 0.185,
       "TimeBetweenCasts": 0,
-      "TimeBetweenRaisings": 6,
+      "TimeBetweenRaisings": 13,
       "WavePointCost": 300,
       "Weight": 2000,
       "ZombieStats": [

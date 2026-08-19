@@ -3,8 +3,10 @@ package views.graphical.ui;
 import Data.database.QuestsRepository;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import graphics.PvzGame;
@@ -36,6 +38,22 @@ public final class QuestCard extends Table {
             PvzGame game,
             QuestsRepository.QuestEntry entry,
             String description
+    ) {
+        this(
+                game,
+                entry,
+                description,
+                "",
+                null
+        );
+    }
+
+    public QuestCard(
+            PvzGame game,
+            QuestsRepository.QuestEntry entry,
+            String description,
+            String rewardText,
+            Runnable onClaim
     ) {
         if (game == null) {
             throw new IllegalArgumentException(
@@ -85,6 +103,13 @@ public final class QuestCard extends Table {
                 descriptionStyle
         );
 
+        Label rewardLabel = new Label(
+                rewardText == null || rewardText.isBlank()
+                        ? ""
+                        : "Reward: " + rewardText,
+                descriptionStyle
+        );
+
         ProgressBar progressBar =
                 new ProgressBar(
                         0f,
@@ -113,16 +138,43 @@ public final class QuestCard extends Table {
                 Touchable.disabled
         );
 
+        boolean claimed =
+                entry.userQuest().isClaimed();
+
+        boolean completed =
+                entry.userQuest().isCompleted();
+
         TextButton actionButton =
                 new TextButton(
-                        entry.userQuest().isCompleted()
+                        claimed
+                                ? "CLAIMED"
+                                : completed
                                 ? "CLAIM"
                                 : "PLAY",
                         game.getSkin(),
-                        entry.userQuest().isCompleted()
+                        completed
                                 ? "green"
                                 : "purple"
                 );
+
+        if (claimed) {
+            actionButton.setDisabled(true);
+            actionButton.setTouchable(
+                    Touchable.disabled
+            );
+        } else if (completed && onClaim != null) {
+            actionButton.addListener(
+                    new ChangeListener() {
+                        @Override
+                        public void changed(
+                                ChangeEvent event,
+                                Actor actor
+                        ) {
+                            onClaim.run();
+                        }
+                    }
+            );
+        }
 
         Table textArea = new Table();
         textArea.left();
@@ -133,6 +185,12 @@ public final class QuestCard extends Table {
                 .row();
 
         textArea.add(descriptionLabel)
+                .left()
+                .growX()
+                .padTop(2f)
+                .row();
+
+        textArea.add(rewardLabel)
                 .left()
                 .growX()
                 .padTop(2f)

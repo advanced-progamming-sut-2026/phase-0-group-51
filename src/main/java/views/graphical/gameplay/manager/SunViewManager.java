@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import graphics.PvzGame;
 import lombok.Setter;
+import models.Zombie.Zombie;
 import models.sun.Sun;
 import views.graphical.gameplay.actors.SunActor;
 import views.graphical.gameplay.board.BoardArea;
@@ -19,6 +20,7 @@ import java.util.function.Consumer;
 public class SunViewManager extends Group {
 
     private static final float SKY_START_OFFSET = 60f;
+    private static final float STEAL_ARC_HEIGHT = 28f;
 
     private final PvzGame game;
     private final BoardTransform transform;
@@ -51,9 +53,7 @@ public class SunViewManager extends Group {
                 continue;
             }
 
-            activeSuns.add(
-                sun
-            );
+            activeSuns.add(sun);
 
             SunActor actor =
                 sunActors.get(sun);
@@ -72,6 +72,7 @@ public class SunViewManager extends Group {
 
                 addActor(actor);
             }
+
             actor.syncVisualState();
             positionSun(
                 sun,
@@ -80,9 +81,7 @@ public class SunViewManager extends Group {
             );
         }
 
-        removeMissingSuns(
-            activeSuns
-        );
+        removeMissingSuns(activeSuns);
     }
 
     private void positionSun(
@@ -105,7 +104,6 @@ public class SunViewManager extends Group {
         float groundY;
 
         if (sun.getSourcePlant() != null) {
-
             centerX =
                 tileX
                     + transform.tileWidth()
@@ -115,9 +113,7 @@ public class SunViewManager extends Group {
                 tileY
                     + transform.tileHeight()
                     * 0.22f;
-
         } else {
-
             centerX =
                 tileX
                     + transform.tileWidth()
@@ -128,13 +124,12 @@ public class SunViewManager extends Group {
                     + transform.tileHeight()
                     / 2f;
         }
+
         float centerY;
 
         if (sun.getSourcePlant() != null
             || sun.isGrounded()) {
-
             centerY = groundY;
-
         } else {
             BoardArea area =
                 transform.getArea();
@@ -157,6 +152,55 @@ public class SunViewManager extends Group {
                 );
         }
 
+        if (sun.isBeingStolen()) {
+            Zombie zombie =
+                sun.getStealingZombie();
+
+            if (zombie != null
+                && !zombie.isDead()) {
+                float targetX =
+                    transform.getArea().x()
+                        + (zombie.getX() + 0.5f)
+                        * transform.tileWidth();
+
+                float targetY =
+                    transform.tileY(
+                        zombie.getLane()
+                    )
+                        + transform.tileHeight()
+                        * 0.82f;
+
+                float rawProgress =
+                    sun.getStealProgress(
+                        partialTick
+                    );
+
+                float t =
+                    Interpolation.smooth.apply(
+                        rawProgress
+                    );
+
+                float startX = centerX;
+                float startY = centerY;
+
+                centerX =
+                    startX
+                        + (targetX - startX)
+                        * t;
+
+                centerY =
+                    startY
+                        + (targetY - startY)
+                        * t;
+
+                centerY +=
+                    (float) Math.sin(
+                        Math.PI * t
+                    )
+                        * STEAL_ARC_HEIGHT;
+            }
+        }
+
         actor.setCenterPosition(
             centerX,
             centerY
@@ -167,23 +211,19 @@ public class SunViewManager extends Group {
         Sun sun
     ) {
         if (onSunClicked != null) {
-            onSunClicked.accept(
-                sun
-            );
+            onSunClicked.accept(sun);
         }
     }
 
     private void removeMissingSuns(
         Set<Sun> activeSuns
     ) {
-        Iterator<Map.Entry<Sun, SunActor>>
-            iterator =
+        Iterator<Map.Entry<Sun, SunActor>> iterator =
             sunActors
                 .entrySet()
                 .iterator();
 
         while (iterator.hasNext()) {
-
             Map.Entry<Sun, SunActor> entry =
                 iterator.next();
 
@@ -197,11 +237,9 @@ public class SunViewManager extends Group {
                 entry.getValue();
 
             if (actor.isTerminalVisual()) {
-
                 if (actor.getParent() == null) {
                     iterator.remove();
                 }
-
                 continue;
             }
 

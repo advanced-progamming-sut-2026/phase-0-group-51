@@ -26,6 +26,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
+import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
 import views.graphical.screens.minigamesScreen.minigames;
@@ -48,6 +49,7 @@ public class IZombieScreen extends BaseMinigameScreen {
     private BoardView boardView;
     private PlantViewManager plantViewManager;
     private ProjectileViewManager projectileViewManager;
+    private WorldEffectManager worldEffectManager;
     private final ShapeRenderer shapeRenderer;
     private IZombieBar zombieBar;
     private String selectedZombieAlias;
@@ -100,6 +102,8 @@ public class IZombieScreen extends BaseMinigameScreen {
         worldStage.addActor(plantViewManager);
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
         worldStage.addActor(projectileViewManager);
+        worldEffectManager = new WorldEffectManager(game, boardTransform);
+        worldStage.addActor(worldEffectManager);
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
@@ -208,6 +212,14 @@ public class IZombieScreen extends BaseMinigameScreen {
                             .getActiveSuns(),
                     partialTick
             );
+
+            iZombie.getGameState()
+                    .consumeVisualEffects()
+                    .forEach(worldEffectManager::play);
+
+            worldEffectManager.toFront();
+            sunViewManager.toFront();
+
             Set<Zombie> renderableZombies =
                     new HashSet<>(
                             iZombie.getGameState().getZombiesInTheGame()
