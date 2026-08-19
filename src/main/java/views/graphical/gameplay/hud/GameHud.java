@@ -74,6 +74,12 @@ public class GameHud extends Table {
 
     private static final String LOVE_PLANTS_ICON =
         "IMAGE_PLANT_LILYPAD_LILYPAD_60X58";
+
+    private static final String PLANT_WHAT_YOU_GET_BUTTON =
+        "IMAGE_UI_GENERIC_GREENBUTTON";
+    private static final String PLANT_WHAT_YOU_GET_BUTTON_DOWN =
+        "IMAGE_UI_GENERIC_GREENBUTTON_DOWN";
+    private static final float PLANT_WHAT_YOU_GET_PANEL_WIDTH = 245f;
     private static final float LOVE_PLANTS_PANEL_WIDTH = 235f;
     private static final float LOVE_PLANTS_CONTENT_WIDTH = 190f;
     private static final float LOVE_PLANTS_ICON_ROW_WIDTH = 185f;
@@ -117,6 +123,9 @@ public class GameHud extends Table {
     private Image[] lovePlantIcons = new Image[0];
     private int lastLovePlantsLimit = -1;
     private int lastLovePlantsLost = -1;
+
+    private BorderedPanel plantWhatYouGetPanel;
+    private TextButton plantWhatYouGetStartButton;
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
@@ -198,6 +207,7 @@ public class GameHud extends Table {
         buildWaveProgress();
         buildTimedBattlePanel();
         buildLoveYourPlantsPanel();
+        buildPlantWhatYouGetPanel();
 
         Table timedBattleWrapper = new Table();
         timedBattleWrapper.top().center();
@@ -213,13 +223,24 @@ public class GameHud extends Table {
             .top()
             .center();
 
+        Table plantWhatYouGetWrapper = new Table();
+        plantWhatYouGetWrapper.top().center();
+        plantWhatYouGetWrapper.add(plantWhatYouGetPanel)
+            .width(PLANT_WHAT_YOU_GET_PANEL_WIDTH)
+            .top()
+            .center();
+
         topCenter.stack(
                 timedBattleWrapper,
-                lovePlantsWrapper
+                lovePlantsWrapper,
+                plantWhatYouGetWrapper
             )
             .width(Math.max(
                 TIMED_BATTLE_PANEL_WIDTH,
-                LOVE_PLANTS_PANEL_WIDTH
+                Math.max(
+                    LOVE_PLANTS_PANEL_WIDTH,
+                    PLANT_WHAT_YOU_GET_PANEL_WIDTH
+                )
             ))
             .top()
             .center();
@@ -862,7 +883,7 @@ public class GameHud extends Table {
 
         Table content = lovePlantsPanel.getContent();
         content.clearChildren();
-        content.pad(25f, 12f, 9f, 12f);
+        content.pad(20f, 12f, 1f, 12f);
         content.top();
 
         lovePlantsTitleLabel = new Label(
@@ -1158,6 +1179,167 @@ public class GameHud extends Table {
         );
     }
 
+    private void buildPlantWhatYouGetPanel() {
+        plantWhatYouGetPanel = new BorderedPanel(
+            game,
+            Color.valueOf("38566E")
+        );
+        plantWhatYouGetPanel.setTouchable(
+            Touchable.childrenOnly
+        );
+
+        Table content =
+            plantWhatYouGetPanel.getContent();
+
+        content.clearChildren();
+        content.pad(
+            20f,
+            14f,
+            4f,
+            14f
+        );
+        content.top();
+
+        Label title = new Label(
+            "PLANT WHAT YOU GET",
+            labelStyle("medium_outline")
+        );
+        title.setColor(
+            Color.valueOf("FFE06A")
+        );
+        title.setAlignment(
+            Align.center
+        );
+        title.setFontScale(
+            0.62f
+        );
+
+        Label subtitle = new Label(
+            "PREPARE YOUR LAWN",
+            labelStyle("medium_outline")
+        );
+        subtitle.setColor(
+            Color.WHITE
+        );
+        subtitle.setAlignment(
+            Align.center
+        );
+        subtitle.setFontScale(
+            0.48f
+        );
+
+        plantWhatYouGetStartButton =
+            createPlantWhatYouGetButton(
+                "START WAVES"
+            );
+
+        plantWhatYouGetStartButton.addListener(
+            new ClickListener() {
+                @Override
+                public void clicked(
+                    InputEvent event,
+                    float x,
+                    float y
+                ) {
+                    Result result =
+                        gamingController
+                            .startZombieWaves();
+
+                    showResult(result);
+                    refreshGameplayState();
+                }
+            }
+        );
+
+        content.add(title)
+            .width(205f)
+            .center()
+            .padBottom(2f)
+            .row();
+
+        content.add(subtitle)
+            .width(205f)
+            .center()
+            .padBottom(7f)
+            .row();
+
+        content.add(
+                plantWhatYouGetStartButton
+            )
+            .width(170f)
+            .height(44f)
+            .center()
+            .row();
+
+        plantWhatYouGetPanel.setVisible(
+            false
+        );
+    }
+
+    private TextButton createPlantWhatYouGetButton(
+        String text
+    ) {
+        TextButton.TextButtonStyle style =
+            new TextButton.TextButtonStyle();
+
+        style.font =
+            labelStyle(
+                "medium_outline"
+            ).font;
+
+        style.fontColor =
+            Color.WHITE;
+
+        style.up = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON
+        );
+
+        style.down = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON_DOWN
+        );
+
+        style.over = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON_DOWN
+        );
+
+        TextButton button =
+            new TextButton(
+                text,
+                style
+            );
+
+        button.getLabel().setFontScale(
+            0.70f
+        );
+
+        return button;
+    }
+
+    private void refreshPlantWhatYouGet(
+        Game currentGame
+    ) {
+        if (plantWhatYouGetPanel == null) {
+            return;
+        }
+
+        boolean preparing =
+            currentGame != null
+                && currentGame
+                .isPlantWhatYouGetLevel()
+                && currentGame
+                .isPreparingPlantWhatYouGet();
+
+        plantWhatYouGetPanel.setVisible(
+            preparing
+        );
+
+        plantWhatYouGetPanel.setTouchable(
+            preparing
+                ? Touchable.childrenOnly
+                : Touchable.disabled
+        );
+    }
+
     private void buildWaveProgress() {
         waveGroup = new Group();
         waveGroup.setSize(
@@ -1379,6 +1561,7 @@ public class GameHud extends Table {
         GameState state = currentGame.getGameState();
         refreshTimedBattle(state);
         refreshLoveYourPlants(state);
+        refreshPlantWhatYouGet(currentGame);
         sunLabel.setText(state.getSun());
         int foodCount = MathUtils.clamp(state.getPlantFoodCount(), 0, MAX_PLANT_FOOD);
         for (int i = 0; i < plantFoodDots.length; i++) {
@@ -1396,7 +1579,8 @@ public class GameHud extends Table {
             }
         }
         ZombieWaveManager waveManager = state.getZombieWaveManager();
-        if (waveManager == null) {
+        if (waveManager == null
+            || currentGame.isPreparingPlantWhatYouGet()) {
             waveGroup.setVisible(false);
             return;
         }

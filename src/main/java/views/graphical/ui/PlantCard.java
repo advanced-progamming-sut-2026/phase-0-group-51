@@ -69,23 +69,23 @@ public final class PlantCard extends Button {
             }
         }
         public ViewData(
-                PlantData plant,
-                boolean unlocked,
-                boolean boosted,
-                int level,
-                int seedPackets,
-                int requiredSeedPackets,
-                boolean showSunCost
+            PlantData plant,
+            boolean unlocked,
+            boolean boosted,
+            int level,
+            int seedPackets,
+            int requiredSeedPackets,
+            boolean showSunCost
         ) {
             this(
-                    plant,
-                    unlocked,
-                    boosted,
-                    level,
-                    seedPackets,
-                    requiredSeedPackets,
-                    showSunCost,
-                    true
+                plant,
+                unlocked,
+                boosted,
+                level,
+                seedPackets,
+                requiredSeedPackets,
+                showSunCost,
+                true
             );
         }
     }
@@ -101,6 +101,7 @@ public final class PlantCard extends Button {
     private final Image selectedBorder;
     private final Image plantImage;
     private final Container<Image> lockLayer;
+    private Image lockImage;
     private final ProgressBar progressBar;
     private final CooldownOverlay cooldownOverlay;
 
@@ -116,9 +117,9 @@ public final class PlantCard extends Button {
     }
 
     public PlantCard(
-            PvzGame game,
-            ViewData data,
-            float cardScale
+        PvzGame game,
+        ViewData data,
+        float cardScale
     ) {
         super(new ButtonStyle());
 
@@ -132,7 +133,7 @@ public final class PlantCard extends Button {
 
         if (cardScale <= 0f) {
             throw new IllegalArgumentException(
-                    "cardScale must be positive"
+                "cardScale must be positive"
             );
         }
 
@@ -166,8 +167,8 @@ public final class PlantCard extends Button {
 
         if (cooldownRegion == null) {
             throw new IllegalStateException(
-                    "Cooldown overlay region was not found: "
-                            + READY_BACKGROUND
+                "Cooldown overlay region was not found: "
+                    + READY_BACKGROUND
             );
         }
 
@@ -182,8 +183,8 @@ public final class PlantCard extends Button {
         cardStack.add(lockLayer);
 
         add(cardStack).size(
-                cardWidth,
-                cardHeight
+            cardWidth,
+            cardHeight
         );
 
         refreshVisualState();
@@ -261,8 +262,8 @@ public final class PlantCard extends Button {
 
         if (data.showSunCost()) {
             sunCostLabel = new Label(
-                    Integer.toString(data.plant().cost()),
-                    game.getSkin().get("medium", Label.LabelStyle.class)
+                Integer.toString(data.plant().cost()),
+                game.getSkin().get("medium", Label.LabelStyle.class)
             );
 
             costLayer.add(sunCostLabel).padRight(8f).padBottom(6f);
@@ -292,7 +293,7 @@ public final class PlantCard extends Button {
     }
 
     private Container<Image> createLockLayer(Scaling scaling) {
-        Image lockImage = createImage(LOCK, scaling);
+        lockImage = createImage(LOCK, scaling);
 
         Container<Image> layer = new Container<>(lockImage);
 
@@ -300,6 +301,24 @@ public final class PlantCard extends Button {
         layer.setTouchable(Touchable.disabled);
 
         return layer;
+    }
+
+    public void setLockAsset(String assetId) {
+        if (assetId == null || assetId.isBlank()) {
+            throw new IllegalArgumentException("assetId cannot be null or blank");
+        }
+
+        TextureRegion region = game.getTextureBank().region(assetId);
+
+        if (region == null) {
+            throw new IllegalStateException(
+                "TextureBank region was not found: " + assetId
+            );
+        }
+
+        lockImage.setDrawable(
+            new TextureRegionDrawable(region)
+        );
     }
 
     private Image createImage(String assetId, Scaling scaling) {
