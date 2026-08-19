@@ -9,16 +9,26 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.games.ChapterTheme;
 import models.minigames.MinigameType;
 import models.minigames.vaseBreaker.DroppedSeedPacket;
 import models.minigames.vaseBreaker.Vase;
 import models.minigames.vaseBreaker.VaseBreaker;
+import models.sun.Sun;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
+import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.ProjectileViewManager;
+import views.graphical.gameplay.manager.SunViewManager;
+import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
+import views.graphical.screens.minigamesScreen.iZombie.BrainView;
 import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.StartGameMenuPopup;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class VaseBreakerScreen extends BaseMinigameScreen {
     private static final String BG_LEFT = "IMAGE_BACKGROUNDS_DARK_TEXTURE_LEFT";
@@ -33,7 +43,16 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     private final BoardTransform boardTransform;
     private BoardView boardView;
     private VaseBoardView vaseBoardView;
+    private PlantViewManager plantViewManager;
+    private ProjectileViewManager projectileViewManager;
+    private SunViewManager sunViewManager;
 
+    private final ZombieAnimationSystem zombieAnimationSystem;
+
+    private final List<BrainView> brainViews =
+            new ArrayList<>();
+
+    private float renderDelta;
     public VaseBreakerScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
         this.stageNumber = stageNumber;
@@ -54,17 +73,46 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
 
         vaseBreaker = currentVaseBreaker;
         BoardArea boardArea = new BoardArea(533f, 62f, 737f, 380f);
-        boardTransform = new BoardTransform(boardArea);
+        boardTransform =
+                new BoardTransform(
+                        boardArea
+                );
+
+        zombieAnimationSystem =
+                new ZombieAnimationSystem(
+                        game.getPamPlayer(),
+                        worldStage,
+                        boardTransform,
+                        ChapterTheme.MINIGAME
+                );
         buildPacketBar();
         buildBoard();
     }
-
+    private void handleSunClicked(Sun sun) {
+        boolean collected =
+                vaseBreaker.getGameState().getBoard().collectSun(sun, vaseBreaker.getGameState());
+        if (!collected) {
+            return;
+        }
+    }
     private void buildBoard() {
         Board board = vaseBreaker.getGameState().getBoard();
+    boardView = new BoardView(board, boardTransform);
+    boardView.setOnTileClicked(this::handleTileClicked);
+    worldStage.addActor(
+            boardView
+    );
+    plantViewManager = new PlantViewManager(game, boardTransform);
+    worldStage.addActor(plantViewManager);
+    projectileViewManager = new ProjectileViewManager(game, boardTransform);
+    worldStage.addActor(projectileViewManager);
+    sunViewManager = new SunViewManager(game, boardTransform);
+    sunViewManager.setOnSunClicked(this::handleSunClicked);
 
-        boardView = new BoardView(board,boardTransform);
-        boardView.setOnTileClicked(this::handleTileClicked);
-        worldStage.addActor(boardView);
+    worldStage.addActor(sunViewManager);
+
+
+    buildBrains();
 
 
         vaseBoardView = new VaseBoardView(game, vaseBreaker, boardTransform);
@@ -73,7 +121,10 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
         );
 
         worldStage.addActor(vaseBoardView);
-        worldStage.addActor(droppedPacketLayer);
+    worldStage.addActor(
+            droppedPacketLayer
+    );
+    syncModelViews();
         refreshDroppedPackets();
     }
     private void buildPacketBar() {
@@ -97,6 +148,50 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
             packetView.refreshTimer(currentTick, ticksPerSecond);
             droppedPacketLayer.addActor(packetView);
         }
+    }
+    private void buildBrains() {
+
+        brainViews.clear();
+
+        for (models.minigames.vaseBreaker.Brain brain :
+                vaseBreaker.getBrains()) {
+
+            BrainView brainView =
+                    new BrainView(
+                            game,
+                            brain,
+                            boardTransform
+                    );
+
+            brainViews.add(
+                    brainView
+            );
+
+            worldStage.addActor(
+                    brainView
+            );
+        }
+    }
+    private void refreshBrains() {
+
+        for (BrainView brainView :
+                brainViews) {
+
+            brainView.refresh();
+        }
+    }
+    private void syncModelViews() {
+
+        Board board =
+                vaseBreaker
+                        .getGameState()
+                        .getBoard();
+
+        plantViewManager.sync(
+                board
+        );
+
+        refreshBrains();
     }
     private void placeDroppedPacket(DroppedSeedPacketView view, DroppedSeedPacket packet) {
         int column = packet.getX() - 1;
@@ -169,7 +264,8 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
             game.notifyError(result.message());
             return;
         }
-        game.notifyInfo(result.message());
+        //game.notifyInfo(result.message());
+        syncModelViews();
         packetBar.refresh();
         selectedPacketName = packetBar.getSelectedPlantName();
     }
@@ -194,7 +290,78 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
         packetBar.refresh();
         packetBar.setVisible(true);
     }
+    private float getRenderTickAlpha() {
 
+        int ticksPerSecond =
+                Math.max(
+                        1,
+                        vaseBreaker
+                                .getGameState()
+                                .getTicksPerSecond()
+                );
+
+        float tickDuration =
+                1f / ticksPerSecond;
+
+        return Math.max(
+                0f,
+                Math.min(
+                        1f,
+                        gameTickAccumulator
+                                / tickDuration
+                )
+        );
+    }
+    @Override
+    public void render(float delta) {
+        renderDelta = Math.min(delta, 0.25f);
+        super.render(delta);
+    }
+    @Override
+    protected void renderWorldUnderlay() {
+
+        if (!isPlaying()
+                || isPaused()) {
+
+            return;
+        }
+
+
+        float partialTick =
+                getRenderTickAlpha();
+
+
+        Board board =
+                vaseBreaker
+                        .getGameState()
+                        .getBoard();
+
+
+        projectileViewManager.sync(
+                board.getProjectiles(),
+                partialTick
+        );
+
+
+        sunViewManager.sync(
+                board.getActiveSuns(),
+                partialTick
+        );
+
+
+        zombieAnimationSystem.update(
+                renderDelta,
+                partialTick,
+                vaseBreaker
+                        .getGameState()
+                        .getTickCounter(),
+                vaseBreaker
+                        .getGameState()
+                        .getZombiesInTheGame()
+        );
+
+        droppedPacketLayer.toFront();
+    }
     @Override
     protected void restartMinigame() {
         Gdx.app.postRunnable(
@@ -208,6 +375,13 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     }
     @Override
     protected void onGameTick() {
+
+        syncModelViews();
+
         refreshDroppedPackets();
+
+        if (packetBar != null) {
+            packetBar.refresh();
+        }
     }
 }

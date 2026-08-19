@@ -202,7 +202,12 @@ public class IZombieScreen extends BaseMinigameScreen {
                     iZombie.getGameState().getBoard().getProjectiles(),
                     partialTick
             );
-
+            sunViewManager.sync(
+                    iZombie.getGameState()
+                            .getBoard()
+                            .getActiveSuns(),
+                    partialTick
+            );
             Set<Zombie> renderableZombies =
                     new HashSet<>(
                             iZombie.getGameState().getZombiesInTheGame()

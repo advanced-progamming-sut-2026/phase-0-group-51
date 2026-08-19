@@ -77,6 +77,23 @@ public class WallnutBowlingController extends GamingController {
         }
     }
 
+    public Result rollWallnutAt(int conveyorIndex, int x, int y) {
+        WallnutBowling game = activeGame();
+        if (game == null) {
+            return failure("No active Wall-nut Bowling game found.\n");
+        }
+
+        try {
+            RollingWallnut wallnut = game.rollWallnutAt(conveyorIndex, x, y);
+            return success(
+                    wallnut.getWallnutType().getName()
+                            + " was released at (" + x + ", " + y + ").\n"
+            );
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return failure(safeMessage(exception) + "\n");
+        }
+    }
+
     public Result advanceTime(int tickCount) {
         WallnutBowling game = activeGame();
         if (game == null) {
@@ -296,6 +313,23 @@ public class WallnutBowlingController extends GamingController {
             }
         }
         return false;
+    }
+
+    public void recordGraphicalResult() {
+        WallnutBowling game = activeGame();
+
+        if (game == null
+                || game.getGameState() == null
+                || !game.getGameState().isFinished()) {
+            return;
+        }
+
+        if (game.getGameState().isWon()) {
+            progressService.recordWin(
+                    MinigameType.WALLNUT_BOWLING,
+                    game.getStage().getStageNumber()
+            );
+        }
     }
 
     private WallnutBowling activeGame() {
