@@ -30,6 +30,8 @@ import models.games.Game;
 import models.games.GameState;
 import models.games.ScoringGame;
 import models.games.ZombieWaveManager;
+import models.games.specialLevelConfig.TimedBattleConfig;
+import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.GameSettings;
 import views.graphical.ui.PlantSlotsBar;
 @Getter
@@ -63,6 +65,15 @@ public class GameHud extends Table {
     private static final float STATE_REFRESH = 0.10f;
     private static final float CURRENCY_REFRESH = 0.50f;
 
+    private static final float TIMED_BATTLE_PANEL_WIDTH = 270f;
+    private static final double TIMED_BATTLE_DANGER_SECONDS = 10.0;
+    private static final String TIMED_BATTLE_ZOMBIE_ICON =
+        "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_TUTORIAL";
+    private static final String TIMED_BATTLE_SUN_ICON =
+        "IMAGE_DANGERROOM_CARD_SUN";
+    private static final float TIMED_BATTLE_ZOMBIE_ICON_SIZE = 20f;
+    private static final float TIMED_BATTLE_SUN_ICON_SIZE = 18f;
+
     private final PvzGame game;
     private final Table topLeft;
     private final Table topCenter;
@@ -79,7 +90,7 @@ public class GameHud extends Table {
 
     private final GamingController gamingController = new GamingController();
     private final GameMenuController gameMenuController =
-            new GameMenuController();
+        new GameMenuController();
     private final UserRepository userRepository = new UserRepository();
 
     private Label sunLabel;
@@ -88,6 +99,13 @@ public class GameHud extends Table {
     private Label meowPointLabel;
     private Group meowPointDisplay;
     private Container<Group> meowPointContainer;
+
+    private BorderedPanel timedBattlePanel;
+    private Table timedBattleKillRow;
+    private Table timedBattleSunRow;
+    private Label timedBattleTimerLabel;
+    private Label timedBattleKillLabel;
+    private Label timedBattleSunLabel;
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
@@ -134,9 +152,9 @@ public class GameHud extends Table {
         if (game == null) {
             throw new IllegalArgumentException("game cannot be null");
         }
-         if (plantSlotsBar == null) {
+        if (plantSlotsBar == null) {
             throw new IllegalArgumentException(
-                    "plantSlotsBar cannot be null"
+                "plantSlotsBar cannot be null"
             );
         }
 
@@ -167,38 +185,39 @@ public class GameHud extends Table {
         buildSunAndPlantFood();
         buildRightControls();
         buildWaveProgress();
+        buildTimedBattlePanel();
 
         Table topRow = new Table();
         topRow.top();
 
         topRow.add(topLeft)
-                .top()
-                .left()
-                .width(175f);
+            .top()
+            .left()
+            .width(175f);
 
         topRow.add(topCenter)
-                .expandX()
-                .top()
-                .center();
+            .expandX()
+            .top()
+            .center();
 
         topRow.add(topRight)
-                .top()
-                .right();
+            .top()
+            .right();
 
         add(topRow)
-                .growX()
-                .top()
-                .padTop(4f)
-                .padLeft(8f)
-                .padRight(8f)
-                .row();
+            .growX()
+            .top()
+            .padTop(4f)
+            .padLeft(8f)
+            .padRight(8f)
+            .row();
 
         add(plantSlotsBar)
-                .left()
-                .padTop(PLANT_SLOTS_TOP_GAP)
-                .padLeft(SIDE_PADDING)
-                .padRight(SIDE_PADDING)
-                .row();
+            .left()
+            .padTop(PLANT_SLOTS_TOP_GAP)
+            .padLeft(SIDE_PADDING)
+            .padRight(SIDE_PADDING)
+            .row();
 
         add().expand().row();
 
@@ -208,9 +227,9 @@ public class GameHud extends Table {
         bottomRow.add(bottomRight).right();
 
         add(bottomRow)
-                .growX()
-                .bottom()
-                .pad(10f);
+            .growX()
+            .bottom()
+            .pad(10f);
     }
 
     private void buildSunAndPlantFood() {
@@ -219,14 +238,14 @@ public class GameHud extends Table {
         Table sunRow = new Table();
         addSunButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
         addSunButton.addListener(
-                new ClickListener() {
-                    @Override
-                    public void clicked(InputEvent event, float x, float y) {
-                        Result result = gamingController.cheatAddSun(CHEAT_SUN_AMOUNT);
-                        showResult(result);
-                        refreshGameplayState();
-                    }
+            new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    Result result = gamingController.cheatAddSun(CHEAT_SUN_AMOUNT);
+                    showResult(result);
+                    refreshGameplayState();
                 }
+            }
         );
 
 
@@ -254,130 +273,130 @@ public class GameHud extends Table {
         addFoodButton = createImageButton(CHEAT_ADD, CHEAT_ADD_CLICKED);
 
         addFoodButton.addListener(
-                new ClickListener() {
+            new ClickListener() {
 
-                    @Override
-                    public void clicked(InputEvent event, float x, float y) {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
 
-                        Result result = gamingController.cheatAddPlantFood();
-                        showResult(result);
-                        refreshGameplayState();
-                    }
+                    Result result = gamingController.cheatAddPlantFood();
+                    showResult(result);
+                    refreshGameplayState();
                 }
+            }
         );
 
         Stack foodDisplay = new Stack();
         foodDisplay.setTouchable(Touchable.enabled);
         foodDisplay.addListener(
-                new ClickListener() {
-                    @Override
-                    public void clicked(
-                            InputEvent event,
-                            float x,
-                            float y
-                    ) {
-                        if (onPlantFoodRequested != null) {
-                            onPlantFoodRequested.run();
-                        }
+            new ClickListener() {
+                @Override
+                public void clicked(
+                    InputEvent event,
+                    float x,
+                    float y
+                ) {
+                    if (onPlantFoodRequested != null) {
+                        onPlantFoodRequested.run();
                     }
                 }
+            }
         );
 
         Stack dotsBank = new Stack();
 
         Image dotsBackground =
-                new Image(
-                        drawable(
-                                PLANT_FOOD_RECTANGLE
-                        )
-                );
+            new Image(
+                drawable(
+                    PLANT_FOOD_RECTANGLE
+                )
+            );
 
         dotsBackground.setScaling(
-                Scaling.stretch
+            Scaling.stretch
         );
 
         dotsBank.add(
-                dotsBackground
+            dotsBackground
         );
 
 
         Table dots =
-                new Table();
+            new Table();
 
         dots.center();
 
         for (int i = 0; i < MAX_PLANT_FOOD; i++) {
 
             Image dot =
-                    new Image(
-                            drawable(
-                                    PLANT_FOOD_DOT_FILL
-                            )
-                    );
+                new Image(
+                    drawable(
+                        PLANT_FOOD_DOT_FILL
+                    )
+                );
 
             plantFoodDots[i] =
-                    dot;
+                dot;
 
             dots.add(dot)
-                    .size(14f)
-                    .pad(2f);
+                .size(14f)
+                .pad(2f);
         }
 
         dotsBank.add(
-                dots
+            dots
         );
 
 
         Table rectangleLayer =
-                new Table();
+            new Table();
 
         rectangleLayer.right();
 
         rectangleLayer.add(dotsBank)
-                .width(82f)
-                .height(32f);
+            .width(82f)
+            .height(32f);
 
         foodDisplay.add(
-                rectangleLayer
+            rectangleLayer
         );
 
         Image foodIcon =
-                new Image(
-                        drawable(
-                                PLANT_FOOD
-                        )
-                );
+            new Image(
+                drawable(
+                    PLANT_FOOD
+                )
+            );
 
         foodIcon.setScaling(
-                Scaling.fit
+            Scaling.fit
         );
 
 
         Table iconLayer =
-                new Table();
+            new Table();
 
         iconLayer.left();
 
         iconLayer.add(foodIcon)
-                .size(60f);
+            .size(60f);
 
         foodDisplay.add(
-                iconLayer
+            iconLayer
         );
 
         foodRow.add(addFoodButton)
-                .size(42f)
-                .padRight(3f);
+            .size(42f)
+            .padRight(3f);
 
 
         foodRow.add(foodDisplay)
-                .width(120f)
-                .height(43f);
+            .width(120f)
+            .height(43f);
 
 
         topLeft.add(foodRow)
-                .left()
-                .padTop(3f);
+            .left()
+            .padTop(3f);
     }
 
     private void buildRightControls() {
@@ -397,13 +416,13 @@ public class GameHud extends Table {
         gemLabel.setFontScale(1.1f);
 
         Group gemDisplay = createCurrencyDisplay(
-                GEMS,
-                GEMS_CLICKED,
-                gemLabel,
-                () -> runCurrencyCheat(
-                        CHEAT_GEM_AMOUNT,
-                        "diamond"
-                )
+            GEMS,
+            GEMS_CLICKED,
+            gemLabel,
+            () -> runCurrencyCheat(
+                CHEAT_GEM_AMOUNT,
+                "diamond"
+            )
         );
 
         coinLabel = new Label("0", game.getSkin());
@@ -411,76 +430,76 @@ public class GameHud extends Table {
         coinLabel.setFontScale(1.1f);
 
         Group coinDisplay = createCurrencyDisplay(
-                COIN,
-                COIN_CLICKED,
-                coinLabel,
-                () -> runCurrencyCheat(
-                        CHEAT_COIN_AMOUNT,
-                        "coin"
-                )
+            COIN,
+            COIN_CLICKED,
+            coinLabel,
+            () -> runCurrencyCheat(
+                CHEAT_COIN_AMOUNT,
+                "coin"
+            )
         );
 
         shovelButton =createImageButton(SHOVEL, SHOVEL_CLICKED);
 
         shovelButton.addListener(
-                new ClickListener() {
+            new ClickListener() {
 
-                    @Override
-                    public void clicked(InputEvent event, float x, float y) {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
 
-                        if (onShovelRequested != null) {
-                            onShovelRequested.run();
-                        }
+                    if (onShovelRequested != null) {
+                        onShovelRequested.run();
                     }
                 }
+            }
         );
 
         ImageButton pauseButton = createImageButton(STOP, STOP_CLICKED);
         pauseButton.addListener(
-                new ClickListener() {
-                    @Override
-                    public void clicked(
-                            InputEvent event,
-                            float x,
-                            float y
-                    ) {
-                        if (onPauseRequested != null) {
-                            onPauseRequested.run();
-                        }
+            new ClickListener() {
+                @Override
+                public void clicked(
+                    InputEvent event,
+                    float x,
+                    float y
+                ) {
+                    if (onPauseRequested != null) {
+                        onPauseRequested.run();
                     }
                 }
+            }
         );
 
         buttons.add(meowPointContainer)
                 .padRight(8f);
 
         buttons.add(gemDisplay)
-                .size(
-                        gemDisplay.getWidth(),
-                        gemDisplay.getHeight()
-                )
-                .padRight(8f);
+            .size(
+                gemDisplay.getWidth(),
+                gemDisplay.getHeight()
+            )
+            .padRight(8f);
 
         buttons.add(coinDisplay)
-                .size(
-                        coinDisplay.getWidth(),
-                        coinDisplay.getHeight()
-                )
-                .padRight(10f);
+            .size(
+                coinDisplay.getWidth(),
+                coinDisplay.getHeight()
+            )
+            .padRight(10f);
 
         buttons.add(shovelButton)
-                .size(58f)
-                .padRight(5f);
+            .size(58f)
+            .padRight(5f);
 
         buttons.add(pauseButton)
-                .size(58f);
+            .size(58f);
 
         topRight.add(buttons).right();
     }
 
     private void runCurrencyCheat(
-            int amount,
-            String kind
+        int amount,
+        String kind
     ) {
         if (!GameSettings.debugMode) {
             return;
@@ -488,16 +507,16 @@ public class GameHud extends Table {
 
         if (App.getInstance().getLoggedInUser() == null) {
             game.notifyError(
-                    "You must be logged in to use debug currency controls."
+                "You must be logged in to use debug currency controls."
             );
             return;
         }
 
         Result result =
-                gameMenuController.cheatAdd(
-                        amount,
-                        kind
-                );
+            gameMenuController.cheatAdd(
+                amount,
+                kind
+            );
 
         showResult(result);
         refreshCurrencies();
@@ -505,21 +524,21 @@ public class GameHud extends Table {
 
     private void refreshDebugControls() {
         boolean visible =
-                GameSettings.debugMode;
+            GameSettings.debugMode;
 
         setDebugButtonVisible(
-                addSunButton,
-                visible
+            addSunButton,
+            visible
         );
         setDebugButtonVisible(
-                addFoodButton,
-                visible
+            addFoodButton,
+            visible
         );
     }
 
     private void setDebugButtonVisible(
-            ImageButton button,
-            boolean visible
+        ImageButton button,
+        boolean visible
     ) {
         if (button == null) {
             return;
@@ -527,9 +546,9 @@ public class GameHud extends Table {
 
         button.setVisible(visible);
         button.setTouchable(
-                visible
-                        ? Touchable.enabled
-                        : Touchable.disabled
+            visible
+                ? Touchable.enabled
+                : Touchable.disabled
         );
     }
 
@@ -588,26 +607,26 @@ public class GameHud extends Table {
     }
 
     private Group createCurrencyDisplay(
-            String normalAsset,
-            String pressedAsset,
-            Label label,
-            Runnable onDebugClick
+        String normalAsset,
+        String pressedAsset,
+        Label label,
+        Runnable onDebugClick
     ) {
         ImageButton button = createCurrencyButton(normalAsset, pressedAsset);
 
         button.addListener(
-                new ClickListener() {
-                    @Override
-                    public void clicked(
-                            InputEvent event,
-                            float x,
-                            float y
-                    ) {
-                        if (onDebugClick != null) {
-                            onDebugClick.run();
-                        }
+            new ClickListener() {
+                @Override
+                public void clicked(
+                    InputEvent event,
+                    float x,
+                    float y
+                ) {
+                    if (onDebugClick != null) {
+                        onDebugClick.run();
                     }
                 }
+            }
         );
 
         float width = button.getPrefWidth();
@@ -624,8 +643,8 @@ public class GameHud extends Table {
 
 
     private ImageButton createCurrencyButton(
-            String normalAsset,
-            String pressedAsset
+        String normalAsset,
+        String pressedAsset
     ) {
         ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
 
@@ -640,131 +659,362 @@ public class GameHud extends Table {
         return button;
     }
 
+    private void buildTimedBattlePanel() {
+        timedBattlePanel = new BorderedPanel(
+            game,
+            Color.valueOf("38566E")
+        );
+        timedBattlePanel.setTouchable(Touchable.disabled);
+
+        Table content = timedBattlePanel.getContent();
+        content.clearChildren();
+        content.pad(14f, 18f, 20f, 18f);
+        content.top();
+
+        Label title = new Label(
+            "TIMED BATTLE",
+            labelStyle("medium_outline")
+        );
+        title.setColor(Color.valueOf("FFE06A"));
+        title.setAlignment(Align.center);
+        title.setFontScale(0.72f);
+
+        timedBattleTimerLabel = new Label(
+            "00:00",
+            labelStyle("big_outline")
+        );
+        timedBattleTimerLabel.setColor(Color.WHITE);
+        timedBattleTimerLabel.setAlignment(Align.center);
+        timedBattleTimerLabel.setFontScale(0.78f);
+
+        timedBattleKillLabel = new Label(
+            "ZOMBIES 0 / 0",
+            labelStyle("medium_outline")
+        );
+        timedBattleKillLabel.setColor(Color.WHITE);
+        timedBattleKillLabel.setAlignment(Align.left);
+        timedBattleKillLabel.setFontScale(0.54f);
+
+        timedBattleSunLabel = new Label(
+            "SUN 0 / 0",
+            labelStyle("medium_outline")
+        );
+        timedBattleSunLabel.setColor(Color.WHITE);
+        timedBattleSunLabel.setAlignment(Align.left);
+        timedBattleSunLabel.setFontScale(0.54f);
+
+        Image zombieIcon = new Image(
+            drawable(TIMED_BATTLE_ZOMBIE_ICON)
+        );
+        zombieIcon.setScaling(Scaling.fit);
+        zombieIcon.setTouchable(Touchable.disabled);
+        zombieIcon.setOrigin(Align.center);
+        zombieIcon.setScaleX(-1f);
+
+        Image sunGoalIcon = new Image(
+            drawable(TIMED_BATTLE_SUN_ICON)
+        );
+        sunGoalIcon.setScaling(Scaling.fit);
+        sunGoalIcon.setTouchable(Touchable.disabled);
+
+        timedBattleKillRow = new Table();
+        timedBattleKillRow.add(zombieIcon)
+            .size(TIMED_BATTLE_ZOMBIE_ICON_SIZE)
+            .padLeft(-100f)
+            .padRight(6f)
+            .center();
+        timedBattleKillRow.add(timedBattleKillLabel)
+            .left()
+            .center();
+
+        timedBattleSunRow = new Table();
+        timedBattleSunRow.add(sunGoalIcon)
+            .size(TIMED_BATTLE_SUN_ICON_SIZE)
+            .padRight(6f)
+            .center();
+        timedBattleSunRow.add(timedBattleSunLabel)
+            .left()
+            .center();
+
+        content.add(title)
+            .width(220f)
+            .center()
+            .padBottom(3f)
+            .row();
+
+        content.add(timedBattleTimerLabel)
+            .width(220f)
+            .center()
+            .padBottom(9f)
+            .row();
+
+        content.add(timedBattleKillRow)
+            .width(220f)
+            .center()
+            .padBottom(4f)
+            .row();
+
+        content.add(timedBattleSunRow)
+            .width(220f)
+            .center()
+            .row();
+
+        timedBattlePanel.setVisible(false);
+
+        topCenter.add(timedBattlePanel)
+            .width(TIMED_BATTLE_PANEL_WIDTH)
+            .top()
+            .center();
+    }
+
+    private void refreshTimedBattle(
+        GameState state
+    ) {
+        if (timedBattlePanel == null) {
+            return;
+        }
+
+        if (state == null
+            || !state.isTimedBattleActive()) {
+            timedBattlePanel.setVisible(false);
+            return;
+        }
+
+        TimedBattleConfig config =
+            state.getTimedBattleConfig();
+
+        if (config == null
+            || !config.isEnabled()) {
+            timedBattlePanel.setVisible(false);
+            return;
+        }
+
+        timedBattlePanel.setVisible(true);
+
+        double remainingSeconds =
+            Math.max(
+                0.0,
+                state.getTimedBattleRemainingSeconds()
+            );
+
+        int wholeSeconds =
+            (int) Math.ceil(remainingSeconds);
+
+        int minutes =
+            wholeSeconds / 60;
+
+        int seconds =
+            wholeSeconds % 60;
+
+        timedBattleTimerLabel.setText(
+            String.format(
+                "%02d:%02d",
+                minutes,
+                seconds
+            )
+        );
+
+        if (remainingSeconds <= TIMED_BATTLE_DANGER_SECONDS
+            && !state.isTimedBattleComplete()) {
+            timedBattleTimerLabel.setColor(
+                Color.valueOf("FF5448")
+            );
+        } else {
+            timedBattleTimerLabel.setColor(
+                Color.WHITE
+            );
+        }
+
+        boolean requiresKills =
+            config.requiresZombieKills();
+
+        timedBattleKillRow.setVisible(
+            requiresKills
+        );
+
+        if (requiresKills) {
+            int target =
+                config.zombieKillTarget();
+
+            int current =
+                MathUtils.clamp(
+                    state.getTimedBattleZombieKills(),
+                    0,
+                    target
+                );
+
+            timedBattleKillLabel.setText(
+                "ZOMBIES "
+                    + current
+                    + " / "
+                    + target
+            );
+
+            timedBattleKillLabel.setColor(
+                state.isTimedBattleKillObjectiveComplete()
+                    ? Color.valueOf("75E06E")
+                    : Color.WHITE
+            );
+        }
+
+        boolean requiresSun =
+            config.requiresSunProduction();
+
+        timedBattleSunRow.setVisible(
+            requiresSun
+        );
+
+        if (requiresSun) {
+            int target =
+                config.sunProductionTarget();
+
+            int current =
+                MathUtils.clamp(
+                    state.getTimedBattleSunProduced(),
+                    0,
+                    target
+                );
+
+            timedBattleSunLabel.setText(
+                "SUN "
+                    + current
+                    + " / "
+                    + target
+            );
+
+            timedBattleSunLabel.setColor(
+                state.isTimedBattleSunObjectiveComplete()
+                    ? Color.valueOf("75E06E")
+                    : Color.WHITE
+            );
+        }
+    }
+
     private void buildWaveProgress() {
         waveGroup = new Group();
         waveGroup.setSize(
-                WAVE_BAR_WIDTH + 70f,
-                85f
+            WAVE_BAR_WIDTH + 70f,
+            85f
         );
 
         waveFill = new Image(game.getSkin().newDrawable("white_pixel", Color.valueOf("65B83B")));
         waveFill.setBounds(
-                WAVE_BAR_WIDTH,
-                WAVE_FILL_Y,
-                0f,
-                WAVE_FILL_HEIGHT
+            WAVE_BAR_WIDTH,
+            WAVE_FILL_Y,
+            0f,
+            WAVE_FILL_HEIGHT
         );
 
         waveGroup.addActor(waveFill);
         Image progressFrame = new Image(drawable(WAVE_PROGRESS));
         progressFrame.setScaling(Scaling.stretch);
         progressFrame.setBounds(
-                0f,
-                0f,
-                WAVE_BAR_WIDTH,
-                WAVE_BAR_HEIGHT
+            0f,
+            0f,
+            WAVE_BAR_WIDTH,
+            WAVE_BAR_HEIGHT
         );
 
         waveGroup.addActor(progressFrame);
         waveZombieTexture =
-                new Texture(
-                        Gdx.files.internal(
-                                "assets/UIs/zombie.png"
-                        )
-                );
+            new Texture(
+                Gdx.files.internal(
+                    "assets/UIs/zombie.png"
+                )
+            );
 
         waveZombieHead =
-                new Image(waveZombieTexture);
+            new Image(waveZombieTexture);
 
         waveZombieHead.setScaling(
-                Scaling.fit
+            Scaling.fit
         );
         waveZombieHead.setBounds(
-                TRACK_RIGHT - 12f,
-                -7f,
-                52f,
-                52f
+            TRACK_RIGHT - 12f,
+            -7f,
+            52f,
+            52f
         );
         waveGroup.addActor(
-                waveZombieHead
+            waveZombieHead
         );
         bottomRight.add(waveGroup)
-                .width(WAVE_BAR_WIDTH + 70f)
-                .height(85f);
+            .width(WAVE_BAR_WIDTH + 70f)
+            .height(85f);
 
         waveGroup.setVisible(false);
     }
 
-        private void rebuildWaveFlags(int totalWaves) {
+    private void rebuildWaveFlags(int totalWaves) {
 
-            if (waveMarkers != null) {
-                for (Group marker : waveMarkers) {
-                    if (marker != null) {
-                        marker.remove();
-                    }
+        if (waveMarkers != null) {
+            for (Group marker : waveMarkers) {
+                if (marker != null) {
+                    marker.remove();
                 }
             }
-
-            waveMarkers = new Group[totalWaves];
-            waveFlagImages = new Image[totalWaves];
-            float trackWidth = TRACK_RIGHT - TRACK_LEFT;
-            for (int i = 0; i < totalWaves; i++) {
-
-                float fraction = (i + 1f) / totalWaves;
-                float poleX = TRACK_RIGHT - trackWidth * fraction;
-                Group marker = new Group();
-                marker.setBounds(
-                        poleX - FLAG_WIDTH,
-                        0f,
-                        FLAG_WIDTH + FLAG_POLE_WIDTH,
-                        58f
-                );
-
-                Image pole =
-                        new Image(
-                                drawable(FLAG_BAR)
-                        );
-
-                pole.setScaling(
-                        Scaling.stretch
-                );
-
-                pole.setBounds(
-                        FLAG_WIDTH - FLAG_POLE_WIDTH / 2f,
-                        0f,
-                        FLAG_POLE_WIDTH,
-                        FLAG_POLE_HEIGHT
-                );
-
-                marker.addActor(pole);
-                Image flag =
-                        new Image(
-                                drawable(FLAG)
-                        );
-
-                flag.setScaling(
-                        Scaling.fit
-                );
-
-
-                flag.setBounds(
-                        23f,
-                        FLAG_DOWN_Y,
-                        FLAG_WIDTH,
-                        FLAG_HEIGHT
-                );
-
-                marker.addActor(flag);
-
-
-                waveGroup.addActor(marker);
-
-                waveMarkers[i] = marker;
-                waveFlagImages[i] = flag;
-            }
-
-            lastCompletedWaves = -1;
         }
+
+        waveMarkers = new Group[totalWaves];
+        waveFlagImages = new Image[totalWaves];
+        float trackWidth = TRACK_RIGHT - TRACK_LEFT;
+        for (int i = 0; i < totalWaves; i++) {
+
+            float fraction = (i + 1f) / totalWaves;
+            float poleX = TRACK_RIGHT - trackWidth * fraction;
+            Group marker = new Group();
+            marker.setBounds(
+                poleX - FLAG_WIDTH,
+                0f,
+                FLAG_WIDTH + FLAG_POLE_WIDTH,
+                58f
+            );
+
+            Image pole =
+                new Image(
+                    drawable(FLAG_BAR)
+                );
+
+            pole.setScaling(
+                Scaling.stretch
+            );
+
+            pole.setBounds(
+                FLAG_WIDTH - FLAG_POLE_WIDTH / 2f,
+                0f,
+                FLAG_POLE_WIDTH,
+                FLAG_POLE_HEIGHT
+            );
+
+            marker.addActor(pole);
+            Image flag =
+                new Image(
+                    drawable(FLAG)
+                );
+
+            flag.setScaling(
+                Scaling.fit
+            );
+
+
+            flag.setBounds(
+                23f,
+                FLAG_DOWN_Y,
+                FLAG_WIDTH,
+                FLAG_HEIGHT
+            );
+
+            marker.addActor(flag);
+
+
+            waveGroup.addActor(marker);
+
+            waveMarkers[i] = marker;
+            waveFlagImages[i] = flag;
+        }
+
+        lastCompletedWaves = -1;
+    }
 
     private void updateWaveFlags(int completedWaves, int totalWaves) {
         if (waveFlagImages == null || waveFlagImages.length != totalWaves) {
@@ -772,9 +1022,9 @@ public class GameHud extends Table {
         }
 
         completedWaves = MathUtils.clamp(
-                completedWaves,
-                0,
-                totalWaves
+            completedWaves,
+            0,
+            totalWaves
         );
 
         if (completedWaves == lastCompletedWaves) {
@@ -791,33 +1041,33 @@ public class GameHud extends Table {
             }
             flag.clearActions();
             flag.addAction(
-                    Actions.moveTo(
-                            flag.getX(),
-                            targetY,
-                            0.30f
-                    )
+                Actions.moveTo(
+                    flag.getX(),
+                    targetY,
+                    0.30f
+                )
             );
         }
         lastCompletedWaves = completedWaves;
     }
 
-        private void updateWaveFill(float progress) {
+    private void updateWaveFill(float progress) {
 
-            progress = MathUtils.clamp(progress, 0f, 1f);
-            float trackWidth = TRACK_RIGHT - TRACK_LEFT;
-            float fillWidth = trackWidth * progress;
+        progress = MathUtils.clamp(progress, 0f, 1f);
+        float trackWidth = TRACK_RIGHT - TRACK_LEFT;
+        float fillWidth = trackWidth * progress;
 
-            float progressX = TRACK_RIGHT - fillWidth;
-            waveFill.setBounds(progressX, WAVE_FILL_Y, fillWidth, WAVE_FILL_HEIGHT);
-            waveZombieHead.setPosition(
-                    progressX - 12f,
-                    waveZombieHead.getY()
-            );
-        }
+        float progressX = TRACK_RIGHT - fillWidth;
+        waveFill.setBounds(progressX, WAVE_FILL_Y, fillWidth, WAVE_FILL_HEIGHT);
+        waveZombieHead.setPosition(
+            progressX - 12f,
+            waveZombieHead.getY()
+        );
+    }
 
     @Override
     public void act(
-            float delta
+        float delta
     ) {
 
         super.act(delta);
@@ -832,7 +1082,7 @@ public class GameHud extends Table {
         stateRefreshTimer += delta;
 
         if (stateRefreshTimer
-                >= STATE_REFRESH) {
+            >= STATE_REFRESH) {
 
             stateRefreshTimer = 0f;
 
@@ -843,7 +1093,7 @@ public class GameHud extends Table {
         currencyRefreshTimer += delta;
 
         if (currencyRefreshTimer
-                >= CURRENCY_REFRESH) {
+            >= CURRENCY_REFRESH) {
 
             currencyRefreshTimer = 0f;
 
@@ -856,11 +1106,12 @@ public class GameHud extends Table {
 
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null
-                || currentGame.getGameState() == null) {
+            || currentGame.getGameState() == null) {
             return;
         }
 
         GameState state = currentGame.getGameState();
+        refreshTimedBattle(state);
         sunLabel.setText(state.getSun());
         int foodCount = MathUtils.clamp(state.getPlantFoodCount(), 0, MAX_PLANT_FOOD);
         for (int i = 0; i < plantFoodDots.length; i++) {
@@ -868,12 +1119,12 @@ public class GameHud extends Table {
             if (i < foodCount) {plantFoodDots[i].setColor(Color.valueOf("65D44B"));
             } else {
                 plantFoodDots[i].setColor(
-                        new Color(
-                                0.20f,
-                                0.30f,
-                                0.20f,
-                                0.30f
-                        )
+                    new Color(
+                        0.20f,
+                        0.30f,
+                        0.20f,
+                        0.30f
+                    )
                 );
             }
         }
@@ -896,18 +1147,18 @@ public class GameHud extends Table {
             return;
         }
         int completed =
-                waveManager.isLevelCleared()
-                        ? total
-                        : MathUtils.clamp(
-                                current - 1,
-                                0,
-                                total
-                        );
+            waveManager.isLevelCleared()
+                ? total
+                : MathUtils.clamp(
+                current - 1,
+                0,
+                total
+            );
 
         updateWaveFlags(completed, total);
 
         float progress =
-                completed / (float) total;
+            completed / (float) total;
 
         updateWaveFill(progress);
     }
@@ -960,20 +1211,20 @@ public class GameHud extends Table {
         }
 
         coinLabel.setText(
-                balance.coins()
+            balance.coins()
         );
 
         gemLabel.setText(
-                balance.gems()
+            balance.gems()
         );
     }
 
     public void setShovelSelected(
-            boolean selected
+        boolean selected
     ) {
 
         shovelButton.setChecked(
-                selected
+            selected
         );
     }
 
@@ -986,7 +1237,7 @@ public class GameHud extends Table {
         setVisible(true);
 
         setTouchable(
-                Touchable.childrenOnly
+            Touchable.childrenOnly
         );
 
         toFront();
@@ -998,7 +1249,7 @@ public class GameHud extends Table {
         setVisible(false);
 
         setTouchable(
-                Touchable.disabled
+            Touchable.disabled
         );
     }
 
@@ -1017,19 +1268,19 @@ public class GameHud extends Table {
     private Drawable drawable(String id) {
         try {
             TextureRegion region =
-                    game.getTextureBank().region(id);
+                game.getTextureBank().region(id);
 
             if (region == null) {
                 throw new IllegalStateException(
-                        "Missing HUD asset: " + id
+                    "Missing HUD asset: " + id
                 );
             }
 
             return new TextureRegionDrawable(region);
         } catch (Exception exception) {
             throw new IllegalStateException(
-                    "Could not load HUD asset: " + id,
-                    exception
+                "Could not load HUD asset: " + id,
+                exception
             );
         }
     }
