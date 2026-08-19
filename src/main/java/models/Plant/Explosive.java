@@ -3,6 +3,7 @@ package models.Plant;
 import models.Board.Tile;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.games.ancientEgypt.Grave;
 import models.effects.VisualEffectEvent;
 import models.projectile.ElementType;
 import models.projectile.Projectile;
@@ -39,11 +40,11 @@ public enum Explosive implements PlantType {
     private final float upgradedArmSeconds;
 
     Explosive(
-            int id,
-            ExplosionMode mode,
-            double triggerRadius,
-            float levelOneArmSeconds,
-            float upgradedArmSeconds
+        int id,
+        ExplosionMode mode,
+        double triggerRadius,
+        float levelOneArmSeconds,
+        float upgradedArmSeconds
     ) {
         this.id = id;
         this.mode = mode;
@@ -59,9 +60,9 @@ public enum Explosive implements PlantType {
     @Override
     public void onPlanted(Plant plant, GameState state) {
         if (mode == ExplosionMode.INSTANT_SQUARE
-                || mode == ExplosionMode.INSTANT_LANE
-                || mode == ExplosionMode.GLOBAL_EXPLOSION
-                || mode == ExplosionMode.GRAPESHOT) {
+            || mode == ExplosionMode.INSTANT_LANE
+            || mode == ExplosionMode.GLOBAL_EXPLOSION
+            || mode == ExplosionMode.GRAPESHOT) {
             explode(plant, state);
             if (mode == ExplosionMode.GRAPESHOT) {
                 launchGrapes(plant, state);
@@ -84,17 +85,17 @@ public enum Explosive implements PlantType {
         }
         if (mode == ExplosionMode.GRAVE_BUSTER) {
             int eatSeconds = Math.max(
-                    1,
-                    GRAVE_BUSTER_BASE_SECONDS
-                            - (plant.getLevel() >= 2 ? 1 : 0)
+                1,
+                GRAVE_BUSTER_BASE_SECONDS
+                    - (plant.getLevel() >= 2 ? 1 : 0)
             );
             plant.disableFor(eatSeconds * state.getTicksPerSecond());
             return;
         }
         if (mode.isMine()) {
             float armSeconds = plant.getLevel() >= 2
-                    ? upgradedArmSeconds
-                    : levelOneArmSeconds;
+                ? upgradedArmSeconds
+                : levelOneArmSeconds;
             plant.disableFor(armSeconds * state.getTicksPerSecond());
         }
     }
@@ -141,9 +142,9 @@ public enum Explosive implements PlantType {
 
     private void tickMine(Plant plant, GameState state) {
         Zombie trigger = state.getBoard().getZombieNear(
-                plant.getPosY(),
-                plant.getPosX(),
-                triggerRadius
+            plant.getPosY(),
+            plant.getPosX(),
+            triggerRadius
         );
         if (trigger == null) {
             return;
@@ -159,18 +160,18 @@ public enum Explosive implements PlantType {
 
     private void tickSquash(Plant plant, GameState state) {
         List<Zombie> nearby = new ArrayList<>(
-                state.getBoard().getZombiesInRadius(
-                        plant.getPosY(),
-                        plant.getPosX(),
-                        triggerRadius
-                )
+            state.getBoard().getZombiesInRadius(
+                plant.getPosY(),
+                plant.getPosX(),
+                triggerRadius
+            )
         );
         if (nearby.isEmpty()) {
             return;
         }
         nearby.sort(Comparator.comparingDouble(zombie -> Math.hypot(
-                zombie.getLane() - plant.getPosY(),
-                zombie.getX() - plant.getPosX()
+            zombie.getLane() - plant.getPosY(),
+            zombie.getX() - plant.getPosX()
         )));
         int crushCount = plant.getLevel() >= 4 ? 2 : 1;
         for (int i = 0; i < Math.min(crushCount, nearby.size()); i++) {
@@ -181,9 +182,9 @@ public enum Explosive implements PlantType {
 
     private void tickIceberg(Plant plant, GameState state) {
         Zombie trigger = state.getBoard().getZombieNear(
-                plant.getPosY(),
-                plant.getPosX(),
-                triggerRadius
+            plant.getPosY(),
+            plant.getPosX(),
+            triggerRadius
         );
         if (trigger == null) {
             return;
@@ -201,22 +202,22 @@ public enum Explosive implements PlantType {
             }
         }
         waterZombies.sort(Comparator.comparingDouble(zombie -> Math.hypot(
-                zombie.getLane() - plant.getPosY(),
-                zombie.getX() - plant.getPosX()
+            zombie.getLane() - plant.getPosY(),
+            zombie.getX() - plant.getPosX()
         )));
         int count = plantFood
-                ? Math.max(3, plant.getPlantStat().targetCount() + 2)
-                : Math.max(1, plant.getPlantStat().targetCount());
+            ? Math.max(3, plant.getPlantStat().targetCount() + 2)
+            : Math.max(1, plant.getPlantStat().targetCount());
         if (!plantFood) {
             waterZombies.removeIf(zombie -> Math.hypot(
-                    zombie.getLane() - plant.getPosY(),
-                    zombie.getX() - plant.getPosX()
+                zombie.getLane() - plant.getPosY(),
+                zombie.getX() - plant.getPosX()
             ) > triggerRadius);
         }
         for (int i = 0; i < Math.min(count, waterZombies.size()); i++) {
             waterZombies.get(i).killInstantly(
-                    state,
-                    models.quests.QuestKillSourceType.PLANT
+                state,
+                models.quests.QuestKillSourceType.PLANT
             );
         }
         if (!waterZombies.isEmpty()) {
@@ -239,8 +240,8 @@ public enum Explosive implements PlantType {
                 }
             }
             Tile tile = state.getBoard().getTile(
-                    plant.getPosY(),
-                    plant.getPosX()
+                plant.getPosY(),
+                plant.getPosX()
             );
             if (tile != null) {
                 tile.setCrater(true);
@@ -252,30 +253,30 @@ public enum Explosive implements PlantType {
 
     private void launchGrapes(Plant plant, GameState state) {
         double[][] directions = {
-                {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
-                {1, 0.25}, {1, -0.25}, {-1, 0.25}, {-1, -0.25}
+            {1, 1}, {1, -1}, {-1, 1}, {-1, -1},
+            {1, 0.25}, {1, -0.25}, {-1, 0.25}, {-1, -0.25}
         };
         int hitCount = 3 + (plant.getLevel() >= 3 ? 1 : 0);
         int lifetime = GRAPESHOT_GRAPE_LIFETIME_SECONDS
-                * state.getTicksPerSecond();
+            * state.getTicksPerSecond();
         for (int i = 0; i < directions.length; i++) {
             double[] direction = directions[i];
             Projectile grape = PlantEnumSupport.configureProjectileVisual(
-                    Projectile.bouncing(
-                            GRAPESHOT_GRAPE_DAMAGE,
-                            ElementType.NORMAL,
-                            plant.getPlantTags(),
-                            0.5,
-                            plant.getPosX(),
-                            plant.getPosY(),
-                            direction[0],
-                            direction[1],
-                            hitCount,
-                            0
-                    ),
-                    plant,
-                    state,
-                    i
+                Projectile.bouncing(
+                    GRAPESHOT_GRAPE_DAMAGE,
+                    ElementType.NORMAL,
+                    plant.getPlantTags(),
+                    0.5,
+                    plant.getPosX(),
+                    plant.getPosY(),
+                    direction[0],
+                    direction[1],
+                    hitCount,
+                    0
+                ),
+                plant,
+                state,
+                i
             ).withLifetime(lifetime);
 
             state.getBoard().addProjectile(grape);
@@ -286,14 +287,14 @@ public enum Explosive implements PlantType {
         int radius = plant.getLevel() >= 3 ? 1 : 0;
         for (int lane = Math.max(0, plant.getPosY() - radius);
              lane <= Math.min(
-                     state.getBoard().getLaneCount() - 1,
-                     plant.getPosY() + radius
+                 state.getBoard().getLaneCount() - 1,
+                 plant.getPosY() + radius
              );
              lane++) {
             for (int column = Math.max(0, plant.getPosX() - radius);
                  column <= Math.min(
-                         state.getBoard().getColumnCount() - 1,
-                         plant.getPosX() + radius
+                     state.getBoard().getColumnCount() - 1,
+                     plant.getPosX() + radius
                  );
                  column++) {
                 Tile tile = state.getBoard().getTile(lane, column);
@@ -309,18 +310,54 @@ public enum Explosive implements PlantType {
 
     private void finishGraveBuster(Plant plant, GameState state) {
         Tile tile = state.getBoard().getTile(
-                plant.getPosY(),
-                plant.getPosX()
+            plant.getPosY(),
+            plant.getPosX()
         );
+
         if (tile != null && tile.hasGrave()) {
+            Grave grave = tile.getGrave();
+
+            if (grave != null && grave.isHasSun()) {
+                state.increaseSunBalance(50);
+                state.logEvent(
+                    "The grave contained 50 sun. You now have "
+                        + state.getSun()
+                        + " sun.\n"
+                );
+            }
+
+            if (grave != null && grave.isHasPlantFood()) {
+                boolean collected = state.addPlantFood();
+
+                if (collected) {
+                    state.logEvent(
+                        "The grave contained a Plant Food. You now have "
+                            + state.getPlantFoodCount()
+                            + " Plant Foods.\n"
+                    );
+                } else {
+                    state.logEvent(
+                        "The grave contained a Plant Food, "
+                            + "but your Plant Food storage is full.\n"
+                    );
+                }
+            }
+
             tile.removeGrave();
-            state.logEvent("Grave Buster removed the grave at ("
-                    + (plant.getPosX() + 1) + ", "
-                    + (plant.getPosY() + 1) + ").\n");
+
+            state.logEvent(
+                "Grave Buster removed the grave at ("
+                    + (plant.getPosX() + 1)
+                    + ", "
+                    + (plant.getPosY() + 1)
+                    + ").\n"
+            );
+
             if (plant.getLevel() >= 4) {
                 explodeThreeByThree(plant, state);
             }
         }
+
         removePlant(plant, state);
     }
 
@@ -331,10 +368,10 @@ public enum Explosive implements PlantType {
 
     private void damageThreeByThree(Plant plant, GameState state) {
         List<Zombie> zombies = state.getBoard().getZombiesInSquare(
-                plant.getPosY(),
-                plant.getPosX(),
-                1,
-                1
+            plant.getPosY(),
+            plant.getPosX(),
+            1,
+            1
         );
         for (Zombie zombie : zombies) {
             damageZombie(plant, state, zombie);
@@ -342,14 +379,14 @@ public enum Explosive implements PlantType {
     }
 
     private void emitExplosionEffect(
-            Plant plant,
-            GameState state
+        Plant plant,
+        GameState state
     ) {
         state.emitVisualEffect(
-                VisualEffectEvent.plantExplosion(
-                        plant.getPosX(),
-                        plant.getPosY()
-                )
+            VisualEffectEvent.plantExplosion(
+                plant.getPosX(),
+                plant.getPosY()
+            )
         );
     }
 
@@ -361,7 +398,7 @@ public enum Explosive implements PlantType {
 
     private void freezeAllZombies(Plant plant, GameState state) {
         for (Zombie zombie : new ArrayList<>(
-                state.getZombiesInTheGame()
+            state.getZombiesInTheGame()
         )) {
             if (zombie.isDead()) {
                 continue;
@@ -377,12 +414,12 @@ public enum Explosive implements PlantType {
 
     private void applyFreeze(Plant plant, Zombie zombie, GameState state) {
         int ticks = (int) Math.round(
-                (BASE_FREEZE_SECONDS + plant.getPlantStat().freezeDuration()) * state.getTicksPerSecond());
+            (BASE_FREEZE_SECONDS + plant.getPlantStat().freezeDuration()) * state.getTicksPerSecond());
         zombie.applyFreeze(ticks);
         state.logEvent(plant.getName() + " froze "
-                + zombie.getAlias() + " for "
-                + ((double) ticks / state.getTicksPerSecond())
-                + " seconds.\n");
+            + zombie.getAlias() + " for "
+            + ((double) ticks / state.getTicksPerSecond())
+            + " seconds.\n");
     }
 
     private void dropArmedMineClones(Plant source, GameState state) {
@@ -395,9 +432,9 @@ public enum Explosive implements PlantType {
             clone.getPlantType().onPlanted(clone, state);
             clone.disableFor(0);
             state.logEvent(clone.getName() + " clone landed at ("
-                    + (tile.getColumn() + 1) + ", "
-                    + (tile.getLane() + 1)
-                    + ") and armed immediately.\n");
+                + (tile.getColumn() + 1) + ", "
+                + (tile.getLane() + 1)
+                + ") and armed immediately.\n");
         }
     }
 
