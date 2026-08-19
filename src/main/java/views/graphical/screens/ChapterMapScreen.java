@@ -413,11 +413,17 @@ public class ChapterMapScreen extends BaseScreen {
         super.show();
         game.showHud(0, 0, true, () -> game.showScreen(new ChapterSelectScreen(game)));
 
-        if (stage != null) {
-            // استفاده از InputMultiplexer برای اینکه هم کلیک‌های نقشه و هم دکمه‌های HUD کار کنند
-            Gdx.input.setInputProcessor(new InputMultiplexer(stage, Gdx.input.getInputProcessor()));
-            stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-        }
+        stage.getViewport().update(
+                Gdx.graphics.getWidth(),
+                Gdx.graphics.getHeight(),
+                true
+        );
+
+//        if (stage != null) {
+//            // استفاده از InputMultiplexer برای اینکه هم کلیک‌های نقشه و هم دکمه‌های HUD کار کنند
+//            Gdx.input.setInputProcessor(new InputMultiplexer(stage, Gdx.input.getInputProcessor()));
+//            stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+//        }
     }
 
     @Override

@@ -79,6 +79,7 @@ public class GameScreen extends BaseScreen {
 
     private final float viewWidth = 1066f;
     private final float worldHeight = 600f;
+    private static final float FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET = -10f;
     private enum IntroState {
         WAIT_AT_MAIN, PAN_TO_ZOMBIES, WAIT_AT_ZOMBIES, PAN_TO_SELECTION, SHOW_PLANT_SELECT, WAITING_FOR_SELECTION, PAN_BACK_TO_MAIN, PLAYING
     }
@@ -263,7 +264,11 @@ public class GameScreen extends BaseScreen {
             )
         );
     }
-
+    private float getMiddleBackgroundYOffset() {
+        return theme == ChapterTheme.FROSTBITE_CAVES
+                ? FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET
+                : 0f;
+    }
     private void loadBackgroundAssets() {
         switch (theme) {
             case ANCIENT_EGYPT:
@@ -998,14 +1003,21 @@ public class GameScreen extends BaseScreen {
         game.getBatch().begin();
         game.getBatch().setColor(Color.WHITE);
 
-        float currentX = 0;
-        game.getBatch().draw(bgLeft, currentX, 0, bgLeft.getRegionWidth(), worldHeight);
+        float currentX = 0f;
+
+        game.getBatch().draw(bgLeft, currentX, 0f, bgLeft.getRegionWidth(), worldHeight);
         currentX += bgLeft.getRegionWidth();
 
-        game.getBatch().draw(bgMid, currentX, 0, bgMid.getRegionWidth(), worldHeight);
+        game.getBatch().draw(
+            bgMid,
+            currentX,
+            getMiddleBackgroundYOffset(),
+            bgMid.getRegionWidth(),
+            worldHeight
+        );
         currentX += bgMid.getRegionWidth();
 
-        game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
+        game.getBatch().draw(bgRight, currentX, 0f, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
         boolean animateZombiePreview =
