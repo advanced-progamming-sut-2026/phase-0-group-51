@@ -45,10 +45,12 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
+import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
+import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.ui.GameSettings;
@@ -115,6 +117,8 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
+    private final SandstormAnimationSystem sandstormAnimationSystem;
+    private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
 
@@ -231,6 +235,22 @@ public class GameScreen extends BaseScreen {
             boardTransform,
             theme
         );
+
+        sandstormAnimationSystem =
+            new SandstormAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                zombieAnimationSystem,
+                theme
+            );
+
+        mowerAnimationSystem =
+            new MowerAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
+                theme
+            );
 
         graveAnimationSystem = new GraveAnimationSystem(
             game.getPamPlayer(),
@@ -467,6 +487,13 @@ public class GameScreen extends BaseScreen {
         sunViewManager = new SunViewManager(game, boardTransform);
         sunViewManager.setOnSunClicked(this::handleSunClicked);
         worldStage.addActor(sunViewManager);
+
+        mowerAnimationSystem.update(
+            0f,
+            0f,
+            currentGame.getGameState().getTickCounter(),
+            currentGame.getGameState()
+        );
 
         placementPreview =
             new PlantActor(game);
@@ -822,8 +849,8 @@ public class GameScreen extends BaseScreen {
     }
     private void createPlacementHighlights() {
         Drawable highlightDrawable = game.getSkin().newDrawable(
-                "white_pixel",
-                new Color(1f, 1f, 1f, 0.70f)
+            "white_pixel",
+            new Color(1f, 1f, 1f, 0.70f)
         );
         rowHighlight = new Image(highlightDrawable);
         columnHighlight = new Image(highlightDrawable);
@@ -880,28 +907,28 @@ public class GameScreen extends BaseScreen {
 
             if (event.type() == VisualEffectEvent.Type.PLANT_EXPLOSION) {
                 startScreenShake(
-                        EXPLOSION_SHAKE_DURATION,
-                        EXPLOSION_SHAKE_MAGNITUDE
+                    EXPLOSION_SHAKE_DURATION,
+                    EXPLOSION_SHAKE_MAGNITUDE
                 );
             }
         }
     }
 
     private void startScreenShake(
-            float duration,
-            float magnitude
+        float duration,
+        float magnitude
     ) {
         screenShakeDuration = Math.max(
-                screenShakeDuration,
-                Math.max(0.01f, duration)
+            screenShakeDuration,
+            Math.max(0.01f, duration)
         );
         screenShakeRemaining = Math.max(
-                screenShakeRemaining,
-                Math.max(0.01f, duration)
+            screenShakeRemaining,
+            Math.max(0.01f, duration)
         );
         screenShakeMagnitude = Math.max(
-                screenShakeMagnitude,
-                Math.max(0f, magnitude)
+            screenShakeMagnitude,
+            Math.max(0f, magnitude)
         );
     }
 
@@ -909,36 +936,36 @@ public class GameScreen extends BaseScreen {
         screenShakeApplied = false;
 
         if (introState != IntroState.PLAYING
-                || overlayMode != OverlayMode.NONE
-                || screenShakeRemaining <= 0f
-                || screenShakeDuration <= 0f) {
+            || overlayMode != OverlayMode.NONE
+            || screenShakeRemaining <= 0f
+            || screenShakeDuration <= 0f) {
             return;
         }
 
         screenShakeRemaining = Math.max(
-                0f,
-                screenShakeRemaining - Math.max(0f, delta)
+            0f,
+            screenShakeRemaining - Math.max(0f, delta)
         );
 
         float strength =
-                screenShakeRemaining / screenShakeDuration;
+            screenShakeRemaining / screenShakeDuration;
 
         screenShakeBaseX = camera.position.x;
         screenShakeBaseY = camera.position.y;
 
         camera.position.x =
-                screenShakeBaseX
-                        + MathUtils.random(
-                        -screenShakeMagnitude,
-                        screenShakeMagnitude
-                ) * strength;
+            screenShakeBaseX
+                + MathUtils.random(
+                -screenShakeMagnitude,
+                screenShakeMagnitude
+            ) * strength;
 
         camera.position.y =
-                screenShakeBaseY
-                        + MathUtils.random(
-                        -screenShakeMagnitude,
-                        screenShakeMagnitude
-                ) * strength;
+            screenShakeBaseY
+                + MathUtils.random(
+                -screenShakeMagnitude,
+                screenShakeMagnitude
+            ) * strength;
 
         camera.update();
         screenShakeApplied = true;
@@ -955,9 +982,9 @@ public class GameScreen extends BaseScreen {
         }
 
         camera.position.set(
-                screenShakeBaseX,
-                screenShakeBaseY,
-                camera.position.z
+            screenShakeBaseX,
+            screenShakeBaseY,
+            camera.position.z
         );
         camera.update();
         screenShakeApplied = false;
@@ -971,10 +998,12 @@ public class GameScreen extends BaseScreen {
         updateRenderTickInterpolation(delta);
         checkGameEnd();
 
+        float gameplayDelta = scaledGameplayDelta(delta);
+
         Game renderGame = App.getInstance().getCurrentGame();
         if (introState == IntroState.PLAYING
-                && overlayMode == OverlayMode.NONE
-                && renderGame != null) {
+            && overlayMode == OverlayMode.NONE
+            && renderGame != null) {
             processVisualEffects(renderGame.getGameState());
         }
 
@@ -983,10 +1012,24 @@ public class GameScreen extends BaseScreen {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
                 zombieAnimationSystem.update(
-                    delta,
+                    gameplayDelta,
                     getRenderTickAlpha(),
                     currentGame.getGameState().getTickCounter(),
                     currentGame.getGameState().getZombiesInTheGame()
+                );
+
+                mowerAnimationSystem.update(
+                    gameplayDelta,
+                    getRenderTickAlpha(),
+                    currentGame.getGameState().getTickCounter(),
+                    currentGame.getGameState()
+                );
+
+                sandstormAnimationSystem.update(
+                    gameplayDelta,
+                    currentGame
+                        .getGameState()
+                        .getZombiesInTheGame()
                 );
             }
         }
@@ -1074,7 +1117,11 @@ public class GameScreen extends BaseScreen {
         if (overlayMode == OverlayMode.NONE
             && (introState == IntroState.PLAYING
             || animateZombiePreview)) {
-            worldStage.act(delta);
+            worldStage.act(
+                introState == IntroState.PLAYING
+                    ? gameplayDelta
+                    : delta
+            );
         }
 
         worldStage.draw();
@@ -1164,6 +1211,12 @@ public class GameScreen extends BaseScreen {
         modalOverlay.toFront();
     }
 
+    private float scaledGameplayDelta(float delta) {
+        float safeDelta = Math.max(0f, Math.min(delta, 0.25f));
+        int speed = Math.max(1, Math.min(3, GameSettings.gameSpeed));
+        return safeDelta * speed;
+    }
+
     private void updateGameplayTicks(float delta) {
         if (introState != IntroState.PLAYING || overlayMode != OverlayMode.NONE) {
             return;
@@ -1181,7 +1234,7 @@ public class GameScreen extends BaseScreen {
 
         float tickDuration = 1f / ticksPerSecond;
 
-        gameTickAccumulator += Math.min(delta, 0.25f);
+        gameTickAccumulator += scaledGameplayDelta(delta);
 
         while (gameTickAccumulator >= tickDuration) {
             if (currentGame.getGameState().isFinished()) {
@@ -1218,14 +1271,7 @@ public class GameScreen extends BaseScreen {
                 .getGameState()
                 .getTickCounter();
 
-        float safeDelta =
-            Math.max(
-                0f,
-                Math.min(
-                    delta,
-                    0.25f
-                )
-            );
+        float safeDelta = scaledGameplayDelta(delta);
 
         if (renderInterpolationModelTick
             == Integer.MIN_VALUE) {
@@ -1448,6 +1494,8 @@ public class GameScreen extends BaseScreen {
             gameHud.dispose();
         }
         zombieLevelPreview.clear();
+        sandstormAnimationSystem.clear();
+        mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
         uiStage.dispose();

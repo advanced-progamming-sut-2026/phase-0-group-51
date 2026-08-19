@@ -19,8 +19,9 @@ import java.util.*;
 @Getter
 @Setter
 public class WallnutBowling extends Game {
-    private static final int CONVEYOR_SECONDS = 12;
+    private static final int CONVEYOR_SECONDS = 7;
     private static final int MAX_CONVEYOR_SIZE = 8;
+    private static final int INITIAL_CONVEYOR_COUNT = 4;
     private static final int DEFAULT_NORMAL_ZOMBIE_HEALTH = 190;
     private static final int DEFAULT_CHERRY_BOMB_DAMAGE = 1800;
     private final MinigameStage stage;
@@ -73,7 +74,9 @@ public class WallnutBowling extends Game {
                 state, allowedZombies, config.totalWaves(), config.baseDifficulty(), true, random);
         waveManager.setFirstWaveDelayTicks(3 * state.getTicksPerSecond());
         state.setZombieWaveManager(waveManager);
-        deliverConveyorWallnut();
+        for (int i = 0; i < INITIAL_CONVEYOR_COUNT; i++) {
+            deliverConveyorWallnut();
+        }
         nextConveyorDeliveryTick = CONVEYOR_SECONDS * state.getTicksPerSecond();
     }
     private List<ZombieType> resolveAllowedZombies(List<ZombieType> preferred) {
@@ -121,6 +124,10 @@ public class WallnutBowling extends Game {
         }
     }
     public RollingWallnut rollNextWallnut(int x, int y) {
+        return rollWallnutAt(0, x, y);
+    }
+
+    public RollingWallnut rollWallnutAt(int conveyorIndex, int x, int y) {
         ensureRunning();
         Board board = getGameState().getBoard();
         if (x < 1 || x > redLineColumn) {
@@ -133,10 +140,15 @@ public class WallnutBowling extends Game {
             throw new IllegalArgumentException("Row must be between 1 and "
                     + board.getLaneCount() + ".");
         }
-        if (conveyorBelt.isEmpty()) {
-            throw new IllegalStateException("The conveyor belt is empty.");
+
+        if (conveyorIndex < 0 || conveyorIndex >= conveyorBelt.size()) {
+            throw new IllegalArgumentException(
+                    "That conveyor slot is no longer available."
+            );
         }
-        WallnutType type = conveyorBelt.removeFirst();
+
+        WallnutType type = removeConveyorAt(conveyorIndex);
+
         RollingWallnut wallnut = new RollingWallnut(
                 type, x - 1.0, y - 1.0, DEFAULT_NORMAL_ZOMBIE_HEALTH, DEFAULT_CHERRY_BOMB_DAMAGE,
                 wallnutSpeedTilesPerSecond
@@ -145,6 +157,26 @@ public class WallnutBowling extends Game {
         getGameState().logEvent(type.getName() + " started rolling from ("
                 + x + ", " + y + ").\n");
         return wallnut;
+    }
+
+    private WallnutType removeConveyorAt(int index) {
+        Iterator<WallnutType> iterator = conveyorBelt.iterator();
+        int current = 0;
+
+        while (iterator.hasNext()) {
+            WallnutType type = iterator.next();
+
+            if (current == index) {
+                iterator.remove();
+                return type;
+            }
+
+            current++;
+        }
+
+        throw new IllegalArgumentException(
+                "That conveyor slot is no longer available."
+        );
     }
     private void updateConveyor() {
         int currentTick = getGameState().getTickCounter();

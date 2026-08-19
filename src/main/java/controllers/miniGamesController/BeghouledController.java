@@ -20,7 +20,7 @@ import java.util.TreeMap;
 
 public class BeghouledController extends GamingController {
     private final MinigameProgressService progressService = new MinigameProgressService();
-
+    private boolean graphicalResultRecorded;
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(MinigameType.BEGHOULDED, stageNumber);
         if (!access.success()) {
@@ -42,7 +42,23 @@ public class BeghouledController extends GamingController {
             return failure("Could not start Beghouled: " + message + "\n");
         }
     }
+    public void recordGraphicalResult() {
 
+        Beghouled game = activeGame();
+
+        if (graphicalResultRecorded || game == null || game.getGameState() == null || !game.getGameState().isFinished()) {
+            return;
+        }
+
+        graphicalResultRecorded = true;
+
+        if (game.getGameState().isWon()) {
+            progressService.recordWin(
+                    MinigameType.BEGHOULDED,
+                    game.getStage().getStageNumber()
+            );
+        }
+    }
     public Result swapPlants(int firstX, int firstY, int secondX, int secondY) {
         Beghouled game = activeGame();
         if (game == null) {
@@ -189,6 +205,90 @@ public class BeghouledController extends GamingController {
                 "Unknown Beghouled plant: " + plant.getName()
             );
         };
+    }
+    public Result swapPlantsGraphical(
+            int firstX,
+            int firstY,
+            int secondX,
+            int secondY
+    ) {
+        Beghouled game = activeGame();
+
+        if (game == null) {
+            return failure(
+                    "No active Beghouled game found.\n"
+            );
+        }
+
+        StringBuilder events = beginEvent(game);
+
+        try {
+            Beghouled.SwapOutcome outcome =
+                    game.swapPlants(
+                            firstX,
+                            firstY,
+                            secondX,
+                            secondY
+                    );
+
+            return new Result(
+                    true,
+                    events.toString(),
+                    outcome
+            );
+
+        } catch (
+                IllegalArgumentException
+                | IllegalStateException exception
+        ) {
+            return failure(
+                    exception.getMessage() + "\n"
+            );
+
+        } finally {
+            game.getGameState()
+                    .setEventLogger(null);
+        }
+    }
+    public Result upgradePlantsGraphical(
+            String fromPlant,
+            String toPlant
+    ) {
+        Beghouled game = activeGame();
+
+        if (game == null) {
+            return failure(
+                    "No active Beghouled game found.\n"
+            );
+        }
+
+        StringBuilder events = beginEvent(game);
+
+        try {
+            Beghouled.UpgradeOutcome outcome =
+                    game.upgradePlants(
+                            fromPlant,
+                            toPlant
+                    );
+
+            return new Result(
+                    true,
+                    events.toString(),
+                    outcome
+            );
+
+        } catch (
+                IllegalArgumentException
+                | IllegalStateException exception
+        ) {
+            return failure(
+                    exception.getMessage() + "\n"
+            );
+
+        } finally {
+            game.getGameState()
+                    .setEventLogger(null);
+        }
     }
     public Result showMap() {
         Beghouled game = activeGame();

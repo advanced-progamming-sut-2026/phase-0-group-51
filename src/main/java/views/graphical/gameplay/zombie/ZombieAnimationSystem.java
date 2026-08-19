@@ -6,6 +6,19 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.Zombie.Behavior.AuraBehavior;
+import models.Zombie.Behavior.DamageReactionBehavior;
+import models.Zombie.Behavior.DynamiteBehavior;
+import models.Zombie.Behavior.ImpThrowBehavior;
+import models.Zombie.Behavior.InstantKillBehavior;
+import models.Zombie.Behavior.MovementBehavior;
+import models.Zombie.Behavior.PushObjectBehavior;
+import models.Zombie.Behavior.RangedAttackBehavior;
+import models.Zombie.Behavior.SandstormTransportBehavior;
+import models.Zombie.Behavior.SunStealBehavior;
+import models.Zombie.Behavior.TransformBehavior;
+import models.Zombie.Behavior.TurquoiseLaserBehavior;
+import models.Zombie.Behavior.WorldEffectBehavior;
 import models.games.ChapterTheme;
 import pvz.libpvz.pam.ClipRef;
 import pvz.libpvz.pam.PamPlayer;
@@ -13,8 +26,10 @@ import views.graphical.animation.EntityAnimationState;
 import views.graphical.animation.PamAnimationActor;
 import views.graphical.gameplay.board.BoardTransform;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
@@ -27,7 +42,7 @@ import java.util.Set;
 
 public final class ZombieAnimationSystem {
 
-    public static final float DEFAULT_SCALE = 0.57f;
+    public static final float DEFAULT_SCALE = 0.6f;
 
     private static final String GROUND_PART = "ground_swatch";
 
@@ -109,6 +124,23 @@ public final class ZombieAnimationSystem {
 
     public void update(
         float delta,
+        Collection<Zombie> zombies
+    ) {
+        int compatibilityTick =
+            lastObservedModelTick == Integer.MIN_VALUE
+                ? 0
+                : lastObservedModelTick + 1;
+
+        update(
+            delta,
+            1f,
+            compatibilityTick,
+            zombies
+        );
+    }
+
+    public void update(
+        float delta,
         float partialTick,
         int modelTick,
         Collection<Zombie> zombies
@@ -159,6 +191,13 @@ public final class ZombieAnimationSystem {
                 visual,
                 modelAdvanced
             );
+
+            if (modelAdvanced) {
+                detectBehaviorTransitions(
+                    zombie,
+                    visual
+                );
+            }
 
             updateLivingZombie(
                 zombie,
@@ -213,6 +252,15 @@ public final class ZombieAnimationSystem {
 
     public int getVisibleZombieCount() {
         return visuals.size();
+    }
+
+    public PamAnimationActor getActor(Zombie zombie) {
+        if (zombie == null) {
+            return null;
+        }
+
+        ZombieVisual visual = visuals.get(zombie);
+        return visual == null ? null : visual.actor;
     }
 
     private void updateZombieDrawOrder() {
@@ -312,6 +360,11 @@ public final class ZombieAnimationSystem {
             );
 
             initializeModelPosition(
+                zombie,
+                visual
+            );
+
+            initializeBehaviorState(
                 zombie,
                 visual
             );
@@ -720,31 +773,627 @@ public final class ZombieAnimationSystem {
             partialTick
         );
 
-        EntityAnimationState state = zombie.isEating()
-            ? EntityAnimationState.EAT
-            : EntityAnimationState.WALK;
-
-        actor.play(
-            visual.animations.clip(state),
-            true
-        );
-
-        if (state == EntityAnimationState.WALK) {
-            actor.setPlaybackSpeed(
-                calculateWalkPlaybackSpeed(
-                    zombie,
-                    actor
-                )
+        if (!updateSpecialClip(visual)) {
+            BaseAnimation base = resolveBaseAnimation(
+                zombie,
+                visual
             );
-        } else {
-            actor.setPlaybackSpeed(1f);
+
+            actor.play(
+                base.clip,
+                base.loop
+            );
+
+            if (base.walkSpeedSynced) {
+                actor.setPlaybackSpeed(
+                    calculateWalkPlaybackSpeed(
+                        zombie,
+                        actor
+                    )
+                );
+            } else {
+                actor.setPlaybackSpeed(1f);
+            }
         }
+
+        updateColdTint(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
         } else {
             actor.resumeAnimation();
         }
+    }
+
+    private void updateColdTint(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (zombie.isFrozen()) {
+            actor.setColor(
+                0.55f,
+                0.78f,
+                1.00f,
+                1.00f
+            );
+            return;
+        }
+
+        if (zombie.isChilled()) {
+            actor.setColor(
+                0.72f,
+                0.88f,
+                1.00f,
+                1.00f
+            );
+            return;
+        }
+
+        actor.setColor(
+            1.00f,
+            1.00f,
+            1.00f,
+            1.00f
+        );
+    }
+
+    private BaseAnimation resolveBaseAnimation(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        SandstormTransportBehavior sandstorm =
+            zombie.getBehavior(
+                SandstormTransportBehavior.class
+            );
+
+        if (sandstorm != null && sandstorm.isActive()) {
+            return new BaseAnimation(
+                visual.animations.clip(
+                    EntityAnimationState.IDLE
+                ),
+                false
+            );
+        }
+
+        EntityAnimationState fallbackState = zombie.isEating()
+            ? EntityAnimationState.EAT
+            : EntityAnimationState.WALK;
+
+        String alias = zombie.getAlias();
+
+        if (ZombieType.NEWSPAPER.getAlias().equals(alias)) {
+            DamageReactionBehavior reaction =
+                zombie.getBehavior(DamageReactionBehavior.class);
+
+            if (reaction != null && !reaction.isRaged()) {
+                String clip = clipOrFallback(
+                    visual,
+                    zombie.isEating()
+                        ? "eat_newspaper"
+                        : "walk_newspaper",
+                    fallbackState
+                );
+
+                return new BaseAnimation(
+                    clip,
+                    !zombie.isEating()
+                );
+            }
+        }
+
+        if (ZombieType.MODERN_ALL_STAR.getAlias().equals(alias)) {
+            InstantKillBehavior contact =
+                zombie.getBehavior(InstantKillBehavior.class);
+
+            if (contact != null
+                && !contact.isHasKilled()
+                && contact.getRunningSpeedScale() > 0f) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "run",
+                        EntityAnimationState.WALK
+                    ),
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
+            DamageReactionBehavior reaction =
+                zombie.getBehavior(DamageReactionBehavior.class);
+
+            if (reaction != null && reaction.isSpinning()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "spin_walk",
+                        EntityAnimationState.WALK
+                    ),
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.ARCADE.getAlias().equals(alias)) {
+            PushObjectBehavior push =
+                zombie.getBehavior(PushObjectBehavior.class);
+
+            if (push != null && push.hasObject()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "push",
+                        EntityAnimationState.WALK
+                    ),
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.BARREL_ROLLER.getAlias().equals(alias)) {
+            PushObjectBehavior push =
+                zombie.getBehavior(PushObjectBehavior.class);
+
+            if (push != null && !push.hasObject()) {
+                String clip = clipOrFallback(
+                    visual,
+                    zombie.isEating() ? "eat2" : "walk2",
+                    fallbackState
+                );
+
+                return new BaseAnimation(
+                    clip,
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.ICE_AGE_TROGLOBITE.getAlias().equals(alias)) {
+            PushObjectBehavior push =
+                zombie.getBehavior(PushObjectBehavior.class);
+
+            if (push != null
+                && !push.getPushedFrozenZombies().isEmpty()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "push",
+                        EntityAnimationState.WALK
+                    ),
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.TOMB_RAISER.getAlias().equals(alias)) {
+            WorldEffectBehavior worldEffect =
+                zombie.getBehavior(WorldEffectBehavior.class);
+
+            if (worldEffect != null
+                && worldEffect.getType()
+                == WorldEffectBehavior.WorldEffectType.SPAWN_TOMB
+                && worldEffect.isCasting()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "power",
+                        EntityAnimationState.SPECIAL
+                    ),
+                    false,
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.PIANO.getAlias().equals(alias)) {
+            return new BaseAnimation(
+                clipOrFallback(
+                    visual,
+                    "play",
+                    EntityAnimationState.IDLE
+                ),
+                false
+            );
+        }
+
+        if (ZombieType.RA.getAlias().equals(alias)) {
+            SunStealBehavior sunSteal =
+                zombie.getBehavior(SunStealBehavior.class);
+
+            if (sunSteal != null && sunSteal.isStealing()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "power",
+                        EntityAnimationState.SPECIAL
+                    ),
+                    false
+                );
+            }
+        }
+
+        if (ZombieType.DARK_KING.getAlias().equals(alias)) {
+            return new BaseAnimation(
+                visual.animations.clip(EntityAnimationState.IDLE),
+                false
+            );
+        }
+
+        if (ZombieType.BEACH_FISHERMAN.getAlias().equals(alias)) {
+            return new BaseAnimation(
+                visual.animations.clip(EntityAnimationState.IDLE),
+                false
+            );
+        }
+
+        if (ZombieType.CRYSTAL_SKULL.getAlias().equals(alias)) {
+            TurquoiseLaserBehavior laser =
+                zombie.getBehavior(TurquoiseLaserBehavior.class);
+
+            if (laser != null && laser.suppressesMovement(zombie)) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "power",
+                        EntityAnimationState.SPECIAL
+                    ),
+                    false
+                );
+            }
+        }
+
+        String clip = visual.animations.clip(fallbackState);
+        return new BaseAnimation(
+            clip,
+            fallbackState == EntityAnimationState.WALK
+        );
+    }
+
+    private void initializeBehaviorState(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        DamageReactionBehavior reaction =
+            zombie.getBehavior(DamageReactionBehavior.class);
+        if (reaction != null) {
+            visual.lastRaged = reaction.isRaged();
+            visual.lastSpinning = reaction.isSpinning();
+        }
+
+        InstantKillBehavior contact =
+            zombie.getBehavior(InstantKillBehavior.class);
+        if (contact != null) {
+            visual.lastHasKilled = contact.isHasKilled();
+        }
+
+        ImpThrowBehavior summon =
+            zombie.getBehavior(ImpThrowBehavior.class);
+        if (summon != null) {
+            visual.lastImpFired = summon.isFired();
+        }
+
+        RangedAttackBehavior ranged =
+            zombie.getBehavior(RangedAttackBehavior.class);
+        if (ranged != null) {
+            visual.lastRangedCooldown = ranged.getCooldown();
+        }
+
+        SunStealBehavior sunSteal =
+            zombie.getBehavior(SunStealBehavior.class);
+        if (sunSteal != null) {
+            visual.lastSunStealing = sunSteal.isStealing();
+        }
+
+        AuraBehavior aura =
+            zombie.getBehavior(AuraBehavior.class);
+        if (aura != null) {
+            visual.lastAuraTimer = aura.getTimer();
+        }
+
+        TransformBehavior transform =
+            zombie.getBehavior(TransformBehavior.class);
+        if (transform != null) {
+            visual.lastTransformCooldown = transform.getCooldown();
+        }
+
+        DynamiteBehavior dynamite =
+            zombie.getBehavior(DynamiteBehavior.class);
+        if (dynamite != null) {
+            visual.lastDynamiteExploded = dynamite.isExploded();
+        }
+
+        MovementBehavior movement =
+            zombie.getBehavior(MovementBehavior.class);
+        if (movement != null) {
+            visual.lastDodoFly = movement.isSkipEatingThisTick();
+        }
+
+        TurquoiseLaserBehavior laser =
+            zombie.getBehavior(TurquoiseLaserBehavior.class);
+        if (laser != null) {
+            visual.lastLaserStealing =
+                laser.suppressesMovement(zombie);
+        }
+
+        visual.behaviorStateInitialized = true;
+    }
+
+    private void detectBehaviorTransitions(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (!visual.behaviorStateInitialized) {
+            initializeBehaviorState(zombie, visual);
+            return;
+        }
+
+        String alias = zombie.getAlias();
+
+        DamageReactionBehavior reaction =
+            zombie.getBehavior(DamageReactionBehavior.class);
+        if (reaction != null) {
+            if (!visual.lastRaged
+                && reaction.isRaged()
+                && ZombieType.NEWSPAPER.getAlias().equals(alias)) {
+                enqueueSpecialClip(visual, "newspaper_defeat");
+            }
+
+            if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
+                if (!visual.lastSpinning && reaction.isSpinning()) {
+                    enqueueSpecialClip(visual, "spinup");
+                } else if (visual.lastSpinning && !reaction.isSpinning()) {
+                    enqueueSpecialClip(visual, "spindown");
+                }
+            }
+
+            visual.lastRaged = reaction.isRaged();
+            visual.lastSpinning = reaction.isSpinning();
+        }
+
+        InstantKillBehavior contact =
+            zombie.getBehavior(InstantKillBehavior.class);
+        if (contact != null) {
+            if (!visual.lastHasKilled && contact.isHasKilled()) {
+                if (ZombieType.MODERN_ALL_STAR.getAlias().equals(alias)) {
+                    enqueueSpecialClip(visual, "tackle");
+                } else if (ZombieType.GARGANTUAR.getAlias().equals(alias)) {
+                    enqueueSpecialClip(visual, "smash_left");
+                }
+            }
+            visual.lastHasKilled = contact.isHasKilled();
+        }
+
+        ImpThrowBehavior summon =
+            zombie.getBehavior(ImpThrowBehavior.class);
+        if (summon != null) {
+            visual.lastImpFired = summon.isFired();
+        }
+
+        RangedAttackBehavior ranged =
+            zombie.getBehavior(RangedAttackBehavior.class);
+        if (ranged != null) {
+            int currentCooldown = ranged.getCooldown();
+            if (currentCooldown > visual.lastRangedCooldown) {
+                switch (ranged.getType()) {
+                    case SNOWBALL ->
+                        enqueueSpecialClip(visual, "throw");
+                    case OCTOPUS_NET ->
+                        enqueueSpecialClip(visual, "toss");
+                    case HOOK_PULL ->
+                        enqueueSpecialSequence(
+                            visual,
+                            "cast",
+                            "cast_loop",
+                            "reel"
+                        );
+                    case LASER_BEAM ->
+                        enqueueSpecialClip(visual, "attack");
+                    default -> {
+                    }
+                }
+            }
+            visual.lastRangedCooldown = currentCooldown;
+        }
+
+        SunStealBehavior sunSteal =
+            zombie.getBehavior(SunStealBehavior.class);
+        if (sunSteal != null) {
+            boolean stealing = sunSteal.isStealing();
+
+            if (!visual.lastSunStealing && stealing) {
+                enqueueSpecialClip(
+                    visual,
+                    "power_up"
+                );
+            } else if (visual.lastSunStealing && !stealing) {
+                enqueueSpecialClip(
+                    visual,
+                    "power_down"
+                );
+            }
+
+            visual.lastSunStealing = stealing;
+        }
+
+        AuraBehavior aura =
+            zombie.getBehavior(AuraBehavior.class);
+        if (aura != null) {
+            int currentTimer = aura.getTimer();
+            if (currentTimer < visual.lastAuraTimer) {
+                enqueueSpecialClip(visual, "special");
+            }
+            visual.lastAuraTimer = currentTimer;
+        }
+
+        TransformBehavior transform =
+            zombie.getBehavior(TransformBehavior.class);
+        if (transform != null) {
+            int currentCooldown = transform.getCooldown();
+            if (currentCooldown > visual.lastTransformCooldown) {
+                enqueueSpecialClip(visual, "sheep");
+            }
+            visual.lastTransformCooldown = currentCooldown;
+        }
+
+        DynamiteBehavior dynamite =
+            zombie.getBehavior(DynamiteBehavior.class);
+        if (dynamite != null) {
+            if (!visual.lastDynamiteExploded
+                && dynamite.isExploded()) {
+                enqueueSpecialSequence(
+                    visual,
+                    "blastoff",
+                    "fly",
+                    "land"
+                );
+            }
+            visual.lastDynamiteExploded = dynamite.isExploded();
+        }
+
+        MovementBehavior movement =
+            zombie.getBehavior(MovementBehavior.class);
+        if (movement != null) {
+            boolean dodoFly = movement.isSkipEatingThisTick();
+            if (!visual.lastDodoFly
+                && dodoFly
+                && movement.getType()
+                == MovementBehavior.MovementType.FLY_OVER) {
+                enqueueSpecialSequence(
+                    visual,
+                    "fly_start",
+                    "fly_loop",
+                    "fly_end"
+                );
+            }
+            visual.lastDodoFly = dodoFly;
+        }
+
+        TurquoiseLaserBehavior laser =
+            zombie.getBehavior(TurquoiseLaserBehavior.class);
+        if (laser != null) {
+            boolean stealing = laser.suppressesMovement(zombie);
+            if (!visual.lastLaserStealing && stealing) {
+                enqueueSpecialClip(visual, "power_up");
+            } else if (visual.lastLaserStealing && !stealing) {
+                enqueueSpecialSequence(
+                    visual,
+                    "attack",
+                    "power_down"
+                );
+            }
+            visual.lastLaserStealing = stealing;
+        }
+    }
+
+    private boolean updateSpecialClip(
+        ZombieVisual visual
+    ) {
+        if (visual.activeSpecialClip != null) {
+            if (visual.actor.getStateTime()
+                < visual.activeSpecialDuration) {
+                return true;
+            }
+
+            visual.activeSpecialClip = null;
+            visual.activeSpecialDuration = 0f;
+        }
+
+        while (!visual.specialQueue.isEmpty()) {
+            String next = visual.specialQueue.removeFirst();
+            if (startSpecialClip(visual, next)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean startSpecialClip(
+        ZombieVisual visual,
+        String clip
+    ) {
+        String resolved = findAvailableClip(visual, clip);
+        if (resolved == null) {
+            return false;
+        }
+
+        visual.activeSpecialClip = resolved;
+        visual.actor.setPlaybackSpeed(1f);
+        visual.actor.play(resolved, false);
+        visual.actor.restart();
+
+        try {
+            visual.activeSpecialDuration = Math.max(
+                MIN_DEATH_DURATION,
+                pamPlayer.clipDurationSeconds(
+                    visual.animations.getPamPath(),
+                    resolved
+                )
+            );
+        } catch (RuntimeException ignored) {
+            visual.activeSpecialDuration = 0.5f;
+        }
+
+        return true;
+    }
+
+    private void enqueueSpecialSequence(
+        ZombieVisual visual,
+        String... clips
+    ) {
+        for (String clip : clips) {
+            enqueueSpecialClip(visual, clip);
+        }
+    }
+
+    private void enqueueSpecialClip(
+        ZombieVisual visual,
+        String clip
+    ) {
+        String resolved = findAvailableClip(visual, clip);
+        if (resolved == null) {
+            return;
+        }
+
+        if (resolved.equals(visual.activeSpecialClip)) {
+            return;
+        }
+
+        String last = visual.specialQueue.peekLast();
+        if (resolved.equals(last)) {
+            return;
+        }
+
+        visual.specialQueue.addLast(resolved);
+    }
+
+    private String clipOrFallback(
+        ZombieVisual visual,
+        String preferred,
+        EntityAnimationState fallback
+    ) {
+        String clip = findAvailableClip(visual, preferred);
+        return clip != null
+            ? clip
+            : visual.animations.clip(fallback);
+    }
+
+    private String findAvailableClip(
+        ZombieVisual visual,
+        String wanted
+    ) {
+        if (wanted == null || wanted.isBlank()) {
+            return null;
+        }
+
+        for (String clip : visual.animations.getAvailableClips()) {
+            if (clip.equalsIgnoreCase(wanted)) {
+                return clip;
+            }
+        }
+
+        return null;
     }
 
     private void updatePosition(
@@ -832,12 +1481,21 @@ public final class ZombieAnimationSystem {
     private void beginDeath(ZombieVisual visual) {
         visual.deathStarted = true;
         visual.deathElapsed = 0f;
+        visual.specialQueue.clear();
+        visual.activeSpecialClip = null;
+        visual.activeSpecialDuration = 0f;
 
         String deathClip = visual.animations.clip(
             EntityAnimationState.DEATH
         );
 
         visual.actor.clearGroundingKeepingVisualPosition();
+        visual.actor.setColor(
+            1.00f,
+            1.00f,
+            1.00f,
+            1.00f
+        );
 
         visual.actor.resumeAnimation();
         visual.actor.setPlaybackSpeed(1f);
@@ -880,13 +1538,57 @@ public final class ZombieAnimationSystem {
         }
     }
 
+    private static final class BaseAnimation {
+        private final String clip;
+        private final boolean walkSpeedSynced;
+        private final boolean loop;
+
+        private BaseAnimation(
+            String clip,
+            boolean walkSpeedSynced
+        ) {
+            this(
+                clip,
+                walkSpeedSynced,
+                true
+            );
+        }
+
+        private BaseAnimation(
+            String clip,
+            boolean walkSpeedSynced,
+            boolean loop
+        ) {
+            this.clip = clip;
+            this.walkSpeedSynced = walkSpeedSynced;
+            this.loop = loop;
+        }
+    }
+
     private static final class ZombieVisual {
         private final PamAnimationActor actor;
         private final ZombieAnimationResolver.ResolvedAnimations animations;
+        private final Deque<String> specialQueue = new ArrayDeque<>();
 
         private float previousModelX;
         private float currentModelX;
         private boolean positionInitialized;
+
+        private String activeSpecialClip;
+        private float activeSpecialDuration;
+
+        private boolean behaviorStateInitialized;
+        private boolean lastRaged;
+        private boolean lastSpinning;
+        private boolean lastHasKilled;
+        private boolean lastImpFired;
+        private int lastRangedCooldown;
+        private boolean lastSunStealing;
+        private int lastAuraTimer;
+        private int lastTransformCooldown;
+        private boolean lastDynamiteExploded;
+        private boolean lastDodoFly;
+        private boolean lastLaserStealing;
 
         private boolean deathStarted;
         private float deathElapsed;

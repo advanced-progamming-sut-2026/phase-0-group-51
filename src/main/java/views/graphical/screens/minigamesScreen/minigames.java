@@ -22,12 +22,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 
-import controllers.miniGamesController.BeghouledController;
-import controllers.miniGamesController.IZombieController;
-import controllers.miniGamesController.VaseBreakerController;
-import controllers.miniGamesController.WallnutBowlingController;
-import controllers.miniGamesController.ZombotanyController;
-
 import graphics.PvzGame;
 
 import models.App;
@@ -37,8 +31,11 @@ import models.minigames.MinigameType;
 
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.MainMenuScreen;
+import views.graphical.screens.minigamesScreen.beghouled.BeghouledScreen;
 import views.graphical.screens.minigamesScreen.iZombie.IZombieScreen;
 import views.graphical.screens.minigamesScreen.vaseBreaker.VaseBreakerScreen;
+import views.graphical.screens.minigamesScreen.wallnutBowling.WallnutBowlingScreen;
+
 
 public class minigames extends BaseScreen {
 
@@ -612,44 +609,30 @@ public class minigames extends BaseScreen {
         );
     }
 
-    private void startStage(int stageNumber) {
-        if (minigameType == MinigameType.VASEBREAKER) {
-            Gdx.app.postRunnable(() -> game.showScreen(new VaseBreakerScreen(game, stageNumber)));
-            return;
-        }
-        if (minigameType == MinigameType.IZOMBIE) {
-            Gdx.app.postRunnable(() -> game.showScreen(new IZombieScreen(game, stageNumber)));
-            return;
-        }
-        Result result;
+        private void startStage(int stageNumber) {
+            switch (minigameType) {
 
-        switch (minigameType) {
-
-            case BEGHOULDED ->
-                    result = new BeghouledController().startStage(stageNumber);
-
-            case IZOMBIE ->
-                    result = new IZombieController().startStage(stageNumber);
-
-
-            case WALLNUT_BOWLING ->
-                    result = new WallnutBowlingController().startStage(stageNumber);
-
-
-            case ZOMBOTANY ->
-                    result = new ZombotanyController().startStage(stageNumber);
-
-            default -> {return;}
+                case VASEBREAKER ->
+                        Gdx.app.postRunnable(() -> game.showScreen(new VaseBreakerScreen(game, stageNumber)));
+                case IZOMBIE ->
+                        Gdx.app.postRunnable(() -> game.showScreen(new IZombieScreen(game, stageNumber)));
+                case BEGHOULDED ->
+                        Gdx.app.postRunnable(() -> game.showScreen(new BeghouledScreen(game, stageNumber)));
+                case WALLNUT_BOWLING ->
+                        Gdx.app.postRunnable(() -> game.showScreen(new WallnutBowlingScreen(game, stageNumber)));
+//
+//                case ZOMBOTANY ->
+//                        Gdx.app.postRunnable(
+//                                () -> game.showScreen(
+//                                        new ZombotanyScreen(
+//                                                game,
+//                                                stageNumber
+//                                        )
+//                                )
+//                        );
+            }
         }
 
-        if (!result.success()) {
-            game.notifyError(result.message());
-            return;
-        }
-
-        game.notifyInfo(result.message());
-
-    }
 
 
     private Drawable safeRegion(

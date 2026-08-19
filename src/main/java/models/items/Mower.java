@@ -7,14 +7,20 @@ import models.games.GameState;
 import models.quests.QuestKillSourceType;
 
 import java.util.ArrayList;
-import java.util.List;
 
 @Getter
 public class Mower {
+    public static final float START_X = -0.85f;
+    public static final float SPEED_COLUMNS_PER_SECOND = 7.5f;
+    public static final float HIT_RADIUS_COLUMNS = 0.52f;
+    public static final float EXIT_PADDING_COLUMNS = 0.85f;
+
     private final int rowNumber;
+    private final GameState gameState;
+
     private boolean activated;
     private boolean destroyed;
-    private final GameState gameState;
+    private float x = START_X;
 
     public Mower(int rowNumber, GameState gameState) {
         this.rowNumber = rowNumber;
@@ -22,34 +28,78 @@ public class Mower {
     }
 
     public void update(Board board) {
-        if (destroyed) {
+        if (destroyed || board == null) {
             return;
         }
 
-        Zombie firstZombie = board.getFirstZombieInLane(rowNumber);
-        if (!activated && firstZombie != null && firstZombie.getX() <= 0) {
+        if (!activated) {
+            Zombie firstZombie = board.getFirstZombieInLane(rowNumber);
+
+            if (firstZombie == null || firstZombie.getX() > 0f) {
+                return;
+            }
+
             activate(board);
+            return;
+        }
+
+        float previousX = x;
+        float secondsPerTick = 1f / Math.max(1, gameState.getTicksPerSecond());
+
+        x += SPEED_COLUMNS_PER_SECOND * secondsPerTick;
+
+        killCrossedZombies(board, previousX, x);
+
+        if (x >= board.getColumnCount() + EXIT_PADDING_COLUMNS) {
+            destroyed = true;
+            gameState.logEvent(
+                "The lawn mower in row "
+                    + (rowNumber + 1)
+                    + " finished its run.\n"
+            );
         }
     }
 
     private void activate(Board board) {
         activated = true;
-        List<String> killed = new ArrayList<>();
-        for (Zombie zombie : new ArrayList<>(board.getZombiesInLane(rowNumber))) {
-            if (!zombie.isDead()) {
-                killed.add(zombie.getAlias());
-                zombie.killInstantly(gameState, QuestKillSourceType.MOWER);
-            }
-        }
 
-        StringBuilder message = new StringBuilder()
-                .append("The lawn mower in the row ")
-                .append(rowNumber + 1)
-                .append(" is triggered and killed these zombies:\n");
-        for (String alias : killed) {
-            message.append(alias).append('\n');
+        gameState.logEvent(
+            "The lawn mower in row "
+                + (rowNumber + 1)
+                + " was triggered.\n"
+        );
+
+        killCrossedZombies(board, x, x);
+    }
+
+    private void killCrossedZombies(
+        Board board,
+        float fromX,
+        float toX
+    ) {
+        float minX =
+            Math.min(fromX, toX)
+                - HIT_RADIUS_COLUMNS;
+
+        float maxX =
+            Math.max(fromX, toX)
+                + HIT_RADIUS_COLUMNS;
+
+        for (Zombie zombie : new ArrayList<>(board.getZombiesInLane(rowNumber))) {
+            if (zombie == null || zombie.isDead()) {
+                continue;
+            }
+
+            float zombieX = zombie.getX();
+
+            if (zombieX < minX || zombieX > maxX) {
+                continue;
+            }
+
+            zombie.killInstantly(
+                gameState,
+                QuestKillSourceType.MOWER
+            );
         }
-        gameState.logEvent(message.toString());
-        destroyed = true;
     }
 }

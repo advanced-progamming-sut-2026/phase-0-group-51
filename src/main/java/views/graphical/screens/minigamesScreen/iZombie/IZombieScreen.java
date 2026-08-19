@@ -206,6 +206,12 @@ public class IZombieScreen extends BaseMinigameScreen {
                     iZombie.getGameState().getBoard().getProjectiles(),
                     partialTick
             );
+            sunViewManager.sync(
+                    iZombie.getGameState()
+                            .getBoard()
+                            .getActiveSuns(),
+                    partialTick
+            );
 
             iZombie.getGameState()
                     .consumeVisualEffects()
