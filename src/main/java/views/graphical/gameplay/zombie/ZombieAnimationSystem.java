@@ -505,6 +505,9 @@ public final class ZombieAnimationSystem {
         if (ZombieType.ARMOR_2.getAlias().equals(alias)) {
             return 2;
         }
+        if (ZombieType.DARK_ARMOR_3.getAlias().equals(alias)) {
+            return 3;
+        }
         if (ZombieType.ARMOR_4.getAlias().equals(alias)) {
             return 4;
         }

@@ -46,6 +46,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
+import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
 import views.graphical.gameplay.manager.DeadlineOverlayManager;
@@ -119,6 +120,7 @@ public class GameScreen extends BaseScreen {
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
+    private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
@@ -244,6 +246,14 @@ public class GameScreen extends BaseScreen {
                 game.getPamPlayer(),
                 worldStage,
                 zombieAnimationSystem,
+                theme
+            );
+
+        frostbiteSnowstormAnimationSystem =
+            new FrostbiteSnowstormAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
                 theme
             );
 
@@ -950,12 +960,19 @@ public class GameScreen extends BaseScreen {
     }
 
     private void processVisualEffects(GameState state) {
-        if (state == null || worldEffectManager == null) {
+        if (state == null) {
             return;
         }
 
         for (VisualEffectEvent event : state.consumeVisualEffects()) {
-            worldEffectManager.play(event);
+            if (event.type() == VisualEffectEvent.Type.ICY_WIND) {
+                frostbiteSnowstormAnimationSystem.play();
+                continue;
+            }
+
+            if (worldEffectManager != null) {
+                worldEffectManager.play(event);
+            }
 
             if (event.type() == VisualEffectEvent.Type.PLANT_EXPLOSION) {
                 startScreenShake(
@@ -1082,6 +1099,10 @@ public class GameScreen extends BaseScreen {
                     currentGame
                         .getGameState()
                         .getZombiesInTheGame()
+                );
+
+                frostbiteSnowstormAnimationSystem.update(
+                    gameplayDelta
                 );
             }
         }
@@ -1556,6 +1577,7 @@ public class GameScreen extends BaseScreen {
         }
         zombieLevelPreview.clear();
         sandstormAnimationSystem.clear();
+        frostbiteSnowstormAnimationSystem.clear();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();

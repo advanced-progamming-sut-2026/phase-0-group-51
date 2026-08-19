@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class ZombieBehaviorFactory {
     private static final int TICKS_PER_SECOND = 10;
-    private static final int HUNTER_SNOWBALL_INTERVAL_TICKS = TICKS_PER_SECOND;
+    private static final int HUNTER_SNOWBALL_INTERVAL_TICKS = 5;
 
     public static ZombieBehavior fromResultSet(ResultSet rs) throws SQLException {
         String type = rs.getString("behavior_type");

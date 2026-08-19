@@ -3,6 +3,7 @@ package models.games.frostbite;
 import Data.loader.ZombieRegistry;
 import models.Board.Board;
 import models.Zombie.Zombie;
+import models.effects.VisualEffectEvent;
 import models.games.GameState;
 
 import java.util.ArrayList;
@@ -38,6 +39,11 @@ public class FrostbiteCavesFeature {
         for (int lane : lanes) {
             state.getBoard().addFrostToLane(lane, state, "icy wind");
         }
+
+        state.emitVisualEffect(
+            VisualEffectEvent.icyWind()
+        );
+
         state.logEvent("Icy wind wooopshed rows " + formatLanes(lanes) + " at wave " + waveNumber + ".\n");
     }
 
@@ -45,9 +51,9 @@ public class FrostbiteCavesFeature {
         Board board = state.getBoard();
         for (FrostbiteLevelConfig.IceFloorPlacement placement : config.iceFloors()) {
             board.placeIceFloor(
-                    placement.laneIndex(),
-                    placement.columnIndex(),
-                    placement.direction()
+                placement.laneIndex(),
+                placement.columnIndex(),
+                placement.direction()
             );
         }
     }
@@ -60,7 +66,7 @@ public class FrostbiteCavesFeature {
             zombie.freezeInIce();
             state.addZombie(zombie);
             state.logEvent("Frozen zombie " + zombie.getAlias() + " started at ("
-                    + (placement.columnIndex() + 1) + ", " + (placement.laneIndex() + 1) + ").\n");
+                + (placement.columnIndex() + 1) + ", " + (placement.laneIndex() + 1) + ").\n");
         }
     }
 
@@ -82,9 +88,9 @@ public class FrostbiteCavesFeature {
 
     private String formatLanes(List<Integer> lanes) {
         List<Integer> userLanes = lanes.stream()
-                .map(lane -> lane + 1)
-                .sorted()
-                .toList();
+            .map(lane -> lane + 1)
+            .sorted()
+            .toList();
         return userLanes.toString();
     }
 }
