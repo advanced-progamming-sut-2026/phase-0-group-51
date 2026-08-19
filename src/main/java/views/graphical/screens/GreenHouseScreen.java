@@ -58,6 +58,10 @@ public class GreenHouseScreen extends BaseScreen {
     private static final float LOCK_OFFSET_Y = 75f;
     private static final float TIMER_REFRESH_SECONDS = 1f;
 
+    private static final float PLANT_OFFSET_X = 60f;
+    private static final float PLANT_OFFSET_Y = 65f;
+    private static final float PLANT_SCALE = 0.45f;
+
     private final Group[][] potSlots = new Group[GreenHouse.ROWS][GreenHouse.COLUMNS];
     private final Label[][] timerLabels = new Label[GreenHouse.ROWS][GreenHouse.COLUMNS];
     private final GreenHouseMenuController controller = new GreenHouseMenuController();
@@ -122,6 +126,7 @@ public class GreenHouseScreen extends BaseScreen {
         for (int row = 1; row <= GreenHouse.ROWS; row++) {
             for (int column = 1; column <= GreenHouse.COLUMNS; column++) {
                 Group slot = new Group();
+                slot.setSize(184f, 161f);
                 slot.setPosition(POT_X[column - 1], POT_Y[row - 1]);
                 potSlots[row - 1][column - 1] = slot;
                 uiLayer.addActor(slot);
@@ -301,6 +306,10 @@ public class GreenHouseScreen extends BaseScreen {
         Group scaleGroup = new Group();
         scaleGroup.setTransform(true);
         scaleGroup.setScale(0.45f);
+        scaleGroup.setPosition(
+                PLANT_OFFSET_X,
+                PLANT_OFFSET_Y
+        );
         scaleGroup.addActor(plantActor);
         slot.addActor(scaleGroup);
     }
