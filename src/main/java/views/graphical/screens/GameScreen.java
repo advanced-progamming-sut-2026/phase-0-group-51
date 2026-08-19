@@ -48,6 +48,7 @@ import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
+import views.graphical.gameplay.manager.DeadlineOverlayManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
@@ -82,7 +83,6 @@ public class GameScreen extends BaseScreen {
 
     private final float viewWidth = 1066f;
     private final float worldHeight = 600f;
-    private static final float FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET = -10f;
     private enum IntroState {
         WAIT_AT_MAIN, PAN_TO_ZOMBIES, WAIT_AT_ZOMBIES, PAN_TO_SELECTION, SHOW_PLANT_SELECT, WAITING_FOR_SELECTION, PAN_BACK_TO_MAIN, PLAYING
     }
@@ -135,6 +135,7 @@ public class GameScreen extends BaseScreen {
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
     private ProtectedPlantOverlayManager protectedPlantOverlayManager;
+    private DeadlineOverlayManager deadlineOverlayManager;
     private SunViewManager sunViewManager;
     private ProjectileViewManager projectileViewManager;
     private WorldEffectManager worldEffectManager;
@@ -281,6 +282,15 @@ public class GameScreen extends BaseScreen {
                 protectedPlantOverlayManager
             );
 
+            deadlineOverlayManager =
+                new DeadlineOverlayManager(
+                    game,
+                    boardTransform
+                );
+            worldStage.addActor(
+                deadlineOverlayManager
+            );
+
             plantViewManager =
                 new PlantViewManager(
                     game,
@@ -292,6 +302,10 @@ public class GameScreen extends BaseScreen {
 
             protectedPlantOverlayManager.sync(
                 currentGame.getGameState()
+            );
+            deadlineOverlayManager.sync(
+                currentGame.getGameState(),
+                0f
             );
             plantViewManager.sync(
                 currentGame
@@ -313,11 +327,7 @@ public class GameScreen extends BaseScreen {
             )
         );
     }
-    private float getMiddleBackgroundYOffset() {
-        return theme == ChapterTheme.FROSTBITE_CAVES
-                ? FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET
-                : 0f;
-    }
+
     private void loadBackgroundAssets() {
         switch (theme) {
             case ANCIENT_EGYPT:
@@ -499,6 +509,14 @@ public class GameScreen extends BaseScreen {
         worldStage.addActor(rowHighlight);
         worldStage.addActor(columnHighlight);
         worldStage.addActor(boardView);
+
+        if (deadlineOverlayManager != null) {
+            deadlineOverlayManager.toFront();
+            deadlineOverlayManager.sync(
+                currentGame.getGameState(),
+                0f
+            );
+        }
 
         graveAnimationSystem.toFront();
         graveAnimationSystem.sync(board);
@@ -1080,21 +1098,14 @@ public class GameScreen extends BaseScreen {
         game.getBatch().begin();
         game.getBatch().setColor(Color.WHITE);
 
-        float currentX = 0f;
-
-        game.getBatch().draw(bgLeft, currentX, 0f, bgLeft.getRegionWidth(), worldHeight);
+        float currentX = 0;
+        game.getBatch().draw(bgLeft, currentX, 0, bgLeft.getRegionWidth(), worldHeight);
         currentX += bgLeft.getRegionWidth();
 
-        game.getBatch().draw(
-            bgMid,
-            currentX,
-            getMiddleBackgroundYOffset(),
-            bgMid.getRegionWidth(),
-            worldHeight
-        );
+        game.getBatch().draw(bgMid, currentX, 0, bgMid.getRegionWidth(), worldHeight);
         currentX += bgMid.getRegionWidth();
 
-        game.getBatch().draw(bgRight, currentX, 0f, bgRight.getRegionWidth(), worldHeight);
+        game.getBatch().draw(bgRight, currentX, 0, bgRight.getRegionWidth(), worldHeight);
 
         game.getBatch().end();
         boolean animateZombiePreview =
@@ -1118,6 +1129,16 @@ public class GameScreen extends BaseScreen {
             if (protectedPlantOverlayManager != null) {
                 protectedPlantOverlayManager.sync(
                     currentGameForVisuals.getGameState()
+                );
+            }
+
+            if (deadlineOverlayManager != null) {
+                deadlineOverlayManager.sync(
+                    currentGameForVisuals.getGameState(),
+                    introState == IntroState.PLAYING
+                        && overlayMode == OverlayMode.NONE
+                        ? gameplayDelta
+                        : 0f
                 );
             }
 
@@ -1540,6 +1561,9 @@ public class GameScreen extends BaseScreen {
         graveAnimationSystem.clearVisuals();
         if (protectedPlantOverlayManager != null) {
             protectedPlantOverlayManager.clearVisuals();
+        }
+        if (deadlineOverlayManager != null) {
+            deadlineOverlayManager.clearVisuals();
         }
         uiStage.dispose();
         worldStage.dispose();
