@@ -165,9 +165,12 @@ public final class GraveAnimationSystem extends Group {
                             visuals.remove(grave);
 
                         if (deadVisual != null) {
+                            playExplosionEffect(
+                                deadVisual.lane,
+                                deadVisual.column
+                            );
                             deadVisual.remove();
                         }
-
                     }
 
                     continue;
@@ -256,6 +259,11 @@ public final class GraveAnimationSystem extends Group {
 
             int column =
                 visual.column;
+
+            playExplosionEffect(
+                lane,
+                column
+            );
 
             visual.remove();
             iterator.remove();
