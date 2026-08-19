@@ -41,16 +41,25 @@ public class ShopPopup extends BorderedPanel {
     private final ShopMenuController shopController;
     private Table itemsTable;
     private final Drawable shadowOverlay;
+    private final Runnable onPurchaseChanged;
 
     private Table fakeHudOverlay;
     private Label fakeCoinLabel;
     private Label fakeGemLabel;
 
     public ShopPopup(PvzGame game) {
+        this(game, null);
+    }
+
+    public ShopPopup(PvzGame game, Runnable onPurchaseChanged) {
         super(game, Color.valueOf("A0522D"));
         this.game = game;
+        this.onPurchaseChanged = onPurchaseChanged;
         this.shopController = new ShopMenuController(new Shop());
-        this.shadowOverlay = game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.75f));
+        this.shadowOverlay = game.getSkin().newDrawable(
+            "white_pixel",
+            new Color(0, 0, 0, 0.75f)
+        );
 
         buildFakeHud();
         buildUi();
@@ -535,6 +544,9 @@ public class ShopPopup extends BorderedPanel {
         if (result.success()) {
             showPopup("Success", "Purchase completed successfully!");
             onSuccess.run();
+            if (onPurchaseChanged != null) {
+                onPurchaseChanged.run();
+            }
         } else {
             showPopup("Error", result.message());
         }

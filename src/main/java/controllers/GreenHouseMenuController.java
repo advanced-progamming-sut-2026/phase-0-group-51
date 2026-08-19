@@ -166,6 +166,10 @@ public class GreenHouseMenuController  {
         }
 
         int plantId = pot.getPlantId();
+        String plantName = pot.getPlantName();
+        boolean alreadyHadBoost = plantId != FlowerPot.MARIGOLD_ID
+                && PlantBoostRepository.hasBoost(user.getId(), plantId);
+
         GreenHouseRepository.CollectResult result =
                 GreenHouseRepository.collectPot(
                         user.getId(), row, column, plantId
@@ -174,12 +178,20 @@ public class GreenHouseMenuController  {
             return greenhouseCollectFailure(result.status());
         }
 
+        String rewardMessage;
         if (plantId == FlowerPot.MARIGOLD_ID) {
             user.setCoins(result.newCoinBalance());
+            rewardMessage = "Marigold harvested!\nReward: +500 coins";
+        } else if (alreadyHadBoost) {
+            rewardMessage = plantName + " harvested!\n"
+                    + "A stored boost already exists, so no extra boost was added.";
+        } else {
+            rewardMessage = plantName + " harvested!\nReward: stored "
+                    + plantName + " boost";
         }
+
         pot.clear();
-        return new Result(true,
-                "Plant collected successfully.\n", null);
+        return new Result(true, rewardMessage, null);
     }
     public Result growPlant(String x, String y){
         if (!validation.isNumberXValid(x) || !validation.isNumberYValid(y)) {
