@@ -73,6 +73,7 @@ public class PlantViewManager extends Group {
         syncPlantAction(plant, actor);
         syncPlantFoodEffect(plant, actor);
         syncDamageFlash(plant, actor);
+        syncFrostVisual(plant, actor);
         positionPlant(actor, lane, column);
     }
     private void syncPlantAction(Plant plant, PlantActor actor) {
@@ -104,6 +105,16 @@ public class PlantViewManager extends Group {
         }
 
         lastSeenPlantFoodSerial.put(plant, current);
+    }
+
+    private void syncFrostVisual(
+            Plant plant,
+            PlantActor actor
+    ) {
+        actor.syncFrost(
+                plant.getFrostLevel(),
+                plant.getIceHealth()
+        );
     }
 
     private void syncDamageFlash(
