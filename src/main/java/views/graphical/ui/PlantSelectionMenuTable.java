@@ -20,7 +20,9 @@ import graphics.PvzGame;
 import models.App;
 import models.Result;
 import models.User;
+import models.Plant.PlantTag;
 import models.games.Game;
+import models.games.LevelType;
 
 import java.util.*;
 import java.util.List;
@@ -28,16 +30,17 @@ import java.util.List;
 public final class PlantSelectionMenuTable extends Table {
 
     private static final String TOP_PREVIEW_BACKGROUND =
-            "IMAGE_UI_QUESTS_QUEST_PANEL_DAILY";
+        "IMAGE_UI_QUESTS_QUEST_PANEL_DAILY";
 
     private static final float PANEL_WIDTH = 650f;
+    private static final String PLANT_WHAT_YOU_GET_LOCK = "IMAGE_UI_JOUST_LOCK_SMALL";
 
     private static final float PREVIEW_HEIGHT = 190f;
 
     private static final float SCREEN_PADDING = 16f;
     private static final float PLANT_SLOTS_TOP_OFFSET = 75f;
     private static final float PLANT_SLOTS_CELL_TOP_PADDING =
-            PLANT_SLOTS_TOP_OFFSET - SCREEN_PADDING;
+        PLANT_SLOTS_TOP_OFFSET - SCREEN_PADDING;
 
     private final PvzGame game;
     private final Runnable onSelectionComplete;
@@ -46,31 +49,31 @@ public final class PlantSelectionMenuTable extends Table {
     private final PlantSlotsBar plantSlotsBar;
     private final Table previewContent;
     private final PlantSelectionController controller =
-            new PlantSelectionController();
+        new PlantSelectionController();
     private final CollectionMenuController collectionController =
-            new CollectionMenuController();
+        new CollectionMenuController();
 
     private final Map<Integer, PlantCard> gridCardsByPlantId =
-            new HashMap<>();
+        new HashMap<>();
 
     private Set<Integer> unlockedPlants = Set.of();
     private Map<Integer, Integer> plantLevels = Map.of();
     private Map<Integer, Integer> seedPackets = Map.of();
 
     public PlantSelectionMenuTable(
-            PvzGame game,
-            PlantSlotsBar plantSlotsBar,
-            Runnable onSelectionComplete
+        PvzGame game,
+        PlantSlotsBar plantSlotsBar,
+        Runnable onSelectionComplete
     ) {
         if (game == null) {
             throw new IllegalArgumentException(
-                    "game cannot be null"
+                "game cannot be null"
             );
         }
 
         if (plantSlotsBar == null) {
             throw new IllegalArgumentException(
-                    "plantSlotsBar cannot be null"
+                "plantSlotsBar cannot be null"
             );
         }
 
@@ -86,16 +89,16 @@ public final class PlantSelectionMenuTable extends Table {
         refreshPlantData();
 
         plantSlotsBar.setMode(
-                PlantSlotsBar.Mode.SELECTION
+            PlantSlotsBar.Mode.SELECTION
         );
         plantSlotsBar.setOnRemoveRequested(
-                this::removePlantFromSlot
+            this::removePlantFromSlot
         );
         loadExistingSelectedPlants();
 
         BorderedPanel outerPanel = new BorderedPanel(
-                game,
-                Color.valueOf("75452F")
+            game,
+            Color.valueOf("75452F")
         );
 
         Table content = outerPanel.getContent();
@@ -105,7 +108,7 @@ public final class PlantSelectionMenuTable extends Table {
         previewContent.top().left();
 
         previewContent.setBackground(
-                drawable(TOP_PREVIEW_BACKGROUND)
+            drawable(TOP_PREVIEW_BACKGROUND)
         );
 
         previewContent.pad(12f);
@@ -116,83 +119,83 @@ public final class PlantSelectionMenuTable extends Table {
         cardsGrid.top().left();
 
         cardsGrid.defaults()
-                .expandX()
-                .top()
-                .pad(8f);
+            .expandX()
+            .top()
+            .pad(8f);
 
         ScrollPane cardsScroll = new ScrollPane(
-                cardsGrid,
-                game.getSkin()
+            cardsGrid,
+            game.getSkin()
         );
 
         cardsScroll.setFadeScrollBars(false);
         cardsScroll.setOverscroll(false, false);
         cardsScroll.setScrollingDisabled(
-                true,
-                false
+            true,
+            false
         );
 
         content.add(previewContent)
-                .growX()
-                .height(PREVIEW_HEIGHT)
-                .padLeft(15f)
-                .padRight(15f)
-                .padTop(20f)
-                .padBottom(15f)
-                .row();
+            .growX()
+            .height(PREVIEW_HEIGHT)
+            .padLeft(15f)
+            .padRight(15f)
+            .padTop(20f)
+            .padBottom(15f)
+            .row();
 
         content.add(cardsScroll)
-                .grow()
-                .minWidth(0f)
-                .minHeight(0f)
-                .padLeft(10f)
-                .padRight(10f)
-                .padBottom(10f);
+            .grow()
+            .minWidth(0f)
+            .minHeight(0f)
+            .padLeft(10f)
+            .padRight(10f)
+            .padBottom(10f);
 
         TextButton letsRockButton = new TextButton(
-                "LET'S ROCK!",
-                game.getSkin(),
-                "purple"
+            "LET'S ROCK!",
+            game.getSkin(),
+            "purple"
         );
         letsRockButton.addListener(
-                new ChangeListener() {
-                    @Override
-                    public void changed(ChangeEvent event, Actor actor) {
-                        Result result = controller.startGame();
-                        if (!result.success()) {
-                            game.notifyError(result.message());
-                            return;
-                        }
-                        if (onSelectionComplete != null) {
-                            onSelectionComplete.run();
-                        }
+            new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    Result result = controller.startGame();
+                    if (!result.success()) {
+                        game.notifyError(result.message());
+                        return;
+                    }
+                    if (onSelectionComplete != null) {
+                        onSelectionComplete.run();
                     }
                 }
+            }
         );
 
         Table mainLayout = new Table();
         mainLayout.top().left();
 
         mainLayout.add(plantSlotsBar)
-                .top()
-                .left()
-                .padTop(PLANT_SLOTS_CELL_TOP_PADDING)
-                .padRight(4f);
+            .top()
+            .left()
+            .padTop(PLANT_SLOTS_CELL_TOP_PADDING)
+            .padRight(4f);
 
         mainLayout.add(outerPanel)
-                .top().left().width(PANEL_WIDTH)
-                .growY().minHeight(0f);
+            .top().left().width(PANEL_WIDTH)
+            .growY().minHeight(0f);
         mainLayout.add()
-                .expandX();
+            .expandX();
         Table rockLayer = new Table();
         rockLayer.bottom().right();
         rockLayer.setTouchable(Touchable.childrenOnly);
 
         rockLayer.add(letsRockButton)
-                .right()
-                .bottom()
-                .padRight(20f)
-                .padBottom(20f);
+            .right()
+            .bottom()
+            .padRight(20f)
+            .padBottom(20f);
 
 
         Stack rootStack = new Stack();
@@ -202,9 +205,9 @@ public final class PlantSelectionMenuTable extends Table {
         rootStack.add(rockLayer);
 
         add(rootStack)
-                .grow()
-                .minWidth(0f)
-                .minHeight(0f);
+            .grow()
+            .minWidth(0f)
+            .minHeight(0f);
 
         showPlants();
     }
@@ -219,24 +222,24 @@ public final class PlantSelectionMenuTable extends Table {
         }
 
         unlockedPlants =
-                PlantRepository.loadUnlockedPlants(
-                        user.getId()
-                );
+            PlantRepository.loadUnlockedPlants(
+                user.getId()
+            );
 
         plantLevels =
-                PlantRepository.loadPlantLevels(
-                        user.getId()
-                );
+            PlantRepository.loadPlantLevels(
+                user.getId()
+            );
 
         seedPackets =
-                PlantRepository.loadSeedPackets(
-                        user.getId()
-                );
+            PlantRepository.loadSeedPackets(
+                user.getId()
+            );
     }
 
     private void loadExistingSelectedPlants() {
         Game currentGame =
-                App.getInstance().getCurrentGame();
+            App.getInstance().getCurrentGame();
 
         if (currentGame == null) {
             plantSlotsBar.loadPlants(List.of());
@@ -244,28 +247,28 @@ public final class PlantSelectionMenuTable extends Table {
         }
 
         plantSlotsBar.loadPlants(
-                currentGame.getSelectedPlantsForThisGame()
+            currentGame.getSelectedPlantsForThisGame()
         );
     }
 
     private void removePlantFromSlot(
-            int slotIndex
+        int slotIndex
     ) {
         PlantData plant =
-                plantSlotsBar.getPlant(slotIndex);
+            plantSlotsBar.getPlant(slotIndex);
 
         if (plant == null) {
             return;
         }
 
         Result result =
-                controller.removePlant(
-                        plant.name()
-                );
+            controller.removePlant(
+                plant.name()
+            );
 
         if (!result.success()) {
             game.notifyError(
-                    result.message()
+                result.message()
             );
             return;
         }
@@ -273,9 +276,9 @@ public final class PlantSelectionMenuTable extends Table {
         plantSlotsBar.removePlant(slotIndex);
 
         PlantCard gridCard =
-                gridCardsByPlantId.get(
-                        plant.id()
-                );
+            gridCardsByPlantId.get(
+                plant.id()
+            );
 
         if (gridCard != null) {
             gridCard.setChecked(false);
@@ -283,10 +286,10 @@ public final class PlantSelectionMenuTable extends Table {
     }
 
     private void selectPlantIntoSlot(
-            PlantCard card
+        PlantCard card
     ) {
         PlantData plant =
-                card.getData().plant();
+            card.getData().plant();
 
         if (plantSlotsBar.contains(plant)) {
             return;
@@ -294,7 +297,7 @@ public final class PlantSelectionMenuTable extends Table {
 
         if (plantSlotsBar.isFull()) {
             game.notifyError(
-                    "Plant selection is full."
+                "Plant selection is full."
             );
 
             card.setChecked(false);
@@ -302,13 +305,13 @@ public final class PlantSelectionMenuTable extends Table {
         }
 
         Result result =
-                controller.addPlant(
-                        plant.name()
-                );
+            controller.addPlant(
+                plant.name()
+            );
 
         if (!result.success()) {
             game.notifyError(
-                    result.message()
+                result.message()
             );
 
             card.setChecked(false);
@@ -319,49 +322,49 @@ public final class PlantSelectionMenuTable extends Table {
     }
 
     private PlantCard.ViewData createViewData(
-            PlantData plant
+        PlantData plant
     ) {
         User user = App.loggedInUser;
 
         boolean unlocked =
-                unlockedPlants.contains(
-                        plant.id()
-                );
+            unlockedPlants.contains(
+                plant.id()
+            );
 
         boolean boosted =
-                user != null
-                        && unlocked
-                        && PlantBoostRepository.hasBoost(
-                        user.getId(),
-                        plant.id()
-                );
+            user != null
+                && unlocked
+                && PlantBoostRepository.hasBoost(
+                user.getId(),
+                plant.id()
+            );
 
         int level =
-                plantLevels.getOrDefault(
-                        plant.id(),
-                        1
-                );
+            plantLevels.getOrDefault(
+                plant.id(),
+                1
+            );
 
         int packets =
-                seedPackets.getOrDefault(
-                        plant.id(),
-                        0
-                );
+            seedPackets.getOrDefault(
+                plant.id(),
+                0
+            );
 
         int requiredPackets =
-                requiredSeedPackets(
-                        plant,
-                        level
-                );
+            requiredSeedPackets(
+                plant,
+                level
+            );
 
         return new PlantCard.ViewData(
-                plant,
-                unlocked,
-                boosted,
-                level,
-                packets,
-                requiredPackets,
-                true
+            plant,
+            unlocked,
+            boosted,
+            level,
+            packets,
+            requiredPackets,
+            true
         );
     }
 
@@ -369,43 +372,43 @@ public final class PlantSelectionMenuTable extends Table {
         previewContent.clearChildren();
 
         Label selectLabel = new Label(
-                "Select a plant",
-                game.getSkin()
+            "Select a plant",
+            game.getSkin()
         );
 
         previewContent.add(selectLabel)
-                .left()
-                .padLeft(15f)
-                .padTop(10f)
-                .padBottom(10f)
-                .row();
+            .left()
+            .padLeft(15f)
+            .padTop(10f)
+            .padBottom(10f)
+            .row();
 
         previewContent.add()
-                .growX()
-                .height(85f)
-                .row();
+            .growX()
+            .height(85f)
+            .row();
 
         Table buttonsRow = new Table();
 
         TextButton upgradeButton = new TextButton(
-                "UPGRADE",
-                game.getSkin()
+            "UPGRADE",
+            game.getSkin()
         );
 
         TextButton boostButton = new TextButton(
-                "BOOST",
-                game.getSkin()
+            "BOOST",
+            game.getSkin()
         );
 
         buttonsRow.add(upgradeButton)
-                .padRight(10f);
+            .padRight(10f);
 
         buttonsRow.add(boostButton);
 
         previewContent.add(buttonsRow)
-                .left()
-                .padLeft(15f)
-                .padBottom(10f);
+            .left()
+            .padLeft(15f)
+            .padBottom(10f);
     }
 
     private void showPlants() {
@@ -421,21 +424,21 @@ public final class PlantSelectionMenuTable extends Table {
         refreshPlantData();
 
         List<PlantData> plants =
-                new ArrayList<>(
-                        PlantRegistry.getAll()
-                );
+            new ArrayList<>(
+                PlantRegistry.getAll()
+            );
 
         plants.sort(
-                Comparator.comparingInt(
-                        PlantData::id
-                )
+            Comparator.comparingInt(
+                PlantData::id
+            )
         );
 
         int column = 0;
         int columnsPerRow = 4;
 
         ButtonGroup<PlantCard> plantGroup =
-                new ButtonGroup<>();
+            new ButtonGroup<>();
 
         plantGroup.setMinCheckCount(0);
         plantGroup.setMaxCheckCount(1);
@@ -444,46 +447,66 @@ public final class PlantSelectionMenuTable extends Table {
         for (PlantData plant : plants) {
 
             boolean unlocked =
-                    unlockedPlants.contains(
-                            plant.id()
-                    );
+                unlockedPlants.contains(
+                    plant.id()
+                );
 
             PlantCard card =
-                    new PlantCard(
-                            game,
-                            createViewData(plant)
-                    );
+                new PlantCard(
+                    game,
+                    createViewData(plant)
+                );
 
             gridCardsByPlantId.put(
-                    plant.id(),
-                    card
+                plant.id(),
+                card
             );
 
-            if (unlocked) {
+            boolean forbiddenForPlantWhatYouGet =
+                isForbiddenForPlantWhatYouGet(plant);
+
+            boolean specialSunProducerLock =
+                isPlantWhatYouGetSunProducer(plant);
+
+            if (forbiddenForPlantWhatYouGet) {
+                card.setLocked(true);
+
+                if (specialSunProducerLock) {
+                    card.setLockAsset(
+                        PLANT_WHAT_YOU_GET_LOCK
+                    );
+                }
+
+                card.setChecked(false);
+                card.setDisabled(true);
+                card.setTouchable(
+                    Touchable.disabled
+                );
+            } else if (unlocked) {
                 plantGroup.add(card);
 
                 card.addListener(
-                        new ChangeListener() {
-                            @Override
-                            public void changed(
-                                    ChangeEvent event,
-                                    Actor actor
-                            ) {
-                                if (!card.isChecked()) {
-                                    return;
-                                }
-
-                                showPlantPreview(card);
-
-                                selectPlantIntoSlot(card);
+                    new ChangeListener() {
+                        @Override
+                        public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                        ) {
+                            if (!card.isChecked()) {
+                                return;
                             }
+
+                            showPlantPreview(card);
+
+                            selectPlantIntoSlot(card);
                         }
+                    }
                 );
             } else {
                 card.setChecked(false);
                 card.setDisabled(true);
                 card.setTouchable(
-                        Touchable.disabled
+                    Touchable.disabled
                 );
             }
 
@@ -500,141 +523,199 @@ public final class PlantSelectionMenuTable extends Table {
         if (column != 0) {
             while (column < columnsPerRow) {
                 cardsGrid.add()
-                        .expandX();
+                    .expandX();
 
                 column++;
             }
         }
     }
+    private boolean isForbiddenForPlantWhatYouGet(
+        PlantData plant
+    ) {
+        Game currentGame =
+            App.getInstance().getCurrentGame();
+
+        if (currentGame == null
+            || plant == null
+            || currentGame.getSelectedLevel().type()
+            != LevelType.PLANT_WHAT_YOU_GET) {
+            return false;
+        }
+
+        return isSunProducer(plant)
+            || plant.id() == 58
+            || plant.tags().contains(
+            PlantTag.WATER
+        );
+    }
+
+    private boolean isPlantWhatYouGetSunProducer(
+        PlantData plant
+    ) {
+        Game currentGame =
+            App.getInstance().getCurrentGame();
+
+        return currentGame != null
+            && plant != null
+            && currentGame.getSelectedLevel().type()
+            == LevelType.PLANT_WHAT_YOU_GET
+            && isSunProducer(plant);
+    }
+
+    private boolean isSunProducer(
+        PlantData plant
+    ) {
+        String category =
+            plant.category() == null
+                ? ""
+                : plant.category()
+                  .replaceAll(
+                      "[^A-Za-z]",
+                      ""
+                  )
+                  .toLowerCase();
+
+        return category.equals(
+            "sunproducer"
+        )
+            || plant.tags().contains(
+            PlantTag.SUN
+        )
+            || (
+            plant.id() >= 1
+                && plant.id() <= 5
+        );
+    }
+
     private int requiredSeedPackets(
-            PlantData plant,
-            int currentLevel
+        PlantData plant,
+        int currentLevel
     ) {
         int maxLevel =
-                plant.upgrades() == null
-                        ? 1
-                        : plant.upgrades().size() + 1;
+            plant.upgrades() == null
+                ? 1
+                : plant.upgrades().size() + 1;
 
         if (currentLevel >= maxLevel) {
             return 1;
         }
 
         int targetLevel =
-                currentLevel + 1;
+            currentLevel + 1;
 
         return switch (targetLevel) {
             case 2 -> 5;
             case 3 -> 10;
             case 4 -> 20;
             default ->
-                    20 * Math.max(
-                            1,
-                            targetLevel - 3
-                    );
+                20 * Math.max(
+                    1,
+                    targetLevel - 3
+                );
         };
     }
 
     private void showPlantPreview(
-            PlantCard card
+        PlantCard card
     ) {
         previewContent.clearChildren();
 
         PlantData plant =
-                card.getData().plant();
+            card.getData().plant();
 
         Image plantPreview = new Image(
-                drawable(
-                        plant.cardAssetId()
-                )
+            drawable(
+                plant.cardAssetId()
+            )
         );
 
         plantPreview.setScaling(
-                Scaling.none
+            Scaling.none
         );
 
         Label plantName = new Label(
-                plant.name(),
-                game.getSkin()
+            plant.name(),
+            game.getSkin()
         );
 
         Table plantArea = new Table();
         plantArea.left();
 
         plantArea.add(plantPreview)
-                .left()
-                .padRight(15f);
+            .left()
+            .padRight(15f);
 
         plantArea.add(plantName)
-                .left()
-                .expandY()
-                .top()
-                .padTop(20f);
+            .left()
+            .expandY()
+            .top()
+            .padTop(20f);
 
         previewContent.add(plantArea)
-                .growX()
-                .left()
-                .padLeft(15f)
-                .padTop(10f)
-                .row();
+            .growX()
+            .left()
+            .padLeft(15f)
+            .padTop(10f)
+            .row();
 
         Table buttonsRow = new Table();
 
         TextButton upgradeButton = new TextButton(
-                "UPGRADE",
-                game.getSkin()
+            "UPGRADE",
+            game.getSkin()
         );
 
         TextButton boostButton = new TextButton(
-                "BOOST",
-                game.getSkin()
+            "BOOST",
+            game.getSkin()
         );
 
         upgradeButton.addListener(
-                new ChangeListener() {
-                    @Override
-                    public void changed(
-                            ChangeEvent event,
-                            Actor actor
-                    ) {
-                        handlePlantManagementResult(
-                                collectionController.upgrade(
-                                        plant.name()
-                                )
-                        );
-                    }
+            new ChangeListener() {
+                @Override
+                public void changed(
+                    ChangeEvent event,
+                    Actor actor
+                ) {
+                    handlePlantManagementResult(
+                        collectionController.upgrade(
+                            plant.name()
+                        )
+                    );
                 }
+            }
         );
 
         boostButton.addListener(
-                new ChangeListener() {
-                    @Override
-                    public void changed(
-                            ChangeEvent event,
-                            Actor actor
-                    ) {
-                        handlePlantManagementResult(
-                                controller.boostPlant(
-                                        plant.name()
-                                )
-                        );
-                    }
+            new ChangeListener() {
+                @Override
+                public void changed(
+                    ChangeEvent event,
+                    Actor actor
+                ) {
+                    handlePlantManagementResult(
+                        controller.boostPlant(
+                            plant.name()
+                        )
+                    );
                 }
+            }
         );
 
         buttonsRow.add(upgradeButton)
-                .padRight(10f);
+            .padRight(10f);
 
         buttonsRow.add(boostButton);
 
         previewContent.add(buttonsRow)
-                .left()
-                .padLeft(15f)
-                .padTop(5f)
-                .padBottom(10f);
+            .left()
+            .padLeft(15f)
+            .padTop(5f)
+            .padBottom(10f);
     }
 
     private void handlePlantManagementResult(
-            Result result
+        Result result
     ) {
         if (result == null) {
             return;
@@ -642,13 +723,13 @@ public final class PlantSelectionMenuTable extends Table {
 
         if (!result.success()) {
             game.notifyError(
-                    result.message()
+                result.message()
             );
             return;
         }
 
         game.notifyInfo(
-                result.message()
+            result.message()
         );
 
         refreshPlantData();
@@ -658,21 +739,21 @@ public final class PlantSelectionMenuTable extends Table {
     }
 
     private Drawable drawable(
-            String assetId
+        String assetId
     ) {
         TextureRegion region =
-                game.getTextureBank()
-                        .region(assetId);
+            game.getTextureBank()
+                .region(assetId);
 
         if (region == null) {
             throw new IllegalStateException(
-                    "TextureBank region was not found: "
-                            + assetId
+                "TextureBank region was not found: "
+                    + assetId
             );
         }
 
         return new TextureRegionDrawable(
-                region
+            region
         );
     }
 }

@@ -28,7 +28,6 @@ import models.Result;
 import models.User;
 import models.games.Game;
 import models.games.GameState;
-import models.games.ScoringGame;
 import models.games.ZombieWaveManager;
 import models.games.specialLevelConfig.TimedBattleConfig;
 import views.graphical.ui.BorderedPanel;
@@ -51,7 +50,6 @@ public class GameHud extends Table {
     private static final String COIN_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_SELECTED";
     private static final String GEMS = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL";
     private static final String GEMS_CLICKED = "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_SELECTED";
-    private static final String MEOW_POINT = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER";
     private static final String PLANT_FOOD = "IMAGE_UI_ALMANAC_PLANT_FOOD_STAT_ICON";
     private static final String PLANT_FOOD_RECTANGLE = "IMAGE_UI_HUD_INGAME_DEMO";
     private static final String PLANT_FOOD_DOT_FILL = "IMAGE_UI_GENERIC_NAVDOT_FILL";
@@ -73,6 +71,20 @@ public class GameHud extends Table {
         "IMAGE_DANGERROOM_CARD_SUN";
     private static final float TIMED_BATTLE_ZOMBIE_ICON_SIZE = 20f;
     private static final float TIMED_BATTLE_SUN_ICON_SIZE = 18f;
+
+    private static final String LOVE_PLANTS_ICON =
+        "IMAGE_PLANT_LILYPAD_LILYPAD_60X58";
+
+    private static final String PLANT_WHAT_YOU_GET_BUTTON =
+        "IMAGE_UI_GENERIC_GREENBUTTON";
+    private static final String PLANT_WHAT_YOU_GET_BUTTON_DOWN =
+        "IMAGE_UI_GENERIC_GREENBUTTON_DOWN";
+    private static final float PLANT_WHAT_YOU_GET_PANEL_WIDTH = 245f;
+    private static final float LOVE_PLANTS_PANEL_WIDTH = 235f;
+    private static final float LOVE_PLANTS_CONTENT_WIDTH = 190f;
+    private static final float LOVE_PLANTS_ICON_ROW_WIDTH = 185f;
+    private static final float LOVE_PLANTS_ICON_MAX_SIZE = 24f;
+    private static final float LOVE_PLANTS_ICON_MIN_SIZE = 15f;
 
     private final PvzGame game;
     private final Table topLeft;
@@ -96,9 +108,6 @@ public class GameHud extends Table {
     private Label sunLabel;
     private Label coinLabel;
     private Label gemLabel;
-    private Label meowPointLabel;
-    private Group meowPointDisplay;
-    private Container<Group> meowPointContainer;
 
     private BorderedPanel timedBattlePanel;
     private Table timedBattleKillRow;
@@ -106,6 +115,17 @@ public class GameHud extends Table {
     private Label timedBattleTimerLabel;
     private Label timedBattleKillLabel;
     private Label timedBattleSunLabel;
+
+    private BorderedPanel lovePlantsPanel;
+    private Table lovePlantsIconRow;
+    private Label lovePlantsTitleLabel;
+    private Label lovePlantsCountLabel;
+    private Image[] lovePlantIcons = new Image[0];
+    private int lastLovePlantsLimit = -1;
+    private int lastLovePlantsLost = -1;
+
+    private BorderedPanel plantWhatYouGetPanel;
+    private TextButton plantWhatYouGetStartButton;
 
     private final Image[] plantFoodDots = new Image[MAX_PLANT_FOOD];
 
@@ -186,6 +206,44 @@ public class GameHud extends Table {
         buildRightControls();
         buildWaveProgress();
         buildTimedBattlePanel();
+        buildLoveYourPlantsPanel();
+        buildPlantWhatYouGetPanel();
+
+        Table timedBattleWrapper = new Table();
+        timedBattleWrapper.top().center();
+        timedBattleWrapper.add(timedBattlePanel)
+            .width(TIMED_BATTLE_PANEL_WIDTH)
+            .top()
+            .center();
+
+        Table lovePlantsWrapper = new Table();
+        lovePlantsWrapper.top().center();
+        lovePlantsWrapper.add(lovePlantsPanel)
+            .width(LOVE_PLANTS_PANEL_WIDTH)
+            .top()
+            .center();
+
+        Table plantWhatYouGetWrapper = new Table();
+        plantWhatYouGetWrapper.top().center();
+        plantWhatYouGetWrapper.add(plantWhatYouGetPanel)
+            .width(PLANT_WHAT_YOU_GET_PANEL_WIDTH)
+            .top()
+            .center();
+
+        topCenter.stack(
+                timedBattleWrapper,
+                lovePlantsWrapper,
+                plantWhatYouGetWrapper
+            )
+            .width(Math.max(
+                TIMED_BATTLE_PANEL_WIDTH,
+                Math.max(
+                    LOVE_PLANTS_PANEL_WIDTH,
+                    PLANT_WHAT_YOU_GET_PANEL_WIDTH
+                )
+            ))
+            .top()
+            .center();
 
         Table topRow = new Table();
         topRow.top();
@@ -402,15 +460,6 @@ public class GameHud extends Table {
     private void buildRightControls() {
         topRight.top().right();
         Table buttons = new Table();
-
-        meowPointLabel = new Label("0", game.getSkin());
-        meowPointLabel.setTouchable(Touchable.disabled);
-        meowPointLabel.setFontScale(1.1f);
-
-        meowPointDisplay = createMeowPointDisplay(meowPointLabel);
-        meowPointContainer = new Container<>();
-        meowPointContainer.setTouchable(Touchable.childrenOnly);
-
         gemLabel = new Label("0", game.getSkin());
         gemLabel.setTouchable(Touchable.disabled);
         gemLabel.setFontScale(1.1f);
@@ -469,9 +518,6 @@ public class GameHud extends Table {
                 }
             }
         );
-
-        buttons.add(meowPointContainer)
-                .padRight(8f);
 
         buttons.add(gemDisplay)
             .size(
@@ -550,60 +596,6 @@ public class GameHud extends Table {
                 ? Touchable.enabled
                 : Touchable.disabled
         );
-    }
-
-    private Group createMeowPointDisplay(Label label) {
-        ImageButton button = createCurrencyButton(
-                MEOW_POINT,
-                MEOW_POINT
-        );
-
-        button.addListener(new ClickListener() {
-            @Override
-            public void enter(
-                    InputEvent event,
-                    float x,
-                    float y,
-                    int pointer,
-                    Actor fromActor
-            ) {
-                button.getImage().getColor().a = 0.52f;
-            }
-
-            @Override
-            public void exit(
-                    InputEvent event,
-                    float x,
-                    float y,
-                    int pointer,
-                    Actor toActor
-            ) {
-                button.getImage().getColor().a = 1f;
-            }
-        });
-
-        float width = button.getPrefWidth();
-        float height = button.getPrefHeight();
-
-        Group group = new Group();
-        group.setSize(width, height);
-
-        button.setBounds(
-                0f,
-                0f,
-                width,
-                height
-        );
-
-        label.setPosition(
-                70f,
-                20f
-        );
-
-        group.addActor(button);
-        group.addActor(label);
-
-        return group;
     }
 
     private Group createCurrencyDisplay(
@@ -708,8 +700,6 @@ public class GameHud extends Table {
         );
         zombieIcon.setScaling(Scaling.fit);
         zombieIcon.setTouchable(Touchable.disabled);
-        zombieIcon.setOrigin(Align.center);
-        zombieIcon.setScaleX(-1f);
 
         Image sunGoalIcon = new Image(
             drawable(TIMED_BATTLE_SUN_ICON)
@@ -720,7 +710,6 @@ public class GameHud extends Table {
         timedBattleKillRow = new Table();
         timedBattleKillRow.add(zombieIcon)
             .size(TIMED_BATTLE_ZOMBIE_ICON_SIZE)
-            .padLeft(-100f)
             .padRight(6f)
             .center();
         timedBattleKillRow.add(timedBattleKillLabel)
@@ -760,11 +749,6 @@ public class GameHud extends Table {
             .row();
 
         timedBattlePanel.setVisible(false);
-
-        topCenter.add(timedBattlePanel)
-            .width(TIMED_BATTLE_PANEL_WIDTH)
-            .top()
-            .center();
     }
 
     private void refreshTimedBattle(
@@ -888,6 +872,472 @@ public class GameHud extends Table {
                     : Color.WHITE
             );
         }
+    }
+
+    private void buildLoveYourPlantsPanel() {
+        lovePlantsPanel = new BorderedPanel(
+            game,
+            Color.valueOf("38566E")
+        );
+        lovePlantsPanel.setTouchable(Touchable.disabled);
+
+        Table content = lovePlantsPanel.getContent();
+        content.clearChildren();
+        content.pad(20f, 12f, 1f, 12f);
+        content.top();
+
+        lovePlantsTitleLabel = new Label(
+            "LOVE YOUR PLANTS",
+            labelStyle("medium_outline")
+        );
+        lovePlantsTitleLabel.setColor(
+            Color.valueOf("B9F36A")
+        );
+        lovePlantsTitleLabel.setAlignment(
+            Align.center
+        );
+        lovePlantsTitleLabel.setFontScale(
+            0.64f
+        );
+
+        lovePlantsIconRow = new Table();
+        lovePlantsIconRow.setTouchable(
+            Touchable.disabled
+        );
+
+        lovePlantsCountLabel = new Label(
+            "PLANTS LOST 0 / 0",
+            labelStyle("medium_outline")
+        );
+        lovePlantsCountLabel.setColor(
+            Color.WHITE
+        );
+        lovePlantsCountLabel.setAlignment(
+            Align.center
+        );
+        lovePlantsCountLabel.setFontScale(
+            0.50f
+        );
+
+        content.add(lovePlantsTitleLabel)
+            .width(LOVE_PLANTS_CONTENT_WIDTH)
+            .center()
+            .padTop(5f)
+            .padBottom(3f)
+            .row();
+
+        content.add(lovePlantsIconRow)
+            .width(LOVE_PLANTS_ICON_ROW_WIDTH)
+            .height(27f)
+            .center()
+            .padBottom(1f)
+            .row();
+
+        content.add(lovePlantsCountLabel)
+            .width(LOVE_PLANTS_CONTENT_WIDTH)
+            .center()
+            .padTop(4f)
+            .row();
+
+        lovePlantsPanel.setVisible(false);
+    }
+
+    private void refreshLoveYourPlants(
+        GameState state
+    ) {
+        if (lovePlantsPanel == null) {
+            return;
+        }
+
+        if (state == null
+            || !state.hasPlantLossLimit()) {
+            lovePlantsPanel.setVisible(false);
+            lastLovePlantsLost = -1;
+            return;
+        }
+
+        int limit = Math.max(
+            1,
+            state.getPlantLossLimit()
+        );
+
+        int lost = MathUtils.clamp(
+            state.getQuestTracker()
+                .getPlantsLost(),
+            0,
+            limit
+        );
+
+        ensureLovePlantIcons(limit);
+
+        lovePlantsPanel.setVisible(true);
+
+        lovePlantsCountLabel.setText(
+            "PLANTS LOST "
+                + lost
+                + " / "
+                + limit
+        );
+
+        for (int i = 0; i < lovePlantIcons.length; i++) {
+            Image icon = lovePlantIcons[i];
+
+            if (i < lost) {
+                icon.setColor(
+                    new Color(
+                        0.55f,
+                        0.18f,
+                        0.18f,
+                        0.42f
+                    )
+                );
+            } else {
+                icon.setColor(
+                    Color.WHITE
+                );
+            }
+        }
+
+        int remaining =
+            Math.max(
+                0,
+                limit - lost
+            );
+
+        if (remaining <= 1) {
+            lovePlantsCountLabel.setColor(
+                Color.valueOf("FF5448")
+            );
+            lovePlantsTitleLabel.setColor(
+                Color.valueOf("FFD05A")
+            );
+        } else {
+            lovePlantsCountLabel.setColor(
+                Color.WHITE
+            );
+            lovePlantsTitleLabel.setColor(
+                Color.valueOf("B9F36A")
+            );
+        }
+
+        if (lastLovePlantsLost >= 0
+            && lost > lastLovePlantsLost) {
+            animatePlantLost(
+                lost,
+                limit
+            );
+        }
+
+        lastLovePlantsLost = lost;
+    }
+
+    private void ensureLovePlantIcons(
+        int limit
+    ) {
+        if (limit == lastLovePlantsLimit
+            && lovePlantIcons.length == limit) {
+            return;
+        }
+
+        lovePlantsIconRow.clearChildren();
+        lovePlantIcons = new Image[limit];
+
+        float availableWidth =
+            LOVE_PLANTS_ICON_ROW_WIDTH - 8f;
+
+        float iconSize = MathUtils.clamp(
+            availableWidth
+                / Math.max(1, limit)
+                - 4f,
+            LOVE_PLANTS_ICON_MIN_SIZE,
+            LOVE_PLANTS_ICON_MAX_SIZE
+        );
+
+        float iconHeight =
+            iconSize * 58f / 60f;
+
+        for (int i = 0; i < limit; i++) {
+            Image icon = new Image(
+                drawable(
+                    LOVE_PLANTS_ICON
+                )
+            );
+
+            icon.setScaling(
+                Scaling.fit
+            );
+            icon.setTouchable(
+                Touchable.disabled
+            );
+            icon.setOrigin(
+                Align.center
+            );
+
+            lovePlantIcons[i] = icon;
+
+            lovePlantsIconRow.add(icon)
+                .size(
+                    iconSize,
+                    iconHeight
+                )
+                .padLeft(2f)
+                .padRight(2f);
+        }
+
+        lastLovePlantsLimit = limit;
+    }
+
+    private void animatePlantLost(
+        int lost,
+        int limit
+    ) {
+        int iconIndex = MathUtils.clamp(
+            lost - 1,
+            0,
+            Math.max(
+                0,
+                limit - 1
+            )
+        );
+
+        if (iconIndex < lovePlantIcons.length) {
+            Image lostIcon =
+                lovePlantIcons[iconIndex];
+
+            lostIcon.clearActions();
+            lostIcon.setOrigin(
+                Align.center
+            );
+            lostIcon.addAction(
+                Actions.sequence(
+                    Actions.scaleTo(
+                        1.28f,
+                        1.28f,
+                        0.08f
+                    ),
+                    Actions.scaleTo(
+                        0.86f,
+                        0.86f,
+                        0.10f
+                    ),
+                    Actions.scaleTo(
+                        1f,
+                        1f,
+                        0.10f
+                    )
+                )
+            );
+        }
+
+        lovePlantsIconRow.clearActions();
+        lovePlantsIconRow.addAction(
+            Actions.sequence(
+                Actions.moveBy(
+                    -4f,
+                    0f,
+                    0.04f
+                ),
+                Actions.moveBy(
+                    8f,
+                    0f,
+                    0.07f
+                ),
+                Actions.moveBy(
+                    -8f,
+                    0f,
+                    0.07f
+                ),
+                Actions.moveBy(
+                    8f,
+                    0f,
+                    0.07f
+                ),
+                Actions.moveBy(
+                    -4f,
+                    0f,
+                    0.04f
+                )
+            )
+        );
+
+        lovePlantsCountLabel.clearActions();
+        lovePlantsCountLabel.setColor(
+            Color.valueOf("FF3B30")
+        );
+        lovePlantsCountLabel.addAction(
+            Actions.sequence(
+                Actions.delay(
+                    0.28f
+                ),
+                Actions.color(
+                    limit - lost <= 1
+                        ? Color.valueOf("FF5448")
+                        : Color.WHITE,
+                    0.18f
+                )
+            )
+        );
+    }
+
+    private void buildPlantWhatYouGetPanel() {
+        plantWhatYouGetPanel = new BorderedPanel(
+            game,
+            Color.valueOf("38566E")
+        );
+        plantWhatYouGetPanel.setTouchable(
+            Touchable.childrenOnly
+        );
+
+        Table content =
+            plantWhatYouGetPanel.getContent();
+
+        content.clearChildren();
+        content.pad(
+            20f,
+            14f,
+            4f,
+            14f
+        );
+        content.top();
+
+        Label title = new Label(
+            "PLANT WHAT YOU GET",
+            labelStyle("medium_outline")
+        );
+        title.setColor(
+            Color.valueOf("FFE06A")
+        );
+        title.setAlignment(
+            Align.center
+        );
+        title.setFontScale(
+            0.62f
+        );
+
+        Label subtitle = new Label(
+            "PREPARE YOUR LAWN",
+            labelStyle("medium_outline")
+        );
+        subtitle.setColor(
+            Color.WHITE
+        );
+        subtitle.setAlignment(
+            Align.center
+        );
+        subtitle.setFontScale(
+            0.48f
+        );
+
+        plantWhatYouGetStartButton =
+            createPlantWhatYouGetButton(
+                "START WAVES"
+            );
+
+        plantWhatYouGetStartButton.addListener(
+            new ClickListener() {
+                @Override
+                public void clicked(
+                    InputEvent event,
+                    float x,
+                    float y
+                ) {
+                    Result result =
+                        gamingController
+                            .startZombieWaves();
+
+                    showResult(result);
+                    refreshGameplayState();
+                }
+            }
+        );
+
+        content.add(title)
+            .width(205f)
+            .center()
+            .padBottom(2f)
+            .row();
+
+        content.add(subtitle)
+            .width(205f)
+            .center()
+            .padBottom(7f)
+            .row();
+
+        content.add(
+                plantWhatYouGetStartButton
+            )
+            .width(170f)
+            .height(44f)
+            .center()
+            .row();
+
+        plantWhatYouGetPanel.setVisible(
+            false
+        );
+    }
+
+    private TextButton createPlantWhatYouGetButton(
+        String text
+    ) {
+        TextButton.TextButtonStyle style =
+            new TextButton.TextButtonStyle();
+
+        style.font =
+            labelStyle(
+                "medium_outline"
+            ).font;
+
+        style.fontColor =
+            Color.WHITE;
+
+        style.up = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON
+        );
+
+        style.down = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON_DOWN
+        );
+
+        style.over = drawable(
+            PLANT_WHAT_YOU_GET_BUTTON_DOWN
+        );
+
+        TextButton button =
+            new TextButton(
+                text,
+                style
+            );
+
+        button.getLabel().setFontScale(
+            0.70f
+        );
+
+        return button;
+    }
+
+    private void refreshPlantWhatYouGet(
+        Game currentGame
+    ) {
+        if (plantWhatYouGetPanel == null) {
+            return;
+        }
+
+        boolean preparing =
+            currentGame != null
+                && currentGame
+                .isPlantWhatYouGetLevel()
+                && currentGame
+                .isPreparingPlantWhatYouGet();
+
+        plantWhatYouGetPanel.setVisible(
+            preparing
+        );
+
+        plantWhatYouGetPanel.setTouchable(
+            preparing
+                ? Touchable.childrenOnly
+                : Touchable.disabled
+        );
     }
 
     private void buildWaveProgress() {
@@ -1102,8 +1552,6 @@ public class GameHud extends Table {
     }
 
     private void refreshGameplayState() {
-        refreshMeowPointDisplay();
-
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null
             || currentGame.getGameState() == null) {
@@ -1112,6 +1560,8 @@ public class GameHud extends Table {
 
         GameState state = currentGame.getGameState();
         refreshTimedBattle(state);
+        refreshLoveYourPlants(state);
+        refreshPlantWhatYouGet(currentGame);
         sunLabel.setText(state.getSun());
         int foodCount = MathUtils.clamp(state.getPlantFoodCount(), 0, MAX_PLANT_FOOD);
         for (int i = 0; i < plantFoodDots.length; i++) {
@@ -1129,7 +1579,8 @@ public class GameHud extends Table {
             }
         }
         ZombieWaveManager waveManager = state.getZombieWaveManager();
-        if (waveManager == null) {
+        if (waveManager == null
+            || currentGame.isPreparingPlantWhatYouGet()) {
             waveGroup.setVisible(false);
             return;
         }
@@ -1161,35 +1612,6 @@ public class GameHud extends Table {
             completed / (float) total;
 
         updateWaveFill(progress);
-    }
-
-
-    private void refreshMeowPointDisplay() {
-        if (meowPointContainer == null
-                || meowPointDisplay == null
-                || meowPointLabel == null) {
-            return;
-        }
-
-        Game currentGame = App.getInstance().getCurrentGame();
-
-        if (currentGame instanceof ScoringGame scoringGame) {
-            if (meowPointContainer.getActor() != meowPointDisplay) {
-                meowPointContainer.setActor(meowPointDisplay);
-            }
-
-            meowPointLabel.setText(
-                    String.format(
-                            "%,d",
-                            scoringGame.getScoreTracker().currentTotal()
-                    )
-            );
-            return;
-        }
-
-        if (meowPointContainer.getActor() != null) {
-            meowPointContainer.setActor(null);
-        }
     }
 
 
