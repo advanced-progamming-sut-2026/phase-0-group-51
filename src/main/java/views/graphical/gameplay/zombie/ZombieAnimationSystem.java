@@ -229,8 +229,6 @@ public final class ZombieAnimationSystem {
             }
 
             if (zombie.isDead()) {
-                // A lethal hit can also destroy/remove armor in the same model tick.
-                // Sync the final armor visibility before starting the death clip.
                 syncDarkKnightVisual(zombie, visual);
                 syncNormalArmorVisual(zombie, visual);
 
@@ -789,9 +787,6 @@ public final class ZombieAnimationSystem {
             visual,
             partialTick
         );
-
-        // Dark Knight can rebuild the base visibility map when armor is added/removed.
-        // Apply the per-armor HP layer state after that rebuild.
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
 
@@ -820,7 +815,11 @@ public final class ZombieAnimationSystem {
 
         updateColdTint(zombie, actor);
 
-        if (zombie.isFrozen() || zombie.isButtered()) {
+        if (
+            zombie.hasIceShell()
+                || zombie.isFrozen()
+                || zombie.isButtered()
+        ) {
             actor.pauseAnimation();
         } else {
             actor.resumeAnimation();
@@ -828,14 +827,6 @@ public final class ZombieAnimationSystem {
     }
 
 
-    /**
-     * Synchronizes the visual armor layer with the real ArmorBehavior HP.
-     *
-     * <p>This intentionally does not touch ArmorBehavior damage logic. The armor
-     * definition already contains the exact PAM layer names loaded from
-     * ArmorTypeData.json (norm, damage_01, damage_02). We only update the
-     * PamAnimationActor visibility map.</p>
-     */
     private void syncNormalArmorVisual(
         Zombie zombie,
         ZombieVisual visual
@@ -959,8 +950,6 @@ public final class ZombieAnimationSystem {
             return;
         }
 
-        // Explicit false is important in libPVZ: it skips that part/subtree.
-        // This guarantees that the previous norm/damage state cannot remain visible.
         for (String layer : layers) {
             if (layer != null && !layer.isBlank()) {
                 visibility.put(layer, false);
@@ -997,8 +986,6 @@ public final class ZombieAnimationSystem {
             findPartPath(root, targetLayer);
 
         if (!path.isEmpty()) {
-            // libPVZ ignores hidden children when any flagged parent is not enabled.
-            // Enable every named parent on the real PAM path, then enable the target.
             for (PamPlayer.AnimationPart part : path) {
                 if (part.name != null && !part.name.isBlank()) {
                     visibility.put(part.name, true);
@@ -1184,6 +1171,15 @@ public final class ZombieAnimationSystem {
         Zombie zombie,
         ZombieVisual visual
     ) {
+        if (zombie.hasIceShell()) {
+            return new BaseAnimation(
+                visual.animations.clip(
+                    EntityAnimationState.IDLE
+                ),
+                false,
+                false
+            );
+        }
         SandstormTransportBehavior sandstorm =
             zombie.getBehavior(
                 SandstormTransportBehavior.class
