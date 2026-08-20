@@ -46,6 +46,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
+import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
@@ -124,6 +125,7 @@ public class GameScreen extends BaseScreen {
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
     private final IceFloorAnimationSystem iceFloorAnimationSystem;
+    private final FrozenZombieIceAnimationSystem frozenZombieIceAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
@@ -255,6 +257,13 @@ public class GameScreen extends BaseScreen {
             boardTransform,
             theme
         );
+
+        frozenZombieIceAnimationSystem =
+            new FrozenZombieIceAnimationSystem(
+                game.getPamPlayer(),
+                zombieAnimationSystem,
+                theme
+            );
 
         sandstormAnimationSystem =
             new SandstormAnimationSystem(
@@ -1107,6 +1116,12 @@ public class GameScreen extends BaseScreen {
                     currentGame.getGameState().getZombiesInTheGame()
                 );
 
+                frozenZombieIceAnimationSystem.sync(
+                    currentGame
+                        .getGameState()
+                        .getZombiesInTheGame()
+                );
+
                 mowerAnimationSystem.update(
                     gameplayDelta,
                     getRenderTickAlpha(),
@@ -1613,6 +1628,7 @@ public class GameScreen extends BaseScreen {
         sandstormAnimationSystem.clear();
         frostbiteSnowstormAnimationSystem.clear();
         iceFloorAnimationSystem.clearVisuals();
+        frozenZombieIceAnimationSystem.clear();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();

@@ -13,8 +13,6 @@ import views.graphical.gameplay.board.BoardTransform;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -23,6 +21,12 @@ public final class IceFloorAnimationSystem extends Group {
     private static final String ICE_FLOOR_PAM =
         "768/FULL/EFFECTS/ZOMBONI_TILE_ICE/ZOMBONI_TILE_ICE.PAM";
 
+    // libPVZ uses an empty clip name to mean "play the whole PAM".
+    // Asset Browser may display this state as NO_CLIP, but "NO_CLIP"
+    // is not an actual clip name understood by PamPlayer.
+    private static final String WHOLE_ANIMATION_CLIP = "";
+
+
     private static final float TILE_FILL = 1.08f;
     private static final float MIN_SCALE = 0.05f;
     private static final float MAX_SCALE = 4f;
@@ -30,6 +34,7 @@ public final class IceFloorAnimationSystem extends Group {
     private final PamPlayer pamPlayer;
     private final BoardTransform transform;
     private final ChapterTheme theme;
+
 
     private final Map<Long, PamAnimationActor> visuals =
         new HashMap<>();
@@ -210,20 +215,20 @@ public final class IceFloorAnimationSystem extends Group {
             );
 
             resolvedClip =
-                resolveDrawableClip();
+                WHOLE_ANIMATION_CLIP;
 
+            // Important: for PAM files with no named clips, ask for the
+            // bounds of the whole animation rather than bounds("NO_CLIP").
             resolvedBounds =
                 pamPlayer.bounds(
-                    ICE_FLOOR_PAM,
-                    resolvedClip
+                    ICE_FLOOR_PAM
                 );
 
             if (resolvedBounds == null
                 || resolvedBounds.width <= 0f
                 || resolvedBounds.height <= 0f) {
                 throw new IllegalStateException(
-                    "Ice-floor clip has invalid bounds: "
-                        + resolvedClip
+                    "Ice-floor PAM has invalid whole-animation bounds."
                 );
             }
 
@@ -235,13 +240,11 @@ public final class IceFloorAnimationSystem extends Group {
             if (Gdx.app != null) {
                 Gdx.app.log(
                     "IceFloorAnimation",
-                    "PAM loaded. clip="
-                        + resolvedClip
-                        + ", bounds="
+                    "PAM loaded as whole animation. bounds="
                         + resolvedBounds
                         + ", scale="
                         + resolvedScale
-                        + ", clips="
+                        + ", namedClips="
                         + pamPlayer.clips(
                         ICE_FLOOR_PAM
                     )
@@ -281,15 +284,21 @@ public final class IceFloorAnimationSystem extends Group {
                     true
                 );
 
-            forceAllPartsVisible(actor);
 
             actor.setTouchable(
                 Touchable.disabled
             );
 
-            actor.setScale(
-                resolvedScale,
-                resolvedScale
+            actor.setScaleX(
+                transform.tileWidth()
+                    * 1.02f
+                    / resolvedBounds.width
+            );
+
+            actor.setScaleY(
+                transform.tileHeight()
+                    * 0.95f
+                    / resolvedBounds.height
             );
 
             positionActor(
@@ -303,6 +312,7 @@ public final class IceFloorAnimationSystem extends Group {
             );
 
             actor.restart();
+            forceAllPartsVisible(actor);
 
             return actor;
 
@@ -396,6 +406,7 @@ public final class IceFloorAnimationSystem extends Group {
         }
     }
 
+
     private void forcePartTreeVisible(
         PamPlayer.AnimationPart part,
         PamAnimationActor actor
@@ -448,120 +459,6 @@ public final class IceFloorAnimationSystem extends Group {
         );
     }
 
-    private String resolveDrawableClip() {
-        List<String> clips =
-            pamPlayer.clips(
-                ICE_FLOOR_PAM
-            );
-
-        if (clips == null
-            || clips.isEmpty()) {
-            throw new IllegalStateException(
-                "Ice-floor PAM has no clips."
-            );
-        }
-
-        String preferred =
-            findClip(
-                clips,
-                "idle",
-                "loop",
-                "animation",
-                "anim",
-                "ice",
-                "zomboni_tile_ice"
-            );
-
-        if (preferred != null
-            && hasDrawableBounds(
-            preferred
-        )) {
-            return preferred;
-        }
-
-        for (
-            String clip :
-            clips
-        ) {
-            if (hasDrawableBounds(
-                clip
-            )) {
-                return clip;
-            }
-        }
-
-        throw new IllegalStateException(
-            "None of the PAM clips has drawable bounds. clips="
-                + clips
-        );
-    }
-
-    private boolean hasDrawableBounds(
-        String clip
-    ) {
-        try {
-            Rectangle bounds =
-                pamPlayer.bounds(
-                    ICE_FLOOR_PAM,
-                    clip
-                );
-
-            return bounds != null
-                && bounds.width > 0f
-                && bounds.height > 0f;
-
-        } catch (RuntimeException ignored) {
-            return false;
-        }
-    }
-
-    private static String findClip(
-        List<String> clips,
-        String... candidates
-    ) {
-        for (
-            String candidate :
-            candidates
-        ) {
-            for (
-                String clip :
-                clips
-            ) {
-                if (clip != null
-                    && clip.equalsIgnoreCase(
-                    candidate
-                )) {
-                    return clip;
-                }
-            }
-        }
-
-        for (
-            String candidate :
-            candidates
-        ) {
-            String wanted =
-                normalize(
-                    candidate
-                );
-
-            for (
-                String clip :
-                clips
-            ) {
-                if (normalize(
-                    clip
-                ).equals(
-                    wanted
-                )) {
-                    return clip;
-                }
-            }
-        }
-
-        return null;
-    }
-
     private static long key(
         int lane,
         int column
@@ -575,20 +472,5 @@ public final class IceFloorAnimationSystem extends Group {
         );
     }
 
-    private static String normalize(
-        String value
-    ) {
-        if (value == null) {
-            return "";
-        }
 
-        return value
-            .toLowerCase(
-                Locale.ROOT
-            )
-            .replaceAll(
-                "[^a-z0-9]",
-                ""
-            );
-    }
 }
