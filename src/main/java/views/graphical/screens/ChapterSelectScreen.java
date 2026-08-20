@@ -427,7 +427,7 @@ public class ChapterSelectScreen extends BaseScreen {
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }
-        AudioManager.getInstance().playMusic("assets/sounds/MainMenu.mp3");
+        AudioManager.getInstance().playMusic("assets/sounds/GameMenu.mp3");
     }
 
     @Override
