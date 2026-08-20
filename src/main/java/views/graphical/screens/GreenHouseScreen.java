@@ -25,6 +25,7 @@ import graphics.PvzGame;
 import models.Result;
 import models.greenHouse.FlowerPot;
 import models.greenHouse.GreenHouse;
+import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.ShopPopup;
 
@@ -480,6 +481,7 @@ public class GreenHouseScreen extends BaseScreen {
         super.show();
         game.showHud(0, 0, true, () -> game.showScreen(new MainMenuScreen(game)));
         refreshHudCurrencies();
+        AudioManager.getInstance().playMusic("assets/sounds/GreenHouse.mp3");
     }
 
     @Override

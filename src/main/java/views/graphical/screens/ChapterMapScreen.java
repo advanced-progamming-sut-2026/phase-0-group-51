@@ -20,6 +20,7 @@ import models.games.ChapterTheme;
 import models.App;
 import models.User;
 import Data.database.ProgressRepository;
+import views.graphical.gameplay.manager.AudioManager;
 
 public class ChapterMapScreen extends BaseScreen {
 

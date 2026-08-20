@@ -4,6 +4,7 @@ import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import lombok.Getter;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.Zombie.Behavior.AuraBehavior;
@@ -41,7 +42,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
+@Getter
 public final class ZombieAnimationSystem {
 
     public static final float DEFAULT_SCALE = 0.6f;

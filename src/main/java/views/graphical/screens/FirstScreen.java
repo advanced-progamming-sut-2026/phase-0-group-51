@@ -15,6 +15,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import graphics.PvzGame;
 import models.App;
 import models.enums.Menu;
+import views.graphical.gameplay.manager.AudioManager;
 
 public final class FirstScreen extends BaseScreen {
     private Stack root;
@@ -119,6 +120,7 @@ public final class FirstScreen extends BaseScreen {
     @Override
     public void show() {
         game.hideHud();
+        AudioManager.getInstance().playMusic("assets/sounds/FirstMenus.mp3");
     }
 
     @Override
