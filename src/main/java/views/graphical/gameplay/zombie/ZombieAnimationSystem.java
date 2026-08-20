@@ -2,6 +2,7 @@ package views.graphical.gameplay.zombie;
 
 import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import lombok.Getter;
@@ -47,6 +48,20 @@ import java.util.Set;
 public final class ZombieAnimationSystem {
 
     public static final float DEFAULT_SCALE = 0.6f;
+
+    private static final Color PLANT_FOOD_OUTLINE_COLOR =
+        Color.valueOf("58FF66");
+    private static final float PLANT_FOOD_OUTLINE_THICKNESS =
+        7.0f;
+
+    private static final float PLANT_FOOD_OUTLINE_BASE_ALPHA =
+        0.22f;
+
+    private static final float PLANT_FOOD_OUTLINE_AMPLITUDE =
+        0.16f;
+
+    private static final float PLANT_FOOD_OUTLINE_PULSE_SPEED =
+        2.8f;
 
     private static final String GROUND_PART = "ground_swatch";
 
@@ -229,6 +244,8 @@ public final class ZombieAnimationSystem {
             }
 
             if (zombie.isDead()) {
+                // A lethal hit can also destroy/remove armor in the same model tick.
+                // Sync the final armor visibility before starting the death clip.
                 syncDarkKnightVisual(zombie, visual);
                 syncNormalArmorVisual(zombie, visual);
 
@@ -362,6 +379,13 @@ public final class ZombieAnimationSystem {
             }
 
             actor.setScale(scale, scale);
+
+            actor.setOutline(
+                zombie.isGlowing(),
+                PLANT_FOOD_OUTLINE_COLOR,
+                PLANT_FOOD_OUTLINE_THICKNESS
+            );
+
             configureGroundSwatch(alias, pamPath, walkClip, actor);
 
             worldStage.addActor(actor);
@@ -782,11 +806,24 @@ public final class ZombieAnimationSystem {
     ) {
         PamAnimationActor actor = visual.actor;
 
+        actor.setOutline(
+            zombie.isGlowing(),
+            PLANT_FOOD_OUTLINE_COLOR,
+            PLANT_FOOD_OUTLINE_THICKNESS
+        );
+
+        actor.setOutlinePulse(
+            PLANT_FOOD_OUTLINE_BASE_ALPHA,
+            PLANT_FOOD_OUTLINE_AMPLITUDE,
+            PLANT_FOOD_OUTLINE_PULSE_SPEED
+        );
+
         updatePosition(
             zombie,
             visual,
             partialTick
         );
+
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
 
@@ -815,11 +852,7 @@ public final class ZombieAnimationSystem {
 
         updateColdTint(zombie, actor);
 
-        if (
-            zombie.hasIceShell()
-                || zombie.isFrozen()
-                || zombie.isButtered()
-        ) {
+        if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
         } else {
             actor.resumeAnimation();
@@ -827,6 +860,14 @@ public final class ZombieAnimationSystem {
     }
 
 
+    /**
+     * Synchronizes the visual armor layer with the real ArmorBehavior HP.
+     *
+     * <p>This intentionally does not touch ArmorBehavior damage logic. The armor
+     * definition already contains the exact PAM layer names loaded from
+     * ArmorTypeData.json (norm, damage_01, damage_02). We only update the
+     * PamAnimationActor visibility map.</p>
+     */
     private void syncNormalArmorVisual(
         Zombie zombie,
         ZombieVisual visual
@@ -950,6 +991,8 @@ public final class ZombieAnimationSystem {
             return;
         }
 
+        // Explicit false is important in libPVZ: it skips that part/subtree.
+        // This guarantees that the previous norm/damage state cannot remain visible.
         for (String layer : layers) {
             if (layer != null && !layer.isBlank()) {
                 visibility.put(layer, false);
@@ -986,6 +1029,8 @@ public final class ZombieAnimationSystem {
             findPartPath(root, targetLayer);
 
         if (!path.isEmpty()) {
+            // libPVZ ignores hidden children when any flagged parent is not enabled.
+            // Enable every named parent on the real PAM path, then enable the target.
             for (PamPlayer.AnimationPart part : path) {
                 if (part.name != null && !part.name.isBlank()) {
                     visibility.put(part.name, true);
@@ -1171,15 +1216,6 @@ public final class ZombieAnimationSystem {
         Zombie zombie,
         ZombieVisual visual
     ) {
-        if (zombie.hasIceShell()) {
-            return new BaseAnimation(
-                visual.animations.clip(
-                    EntityAnimationState.IDLE
-                ),
-                false,
-                false
-            );
-        }
         SandstormTransportBehavior sandstorm =
             zombie.getBehavior(
                 SandstormTransportBehavior.class

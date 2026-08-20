@@ -30,6 +30,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
 import models.effects.VisualEffectEvent;
+import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.Game;
@@ -66,6 +67,7 @@ import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
 
+import java.util.Collection;
 import java.util.List;
 
 public class GameScreen extends BaseScreen {
@@ -1116,12 +1118,6 @@ public class GameScreen extends BaseScreen {
                     currentGame.getGameState().getZombiesInTheGame()
                 );
 
-                frozenZombieIceAnimationSystem.sync(
-                    currentGame
-                        .getGameState()
-                        .getZombiesInTheGame()
-                );
-
                 mowerAnimationSystem.update(
                     gameplayDelta,
                     getRenderTickAlpha(),
@@ -1196,6 +1192,37 @@ public class GameScreen extends BaseScreen {
                 board
             );
 
+            Collection<Zombie> visualZombies =
+                currentGameForVisuals
+                    .getGameState()
+                    .getZombiesInTheGame();
+
+            /*
+             * Before gameplay starts, the model already contains the initial
+             * frozen zombies, but ZombieAnimationSystem normally does not run
+             * until PLAYING. Run it with delta=0 so their real actors are
+             * created at the exact gameplay position/scale. We then hide the
+             * zombie itself and keep only the ice block visible.
+             */
+            if (introState != IntroState.PLAYING) {
+                zombieAnimationSystem.update(
+                    0f,
+                    0f,
+                    currentGameForVisuals
+                        .getGameState()
+                        .getTickCounter(),
+                    visualZombies
+                );
+            }
+
+            syncFrozenZombiePreviewVisibility(
+                visualZombies
+            );
+
+            frozenZombieIceAnimationSystem.sync(
+                visualZombies
+            );
+
             if (protectedPlantOverlayManager != null) {
                 protectedPlantOverlayManager.sync(
                     currentGameForVisuals.getGameState()
@@ -1261,6 +1288,35 @@ public class GameScreen extends BaseScreen {
         restoreScreenShake();
         game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
+    }
+
+    private void syncFrozenZombiePreviewVisibility(
+        Collection<Zombie> zombies
+    ) {
+        if (zombies == null) {
+            return;
+        }
+
+        boolean showZombie =
+            introState == IntroState.PLAYING;
+
+        for (Zombie zombie : zombies) {
+            if (zombie == null
+                || !zombie.hasIceShell()) {
+                continue;
+            }
+
+            views.graphical.animation.PamAnimationActor actor =
+                zombieAnimationSystem.getActor(
+                    zombie
+                );
+
+            if (actor != null) {
+                actor.setVisible(
+                    showZombie
+                );
+            }
+        }
     }
 
     private void checkGameEnd() {

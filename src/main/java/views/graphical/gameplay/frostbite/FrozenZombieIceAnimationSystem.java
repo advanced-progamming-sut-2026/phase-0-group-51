@@ -113,10 +113,6 @@ public final class FrozenZombieIceAnimationSystem {
                     zombie
                 );
 
-            /*
-             * ZombieAnimationSystem creates the base zombie actor first.
-             * If it does not exist yet, wait until the next sync.
-             */
             if (zombieActor == null
                 || zombieActor.getParent() == null) {
                 continue;
@@ -416,3 +412,4 @@ public final class FrozenZombieIceAnimationSystem {
         }
     }
 }
+
