@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
+import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.ChapterMapScreen;
 import views.graphical.screens.GameScreen;
 
@@ -54,6 +55,7 @@ public class GameOverPopup extends Table {
         getColor().a = 0f;
         addAction(Actions.fadeIn(2f));
         buildUi();
+        AudioManager.getInstance().playMusic("assets/sounds/GameOver.mp3");
     }
     private void buildUi() {
         BitmapFont terrorFont = game.getSkin().getFont("FBUSV8C5EI_2");

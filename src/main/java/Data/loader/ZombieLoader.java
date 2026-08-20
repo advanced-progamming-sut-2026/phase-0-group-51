@@ -52,11 +52,27 @@ public class ZombieLoader {
                 if (flag.asText().equals("passdamage")) passDamage = true;
             }
 
-            List<Float> thresholds = new ArrayList<>();
-            for (JsonNode t : d.path("ArmorLayerHealth"))
-                thresholds.add((float) t.asDouble());
+            List<String> armorLayers = new ArrayList<>();
+            for (JsonNode layer : d.path("ArmorLayers")) {
+                String layerName = layer.asText("");
+                if (!layerName.isBlank()) {
+                    armorLayers.add(layerName);
+                }
+            }
 
-            ArmorDefinition def = new ArmorDefinition(alias, hp, metallic, passDamage, thresholds);
+            List<Float> thresholds = new ArrayList<>();
+            for (JsonNode t : d.path("ArmorLayerHealth")) {
+                thresholds.add((float) t.asDouble());
+            }
+
+            ArmorDefinition def = new ArmorDefinition(
+                alias,
+                hp,
+                metallic,
+                passDamage,
+                armorLayers,
+                thresholds
+            );
             armorRegistry.put(alias, def);
             armorRegistry.put(alias + "@ArmorTypes", def);
         }
@@ -96,7 +112,7 @@ public class ZombieLoader {
             if (visiblePartsNode.isArray()) {
                 for (JsonNode part : visiblePartsNode) {
                     String address =
-                            part.asText("");
+                        part.asText("");
 
                     if (!address.isBlank()) {
                         visibleParts.add(address);

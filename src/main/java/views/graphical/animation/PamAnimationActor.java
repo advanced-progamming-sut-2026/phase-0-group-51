@@ -29,18 +29,31 @@ public class PamAnimationActor extends Actor {
     private float additiveFlashDuration = 0f;
     private float additiveFlashAlpha = 0f;
 
+    private boolean outlineEnabled = false;
+
+    private float outlineThickness = 0f;
+
+    private final Color outlineColor =
+        new Color(0f, 1f, 0f, 1f);
+
+    private float outlinePulseBaseAlpha = 0.22f;
+    private float outlinePulseAmplitude = 0.16f;
+    private float outlinePulseSpeed = 2.8f;
+
+    private static final int GLOW_DIRECTIONS = 12;
+
     private final Map<String, Boolean> visibilityMap =
-            new HashMap<>();
+        new HashMap<>();
 
     private String groundingClip;
     private float[] groundCenterXByFrame = new float[0];
     private float groundingDuration = 0f;
 
     public PamAnimationActor(
-            PamPlayer pamPlayer,
-            String pamPath,
-            String clip,
-            boolean loop
+        PamPlayer pamPlayer,
+        String pamPath,
+        String clip,
+        boolean loop
     ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer);
         this.pamPath = Objects.requireNonNull(pamPath);
@@ -92,12 +105,63 @@ public class PamAnimationActor extends Actor {
     }
 
     public void flashAdditive(
-            float duration,
-            float alpha
+        float duration,
+        float alpha
     ) {
         additiveFlashDuration = Math.max(0.01f, duration);
         additiveFlashRemaining = additiveFlashDuration;
         additiveFlashAlpha = Math.max(0f, Math.min(1f, alpha));
+    }
+
+    public void setOutline(
+        boolean enabled,
+        Color color,
+        float thickness
+    ) {
+        outlineEnabled = enabled;
+        outlineThickness = Math.max(0f, thickness);
+
+        if (color != null) {
+            outlineColor.set(color);
+        }
+    }
+
+    public void setOutlinePulse(
+        float baseAlpha,
+        float amplitude,
+        float speed
+    ) {
+        outlinePulseBaseAlpha =
+            Math.max(
+                0f,
+                Math.min(
+                    1f,
+                    baseAlpha
+                )
+            );
+
+        outlinePulseAmplitude =
+            Math.max(
+                0f,
+                Math.min(
+                    1f,
+                    amplitude
+                )
+            );
+
+        outlinePulseSpeed =
+            Math.max(
+                0f,
+                speed
+            );
+    }
+
+    public boolean isOutlineEnabled() {
+        return outlineEnabled;
+    }
+
+    public float getOutlineThickness() {
+        return outlineThickness;
     }
 
     public String getClip() {
@@ -123,17 +187,17 @@ public class PamAnimationActor extends Actor {
     }
 
     public void setGroundingCurve(
-            String clip,
-            Rectangle[] boundsByFrame,
-            float clipDuration
+        String clip,
+        Rectangle[] boundsByFrame,
+        float clipDuration
     ) {
         clearGrounding();
 
         if (clip == null
-                || clip.isBlank()
-                || boundsByFrame == null
-                || boundsByFrame.length < 2
-                || clipDuration <= 0f) {
+            || clip.isBlank()
+            || boundsByFrame == null
+            || boundsByFrame.length < 2
+            || clipDuration <= 0f) {
             return;
         }
 
@@ -179,8 +243,8 @@ public class PamAnimationActor extends Actor {
 
     public boolean hasGrounding() {
         return groundingClip != null
-                && groundCenterXByFrame.length >= 2
-                && groundingDuration > 0f;
+            && groundCenterXByFrame.length >= 2
+            && groundingDuration > 0f;
     }
 
     public int getGroundingFrameCount() {
@@ -197,16 +261,16 @@ public class PamAnimationActor extends Actor {
         }
 
         return Math.abs(
-                groundCenterXByFrame[
-                        groundCenterXByFrame.length - 1
-                        ]
-                        - groundCenterXByFrame[0]
+            groundCenterXByFrame[
+                groundCenterXByFrame.length - 1
+                ]
+                - groundCenterXByFrame[0]
         );
     }
 
     public float getGroundingStepDistanceWorld() {
         return getGroundingStepDistanceCanvas()
-                * Math.abs(getScaleX());
+            * Math.abs(getScaleX());
     }
 
     @Override
@@ -219,183 +283,295 @@ public class PamAnimationActor extends Actor {
 
         if (additiveFlashRemaining > 0f) {
             additiveFlashRemaining = Math.max(
-                    0f,
-                    additiveFlashRemaining - Math.max(0f, delta)
+                0f,
+                additiveFlashRemaining - Math.max(0f, delta)
             );
         }
     }
 
     @Override
     public void draw(
-            Batch batch,
-            float parentAlpha
+        Batch batch,
+        float parentAlpha
     ) {
         float drawX =
-                getX()
-                        + currentGroundingOffsetX();
+            getX()
+                + currentGroundingOffsetX();
+
+        float drawY =
+            getY();
 
         Color oldColor =
-                new Color(batch.getColor());
+            new Color(batch.getColor());
 
         Color actorColor =
-                getColor();
+            getColor();
 
-        batch.setColor(
+        try {
+            if (outlineEnabled
+                && outlineThickness > 0f) {
+                drawOutline(
+                    batch,
+                    parentAlpha,
+                    drawX,
+                    drawY
+                );
+            }
+
+            batch.setColor(
                 actorColor.r,
                 actorColor.g,
                 actorColor.b,
                 actorColor.a * parentAlpha
-        );
+            );
 
-        try {
-            pamPlayer.draw(
-                    batch,
-                    pamPath,
-                    clip,
-                    stateTime,
-                    drawX,
-                    getY(),
-                    getScaleX(),
-                    getScaleY(),
-                    loop,
-                    visibilityMap
+            drawPam(
+                batch,
+                drawX,
+                drawY
             );
 
             if (additiveFlashRemaining > 0f
-                    && additiveFlashDuration > 0f
-                    && additiveFlashAlpha > 0f) {
+                && additiveFlashDuration > 0f
+                && additiveFlashAlpha > 0f) {
                 float progress =
-                        additiveFlashRemaining
-                                / additiveFlashDuration;
+                    additiveFlashRemaining
+                        / additiveFlashDuration;
 
                 batch.setBlendFunction(
-                        GL20.GL_SRC_ALPHA,
-                        GL20.GL_ONE
+                    GL20.GL_SRC_ALPHA,
+                    GL20.GL_ONE
                 );
 
                 batch.setColor(
-                        1f,
-                        1f,
-                        1f,
-                        additiveFlashAlpha
-                                * progress
-                                * actorColor.a
-                                * parentAlpha
+                    1f,
+                    1f,
+                    1f,
+                    additiveFlashAlpha
+                        * progress
+                        * actorColor.a
+                        * parentAlpha
                 );
 
-                pamPlayer.draw(
-                        batch,
-                        pamPath,
-                        clip,
-                        stateTime,
-                        drawX,
-                        getY(),
-                        getScaleX(),
-                        getScaleY(),
-                        loop,
-                        visibilityMap
+                drawPam(
+                    batch,
+                    drawX,
+                    drawY
                 );
 
                 batch.setBlendFunction(
-                        GL20.GL_SRC_ALPHA,
-                        GL20.GL_ONE_MINUS_SRC_ALPHA
+                    GL20.GL_SRC_ALPHA,
+                    GL20.GL_ONE_MINUS_SRC_ALPHA
                 );
             }
         } finally {
             batch.setBlendFunction(
-                    GL20.GL_SRC_ALPHA,
-                    GL20.GL_ONE_MINUS_SRC_ALPHA
+                GL20.GL_SRC_ALPHA,
+                GL20.GL_ONE_MINUS_SRC_ALPHA
             );
             batch.setColor(oldColor);
         }
     }
 
+    private void drawOutline(
+        Batch batch,
+        float parentAlpha,
+        float drawX,
+        float drawY
+    ) {
+
+        float radius =
+            outlineThickness;
+
+        float pulseAlpha =
+            outlinePulseBaseAlpha
+                + outlinePulseAmplitude
+                * (0.5f
+                + 0.5f
+                * (float) Math.sin(
+                stateTime
+                    * outlinePulseSpeed
+            ));
+
+        drawGlowRing(
+            batch,
+            parentAlpha,
+            drawX,
+            drawY,
+            radius * 0.35f,
+            pulseAlpha * 0.36f
+        );
+
+        drawGlowRing(
+            batch,
+            parentAlpha,
+            drawX,
+            drawY,
+            radius * 0.68f,
+            pulseAlpha * 0.22f
+        );
+
+        drawGlowRing(
+            batch,
+            parentAlpha,
+            drawX,
+            drawY,
+            radius,
+            pulseAlpha * 0.12f
+        );
+    }
+
+    private void drawGlowRing(
+        Batch batch,
+        float parentAlpha,
+        float drawX,
+        float drawY,
+        float radius,
+        float alpha
+    ) {
+        if (radius <= 0f
+            || alpha <= 0f) {
+            return;
+        }
+
+        batch.setColor(
+            outlineColor.r,
+            outlineColor.g,
+            outlineColor.b,
+            outlineColor.a
+                * alpha
+                * getColor().a
+                * parentAlpha
+        );
+
+        for (int i = 0; i < GLOW_DIRECTIONS; i++) {
+            double angle =
+                Math.PI
+                    * 2.0
+                    * i
+                    / GLOW_DIRECTIONS;
+
+            float offsetX =
+                (float) Math.cos(angle)
+                    * radius;
+
+            float offsetY =
+                (float) Math.sin(angle)
+                    * radius;
+
+            drawPam(
+                batch,
+                drawX + offsetX,
+                drawY + offsetY
+            );
+        }
+    }
+
+    private void drawPam(
+        Batch batch,
+        float x,
+        float y
+    ) {
+        pamPlayer.draw(
+            batch,
+            pamPath,
+            clip,
+            stateTime,
+            x,
+            y,
+            getScaleX(),
+            getScaleY(),
+            loop,
+            visibilityMap
+        );
+    }
+
     private float currentGroundingOffsetX() {
         if (!hasGrounding()
-                || !groundingClip.equals(clip)
-                || !loop) {
+            || !groundingClip.equals(clip)
+            || !loop) {
             return 0f;
         }
 
         int frameCount =
-                groundCenterXByFrame.length;
+            groundCenterXByFrame.length;
 
         int frameIndex =
-                currentGroundingFrameIndex();
+            currentGroundingFrameIndex();
 
         float progress =
-                frameCount <= 1
-                        ? 0f
-                        : frameIndex
-                        / (float) (frameCount - 1);
+            frameCount <= 1
+                ? 0f
+                : frameIndex
+                  / (float) (frameCount - 1);
 
         float startX =
-                groundCenterXByFrame[0];
+            groundCenterXByFrame[0];
 
         float endX =
-                groundCenterXByFrame[
-                        frameCount - 1
-                        ];
+            groundCenterXByFrame[
+                frameCount - 1
+                ];
 
         float currentX =
-                groundCenterXByFrame[
-                        frameIndex
-                        ];
+            groundCenterXByFrame[
+                frameIndex
+                ];
 
         float expectedLinearX =
-                startX
-                        + (endX - startX)
-                        * progress;
+            startX
+                + (endX - startX)
+                * progress;
 
         return (
-                expectedLinearX
-                        - currentX
+            expectedLinearX
+                - currentX
         ) * getScaleX();
     }
 
     private int currentGroundingFrameIndex() {
         int frameCount =
-                groundCenterXByFrame.length;
+            groundCenterXByFrame.length;
 
         if (frameCount <= 1
-                || groundingDuration <= 0f) {
+            || groundingDuration <= 0f) {
             return 0;
         }
 
         float localTime =
-                stateTime
-                        % groundingDuration;
+            stateTime
+                % groundingDuration;
 
         if (localTime < 0f) {
             localTime += groundingDuration;
         }
 
         float frameDuration =
-                groundingDuration
-                        / frameCount;
+            groundingDuration
+                / frameCount;
 
         if (frameDuration <= 0f) {
             return 0;
         }
 
         int frameIndex =
-                (int) Math.floor(
-                        localTime
-                                / frameDuration
-                );
+            (int) Math.floor(
+                localTime
+                    / frameDuration
+            );
 
         if (frameIndex < 0) {
             return 0;
         }
 
         return Math.min(
-                frameIndex,
-                frameCount - 1
+            frameIndex,
+            frameCount - 1
         );
     }
 
     private static void fillMissingValues(
-            float[] values
+        float[] values
     ) {
         int firstValid = -1;
 
@@ -415,7 +591,7 @@ public class PamAnimationActor extends Actor {
         }
 
         int previousValid =
-                firstValid;
+            firstValid;
 
         for (int i = firstValid + 1;
              i < values.length;
@@ -427,31 +603,31 @@ public class PamAnimationActor extends Actor {
 
             int nextValid = i;
             int gap =
-                    nextValid
-                            - previousValid;
+                nextValid
+                    - previousValid;
 
             if (gap > 1) {
                 float from =
-                        values[previousValid];
+                    values[previousValid];
 
                 float to =
-                        values[nextValid];
+                    values[nextValid];
 
                 for (int j = 1; j < gap; j++) {
                     float alpha =
-                            j / (float) gap;
+                        j / (float) gap;
 
                     values[
-                            previousValid + j
-                            ] =
-                            from
-                                    + (to - from)
-                                    * alpha;
+                        previousValid + j
+                        ] =
+                        from
+                            + (to - from)
+                            * alpha;
                 }
             }
 
             previousValid =
-                    nextValid;
+                nextValid;
         }
 
         for (int i = previousValid + 1;
@@ -459,7 +635,7 @@ public class PamAnimationActor extends Actor {
              i++) {
 
             values[i] =
-                    values[previousValid];
+                values[previousValid];
         }
     }
 }

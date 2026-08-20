@@ -15,6 +15,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
+import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.ui.SettingsPopup;
 import models.App;
 import models.User;
@@ -426,6 +427,7 @@ public class ChapterSelectScreen extends BaseScreen {
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }
+        AudioManager.getInstance().playMusic("assets/sounds/GameMenu.mp3");
     }
 
     @Override

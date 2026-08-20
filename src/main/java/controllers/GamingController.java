@@ -796,9 +796,7 @@ public class GamingController {
     }
 
     public Result cheatAddPlantFood() {
-        if (scoringGameIsActive()) {
-            return failure("Cheats are disabled in the Scoring Game.\n");
-        }
+
 
         GameState state = activeState();
         if (state == null) {
@@ -1124,10 +1122,6 @@ public class GamingController {
     }
 
     public Result cheatAddSun(int amount) {
-        if (scoringGameIsActive()) {
-            return failure("Cheats are disabled in the Scoring Game.\n");
-        }
-
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -1293,10 +1287,6 @@ public class GamingController {
     }
 
     public Result removeCooldowns() {
-        if (scoringGameIsActive()) {
-            return failure("Cheats are disabled in the Scoring Game.\n");
-        }
-
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -1306,10 +1296,6 @@ public class GamingController {
     }
 
     public Result releaseNuke() {
-        if (scoringGameIsActive()) {
-            return failure("Cheats are disabled in the Scoring Game.\n");
-        }
-
         GameState state = activeState();
         if (state == null || state.getZombieWaveManager() == null) {
             return failure("No active game found.\n");
@@ -1319,10 +1305,6 @@ public class GamingController {
     }
 
     public Result spawnZombie(String requestedType, int x, int y) {
-        if (scoringGameIsActive()) {
-            return failure("Cheats are disabled in the Scoring Game.\n");
-        }
-
         GameState state = activeState();
         if (state == null) {
             return failure("No active game found.\n");
@@ -1669,9 +1651,6 @@ public class GamingController {
         return 's';
     }
 
-    private boolean scoringGameIsActive() {
-        return App.getInstance().getCurrentGame() instanceof ScoringGame;
-    }
 
     public Result showScore() {
         Game game = App.getInstance().getCurrentGame();

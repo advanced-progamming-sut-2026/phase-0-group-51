@@ -30,6 +30,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
 import models.effects.VisualEffectEvent;
+import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import models.games.Game;
@@ -45,6 +46,8 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
+import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
+import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
@@ -67,6 +70,7 @@ import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
 
+import java.util.Collection;
 import java.util.List;
 
 public class GameScreen extends BaseScreen {
@@ -125,6 +129,8 @@ public class GameScreen extends BaseScreen {
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
+    private final IceFloorAnimationSystem iceFloorAnimationSystem;
+    private final FrozenZombieIceAnimationSystem frozenZombieIceAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
@@ -238,12 +244,31 @@ public class GameScreen extends BaseScreen {
             380f);
 
         boardTransform = new BoardTransform(boardArea);
+
+        iceFloorAnimationSystem =
+            new IceFloorAnimationSystem(
+                game.getPamPlayer(),
+                boardTransform,
+                theme
+            );
+
+        worldStage.addActor(
+            iceFloorAnimationSystem
+        );
+
         zombieAnimationSystem = new ZombieAnimationSystem(
             game.getPamPlayer(),
             worldStage,
             boardTransform,
             theme
         );
+
+        frozenZombieIceAnimationSystem =
+            new FrozenZombieIceAnimationSystem(
+                game.getPamPlayer(),
+                zombieAnimationSystem,
+                theme
+            );
 
         sandstormAnimationSystem =
             new SandstormAnimationSystem(
@@ -282,6 +307,12 @@ public class GameScreen extends BaseScreen {
         if (currentGame.getGameState() != null
             && currentGame.getGameState().getBoard() != null) {
             graveAnimationSystem.sync(
+                currentGame
+                    .getGameState()
+                    .getBoard()
+            );
+
+            iceFloorAnimationSystem.sync(
                 currentGame
                     .getGameState()
                     .getBoard()
@@ -1201,8 +1232,43 @@ public class GameScreen extends BaseScreen {
                     .getGameState()
                     .getBoard();
 
+            iceFloorAnimationSystem.sync(
+                board
+            );
+
             graveAnimationSystem.sync(
                 board
+            );
+
+            Collection<Zombie> visualZombies =
+                currentGameForVisuals
+                    .getGameState()
+                    .getZombiesInTheGame();
+
+            /*
+             * Before gameplay starts, the model already contains the initial
+             * frozen zombies, but ZombieAnimationSystem normally does not run
+             * until PLAYING. Run it with delta=0 so their real actors are
+             * created at the exact gameplay position/scale. We then hide the
+             * zombie itself and keep only the ice block visible.
+             */
+            if (introState != IntroState.PLAYING) {
+                zombieAnimationSystem.update(
+                    0f,
+                    0f,
+                    currentGameForVisuals
+                        .getGameState()
+                        .getTickCounter(),
+                    visualZombies
+                );
+            }
+
+            syncFrozenZombiePreviewVisibility(
+                visualZombies
+            );
+
+            frozenZombieIceAnimationSystem.sync(
+                visualZombies
             );
 
             if (protectedPlantOverlayManager != null) {
@@ -1270,6 +1336,35 @@ public class GameScreen extends BaseScreen {
         restoreScreenShake();
         game.getBatch().setColor(Color.WHITE);
         uiStage.draw();
+    }
+
+    private void syncFrozenZombiePreviewVisibility(
+        Collection<Zombie> zombies
+    ) {
+        if (zombies == null) {
+            return;
+        }
+
+        boolean showZombie =
+            introState == IntroState.PLAYING;
+
+        for (Zombie zombie : zombies) {
+            if (zombie == null
+                || !zombie.hasIceShell()) {
+                continue;
+            }
+
+            views.graphical.animation.PamAnimationActor actor =
+                zombieAnimationSystem.getActor(
+                    zombie
+                );
+
+            if (actor != null) {
+                actor.setVisible(
+                    showZombie
+                );
+            }
+        }
     }
 
     private void checkGameEnd() {
@@ -1636,6 +1731,8 @@ public class GameScreen extends BaseScreen {
         zombieLevelPreview.clear();
         sandstormAnimationSystem.clear();
         frostbiteSnowstormAnimationSystem.clear();
+        iceFloorAnimationSystem.clearVisuals();
+        frozenZombieIceAnimationSystem.clear();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();

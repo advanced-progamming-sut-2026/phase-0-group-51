@@ -19,6 +19,7 @@ import controllers.MainMenuController;
 import graphics.PvzGame;
 import models.Result;
 import models.minigames.MinigameType;
+import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.minigamesScreen.meowPoint.MeowPointScreen;
 import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.CollectionMenuTable;
@@ -378,4 +379,5 @@ public class MainMenuScreen extends BaseScreen{
                     }
                 }
         );
+        AudioManager.getInstance().playMusic("assets/sounds/MainMenu.mp3");
 }}

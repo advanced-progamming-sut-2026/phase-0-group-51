@@ -18,6 +18,8 @@ import controllers.SettingMenuController;
 import models.App;
 import models.Result;
 import models.User;
+import views.graphical.gameplay.manager.AudioManager;
+
 public class SettingsPopup extends BorderedPanel {
     private final SettingMenuController controller;
     private int currentDifficulty;
@@ -78,6 +80,7 @@ public class SettingsPopup extends BorderedPanel {
         musicSlider.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent e, Actor a) {
                 GameSettings.music = ((Slider) a).getValue() / 100f;
+                AudioManager.getInstance().updateMusicVolume();
             }
         });
         Table musicCell = cell(label("Music"), musicSlider, 160);
