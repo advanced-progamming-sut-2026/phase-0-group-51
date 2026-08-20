@@ -281,7 +281,6 @@ public final class IceFloorAnimationSystem extends Group {
                     true
                 );
 
-            forceAllPartsVisible(actor);
 
             actor.setTouchable(
                 Touchable.disabled
@@ -303,6 +302,7 @@ public final class IceFloorAnimationSystem extends Group {
             );
 
             actor.restart();
+            forceAllPartsVisible(actor);
 
             return actor;
 
