@@ -74,7 +74,7 @@ public enum ChapterTheme {
                             "Do not let the zombies reach the house."
                     ),
                     new Level(2, LevelType.TIMED_BATTLE, 3, 1500f,
-                            frostbiteLevelTwo(), TimedBattleConfig.combined(12, 250, 90)).withDefinition(
+                            frostbiteLevelTwo(), TimedBattleConfig.combined(8, 200, 90)).withDefinition(
                             "Complete the timed objectives while fighting through Frostbite Caves.",
                             "Complete the timed battle objectives before time runs out.",
                             "Do not let the zombies reach the house."
