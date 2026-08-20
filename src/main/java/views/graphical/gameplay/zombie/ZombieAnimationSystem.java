@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.Zombie.ArmorDefinition;
 import models.Zombie.Behavior.AuraBehavior;
 import models.Zombie.Behavior.ArmorBehavior;
 import models.Zombie.Behavior.DamageReactionBehavior;
@@ -227,6 +228,11 @@ public final class ZombieAnimationSystem {
             }
 
             if (zombie.isDead()) {
+                // A lethal hit can also destroy/remove armor in the same model tick.
+                // Sync the final armor visibility before starting the death clip.
+                syncDarkKnightVisual(zombie, visual);
+                syncNormalArmorVisual(zombie, visual);
+
                 if (!visual.deathStarted) {
                     beginDeath(visual);
                 }
@@ -783,7 +789,10 @@ public final class ZombieAnimationSystem {
             partialTick
         );
 
+        // Dark Knight can rebuild the base visibility map when armor is added/removed.
+        // Apply the per-armor HP layer state after that rebuild.
         syncDarkKnightVisual(zombie, visual);
+        syncNormalArmorVisual(zombie, visual);
 
         if (!updateSpecialClip(visual)) {
             BaseAnimation base = resolveBaseAnimation(
@@ -815,6 +824,276 @@ public final class ZombieAnimationSystem {
         } else {
             actor.resumeAnimation();
         }
+    }
+
+
+    /**
+     * Synchronizes the visual armor layer with the real ArmorBehavior HP.
+     *
+     * <p>This intentionally does not touch ArmorBehavior damage logic. The armor
+     * definition already contains the exact PAM layer names loaded from
+     * ArmorTypeData.json (norm, damage_01, damage_02). We only update the
+     * PamAnimationActor visibility map.</p>
+     */
+    private void syncNormalArmorVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        List<ArmorBehavior> armors = getArmorBehaviors(zombie);
+
+        if (armors.isEmpty()) {
+            visual.armorVisualSignature = "";
+            return;
+        }
+
+        String signature = buildArmorVisualSignature(armors);
+        if (signature.equals(visual.armorVisualSignature)) {
+            return;
+        }
+
+        String pamPath = resolvePamPath(theme, zombie.getAlias());
+        if (pamPath == null || pamPath.isBlank()) {
+            return;
+        }
+
+        PamPlayer.AnimationPart root;
+        try {
+            root = pamPlayer.getParts(pamPath);
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieArmorVisual",
+                    "Could not read PAM parts for " + zombie.getAlias(),
+                    e
+                );
+            }
+            return;
+        }
+
+        if (root == null) {
+            return;
+        }
+
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        for (ArmorBehavior armor : armors) {
+            applyArmorLayerVisibility(
+                zombie,
+                armor,
+                root,
+                visibility
+            );
+        }
+
+        visual.armorVisualSignature = signature;
+    }
+
+
+
+    private static List<ArmorBehavior> getArmorBehaviors(Zombie zombie) {
+        List<ArmorBehavior> result = new ArrayList<>();
+
+        for (var behavior : zombie.getBehaviors()) {
+            if (behavior instanceof ArmorBehavior armor) {
+                result.add(armor);
+            }
+        }
+
+        return result;
+    }
+
+    private static String buildArmorVisualSignature(
+        List<ArmorBehavior> armors
+    ) {
+        StringBuilder signature = new StringBuilder();
+
+        for (ArmorBehavior armor : armors) {
+            ArmorDefinition def = armor.getDefinition();
+
+            if (def == null) {
+                signature.append("null;");
+                continue;
+            }
+
+            signature.append(def.getAlias()).append(':');
+
+            if (armor.isGone()) {
+                signature.append("gone");
+            } else {
+                signature.append(
+                    resolveArmorLayerIndex(
+                        armor,
+                        def.getArmorLayers().size()
+                    )
+                );
+            }
+
+            signature.append(';');
+        }
+
+        return signature.toString();
+    }
+
+    private void applyArmorLayerVisibility(
+        Zombie zombie,
+        ArmorBehavior armor,
+        PamPlayer.AnimationPart root,
+        Map<String, Boolean> visibility
+    ) {
+        ArmorDefinition def = armor.getDefinition();
+        if (def == null) {
+            return;
+        }
+
+        List<String> layers = def.getArmorLayers();
+        if (layers == null || layers.isEmpty()) {
+            if (Gdx.app != null) {
+                Gdx.app.log(
+                    "ZombieArmorVisual",
+                    zombie.getAlias() + " / " + def.getAlias()
+                        + " has no ArmorLayers"
+                );
+            }
+            return;
+        }
+
+        // Explicit false is important in libPVZ: it skips that part/subtree.
+        // This guarantees that the previous norm/damage state cannot remain visible.
+        for (String layer : layers) {
+            if (layer != null && !layer.isBlank()) {
+                visibility.put(layer, false);
+            }
+        }
+
+        if (armor.isGone()) {
+            if (Gdx.app != null) {
+                Gdx.app.log(
+                    "ZombieArmorVisual",
+                    zombie.getAlias() + " / " + def.getAlias()
+                        + " hp=0/" + def.getBaseHealth()
+                        + " -> hidden"
+                );
+            }
+            return;
+        }
+
+        int layerIndex = resolveArmorLayerIndex(
+            armor,
+            layers.size()
+        );
+
+        if (layerIndex < 0 || layerIndex >= layers.size()) {
+            return;
+        }
+
+        String targetLayer = layers.get(layerIndex);
+        if (targetLayer == null || targetLayer.isBlank()) {
+            return;
+        }
+
+        List<PamPlayer.AnimationPart> path =
+            findPartPath(root, targetLayer);
+
+        if (!path.isEmpty()) {
+            // libPVZ ignores hidden children when any flagged parent is not enabled.
+            // Enable every named parent on the real PAM path, then enable the target.
+            for (PamPlayer.AnimationPart part : path) {
+                if (part.name != null && !part.name.isBlank()) {
+                    visibility.put(part.name, true);
+                }
+            }
+        }
+
+        visibility.put(targetLayer, true);
+
+        if (Gdx.app != null) {
+            Gdx.app.log(
+                "ZombieArmorVisual",
+                zombie.getAlias() + " / " + def.getAlias()
+                    + " hp=" + armor.getCurrentHP()
+                    + "/" + def.getBaseHealth()
+                    + " stage=" + layerIndex
+                    + " -> " + targetLayer
+                    + (path.isEmpty() ? " (PAM path NOT FOUND)" : "")
+            );
+        }
+    }
+
+    private static int resolveArmorLayerIndex(
+        ArmorBehavior armor,
+        int layerCount
+    ) {
+        if (layerCount <= 1 || armor == null) {
+            return 0;
+        }
+
+        ArmorDefinition def = armor.getDefinition();
+        if (def == null) {
+            return 0;
+        }
+
+        int baseHealth = Math.max(1, def.getBaseHealth());
+        float healthRatio = armor.getCurrentHP() / (float) baseHealth;
+
+        List<Float> thresholds = def.getLayerThresholds();
+        if (thresholds == null || thresholds.isEmpty()) {
+            thresholds = List.of(0.666f, 0.333f);
+        }
+
+        int index = 0;
+        int maxThresholds = Math.min(
+            thresholds.size(),
+            layerCount - 1
+        );
+
+        for (int i = 0; i < maxThresholds; i++) {
+            Float threshold = thresholds.get(i);
+            if (threshold != null && healthRatio <= threshold) {
+                index = i + 1;
+            }
+        }
+
+        return Math.max(0, Math.min(index, layerCount - 1));
+    }
+
+    private static List<PamPlayer.AnimationPart> findPartPath(
+        PamPlayer.AnimationPart root,
+        String targetName
+    ) {
+        List<PamPlayer.AnimationPart> path = new ArrayList<>();
+
+        if (root == null || targetName == null || targetName.isBlank()) {
+            return path;
+        }
+
+        if (findPartPathRecursive(root, targetName, path)) {
+            return path;
+        }
+
+        path.clear();
+        return path;
+    }
+
+    private static boolean findPartPathRecursive(
+        PamPlayer.AnimationPart current,
+        String targetName,
+        List<PamPlayer.AnimationPart> path
+    ) {
+        path.add(current);
+
+        if (targetName.equals(current.name)) {
+            return true;
+        }
+
+        for (PamPlayer.AnimationPart child : current.children) {
+            if (findPartPathRecursive(child, targetName, path)) {
+                return true;
+            }
+        }
+
+        path.remove(path.size() - 1);
+        return false;
     }
 
     private void syncDarkKnightVisual(
@@ -1663,6 +1942,7 @@ public final class ZombieAnimationSystem {
         private boolean lastDynamiteExploded;
         private boolean lastDodoFly;
         private boolean lastLaserStealing;
+        private String armorVisualSignature;
         private boolean darkKnightVisual;
 
         private boolean deathStarted;

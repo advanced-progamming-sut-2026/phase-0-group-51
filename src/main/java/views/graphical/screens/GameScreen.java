@@ -45,6 +45,7 @@ import views.graphical.gameplay.board.BoardView;
 
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
+import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
@@ -122,6 +123,7 @@ public class GameScreen extends BaseScreen {
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
+    private final IceFloorAnimationSystem iceFloorAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
     private final ZombieLevelPreview zombieLevelPreview;
@@ -235,6 +237,18 @@ public class GameScreen extends BaseScreen {
             380f);
 
         boardTransform = new BoardTransform(boardArea);
+
+        iceFloorAnimationSystem =
+            new IceFloorAnimationSystem(
+                game.getPamPlayer(),
+                boardTransform,
+                theme
+            );
+
+        worldStage.addActor(
+            iceFloorAnimationSystem
+        );
+
         zombieAnimationSystem = new ZombieAnimationSystem(
             game.getPamPlayer(),
             worldStage,
@@ -279,6 +293,12 @@ public class GameScreen extends BaseScreen {
         if (currentGame.getGameState() != null
             && currentGame.getGameState().getBoard() != null) {
             graveAnimationSystem.sync(
+                currentGame
+                    .getGameState()
+                    .getBoard()
+            );
+
+            iceFloorAnimationSystem.sync(
                 currentGame
                     .getGameState()
                     .getBoard()
@@ -1153,6 +1173,10 @@ public class GameScreen extends BaseScreen {
                     .getGameState()
                     .getBoard();
 
+            iceFloorAnimationSystem.sync(
+                board
+            );
+
             graveAnimationSystem.sync(
                 board
             );
@@ -1588,6 +1612,7 @@ public class GameScreen extends BaseScreen {
         zombieLevelPreview.clear();
         sandstormAnimationSystem.clear();
         frostbiteSnowstormAnimationSystem.clear();
+        iceFloorAnimationSystem.clearVisuals();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();
