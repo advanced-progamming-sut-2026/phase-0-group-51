@@ -72,6 +72,9 @@ public class ZombieWaveManager {
 
     private int spawnDelayTicks = 0;
 
+    private int lastSpawnLane = -1;
+    private int consecutiveLaneSpawns = 0;
+
     public ZombieWaveManager(
         GameState gs,
         List<ZombieType> allowedAliases,
@@ -301,43 +304,43 @@ public class ZombieWaveManager {
         float damageProgress = 0f;
         if (totalHealth > 0) {
             float healthDestroyed =
-                    1f
-                            - remainingHealth
-                            / (float) totalHealth;
+                1f
+                    - remainingHealth
+                    / (float) totalHealth;
 
 
             float requiredDamage =
-                    currentWave.isFinalWave()
-                            ? 1f
-                            : 0.75f;
+                currentWave.isFinalWave()
+                    ? 1f
+                    : 0.75f;
 
             damageProgress =
-                    healthDestroyed
-                            / requiredDamage;
+                healthDestroyed
+                    / requiredDamage;
 
             damageProgress =
-                    Math.max(
-                            0f,
-                            Math.min(
-                                    1f,
-                                    damageProgress
-                            )
-                    );
+                Math.max(
+                    0f,
+                    Math.min(
+                        1f,
+                        damageProgress
+                    )
+                );
         }
 
         final float SPAWN_WEIGHT = 0.20f;
         final float DAMAGE_WEIGHT = 0.80f;
 
         float progress =
-                spawnProgress * SPAWN_WEIGHT
-                        + damageProgress * DAMAGE_WEIGHT;
+            spawnProgress * SPAWN_WEIGHT
+                + damageProgress * DAMAGE_WEIGHT;
 
         return Math.max(
-                0f,
-                Math.min(
-                        1f,
-                        progress
-                )
+            0f,
+            Math.min(
+                1f,
+                progress
+            )
         );
     }
     private void startNextWave() {
@@ -495,7 +498,7 @@ public class ZombieWaveManager {
                         activeSnowstormLanes.size()
                     )
                 )
-                    : random.nextInt(
+                    : chooseSpawnLane(
                     lanes
                 );
 
@@ -637,6 +640,33 @@ public class ZombieWaveManager {
             spawnDelayTicks =
                 randomSpawnGap();
         }
+    }
+
+    private int chooseSpawnLane(
+        int laneCount
+    ) {
+
+        if (laneCount <= 1) {
+            return 0;
+        }
+
+        int lane;
+
+        do {
+            lane = random.nextInt(laneCount);
+        } while (
+            lane == lastSpawnLane
+                && consecutiveLaneSpawns >= 1
+        );
+
+        if (lane == lastSpawnLane) {
+            consecutiveLaneSpawns++;
+        } else {
+            lastSpawnLane = lane;
+            consecutiveLaneSpawns = 1;
+        }
+
+        return lane;
     }
 
     private int randomSpawnGap() {

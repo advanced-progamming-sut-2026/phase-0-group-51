@@ -294,7 +294,9 @@ public class GameScreen extends BaseScreen {
             game.getPamPlayer(),
             worldStage,
             boardTransform,
-            theme
+            theme,
+            0.61f,
+            currentGame.getGameState()
         );
 
         lootAnimationSystem =

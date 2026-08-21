@@ -237,7 +237,14 @@ public class Zombie {
 
 
     public void onTick(GameState gs) {
-        if (dead || hasIceShell()) return;
+        if (dead) {
+            return;
+        }
+
+        if (hasIceShell()) {
+            eating = false;
+            return;
+        }
 
         tickEffects();
         tickPoison(gs);
