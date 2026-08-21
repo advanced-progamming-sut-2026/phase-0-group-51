@@ -28,6 +28,7 @@ public class Plant {
     // covers arm delay (Potato Mine)
     // (Chomper), charge-up (Citron, Bowling Bulb), etc.
     private float disabledTicksRemaining;
+    private boolean chargeReady = false;
     // plants with limited life span:
     private float lifespanRemaining = -1;
     //for stack plants:
@@ -77,6 +78,7 @@ public class Plant {
         this.currentHP = plantStat.maxHp();
         this.upgrades  = upgrades;
         this.plantTags = plantTags;
+        this.chargeReady = !plantTags.contains(PlantTag.CHARGE);
 
     }
 
@@ -90,6 +92,12 @@ public class Plant {
         plantType.onEveryTick(this, gameState);
         if (disabledTicksRemaining > 0) {
             disabledTicksRemaining--;
+
+            if (disabledTicksRemaining <= 0
+                    && hasTag(PlantTag.CHARGE)) {
+                chargeReady = true;
+            }
+
             return;
         }
         if (lifespanRemaining >= 0) {
@@ -174,6 +182,18 @@ public class Plant {
 
     public void disableFor(float ticks) {
         this.disabledTicksRemaining = ticks;
+
+        if (hasTag(PlantTag.CHARGE)) {
+            chargeReady = false;
+        }
+    }
+
+    public boolean isChargeReady() {
+        return chargeReady;
+    }
+
+    public void setChargeReady(boolean chargeReady) {
+        this.chargeReady = chargeReady;
     }
 
     public boolean isDisabled() {

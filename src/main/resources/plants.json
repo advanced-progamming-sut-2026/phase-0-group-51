@@ -1203,13 +1203,17 @@
     "idlePamPath": "768/INITIAL/PLANT/CAULIPOWER/CAULIPOWER.PAM",
     "animations": {
       "idle": {
-        "clip": "idle4_1",
+        "clip": "idle2_1",
         "loop": true
       },
       "attack": {
         "clip": "attack",
         "loop": false,
         "duration": 1.73
+      },
+      "charge": {
+        "clip": "idle3_1",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Tosses 5 random zombies off the lawn.",
@@ -1282,6 +1286,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.67
+      },
+      "charge": {
+        "clip": "idle1_1",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Creates a storm cloud that targets 3 random zombies, dealing damage.",
