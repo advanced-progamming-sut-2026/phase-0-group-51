@@ -29,6 +29,7 @@ import models.Result;
 import models.User;
 import models.minigames.MinigameType;
 
+import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.BaseScreen;
 import views.graphical.screens.MainMenuScreen;
 import views.graphical.screens.minigamesScreen.beghouled.BeghouledScreen;
@@ -684,6 +685,7 @@ public class minigames extends BaseScreen {
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
         }
+        AudioManager.getInstance().playMusic("assets/sounds/GameMenu.mp3");
     }
 
 

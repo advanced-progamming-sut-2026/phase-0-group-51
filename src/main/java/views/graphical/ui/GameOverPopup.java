@@ -55,7 +55,7 @@ public class GameOverPopup extends Table {
         getColor().a = 0f;
         addAction(Actions.fadeIn(2f));
         buildUi();
-        AudioManager.getInstance().playMusic("assets/sounds/GameOver.mp3");
+        AudioManager.getInstance().playSfx("assets/sounds/GameOver.mp3");
     }
     private void buildUi() {
         BitmapFont terrorFont = game.getSkin().getFont("FBUSV8C5EI_2");
