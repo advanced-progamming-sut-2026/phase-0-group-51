@@ -27,6 +27,9 @@ public final class GraveAnimationSystem extends Group {
 
     private static final float GRAVE_Y_OFFSET = 1f;
     private static final float STATE_HOLD_MARGIN = 0.08f;
+    private static final float DAMAGE_FLASH_DURATION = 0.15f;
+    private static final float DAMAGE_FLASH_ALPHA = 0.65f;
+    private static final float DAMAGE_FLASH_COOLDOWN = 0.4f;
 
     private static final String EGYPT_NORMAL_PAM =
         "768/INITIAL/GRAVESTONES/EGYPT_HIEROGLYPH/EGYPT_HIEROGLYPH.PAM";
@@ -289,6 +292,18 @@ public final class GraveAnimationSystem extends Group {
             GraveVisual visual :
             visuals.values()
         ) {
+            if (visual.damageFlashCooldownRemaining > 0f) {
+                visual.damageFlashCooldownRemaining = Math.max(
+                    0f,
+                    visual.damageFlashCooldownRemaining - safeDelta
+                );
+            }
+        }
+
+        for (
+            GraveVisual visual :
+            visuals.values()
+        ) {
             if (visual.stateFrozen) {
                 continue;
             }
@@ -479,11 +494,14 @@ public final class GraveAnimationSystem extends Group {
 
         if (damageStage
             == visual.damageStage) {
+            updateDamageFlash(grave, visual);
             return;
         }
 
         visual.damageStage =
             damageStage;
+
+        updateDamageFlash(grave, visual);
 
         String clip =
             visual.clips.forStage(
@@ -1088,6 +1106,27 @@ public final class GraveAnimationSystem extends Group {
         }
     }
 
+    private void updateDamageFlash(
+        Grave grave,
+        GraveVisual visual
+    ) {
+        int currentHealth = grave.getHealth();
+
+        if (currentHealth < visual.lastHealth
+            && currentHealth > 0
+            && visual.damageFlashCooldownRemaining <= 0f) {
+            visual.actor.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+            );
+
+            visual.damageFlashCooldownRemaining =
+                DAMAGE_FLASH_COOLDOWN;
+        }
+
+        visual.lastHealth = currentHealth;
+    }
+
     private static final class GraveVisual {
         private final Grave grave;
         private final String pamPath;
@@ -1100,6 +1139,8 @@ public final class GraveAnimationSystem extends Group {
         private int damageStage;
         private float stateHoldTime;
         private boolean stateFrozen;
+        private int lastHealth;
+        private float damageFlashCooldownRemaining;
 
         private GraveVisual(
             Grave grave,
@@ -1122,6 +1163,7 @@ public final class GraveAnimationSystem extends Group {
             this.damageStage = damageStage;
             this.stateHoldTime = stateHoldTime;
             this.stateFrozen = false;
+            this.lastHealth = grave.getHealth();
         }
 
         private void remove() {

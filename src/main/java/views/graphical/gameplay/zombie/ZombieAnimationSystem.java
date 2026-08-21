@@ -6,24 +6,10 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import lombok.Getter;
+import models.Zombie.Behavior.*;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.Zombie.ArmorDefinition;
-import models.Zombie.Behavior.AuraBehavior;
-import models.Zombie.Behavior.ArmorBehavior;
-import models.Zombie.Behavior.DamageReactionBehavior;
-import models.Zombie.Behavior.DynamiteBehavior;
-import models.Zombie.Behavior.ImpThrowBehavior;
-import models.Zombie.Behavior.InstantKillBehavior;
-import models.Zombie.Behavior.MovementBehavior;
-import models.Zombie.Behavior.PushObjectBehavior;
-import models.Zombie.Behavior.RangedAttackBehavior;
-import models.Zombie.Behavior.SandstormTransportBehavior;
-import models.Zombie.Behavior.SnowstormTransportBehavior;
-import models.Zombie.Behavior.SunStealBehavior;
-import models.Zombie.Behavior.TransformBehavior;
-import models.Zombie.Behavior.TurquoiseLaserBehavior;
-import models.Zombie.Behavior.WorldEffectBehavior;
 import models.games.ChapterTheme;
 import pvz.libpvz.pam.ClipRef;
 import pvz.libpvz.pam.PamPlayer;
@@ -48,6 +34,10 @@ import java.util.Set;
 public final class ZombieAnimationSystem {
 
     public static final float DEFAULT_SCALE = 0.6f;
+
+    private static final float DAMAGE_FLASH_DURATION = 0.15f;
+    private static final float DAMAGE_FLASH_ALPHA = 0.65f;
+    private static final float DAMAGE_FLASH_COOLDOWN = 0.4f;
 
     private static final Color PLANT_FOOD_OUTLINE_COLOR =
         Color.valueOf("58FF66");
@@ -226,6 +216,7 @@ public final class ZombieAnimationSystem {
             updateLivingZombie(
                 zombie,
                 visual,
+                delta,
                 partialTick
             );
         }
@@ -244,8 +235,6 @@ public final class ZombieAnimationSystem {
             }
 
             if (zombie.isDead()) {
-                // A lethal hit can also destroy/remove armor in the same model tick.
-                // Sync the final armor visibility before starting the death clip.
                 syncDarkKnightVisual(zombie, visual);
                 syncNormalArmorVisual(zombie, visual);
 
@@ -802,6 +791,7 @@ public final class ZombieAnimationSystem {
     private void updateLivingZombie(
         Zombie zombie,
         ZombieVisual visual,
+        float delta,
         float partialTick
     ) {
         PamAnimationActor actor = visual.actor;
@@ -822,6 +812,12 @@ public final class ZombieAnimationSystem {
             zombie,
             visual,
             partialTick
+        );
+
+        updateDamageFlash(
+            zombie,
+            visual,
+            delta
         );
 
         syncDarkKnightVisual(zombie, visual);
@@ -860,14 +856,58 @@ public final class ZombieAnimationSystem {
     }
 
 
-    /**
-     * Synchronizes the visual armor layer with the real ArmorBehavior HP.
-     *
-     * <p>This intentionally does not touch ArmorBehavior damage logic. The armor
-     * definition already contains the exact PAM layer names loaded from
-     * ArmorTypeData.json (norm, damage_01, damage_02). We only update the
-     * PamAnimationActor visibility map.</p>
-     */
+    private void updateDamageFlash(
+        Zombie zombie,
+        ZombieVisual visual,
+        float delta
+    ) {
+        if (visual.damageFlashCooldownRemaining > 0f) {
+            visual.damageFlashCooldownRemaining = Math.max(
+                0f,
+                visual.damageFlashCooldownRemaining
+                    - Math.max(0f, delta)
+            );
+        }
+
+        int currentDamageHealth =
+            getDamageFlashHealth(zombie);
+
+        if (visual.lastDamageHealth == Integer.MIN_VALUE) {
+            visual.lastDamageHealth = currentDamageHealth;
+            return;
+        }
+
+        if (currentDamageHealth < visual.lastDamageHealth
+            && zombie.getHitpoints() > 0
+            && visual.damageFlashCooldownRemaining <= 0f) {
+            visual.actor.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+            );
+
+            visual.damageFlashCooldownRemaining =
+                DAMAGE_FLASH_COOLDOWN;
+        }
+
+        visual.lastDamageHealth = currentDamageHealth;
+    }
+
+
+    private static int getDamageFlashHealth(Zombie zombie) {
+        int health = zombie.getHitpoints();
+
+        for (ZombieBehavior behavior : zombie.getBehaviors()) {
+            if (behavior instanceof ArmorBehavior armor) {
+                health += Math.max(
+                    0,
+                    armor.getCurrentHP()
+                );
+            }
+        }
+
+        return health;
+    }
+
     private void syncNormalArmorVisual(
         Zombie zombie,
         ZombieVisual visual
@@ -990,9 +1030,6 @@ public final class ZombieAnimationSystem {
             }
             return;
         }
-
-        // Explicit false is important in libPVZ: it skips that part/subtree.
-        // This guarantees that the previous norm/damage state cannot remain visible.
         for (String layer : layers) {
             if (layer != null && !layer.isBlank()) {
                 visibility.put(layer, false);
@@ -1029,8 +1066,6 @@ public final class ZombieAnimationSystem {
             findPartPath(root, targetLayer);
 
         if (!path.isEmpty()) {
-            // libPVZ ignores hidden children when any flagged parent is not enabled.
-            // Enable every named parent on the real PAM path, then enable the target.
             for (PamPlayer.AnimationPart part : path) {
                 if (part.name != null && !part.name.isBlank()) {
                     visibility.put(part.name, true);
@@ -1977,6 +2012,9 @@ public final class ZombieAnimationSystem {
         private boolean lastLaserStealing;
         private String armorVisualSignature;
         private boolean darkKnightVisual;
+
+        private int lastDamageHealth = Integer.MIN_VALUE;
+        private float damageFlashCooldownRemaining;
 
         private boolean deathStarted;
         private float deathElapsed;
