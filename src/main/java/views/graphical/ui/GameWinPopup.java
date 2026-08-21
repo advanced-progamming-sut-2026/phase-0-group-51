@@ -74,7 +74,7 @@ public class GameWinPopup extends Table {
         getColor().a = 0f;
         addAction(Actions.fadeIn(2f));
         buildUi();
-        AudioManager.getInstance().playMusic("assets/sounds/Victory.mp3");
+        AudioManager.getInstance().playSfx("assets/sounds/Victory.mp3");
     }
     private void buildUi() {
         BorderedPanel boardPanel = new BorderedPanel(game, Color.valueOf("F5DEB3"));
