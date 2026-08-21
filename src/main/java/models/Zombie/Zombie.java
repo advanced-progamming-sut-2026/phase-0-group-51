@@ -401,7 +401,7 @@ public class Zombie {
 
 
 
-    private static final double LOOT_DROP_CHANCE = 0.10;
+    private static final double LOOT_DROP_CHANCE = 0.1f;
     private void die(GameState gs, QuestKillSourceType sourceType, Plant sourcePlant) {
         die(gs, sourceType, sourcePlant, true);
     }

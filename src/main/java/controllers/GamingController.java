@@ -1164,6 +1164,46 @@ public class GamingController {
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
     }
 
+    public Result collectLoot(DroppedLoot loot) {
+        GameState state = activeState();
+        if (state == null) {
+            return failure("No active game found.\n");
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must be logged in to collect loot.\n");
+        }
+
+        if (loot == null) {
+            return failure("No loot found.\n");
+        }
+
+        int previousTotal = currentLootTotal(user, loot.getType());
+
+        UserRepository.LootResult result = new UserRepository()
+            .applyZombieLoot(user.getId(), loot.getType());
+
+        if (!result.saved()) {
+            return failure("Loot could not be saved; it remains on the ground.\n");
+        }
+
+        if (!state.getBoard().getActiveLoots().contains(loot)) {
+            return failure("Loot was already collected.\n");
+        }
+
+        state.getBoard().collectLoot(loot);
+
+        String reward = applyCollectedLoot(
+            user,
+            loot.getType(),
+            result,
+            previousTotal
+        );
+
+        return success(reward);
+    }
+
     public Result collectLoot(int x, int y) {
         GameState state = activeState();
         if (state == null) {
@@ -1175,10 +1215,12 @@ public class GamingController {
         }
         int column = x - 1;
         int lane = y - 1;
-        if (state.getBoard().getTileAtUserCoordinates(column, lane) == null) {
-            return failure("Coordinates are outside the map.\n");
-        }
-        DroppedLoot loot = findLootAt(state.getBoard(), lane, column);
+        DroppedLoot loot = findLootAt(
+            state.getBoard(),
+            lane,
+            column
+        );
+
         if (loot == null) {
             return failure("No loot found at given coordinates.\n");
         }
@@ -1196,11 +1238,31 @@ public class GamingController {
     }
 
     private DroppedLoot findLootAt(Board board, int lane, int column) {
+
         for (DroppedLoot loot : board.getActiveLoots()) {
-            if (loot.getLane() == lane && loot.getColumn() == column) {
-                return loot;
+
+            if (loot == null) {
+                continue;
+            }
+
+            if (loot.getType() == LootType.POT) {
+
+                if (Math.abs(loot.getX() - column) <= 3.0
+                    && Math.abs(loot.getLane() - lane) <= 2) {
+
+                    return loot;
+                }
+
+            } else {
+
+                if (loot.getLane() == lane
+                    && loot.getColumn() == column) {
+
+                    return loot;
+                }
             }
         }
+
         return null;
     }
 
