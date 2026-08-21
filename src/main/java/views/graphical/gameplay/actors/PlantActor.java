@@ -74,6 +74,9 @@ public class PlantActor extends Group {
     private PlantData plantData;
     private PamAnimationActor animation;
     private PamAnimationActor plantFoodEffect;
+    private PamAnimationActor octopusEffect;
+
+    private boolean octopusShown;
 
     private Image frostChillEffect;
     private PamAnimationActor iceBlockEffect;
@@ -192,6 +195,52 @@ public class PlantActor extends Group {
 
         damageFlashCooldownRemaining =
                 DAMAGE_FLASH_COOLDOWN;
+    }
+
+    public void syncOctopusVisual(boolean hasOctopus) {
+        if (hasOctopus == octopusShown) {
+            return;
+        }
+
+        octopusShown = hasOctopus;
+
+        if (octopusEffect != null) {
+            octopusEffect.remove();
+            octopusEffect = null;
+        }
+
+        if (!hasOctopus || previewMode) {
+            return;
+        }
+
+        try {
+            octopusEffect = game.createPamActor(
+                    "768/FULL/EFFECTS/ZOMBIE_OCTOPUS_PROJECTILE/ZOMBIE_OCTOPUS_PROJECTILE.PAM",
+                    "animation4",
+                    0f,
+                    0f,
+                    true
+            );
+
+            octopusEffect.setTouchable(Touchable.disabled);
+            addActor(octopusEffect);
+            octopusEffect.toFront();
+
+        } catch (RuntimeException ignored) {
+            octopusEffect = null;
+        }
+    }
+
+    public void flashOctopusDamage() {
+        if (octopusEffect == null
+                || previewMode) {
+            return;
+        }
+
+        octopusEffect.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+        );
     }
 
     public void playPlantFoodEffect() {
@@ -570,6 +619,8 @@ public class PlantActor extends Group {
 
         animation = null;
         plantFoodEffect = null;
+        octopusEffect = null;
+        octopusShown = false;
         frostChillEffect = null;
         iceBlockEffect = null;
         plantData = null;

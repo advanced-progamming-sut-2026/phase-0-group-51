@@ -36,6 +36,10 @@ public final class FrozenZombieIceAnimationSystem {
     private static final float ICE_OFFSET_X = 0f;
     private static final float ICE_OFFSET_Y = 0f;
 
+    private static final float DAMAGE_FLASH_DURATION = 0.15f;
+    private static final float DAMAGE_FLASH_ALPHA = 0.65f;
+    private static final float DAMAGE_FLASH_COOLDOWN = 0.4f;
+
     private final PamPlayer pamPlayer;
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final ChapterTheme theme;
@@ -75,7 +79,8 @@ public final class FrozenZombieIceAnimationSystem {
     }
 
     public void sync(
-        Collection<Zombie> zombies
+        Collection<Zombie> zombies,
+        float delta
     ) {
         if (theme != ChapterTheme.FROSTBITE_CAVES) {
             clear();
@@ -144,11 +149,20 @@ public final class FrozenZombieIceAnimationSystem {
                     continue;
                 }
 
+                visual.lastIceShellHealth =
+                    zombie.getIceShellHealth();
+
                 visuals.put(
                     zombie,
                     visual
                 );
             }
+
+            updateDamageFlash(
+                zombie,
+                visual,
+                delta
+            );
 
             syncTransform(
                 zombieActor,
@@ -300,6 +314,43 @@ public final class FrozenZombieIceAnimationSystem {
         }
     }
 
+    private void updateDamageFlash(
+        Zombie zombie,
+        IceVisual visual,
+        float delta
+    ) {
+        if (visual.damageFlashCooldownRemaining > 0f) {
+            visual.damageFlashCooldownRemaining = Math.max(
+                0f,
+                visual.damageFlashCooldownRemaining
+                    - Math.max(0f, delta)
+            );
+        }
+
+        int currentIceHealth =
+            zombie.getIceShellHealth();
+
+        if (currentIceHealth < visual.lastIceShellHealth
+            && currentIceHealth > 0
+            && visual.damageFlashCooldownRemaining <= 0f) {
+            visual.behind.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+            );
+
+            visual.front.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+            );
+
+            visual.damageFlashCooldownRemaining =
+                DAMAGE_FLASH_COOLDOWN;
+        }
+
+        visual.lastIceShellHealth =
+            currentIceHealth;
+    }
+
     private void syncTransform(
         PamAnimationActor zombieActor,
         IceVisual visual
@@ -408,6 +459,8 @@ public final class FrozenZombieIceAnimationSystem {
 
         private final PamAnimationActor behind;
         private final PamAnimationActor front;
+        private int lastIceShellHealth = Integer.MIN_VALUE;
+        private float damageFlashCooldownRemaining;
 
         private IceVisual(
             PamAnimationActor behind,
