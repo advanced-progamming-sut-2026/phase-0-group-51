@@ -36,6 +36,7 @@ import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
 import models.games.Level;
+import models.games.ZombieWaveManager;
 import models.sun.Sun;
 
 
@@ -59,7 +60,11 @@ import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
+import views.graphical.dialogue.LevelDialogueRegistry;
+import views.graphical.dialogue.NpcDialogueSequence;
 import views.graphical.ui.GameSettings;
+import views.graphical.ui.NpcDialogueOverlay;
+import views.graphical.ui.CenterGameNotice;
 import views.graphical.ui.GameOverPopup;
 import views.graphical.ui.GameWinPopup;
 import views.graphical.ui.PauseMenuPopup;
@@ -90,11 +95,19 @@ public class GameScreen extends BaseScreen {
     private final float worldHeight = 600f;
     private static final float FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET = -10f;
     private enum IntroState {
-        WAIT_AT_MAIN, PAN_TO_ZOMBIES, WAIT_AT_ZOMBIES, PAN_TO_SELECTION, SHOW_PLANT_SELECT, WAITING_FOR_SELECTION, PAN_BACK_TO_MAIN, PLAYING
+        WAIT_AT_MAIN,
+        PAN_TO_ZOMBIES,
+        WAIT_AT_ZOMBIES,
+        PAN_TO_SELECTION,
+        SHOW_PLANT_SELECT,
+        WAITING_FOR_SELECTION,
+        PAN_BACK_TO_MAIN,
+        START_COUNTDOWN,
+        PLAYING
     }
 
     private enum OverlayMode {
-        NONE, START_OBJECTIVES, PAUSE, GAME_END
+        NONE, NPC_DIALOGUE, START_OBJECTIVES, PAUSE, GAME_END
     }
 
     private enum ToolMode {
@@ -116,7 +129,17 @@ public class GameScreen extends BaseScreen {
     private float cameraGameplayX;
 
     private GameHud gameHud;
+    private CenterGameNotice startCountdownNotice;
+    private CenterGameNotice waveNotice;
+    private int lastWaveNoticeNumber;
+    private boolean firstWaveCoveredByCountdown = true;
 
+    private static final float NOTICE_DURATION = 1f;
+    private static final List<String> START_COUNTDOWN_MESSAGES =
+        List.of("ready?", "1", "2", "3");
+    private static final String HUGE_WAVE_NOTICE =
+        "A HUGE WAVE OF ZOMBIES IS APPROACHING!";
+    private static final String FINAL_WAVE_NOTICE = "FINAL WAVE";
 
     private final ShapeRenderer shapeRenderer;
 
@@ -412,6 +435,51 @@ public class GameScreen extends BaseScreen {
     @Override
     public void show() {
         game.hideHud();
+        showLevelIntro();
+    }
+
+    private void showLevelIntro() {
+        NpcDialogueSequence dialogue = LevelDialogueRegistry.find(
+                theme,
+                currentLevel.levelNumber()
+        );
+
+        if (dialogue == null) {
+            showStartObjectives();
+            return;
+        }
+
+        showNpcDialogue(dialogue);
+    }
+
+    private void showNpcDialogue(NpcDialogueSequence dialogue) {
+        if (overlayMode != OverlayMode.NONE) {
+            return;
+        }
+
+        overlayMode = OverlayMode.NPC_DIALOGUE;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
+
+        NpcDialogueOverlay npcDialogueOverlay = new NpcDialogueOverlay(
+                game,
+                dialogue,
+                this::finishNpcDialogue
+        );
+        uiStage.addActor(npcDialogueOverlay);
+        uiStage.setKeyboardFocus(npcDialogueOverlay);
+        npcDialogueOverlay.toFront();
+    }
+
+    private void finishNpcDialogue() {
+        if (overlayMode != OverlayMode.NPC_DIALOGUE) {
+            return;
+        }
+
+        uiStage.setKeyboardFocus(null);
+        overlayMode = OverlayMode.NONE;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
         showStartObjectives();
     }
 
@@ -429,7 +497,8 @@ public class GameScreen extends BaseScreen {
         }
 
         if (introState == IntroState.PLAYING
-            || introState == IntroState.WAITING_FOR_SELECTION) {
+            || introState == IntroState.WAITING_FOR_SELECTION
+            || introState == IntroState.START_COUNTDOWN) {
             return;
         }
 
@@ -474,7 +543,12 @@ public class GameScreen extends BaseScreen {
             case SHOW_PLANT_SELECT:
 
 
-                PlantSelectionMenuTable plantSelection = new PlantSelectionMenuTable(game, plantSlotsBar, this::startGameAfterSelection);
+                PlantSelectionMenuTable plantSelection =
+                    new PlantSelectionMenuTable(
+                        game,
+                        plantSlotsBar,
+                        this::startGameAfterSelection
+                    );
                 uiStage.addActor(plantSelection);
                 introState = IntroState.WAITING_FOR_SELECTION;
                 break;
@@ -484,15 +558,129 @@ public class GameScreen extends BaseScreen {
                 camera.position.x = Interpolation.smooth.apply(cameraSelectionX, cameraGameplayX, progressLeft);
                 if (progressLeft >= 1f) {
                     camera.position.x = cameraGameplayX;
-                    introState = IntroState.PLAYING;
+                    introState = IntroState.START_COUNTDOWN;
+                    stateTime = 0f;
                     if (gameHud != null) {
                         gameHud.showGameHud();
                     }
+                    showStartCountdown();
                 }
                 break;
         }
 
         camera.update();
+    }
+
+    private void showStartCountdown() {
+        if (startCountdownNotice != null) {
+            startCountdownNotice.remove();
+        }
+
+        startCountdownNotice =
+            new CenterGameNotice(
+                game.getSkin(),
+                true
+            );
+
+        uiStage.addActor(startCountdownNotice);
+        startCountdownNotice.showSequence(
+            START_COUNTDOWN_MESSAGES,
+            NOTICE_DURATION,
+            this::finishStartCountdown
+        );
+    }
+
+    private void finishStartCountdown() {
+        if (introState != IntroState.START_COUNTDOWN) {
+            return;
+        }
+
+        startCountdownNotice = null;
+        gameTickAccumulator = 0f;
+        resetRenderTickInterpolation();
+        lastWaveNoticeNumber = 0;
+        firstWaveCoveredByCountdown = isFirstWaveReadyToAutoStart();
+        introState = IntroState.PLAYING;
+    }
+
+    private boolean isFirstWaveReadyToAutoStart() {
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return true;
+        }
+
+        ZombieWaveManager waveManager =
+            currentGame.getGameState().getZombieWaveManager();
+        return waveManager == null
+            || (waveManager.isStarted()
+            && waveManager.getFirstWaveDelayTicks() <= 0);
+    }
+
+    private void updateWaveNotice() {
+        if (introState != IntroState.PLAYING) {
+            return;
+        }
+
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return;
+        }
+
+        ZombieWaveManager waveManager =
+            currentGame.getGameState().getZombieWaveManager();
+        if (waveManager == null) {
+            return;
+        }
+
+        int waveNumber = waveManager.getCurrentWaveNumber();
+        if (waveNumber <= 0 || waveNumber <= lastWaveNoticeNumber) {
+            return;
+        }
+
+        lastWaveNoticeNumber = waveNumber;
+
+        if (waveNumber == 1 && firstWaveCoveredByCountdown) {
+            return;
+        }
+
+        if (!waveManager.isEndless()
+            && waveNumber == waveManager.getTotalWaves()) {
+            showWaveNotice(
+                List.of(
+                    HUGE_WAVE_NOTICE,
+                    FINAL_WAVE_NOTICE
+                )
+            );
+            return;
+        }
+
+        showWaveNotice(
+            List.of("Wave " + waveNumber)
+        );
+    }
+
+    private void showWaveNotice(List<String> messages) {
+        if (waveNotice != null) {
+            waveNotice.remove();
+        }
+
+        CenterGameNotice notice =
+            new CenterGameNotice(
+                game.getSkin(),
+                false
+            );
+
+        waveNotice = notice;
+        uiStage.addActor(notice);
+        notice.showSequence(
+            messages,
+            NOTICE_DURATION,
+            () -> {
+                if (waveNotice == notice) {
+                    waveNotice = null;
+                }
+            }
+        );
     }
 
     public void startGameAfterSelection() {
@@ -1096,6 +1284,7 @@ public class GameScreen extends BaseScreen {
         updateCutscene(delta);
         updateGameplayTicks(delta);
         updateRenderTickInterpolation(delta);
+        updateWaveNotice();
         checkGameEnd();
 
         float gameplayDelta = scaledGameplayDelta(delta);
