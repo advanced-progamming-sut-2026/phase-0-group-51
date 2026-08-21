@@ -76,7 +76,7 @@ public final class ZombieAnimationSystem {
     private static final float POSITION_EPSILON = 0.0001f;
 
     private static final float DANGER_DISTANCE = 2.0f;
-    private static final float MAX_DANGER_RED = 0.35f;
+    private static final float MAX_DANGER_RED = 0.5f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
 
     private static final String DARK_KNIGHT_CROWN_ARMOR =
@@ -1221,9 +1221,14 @@ public final class ZombieAnimationSystem {
 
         if (gameState != null && gameState.hasDeadline()) {
 
+            float deadlineX =
+                gameState.getDeadlineColumn() - 1f;
+
             dangerDistance =
-                (gameState.getDeadlineColumn() - 1)
-                    - zombie.getX();
+                Math.abs(
+                    zombie.getX()
+                        - deadlineX
+                );
 
         } else if (gameState != null
             && gameState.isSaveOurSeedsActive()) {
