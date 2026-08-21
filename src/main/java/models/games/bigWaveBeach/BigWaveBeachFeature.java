@@ -4,6 +4,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.Plant.Plant;
 import models.Plant.PlantTag;
+import models.effects.GameplayNoticeEvent;
 import models.games.GameState;
 import models.games.ZombieWaveManager;
 
@@ -128,8 +129,20 @@ public class BigWaveBeachFeature {
         }
         Collections.shuffle(available, random);
         int spawnCount = Math.min(1 + random.nextInt(2), available.size());
+
+        state.emitGameplayNotice(
+            GameplayNoticeEvent.lowTideZombies()
+        );
+
+        int noticeLeadTicks =
+            state.getTicksPerSecond();
+
         for (int i = 0; i < spawnCount; i++) {
-            waveManager.spawnZombieFromBackwater(available.get(i), waveNumber);
+            waveManager.scheduleZombieFromBackwater(
+                available.get(i),
+                waveNumber,
+                noticeLeadTicks
+            );
         }
     }
 }

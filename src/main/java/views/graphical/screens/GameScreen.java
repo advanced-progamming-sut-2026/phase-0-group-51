@@ -29,6 +29,7 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.effects.GameplayNoticeEvent;
 import models.effects.VisualEffectEvent;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
@@ -72,7 +73,9 @@ import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.List;
 
 public class GameScreen extends BaseScreen {
@@ -131,6 +134,8 @@ public class GameScreen extends BaseScreen {
     private GameHud gameHud;
     private CenterGameNotice startCountdownNotice;
     private CenterGameNotice waveNotice;
+    private final Deque<List<String>> gameplayNoticeQueue =
+        new ArrayDeque<>();
     private int lastWaveNoticeNumber;
     private boolean firstWaveCoveredByCountdown = true;
 
@@ -140,6 +145,9 @@ public class GameScreen extends BaseScreen {
     private static final String HUGE_WAVE_NOTICE =
         "A HUGE WAVE OF ZOMBIES IS APPROACHING!";
     private static final String FINAL_WAVE_NOTICE = "FINAL WAVE";
+    private static final String NECROMANCY_NOTICE = "NECROMANCY!";
+    private static final String LOW_TIDE_NOTICE =
+        "ZOMBIES ARE RISING FROM THE TIDE!";
 
     private final ShapeRenderer shapeRenderer;
 
@@ -616,6 +624,34 @@ public class GameScreen extends BaseScreen {
             && waveManager.getFirstWaveDelayTicks() <= 0);
     }
 
+    private void processGameplayNotices() {
+        Game currentGame =
+            App.getInstance().getCurrentGame();
+
+        if (currentGame == null
+            || currentGame.getGameState() == null) {
+            return;
+        }
+
+        for (
+            GameplayNoticeEvent event :
+            currentGame
+                .getGameState()
+                .consumeGameplayNotices()
+        ) {
+            switch (event.type()) {
+                case NECROMANCY ->
+                    showWaveNotice(
+                        List.of(NECROMANCY_NOTICE)
+                    );
+                case LOW_TIDE_ZOMBIES ->
+                    showWaveNotice(
+                        List.of(LOW_TIDE_NOTICE)
+                    );
+            }
+        }
+    }
+
     private void updateWaveNotice() {
         if (introState != IntroState.PLAYING) {
             return;
@@ -660,8 +696,21 @@ public class GameScreen extends BaseScreen {
     }
 
     private void showWaveNotice(List<String> messages) {
-        if (waveNotice != null) {
-            waveNotice.remove();
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+
+        gameplayNoticeQueue.addLast(
+            List.copyOf(messages)
+        );
+
+        showNextGameplayNotice();
+    }
+
+    private void showNextGameplayNotice() {
+        if (waveNotice != null
+            || gameplayNoticeQueue.isEmpty()) {
+            return;
         }
 
         CenterGameNotice notice =
@@ -672,12 +721,14 @@ public class GameScreen extends BaseScreen {
 
         waveNotice = notice;
         uiStage.addActor(notice);
+
         notice.showSequence(
-            messages,
+            gameplayNoticeQueue.removeFirst(),
             NOTICE_DURATION,
             () -> {
                 if (waveNotice == notice) {
                     waveNotice = null;
+                    showNextGameplayNotice();
                 }
             }
         );
@@ -1283,6 +1334,7 @@ public class GameScreen extends BaseScreen {
         handlePauseShortcut();
         updateCutscene(delta);
         updateGameplayTicks(delta);
+        processGameplayNotices();
         updateRenderTickInterpolation(delta);
         updateWaveNotice();
         checkGameEnd();
@@ -1386,13 +1438,7 @@ public class GameScreen extends BaseScreen {
                     .getGameState()
                     .getZombiesInTheGame();
 
-            /*
-             * Before gameplay starts, the model already contains the initial
-             * frozen zombies, but ZombieAnimationSystem normally does not run
-             * until PLAYING. Run it with delta=0 so their real actors are
-             * created at the exact gameplay position/scale. We then hide the
-             * zombie itself and keep only the ice block visible.
-             */
+
             if (introState != IntroState.PLAYING) {
                 zombieAnimationSystem.update(
                     0f,

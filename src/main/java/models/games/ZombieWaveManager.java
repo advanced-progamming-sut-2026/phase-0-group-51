@@ -61,6 +61,9 @@ public class ZombieWaveManager {
     private final Deque<PendingZombieSpawn> pendingSpawns =
         new ArrayDeque<>();
 
+    private final Deque<PendingSpecialSpawn> pendingSpecialSpawns =
+        new ArrayDeque<>();
+
     private Wave currentWave = null;
 
     private float currentDifficulty = 0f;
@@ -210,6 +213,8 @@ public class ZombieWaveManager {
             return;
         }
 
+        tickPendingSpecialSpawns();
+
         if (!pendingSpawns.isEmpty()) {
             tickPendingSpawns();
             return;
@@ -250,7 +255,8 @@ public class ZombieWaveManager {
             return false;
         }
 
-        if (!pendingSpawns.isEmpty()) {
+        if (!pendingSpawns.isEmpty()
+            || !pendingSpecialSpawns.isEmpty()) {
             return false;
         }
 
@@ -660,6 +666,86 @@ public class ZombieWaveManager {
         );
     }
 
+    public void scheduleZombieFromGrave(
+        Tile graveTile,
+        int waveNumber,
+        int delayTicks
+    ) {
+        scheduleSpecialSpawn(
+            SpecialSpawnSource.GRAVE,
+            graveTile,
+            waveNumber,
+            delayTicks
+        );
+    }
+
+    public void scheduleZombieFromBackwater(
+        Tile shoreTile,
+        int waveNumber,
+        int delayTicks
+    ) {
+        scheduleSpecialSpawn(
+            SpecialSpawnSource.BACKWATER,
+            shoreTile,
+            waveNumber,
+            delayTicks
+        );
+    }
+
+    private void scheduleSpecialSpawn(
+        SpecialSpawnSource source,
+        Tile tile,
+        int waveNumber,
+        int delayTicks
+    ) {
+        if (tile == null) {
+            return;
+        }
+
+        pendingSpecialSpawns.addLast(
+            new PendingSpecialSpawn(
+                source,
+                tile,
+                waveNumber,
+                Math.max(1, delayTicks)
+            )
+        );
+    }
+
+    private void tickPendingSpecialSpawns() {
+        int pendingCount =
+            pendingSpecialSpawns.size();
+
+        for (int i = 0; i < pendingCount; i++) {
+            PendingSpecialSpawn pending =
+                pendingSpecialSpawns.removeFirst();
+
+            if (pending.ticksRemaining() > 1) {
+                pendingSpecialSpawns.addLast(
+                    new PendingSpecialSpawn(
+                        pending.source(),
+                        pending.tile(),
+                        pending.waveNumber(),
+                        pending.ticksRemaining() - 1
+                    )
+                );
+                continue;
+            }
+
+            if (pending.source() == SpecialSpawnSource.GRAVE) {
+                spawnZombieFromGrave(
+                    pending.tile(),
+                    pending.waveNumber()
+                );
+            } else {
+                spawnZombieFromBackwater(
+                    pending.tile(),
+                    pending.waveNumber()
+                );
+            }
+        }
+    }
+
     public Zombie spawnZombieFromGrave(
         Tile graveTile,
         int waveNumber
@@ -795,6 +881,19 @@ public class ZombieWaveManager {
         );
 
         return zombie;
+    }
+
+    private enum SpecialSpawnSource {
+        GRAVE,
+        BACKWATER
+    }
+
+    private record PendingSpecialSpawn(
+        SpecialSpawnSource source,
+        Tile tile,
+        int waveNumber,
+        int ticksRemaining
+    ) {
     }
 
     private record PendingZombieSpawn(
