@@ -16,6 +16,7 @@ import models.Plant.PlantTag;
 import models.User;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
+import models.effects.GameplayNoticeEvent;
 import models.games.ancientEgypt.ConveyorBeltLevel;
 import models.games.ancientEgypt.Grave;
 import models.games.bigWaveBeach.BigWaveBeachFeature;
@@ -478,8 +479,20 @@ public class Game{
         }
         Collections.shuffle(graveTiles, random);
         int zombieCount = Math.min(1 + random.nextInt(3), graveTiles.size());
+
+        gameState.emitGameplayNotice(
+            GameplayNoticeEvent.necromancy()
+        );
+
+        int noticeLeadTicks =
+            gameState.getTicksPerSecond();
+
         for (int i = 0; i < zombieCount; i++) {
-            waveManager.spawnZombieFromGrave(graveTiles.get(i), waveNumber);
+            waveManager.scheduleZombieFromGrave(
+                graveTiles.get(i),
+                waveNumber,
+                noticeLeadTicks
+            );
         }
     }
     private void applyFrostbiteFeatures(

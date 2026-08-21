@@ -14,6 +14,7 @@ import models.Board.Board;
 import models.Board.Tile;
 import models.games.specialLevelConfig.TimedBattleConfig;
 import models.items.Mower;
+import models.effects.GameplayNoticeEvent;
 import models.effects.VisualEffectEvent;
 import models.quests.QuestKillSourceType;
 import models.quests.QuestRunTracker;
@@ -66,6 +67,7 @@ public class GameState {
     private int plantLossLimit = -1;
     private boolean plantLossLimitReached;
     private final List<VisualEffectEvent> pendingVisualEffects = new ArrayList<>();
+    private final List<GameplayNoticeEvent> pendingGameplayNotices = new ArrayList<>();
     public void logEvent(String message) {
         if (eventLogger != null) {
             eventLogger.accept(message);
@@ -89,6 +91,24 @@ public class GameState {
         pendingVisualEffects.clear();
         return events;
     }
+    public void emitGameplayNotice(GameplayNoticeEvent event) {
+        if (event != null) {
+            pendingGameplayNotices.add(event);
+        }
+    }
+
+    public List<GameplayNoticeEvent> consumeGameplayNotices() {
+        if (pendingGameplayNotices.isEmpty()) {
+            return List.of();
+        }
+
+        List<GameplayNoticeEvent> events =
+            List.copyOf(pendingGameplayNotices);
+
+        pendingGameplayNotices.clear();
+        return events;
+    }
+
     public GameState(Board board, ChapterTheme chapterTheme) {
         this(board, chapterTheme, true);
     }

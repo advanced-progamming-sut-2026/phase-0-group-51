@@ -1,13 +1,18 @@
 package views.graphical.screens.minigamesScreen.iZombie;
 
+import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import controllers.miniGamesController.IZombieController;
 import graphics.PvzGame;
 import models.App;
@@ -20,6 +25,7 @@ import models.minigames.MinigameType;
 import models.minigames.iZombie.IZombie;
 import models.minigames.vaseBreaker.Brain;
 import models.sun.Sun;
+import views.graphical.animation.PamAnimationActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
@@ -53,6 +59,17 @@ public class IZombieScreen extends BaseMinigameScreen {
     private final ShapeRenderer shapeRenderer;
     private IZombieBar zombieBar;
     private String selectedZombieAlias;
+
+
+    private Image rowHighlight;
+    private Image columnHighlight;
+
+
+    private PamAnimationActor zombiePlacementPreview;
+    private final Vector2 placementCursorPosition = new Vector2();
+
+    private static final float ZOMBIE_PREVIEW_ALPHA = 0.58f;
+
     private final ZombieAnimationSystem zombieAnimationSystem;
     private static final float BRAIN_CROSS_REMOVE_DELAY = 2f;
     private final Map<Zombie, Float> brainCrossTimers =
@@ -83,7 +100,11 @@ public class IZombieScreen extends BaseMinigameScreen {
 
     private SunViewManager sunViewManager;
     private void buildZombieBar() {
-        zombieBar = new IZombieBar(game, iZombie, alias -> selectedZombieAlias = alias);
+        zombieBar = new IZombieBar(
+                game,
+                iZombie,
+                this::handleZombieSelectionChanged
+        );
         float gapFromBrain = 12f;
         float x = boardArea.x() - zombieBar.getWidth() - gapFromBrain;
         float y = boardArea.y() + (boardArea.height() - zombieBar.getHeight()) / 2f;
@@ -96,6 +117,12 @@ public class IZombieScreen extends BaseMinigameScreen {
         Board board = iZombie.getGameState().getBoard();
         boardView = new BoardView(board, boardTransform);
         boardView.setOnTileClicked(this::handleTileClicked);
+        boardView.setOnTileHovered(this::handleTileHover);
+
+
+        createPlacementHighlights();
+        worldStage.addActor(rowHighlight);
+        worldStage.addActor(columnHighlight);
         worldStage.addActor(boardView);
         buildBrains();
         plantViewManager = new PlantViewManager(game, boardTransform);
@@ -144,6 +171,174 @@ public class IZombieScreen extends BaseMinigameScreen {
         super.render(delta);
     }
 
+    private void handleZombieSelectionChanged(String alias) {
+        selectedZombieAlias = alias;
+
+        if (alias == null || alias.isBlank()) {
+            clearZombiePlacementPreview();
+            hidePlacementHighlights();
+            return;
+        }
+
+        showZombiePlacementPreview(alias);
+    }
+
+    private void showZombiePlacementPreview(String alias) {
+        clearZombiePlacementPreview();
+
+        String pamPath = ZombieAnimationSystem.resolvePamPath(
+                ChapterTheme.MINIGAME,
+                alias
+        );
+
+        String idleClip = ZombieRegistry.getIdleClip(alias);
+
+        if (pamPath == null || pamPath.isBlank()
+                || idleClip == null || idleClip.isBlank()) {
+            return;
+        }
+
+        try {
+            game.getPamPlayer().loadSync(pamPath);
+
+            zombiePlacementPreview = game.createPamActor(
+                    pamPath,
+                    idleClip,
+                    0f,
+                    0f,
+                    true,
+                    ZombieAnimationSystem.resolveVisibleParts(
+                            game.getPamPlayer(),
+                            pamPath,
+                            alias
+                    )
+            );
+
+            zombiePlacementPreview.setTouchable(
+                    Touchable.disabled
+            );
+
+            zombiePlacementPreview.setScale(
+                    ZombieAnimationSystem.DEFAULT_SCALE,
+                    ZombieAnimationSystem.DEFAULT_SCALE
+            );
+
+
+            zombiePlacementPreview.setColor(
+                    1f,
+                    1f,
+                    1f,
+                    ZOMBIE_PREVIEW_ALPHA
+            );
+
+            worldStage.addActor(
+                    zombiePlacementPreview
+            );
+
+            updateZombiePlacementPreviewPosition();
+            zombiePlacementPreview.toFront();
+
+        } catch (RuntimeException e) {
+            clearZombiePlacementPreview();
+
+            Gdx.app.error(
+                    "IZombiePlacement",
+                    "Failed to create placement preview for " + alias,
+                    e
+            );
+        }
+    }
+
+    private void updateZombiePlacementPreviewPosition() {
+        if (zombiePlacementPreview == null
+                || selectedZombieAlias == null
+                || !isPlaying()
+                || isPaused()) {
+            return;
+        }
+
+        placementCursorPosition.set(
+                Gdx.input.getX(),
+                Gdx.input.getY()
+        );
+
+        worldStage.screenToStageCoordinates(
+                placementCursorPosition
+        );
+
+        zombiePlacementPreview.setPosition(
+                placementCursorPosition.x,
+                placementCursorPosition.y
+        );
+    }
+
+    private void clearZombiePlacementPreview() {
+        if (zombiePlacementPreview == null) {
+            return;
+        }
+
+        zombiePlacementPreview.remove();
+        zombiePlacementPreview = null;
+    }
+
+    private void createPlacementHighlights() {
+        Drawable highlightDrawable = game.getSkin().newDrawable(
+                "white_pixel",
+                new Color(1f, 1f, 1f, 0.70f)
+        );
+
+        rowHighlight = new Image(highlightDrawable);
+        columnHighlight = new Image(highlightDrawable);
+
+        rowHighlight.setTouchable(Touchable.disabled);
+        columnHighlight.setTouchable(Touchable.disabled);
+
+        rowHighlight.setVisible(false);
+        columnHighlight.setVisible(false);
+    }
+
+    private void handleTileHover(Tile tile) {
+        boolean hasZombieSelection =
+                selectedZombieAlias != null;
+
+        if (tile == null
+                || !hasZombieSelection
+                || !isPlaying()
+                || isPaused()) {
+            hidePlacementHighlights();
+            return;
+        }
+
+        BoardArea area = boardTransform.getArea();
+
+        rowHighlight.setBounds(
+                area.x(),
+                boardTransform.tileY(tile.getLane()),
+                area.width(),
+                boardTransform.tileHeight()
+        );
+
+        columnHighlight.setBounds(
+                boardTransform.tileX(tile.getColumn()),
+                area.y(),
+                boardTransform.tileWidth(),
+                area.height()
+        );
+
+        rowHighlight.setVisible(true);
+        columnHighlight.setVisible(true);
+    }
+
+    private void hidePlacementHighlights() {
+        if (rowHighlight != null) {
+            rowHighlight.setVisible(false);
+        }
+
+        if (columnHighlight != null) {
+            columnHighlight.setVisible(false);
+        }
+    }
+
     private void handleTileClicked(Tile tile) {
         if (!isPlaying() || isPaused()) {
             return;
@@ -161,7 +356,9 @@ public class IZombieScreen extends BaseMinigameScreen {
             return;
         }
         game.notifyInfo(result.message());
+        zombieBar.clearSelection();
         zombieBar.refresh();
+        hidePlacementHighlights();
     }
 
     private void syncViews() {
@@ -235,6 +432,12 @@ public class IZombieScreen extends BaseMinigameScreen {
                     iZombie.getGameState().getTickCounter(),
                     renderableZombies
             );
+
+            updateZombiePlacementPreviewPosition();
+
+            if (zombiePlacementPreview != null) {
+                zombiePlacementPreview.toFront();
+            }
         }
 
         float redLineX = boardTransform.tileX(IZombie.RED_LINE_COLUMN);
@@ -361,6 +564,7 @@ public class IZombieScreen extends BaseMinigameScreen {
 
     @Override
     public void dispose() {
+        clearZombiePlacementPreview();
         shapeRenderer.dispose();
         super.dispose();
     }

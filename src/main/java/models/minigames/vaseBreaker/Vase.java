@@ -1,6 +1,7 @@
 package models.minigames.vaseBreaker;
 import lombok.Getter;
 import lombok.Setter;
+import views.graphical.gameplay.manager.AudioManager;
 
 import java.util.Objects;
 
@@ -77,7 +78,9 @@ public class Vase {
             return false;
         }
         broken = true;
+        AudioManager.getInstance().playSfx("assets/sounds/vase-breaking.mp3");
         return true;
+
     }
 
 }

@@ -26,6 +26,7 @@ import lombok.Setter;
 import models.App;
 import models.Result;
 import models.User;
+import models.Zombie.Zombie;
 import models.games.Game;
 import models.games.GameState;
 import models.games.ZombieWaveManager;
@@ -152,11 +153,11 @@ public class GameHud extends Table {
     private static final float WAVE_BAR_WIDTH = 260f;
     private static final float WAVE_BAR_HEIGHT = 36f;
 
-    private static final float TRACK_LEFT = 12f;
-    private static final float TRACK_RIGHT = 242f;
+    private static final float TRACK_LEFT = 20f;
+    private static final float TRACK_RIGHT = 250f;
 
-    private static final float WAVE_FILL_Y = 11f;
-    private static final float WAVE_FILL_HEIGHT = 10f;
+    private static final float WAVE_FILL_Y = 8f;
+    private static final float WAVE_FILL_HEIGHT = 20f;
 
 
     private static final float FLAG_WIDTH = 27f;
@@ -1597,19 +1598,23 @@ public class GameHud extends Table {
         if (total <= 0) {
             return;
         }
-        int completed =
-            waveManager.isLevelCleared()
-                ? total
-                : MathUtils.clamp(
-                current - 1,
-                0,
+        int completed = waveManager.isLevelCleared() ? total : MathUtils.clamp(current - 1, 0, total);
+        updateWaveFlags(
+                completed,
                 total
-            );
+        );
+        float progress;
 
-        updateWaveFlags(completed, total);
+        if (waveManager.isLevelCleared()) {
+            progress = 1f;
+        } else if (current <= 0) {
+            progress = 0f;
+        } else {
+            float currentWaveProgress =
+                    waveManager.getCurrentWaveProgress();
 
-        float progress =
-            completed / (float) total;
+            progress = (completed + currentWaveProgress) / (float) total;
+        }
 
         updateWaveFill(progress);
     }

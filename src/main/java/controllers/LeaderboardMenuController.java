@@ -21,10 +21,24 @@ public class LeaderboardMenuController {
     public Result showLeaderboard(String column, boolean ascending) {
         List<LeaderBoard> entries;
         try {
-            entries = new ArrayList<>(repository.getAllEntries());
-        } catch (IllegalStateException exception) {
+            entries = loadLeaderboardEntries(column, ascending);
+        } catch (IllegalStateException | IllegalArgumentException exception) {
             return failure(exception.getMessage() + "\n");
         }
+
+        return success(formatLeaderboard(entries, column, ascending));
+    }
+
+    public List<LeaderBoard> loadLeaderboardEntries() {
+        return loadLeaderboardEntries("progress", false);
+    }
+
+    public List<LeaderBoard> loadLeaderboardEntries(
+            String column,
+            boolean ascending
+    ) {
+        List<LeaderBoard> entries =
+                new ArrayList<>(repository.getAllEntries());
 
         Comparator<LeaderBoard> comparator = comparatorFor(column);
         if (!ascending) {
@@ -35,8 +49,7 @@ public class LeaderboardMenuController {
                 String.CASE_INSENSITIVE_ORDER
         );
         entries.sort(comparator);
-
-        return success(formatLeaderboard(entries, column, ascending));
+        return entries;
     }
 
     public Result showCurrentMenu() {
