@@ -859,15 +859,6 @@ public final class ZombieAnimationSystem {
         }
     }
 
-
-    /**
-     * Synchronizes the visual armor layer with the real ArmorBehavior HP.
-     *
-     * <p>This intentionally does not touch ArmorBehavior damage logic. The armor
-     * definition already contains the exact PAM layer names loaded from
-     * ArmorTypeData.json (norm, damage_01, damage_02). We only update the
-     * PamAnimationActor visibility map.</p>
-     */
     private void syncNormalArmorVisual(
         Zombie zombie,
         ZombieVisual visual
@@ -990,9 +981,6 @@ public final class ZombieAnimationSystem {
             }
             return;
         }
-
-        // Explicit false is important in libPVZ: it skips that part/subtree.
-        // This guarantees that the previous norm/damage state cannot remain visible.
         for (String layer : layers) {
             if (layer != null && !layer.isBlank()) {
                 visibility.put(layer, false);
@@ -1029,8 +1017,6 @@ public final class ZombieAnimationSystem {
             findPartPath(root, targetLayer);
 
         if (!path.isEmpty()) {
-            // libPVZ ignores hidden children when any flagged parent is not enabled.
-            // Enable every named parent on the real PAM path, then enable the target.
             for (PamPlayer.AnimationPart part : path) {
                 if (part.name != null && !part.name.isBlank()) {
                     visibility.put(part.name, true);
