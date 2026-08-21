@@ -300,7 +300,8 @@ public class GameScreen extends BaseScreen {
                 game.getPamPlayer(),
                 worldStage,
                 boardTransform,
-                zombieAnimationSystem
+                zombieAnimationSystem,
+                game
             );
 
         frozenZombieIceAnimationSystem =
@@ -460,8 +461,8 @@ public class GameScreen extends BaseScreen {
 
     private void showLevelIntro() {
         NpcDialogueSequence dialogue = LevelDialogueRegistry.find(
-                theme,
-                currentLevel.levelNumber()
+            theme,
+            currentLevel.levelNumber()
         );
 
         if (dialogue == null) {
@@ -482,9 +483,9 @@ public class GameScreen extends BaseScreen {
         resetRenderTickInterpolation();
 
         NpcDialogueOverlay npcDialogueOverlay = new NpcDialogueOverlay(
-                game,
-                dialogue,
-                this::finishNpcDialogue
+            game,
+            dialogue,
+            this::finishNpcDialogue
         );
         uiStage.addActor(npcDialogueOverlay);
         uiStage.setKeyboardFocus(npcDialogueOverlay);
@@ -1856,8 +1857,8 @@ public class GameScreen extends BaseScreen {
 
         if (currentGame != null
             && currentGame.getGameState() != null) {
-            DroppedLoot plantFoodLoot =
-                findPlantFoodLootAt(
+            DroppedLoot loot =
+                findLootAt(
                     currentGame
                         .getGameState()
                         .getBoard(),
@@ -1865,11 +1866,28 @@ public class GameScreen extends BaseScreen {
                     tile.getColumn()
                 );
 
-            if (plantFoodLoot != null) {
-                collectPlantFoodPickup(
-                    currentGame.getGameState(),
-                    plantFoodLoot
+            if (loot != null) {
+
+                System.out.println(
+                    "CLICKED LOOT = "
+                        + loot.getType()
+                        + " x="
+                        + loot.getX()
+                        + " column="
+                        + loot.getColumn()
+                        + " lane="
+                        + loot.getLane()
                 );
+
+                Result result =
+                    gamingController.collectLoot(
+                        loot
+                    );
+
+                if (!result.success()) {
+                    game.notifyError(result.message());
+                }
+
                 return;
             }
         }
@@ -1916,7 +1934,7 @@ public class GameScreen extends BaseScreen {
         plantSlotsBar.clearPlantSelection();
     }
 
-    private DroppedLoot findPlantFoodLootAt(
+    private DroppedLoot findLootAt(
         Board board,
         int lane,
         int column
@@ -1927,58 +1945,29 @@ public class GameScreen extends BaseScreen {
 
         for (DroppedLoot loot : board.getActiveLoots()) {
 
-            if (loot == null
-                || loot.getType() != LootType.PLANT_FOOD) {
+            if (loot == null) {
                 continue;
             }
 
-            int lootColumn =
-                (int) Math.floor(
-                    loot.getX()
-                );
+            if (loot.getType() == LootType.POT) {
 
-            if (lootColumn == column
-                && loot.getLane() == lane) {
+                if (Math.abs(loot.getColumn() - column) <= 3
+                    && Math.abs(loot.getLane() - lane) <= 2) {
 
-                return loot;
+                    return loot;
+                }
+
+            } else {
+
+                if (loot.getLane() == lane
+                    && loot.getColumn() == column) {
+
+                    return loot;
+                }
             }
         }
 
         return null;
-    }
-
-    private void collectPlantFoodPickup(
-        GameState state,
-        DroppedLoot loot
-    ) {
-        if (state == null
-            || loot == null
-            || !loot.isActive()) {
-            return;
-        }
-
-        /*
-         * Add first so a full Plant Food bank leaves the pickup on the ground.
-         * If the Board collection unexpectedly fails, roll the added Plant Food
-         * back immediately.
-         */
-        if (!state.addPlantFood()) {
-            game.notifyError(
-                "Your Plant Food storage is full."
-            );
-            return;
-        }
-
-        if (!state.getBoard()
-            .collectLoot(
-                loot
-            )) {
-            state.consumePlantFood();
-
-            game.notifyError(
-                "Plant Food could not be collected."
-            );
-        }
     }
 
     private void drawDebugGrid() {
