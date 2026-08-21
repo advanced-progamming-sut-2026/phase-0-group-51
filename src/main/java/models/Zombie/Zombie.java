@@ -237,7 +237,14 @@ public class Zombie {
 
 
     public void onTick(GameState gs) {
-        if (dead || hasIceShell()) return;
+        if (dead) {
+            return;
+        }
+
+        if (hasIceShell()) {
+            eating = false;
+            return;
+        }
 
         tickEffects();
         tickPoison(gs);
@@ -401,7 +408,7 @@ public class Zombie {
 
 
 
-    private static final double LOOT_DROP_CHANCE = 0.10;
+    private static final double LOOT_DROP_CHANCE = 0.1f;
     private void die(GameState gs, QuestKillSourceType sourceType, Plant sourcePlant) {
         die(gs, sourceType, sourcePlant, true);
     }
@@ -427,9 +434,29 @@ public class Zombie {
         gs.logEvent("Zombie of type " + alias + " is dead at ("
             + String.format(java.util.Locale.US, "%.2f", x + 1)
             + ", " + (lane + 1) + ")\n");
-        if (glowing && gs.addPlantFood()) {
-            gs.logEvent("The glowing zombie dropped a plant food; you have "
-                + gs.getPlantFoodCount() + " plant foods now.\n");
+        if (glowing) {
+            float lootX =
+                Math.max(
+                    0.0f,
+                    Math.min(
+                        x,
+                        gs.getBoard().getColumnCount() - 0.01f
+                    )
+                );
+
+            DroppedLoot loot =
+                new DroppedLoot(
+                    LootType.PLANT_FOOD,
+                    lootX,
+                    lane,
+                    gs.getTicksPerSecond()
+                );
+
+            gs.getBoard().spawnLoot(loot);
+
+            gs.logEvent(
+                "The glowing zombie dropped a plant food pickup.\n"
+            );
         }
         if (allowLoot && Math.random() < LOOT_DROP_CHANCE) {
             dropLoot(gs);

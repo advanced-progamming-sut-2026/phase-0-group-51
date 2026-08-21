@@ -37,6 +37,8 @@ import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
 import models.games.Level;
+import models.enums.LootType;
+import models.items.DroppedLoot;
 import models.games.ZombieWaveManager;
 import models.sun.Sun;
 
@@ -59,6 +61,7 @@ import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
+import views.graphical.gameplay.loot.LootAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.dialogue.LevelDialogueRegistry;
@@ -125,6 +128,8 @@ public class GameScreen extends BaseScreen {
 
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
+    private float zombieSpawnDelay = 4f;
+    private boolean waitingBeforeZombieSpawn = false;
 
     private float cameraMainX;
     private float cameraRightX;
@@ -155,6 +160,7 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
+    private final LootAnimationSystem lootAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
     private final IceFloorAnimationSystem iceFloorAnimationSystem;
@@ -288,8 +294,19 @@ public class GameScreen extends BaseScreen {
             game.getPamPlayer(),
             worldStage,
             boardTransform,
-            theme
+            theme,
+            0.61f,
+            currentGame.getGameState()
         );
+
+        lootAnimationSystem =
+            new LootAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
+                zombieAnimationSystem,
+                game
+            );
 
         frozenZombieIceAnimationSystem =
             new FrozenZombieIceAnimationSystem(
@@ -448,8 +465,8 @@ public class GameScreen extends BaseScreen {
 
     private void showLevelIntro() {
         NpcDialogueSequence dialogue = LevelDialogueRegistry.find(
-                theme,
-                currentLevel.levelNumber()
+            theme,
+            currentLevel.levelNumber()
         );
 
         if (dialogue == null) {
@@ -470,9 +487,9 @@ public class GameScreen extends BaseScreen {
         resetRenderTickInterpolation();
 
         NpcDialogueOverlay npcDialogueOverlay = new NpcDialogueOverlay(
-                game,
-                dialogue,
-                this::finishNpcDialogue
+            game,
+            dialogue,
+            this::finishNpcDialogue
         );
         uiStage.addActor(npcDialogueOverlay);
         uiStage.setKeyboardFocus(npcDialogueOverlay);
@@ -501,6 +518,20 @@ public class GameScreen extends BaseScreen {
 
     private void updateCutscene(float delta) {
         if (overlayMode != OverlayMode.NONE) {
+            return;
+        }
+        if (waitingBeforeZombieSpawn) {
+
+            stateTime += delta;
+
+            if (stateTime >= zombieSpawnDelay) {
+
+                waitingBeforeZombieSpawn = false;
+                stateTime = 0f;
+
+                introState = IntroState.PLAYING;
+            }
+
             return;
         }
 
@@ -604,11 +635,15 @@ public class GameScreen extends BaseScreen {
         }
 
         startCountdownNotice = null;
+
         gameTickAccumulator = 0f;
         resetRenderTickInterpolation();
+
         lastWaveNoticeNumber = 0;
         firstWaveCoveredByCountdown = isFirstWaveReadyToAutoStart();
-        introState = IntroState.PLAYING;
+
+        waitingBeforeZombieSpawn = true;
+        stateTime = 0f;
     }
 
     private boolean isFirstWaveReadyToAutoStart() {
@@ -1462,6 +1497,11 @@ public class GameScreen extends BaseScreen {
                     : 0f
             );
 
+            lootAnimationSystem.sync(
+                visualZombies,
+                board.getActiveLoots()
+            );
+
             if (protectedPlantOverlayManager != null) {
                 protectedPlantOverlayManager.sync(
                     currentGameForVisuals.getGameState()
@@ -1837,6 +1877,47 @@ public class GameScreen extends BaseScreen {
         int x = tile.getColumn() + 1;
         int y = tile.getLane() + 1;
 
+        Game currentGame =
+            App.getInstance()
+                .getCurrentGame();
+
+        if (currentGame != null
+            && currentGame.getGameState() != null) {
+            DroppedLoot loot =
+                findLootAt(
+                    currentGame
+                        .getGameState()
+                        .getBoard(),
+                    tile.getLane(),
+                    tile.getColumn()
+                );
+
+            if (loot != null) {
+
+                System.out.println(
+                    "CLICKED LOOT = "
+                        + loot.getType()
+                        + " x="
+                        + loot.getX()
+                        + " column="
+                        + loot.getColumn()
+                        + " lane="
+                        + loot.getLane()
+                );
+
+                Result result =
+                    gamingController.collectLoot(
+                        loot
+                    );
+
+                if (!result.success()) {
+                    game.notifyError(result.message());
+                }
+
+                return;
+            }
+        }
+
         if (toolMode == ToolMode.SHOVEL) {
             Result result = gamingController.pluckPlant(x, y);
             if (!result.success()) {
@@ -1877,6 +1958,42 @@ public class GameScreen extends BaseScreen {
         }
 
         plantSlotsBar.clearPlantSelection();
+    }
+
+    private DroppedLoot findLootAt(
+        Board board,
+        int lane,
+        int column
+    ) {
+        if (board == null) {
+            return null;
+        }
+
+        for (DroppedLoot loot : board.getActiveLoots()) {
+
+            if (loot == null) {
+                continue;
+            }
+
+            if (loot.getType() == LootType.POT) {
+
+                if (Math.abs(loot.getColumn() - column) <= 3
+                    && Math.abs(loot.getLane() - lane) <= 2) {
+
+                    return loot;
+                }
+
+            } else {
+
+                if (loot.getLane() == lane
+                    && loot.getColumn() == column) {
+
+                    return loot;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void drawDebugGrid() {
@@ -1924,6 +2041,7 @@ public class GameScreen extends BaseScreen {
         frostbiteSnowstormAnimationSystem.clear();
         iceFloorAnimationSystem.clearVisuals();
         frozenZombieIceAnimationSystem.clear();
+        lootAnimationSystem.clear();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();

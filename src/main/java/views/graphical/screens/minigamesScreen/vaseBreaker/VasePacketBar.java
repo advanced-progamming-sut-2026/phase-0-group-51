@@ -197,6 +197,33 @@ public class VasePacketBar extends Table {
     }
 
 
+    public void selectPlant(String plantName) {
+        if (plantName == null || plantName.isBlank()) {
+            clearSelection();
+            return;
+        }
+
+        String inventoryName = null;
+
+        for (String name : vaseBreaker.getPacketInventory().keySet()) {
+            if (name.equalsIgnoreCase(plantName)) {
+                inventoryName = name;
+                break;
+            }
+        }
+
+        if (inventoryName == null
+                || vaseBreaker.getPacketInventory().getOrDefault(inventoryName, 0) <= 0) {
+            clearSelection();
+            return;
+        }
+
+        selectedPlantName = inventoryName;
+        refresh();
+        notifySelectionChanged();
+    }
+
+
     public void clearSelection() {
 
         selectedPlantName =

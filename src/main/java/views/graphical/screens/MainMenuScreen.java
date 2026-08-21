@@ -14,7 +14,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
-import controllers.GreenHouseMenuController;
 import controllers.MainMenuController;
 import graphics.PvzGame;
 import models.Result;
@@ -22,13 +21,12 @@ import models.minigames.MinigameType;
 import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.minigamesScreen.meowPoint.MeowPointScreen;
 import views.graphical.screens.minigamesScreen.minigames;
-import views.graphical.ui.CollectionMenuTable;
-import views.graphical.ui.NotificationOverlay;
-import views.graphical.ui.ProfilePopup;
-import views.graphical.ui.SettingsPopup;
+import views.graphical.ui.*;
+import views.graphical.ui.leaderBoard.LeaderBoardPopup;
 
 public class MainMenuScreen extends BaseScreen{
     private ProfilePopup profilePopup;
+    private LeaderBoardPopup leaderBoardPopup;
     private Stack root;
     private Texture backgroundTexture;
     private final MainMenuController controller = new MainMenuController();
@@ -86,6 +84,8 @@ public class MainMenuScreen extends BaseScreen{
         content.setWidth(450f);
         ImageButton exitButton = createExitButton();
         ImageButton profile = createProfileButton();
+        profile.setSize(102f, 102f);
+        ImageButton leaderboardButton = createLeaderboardButton();
 
         cards.get(0).addListener(new ChangeListener() {
             @Override
@@ -177,6 +177,12 @@ public class MainMenuScreen extends BaseScreen{
                 toggleProfile();
             }
         });
+        leaderboardButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                toggleLeaderboard();
+            }
+        });
         Container<ImageButton> container4 = new Container<>(exitButton);
         container4.setFillParent(true);
         container4.bottom().left();
@@ -186,8 +192,19 @@ public class MainMenuScreen extends BaseScreen{
         Container<ImageButton> container5 = new Container<>(profile);
         container5.setFillParent(true);
         container5.bottom().right();
-        container5.padBottom(15);
+        container5.padBottom(-15f);
         container5.padRight(15);
+        container5.size(102f, 102f);
+        Container<ImageButton> leaderboardContainer =
+                new Container<>(leaderboardButton);
+        leaderboardContainer.setFillParent(true);
+        leaderboardContainer.bottom().right();
+        leaderboardContainer.padBottom(15f);
+        leaderboardContainer.padRight(95f);
+        leaderboardContainer.size(
+                72f,
+                72f
+        );
         TextureRegion normal = game.getTextureBank().region(GAME_ICON);
         Image i = new Image(normal) ;
         Container<Image> container6 = new Container<>(i);
@@ -198,6 +215,7 @@ public class MainMenuScreen extends BaseScreen{
         root.add(content);
         root.add(container4);
         root.add(container5);
+        root.add(leaderboardContainer);
         root.add(container6);
 
 
@@ -207,6 +225,17 @@ public class MainMenuScreen extends BaseScreen{
 
         root.add(carouselGroup);
         stage.addActor(dotsTable);
+    }
+
+    private void toggleLeaderboard() {
+        if (leaderBoardPopup != null && leaderBoardPopup.hasParent()) {
+            leaderBoardPopup.remove();
+            return;
+        }
+
+        leaderBoardPopup = new LeaderBoardPopup(game);
+        stage.addActor(leaderBoardPopup);
+        leaderBoardPopup.toFront();
     }
 
     private void toggleProfile() {
@@ -234,6 +263,19 @@ public class MainMenuScreen extends BaseScreen{
         return imageButton;
     }
 
+
+    private ImageButton createLeaderboardButton() {
+        TextureRegion normalRegion = game.getTextureBank().region(leaderBoard);
+        TextureRegionDrawable normal = new TextureRegionDrawable(normalRegion);
+        Drawable faded = normal.tint(new Color(1f, 1f, 1f, 0.65f));
+
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.imageUp = normal;
+        style.imageDown = faded;
+        style.imageOver = faded;
+
+        return new ImageButton(style);
+    }
 
     private ImageButton createProfileButton(){
         TextureRegion normalRegion = game.getTextureBank().region(PROFILE);

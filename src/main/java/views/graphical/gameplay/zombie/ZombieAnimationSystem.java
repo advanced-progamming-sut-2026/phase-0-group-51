@@ -4,13 +4,17 @@ import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import lombok.Getter;
 import models.Zombie.Behavior.*;
+import models.Board.Tile;
+import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.Zombie.ArmorDefinition;
 import models.games.ChapterTheme;
+import models.games.GameState;
 import pvz.libpvz.pam.ClipRef;
 import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.EntityAnimationState;
@@ -40,18 +44,18 @@ public final class ZombieAnimationSystem {
     private static final float DAMAGE_FLASH_COOLDOWN = 0.4f;
 
     private static final Color PLANT_FOOD_OUTLINE_COLOR =
-        Color.valueOf("58FF66");
+            Color.valueOf("58FF66");
     private static final float PLANT_FOOD_OUTLINE_THICKNESS =
-        7.0f;
+            7.0f;
 
     private static final float PLANT_FOOD_OUTLINE_BASE_ALPHA =
-        0.22f;
+            0.22f;
 
     private static final float PLANT_FOOD_OUTLINE_AMPLITUDE =
-        0.16f;
+            0.16f;
 
     private static final float PLANT_FOOD_OUTLINE_PULSE_SPEED =
-        2.8f;
+            2.8f;
 
     private static final String GROUND_PART = "ground_swatch";
 
@@ -60,41 +64,45 @@ public final class ZombieAnimationSystem {
     private static final float MIN_WALK_PLAYBACK_SPEED = 0.10f;
     private static final float MAX_WALK_PLAYBACK_SPEED = 5.00f;
     private static final float POSITION_EPSILON = 0.0001f;
+
+    private static final float DANGER_DISTANCE = 2.0f;
+    private static final float MAX_DANGER_RED = 0.5f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
 
     private static final String DARK_KNIGHT_CROWN_ARMOR =
-        "CrownDefault@ArmorTypes";
+            "CrownDefault@ArmorTypes";
     private static final String DARK_KNIGHT_SHOULDER_ARMOR =
-        "ShoulderArmorDefault@ArmorTypes";
+            "ShoulderArmorDefault@ArmorTypes";
 
     private static final String EGYPT_BASIC_PAM =
-        "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_BASIC/ZOMBIE_EGYPT_BASIC.PAM";
+            "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_BASIC/ZOMBIE_EGYPT_BASIC.PAM";
     private static final String ICEAGE_BASIC_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_BASIC/ZOMBIE_ICEAGE_BASIC.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_BASIC/ZOMBIE_ICEAGE_BASIC.PAM";
     private static final String BEACH_BASIC_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_BEACH_BASIC/ZOMBIE_BEACH_BASIC.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_BEACH_BASIC/ZOMBIE_BEACH_BASIC.PAM";
     private static final String DARK_BASIC_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_DARK_BASIC/ZOMBIE_DARK_BASIC.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_DARK_BASIC/ZOMBIE_DARK_BASIC.PAM";
 
     private static final String EGYPT_GARGANTUAR_PAM =
-        "768/INITIAL/ZOMBIE/EGYPT_GARGANTUAR/EGYPT_GARGANTUAR.PAM";
+            "768/INITIAL/ZOMBIE/EGYPT_GARGANTUAR/EGYPT_GARGANTUAR.PAM";
     private static final String ICEAGE_GARGANTUAR_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_GARGANTUAR/ZOMBIE_ICEAGE_GARGANTUAR.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_GARGANTUAR/ZOMBIE_ICEAGE_GARGANTUAR.PAM";
     private static final String BEACH_GARGANTUAR_PAM =
-        "768/FULL/ZOMBIE/BEACH_GARGANTUAR/BEACH_GARGANTUAR.PAM";
+            "768/FULL/ZOMBIE/BEACH_GARGANTUAR/BEACH_GARGANTUAR.PAM";
     private static final String DARK_GARGANTUAR_PAM =
-        "768/FULL/ZOMBIE/DARK_GARGANTUAR/DARK_GARGANTUAR.PAM";
+            "768/FULL/ZOMBIE/DARK_GARGANTUAR/DARK_GARGANTUAR.PAM";
 
     private static final String EGYPT_IMP_PAM =
-        "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_IMP/ZOMBIE_EGYPT_IMP.PAM";
+            "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_IMP/ZOMBIE_EGYPT_IMP.PAM";
     private static final String ICEAGE_IMP_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_IMP/ZOMBIE_ICEAGE_IMP.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_IMP/ZOMBIE_ICEAGE_IMP.PAM";
     private static final String BEACH_IMP_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_BEACH_IMP_MERMAID/ZOMBIE_BEACH_IMP_MERMAID.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_BEACH_IMP_MERMAID/ZOMBIE_BEACH_IMP_MERMAID.PAM";
     private static final String DARK_IMP_PAM =
-        "768/FULL/ZOMBIE/ZOMBIE_DARK_IMP_MONK/ZOMBIE_DARK_IMP_MONK.PAM";
+            "768/FULL/ZOMBIE/ZOMBIE_DARK_IMP_MONK/ZOMBIE_DARK_IMP_MONK.PAM";
 
     private final ChapterTheme theme;
+    private final GameState gameState;
     private final PamPlayer pamPlayer;
     private final Stage worldStage;
     private final BoardTransform boardTransform;
@@ -102,83 +110,103 @@ public final class ZombieAnimationSystem {
     private final float scale;
 
     private final Map<Zombie, ZombieVisual> visuals =
-        new IdentityHashMap<>();
+            new IdentityHashMap<>();
 
     private int lastObservedModelTick = Integer.MIN_VALUE;
 
     public ZombieAnimationSystem(
-        PamPlayer pamPlayer,
-        Stage worldStage,
-        BoardTransform boardTransform,
-        ChapterTheme theme
+            PamPlayer pamPlayer,
+            Stage worldStage,
+            BoardTransform boardTransform,
+            ChapterTheme theme
     ) {
         this(
-            pamPlayer,
-            worldStage,
-            boardTransform,
-            theme,
-            DEFAULT_SCALE
+                pamPlayer,
+                worldStage,
+                boardTransform,
+                theme,
+                DEFAULT_SCALE,
+                null
         );
     }
 
     public ZombieAnimationSystem(
-        PamPlayer pamPlayer,
-        Stage worldStage,
-        BoardTransform boardTransform,
-        ChapterTheme theme,
-        float scale
+            PamPlayer pamPlayer,
+            Stage worldStage,
+            BoardTransform boardTransform,
+            ChapterTheme theme,
+            float scale
+    ) {
+        this(
+                pamPlayer,
+                worldStage,
+                boardTransform,
+                theme,
+                scale,
+                null
+        );
+    }
+
+    public ZombieAnimationSystem(
+            PamPlayer pamPlayer,
+            Stage worldStage,
+            BoardTransform boardTransform,
+            ChapterTheme theme,
+            float scale,
+            GameState gameState
     ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer, "pamPlayer");
         this.worldStage = Objects.requireNonNull(worldStage, "worldStage");
         this.boardTransform = Objects.requireNonNull(boardTransform, "boardTransform");
         this.theme = Objects.requireNonNull(theme, "theme");
+        this.gameState = gameState;
         this.scale = scale;
         this.resolver = new ZombieAnimationResolver(pamPlayer);
     }
 
     public void update(
-        float delta,
-        Collection<Zombie> zombies
+            float delta,
+            Collection<Zombie> zombies
     ) {
         int compatibilityTick =
-            lastObservedModelTick == Integer.MIN_VALUE
-                ? 0
-                : lastObservedModelTick + 1;
+                lastObservedModelTick == Integer.MIN_VALUE
+                        ? 0
+                        : lastObservedModelTick + 1;
 
         update(
-            delta,
-            1f,
-            compatibilityTick,
-            zombies
+                delta,
+                1f,
+                compatibilityTick,
+                zombies
         );
     }
 
     public void update(
-        float delta,
-        float partialTick,
-        int modelTick,
-        Collection<Zombie> zombies
+            float delta,
+            float partialTick,
+            int modelTick,
+            Collection<Zombie> zombies
     ) {
         Collection<Zombie> safeZombies =
-            zombies == null
-                ? Collections.emptyList()
-                : zombies;
+                zombies == null
+                        ? Collections.emptyList()
+                        : zombies;
 
         boolean firstUpdate =
-            lastObservedModelTick == Integer.MIN_VALUE;
+                lastObservedModelTick == Integer.MIN_VALUE;
 
         boolean modelAdvanced =
-            !firstUpdate
-                && modelTick != lastObservedModelTick;
+                !firstUpdate
+                        && modelTick != lastObservedModelTick;
 
         partialTick = clamp(
-            partialTick,
-            0f,
-            1f
+                partialTick,
+                0f,
+                1f
         );
 
         Set<Zombie> active = Collections.newSetFromMap(
-            new IdentityHashMap<>()
+                new IdentityHashMap<>()
         );
 
         for (Zombie zombie : safeZombies) {
@@ -201,28 +229,28 @@ public final class ZombieAnimationSystem {
             }
 
             sampleModelPosition(
-                zombie,
-                visual,
-                modelAdvanced
+                    zombie,
+                    visual,
+                    modelAdvanced
             );
 
             if (modelAdvanced) {
                 detectBehaviorTransitions(
-                    zombie,
-                    visual
+                        zombie,
+                        visual
                 );
             }
 
             updateLivingZombie(
-                zombie,
-                visual,
-                delta,
-                partialTick
+                    zombie,
+                    visual,
+                    delta,
+                    partialTick
             );
         }
 
         Iterator<Map.Entry<Zombie, ZombieVisual>> iterator =
-            visuals.entrySet().iterator();
+                visuals.entrySet().iterator();
 
         while (iterator.hasNext()) {
             Map.Entry<Zombie, ZombieVisual> entry = iterator.next();
@@ -283,13 +311,13 @@ public final class ZombieAnimationSystem {
 
     private void updateZombieDrawOrder() {
         List<ZombieVisual> drawOrder =
-            new ArrayList<>(visuals.values());
+                new ArrayList<>(visuals.values());
 
         drawOrder.sort(
-            (a, b) -> Float.compare(
-                b.actor.getY(),
-                a.actor.getY()
-            )
+                (a, b) -> Float.compare(
+                        b.actor.getY(),
+                        a.actor.getY()
+                )
         );
 
         for (ZombieVisual visual : drawOrder) {
@@ -304,8 +332,8 @@ public final class ZombieAnimationSystem {
         if (pamPath == null || pamPath.isBlank()) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                    "ZombieAnimation",
-                    "No PAM path configured for zombie: " + alias
+                        "ZombieAnimation",
+                        "No PAM path configured for zombie: " + alias
                 );
             }
             return null;
@@ -313,66 +341,66 @@ public final class ZombieAnimationSystem {
 
         try {
             ZombieAnimationResolver.ResolvedAnimations animations =
-                resolver.resolve(alias, pamPath);
+                    resolver.resolve(alias, pamPath);
 
             String walkClip = animations.clip(
-                EntityAnimationState.WALK
+                    EntityAnimationState.WALK
             );
 
             PamAnimationActor actor = new PamAnimationActor(
-                pamPlayer,
-                pamPath,
-                walkClip,
-                true
+                    pamPlayer,
+                    pamPath,
+                    walkClip,
+                    true
             );
 
             actor.setVisibleParts(
-                resolveVisibleParts(pamPlayer, pamPath, alias)
+                    resolveVisibleParts(pamPlayer, pamPath, alias)
             );
 
             if (ZombieType.EXPLORER.getAlias().equals(alias)) {
                 actor.getVisibilityMap().put(
-                    "zombie_egyptflag_hand_inner3b",
-                    false
+                        "zombie_egyptflag_hand_inner3b",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "zombie_egypt_hand_inner_01",
-                    false
+                        "zombie_egypt_hand_inner_01",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "zombie_cowboy_hand_inner_01",
-                    false
+                        "zombie_cowboy_hand_inner_01",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "zombie_hand_outer_01",
-                    false
+                        "zombie_hand_outer_01",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "zombie_hand_outer_02",
-                    false
+                        "zombie_hand_outer_02",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "zombie_expl_arm_outer_upper_02",
-                    false
+                        "zombie_expl_arm_outer_upper_02",
+                        false
                 );
 
                 actor.getVisibilityMap().put(
-                    "_particles",
-                    false
+                        "_particles",
+                        false
                 );
             }
 
             actor.setScale(scale, scale);
 
             actor.setOutline(
-                zombie.isGlowing(),
-                PLANT_FOOD_OUTLINE_COLOR,
-                PLANT_FOOD_OUTLINE_THICKNESS
+                    zombie.isGlowing(),
+                    PLANT_FOOD_OUTLINE_COLOR,
+                    PLANT_FOOD_OUTLINE_THICKNESS
             );
 
             configureGroundSwatch(alias, pamPath, walkClip, actor);
@@ -380,24 +408,24 @@ public final class ZombieAnimationSystem {
             worldStage.addActor(actor);
 
             ZombieVisual visual = new ZombieVisual(
-                actor,
-                animations
+                    actor,
+                    animations
             );
 
             initializeModelPosition(
-                zombie,
-                visual
+                    zombie,
+                    visual
             );
 
             initializeBehaviorState(
-                zombie,
-                visual
+                    zombie,
+                    visual
             );
 
             updatePosition(
-                zombie,
-                visual,
-                1f
+                    zombie,
+                    visual,
+                    1f
             );
 
             return visual;
@@ -405,13 +433,13 @@ public final class ZombieAnimationSystem {
         } catch (RuntimeException e) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                    "ZombieAnimation",
-                    "Failed to create PAM actor for "
-                        + alias
-                        + " ("
-                        + pamPath
-                        + ")",
-                    e
+                        "ZombieAnimation",
+                        "Failed to create PAM actor for "
+                                + alias
+                                + " ("
+                                + pamPath
+                                + ")",
+                        e
                 );
             }
 
@@ -420,8 +448,8 @@ public final class ZombieAnimationSystem {
     }
 
     public static String resolvePamPath(
-        ChapterTheme theme,
-        String alias
+            ChapterTheme theme,
+            String alias
     ) {
         Objects.requireNonNull(theme, "theme");
 
@@ -459,8 +487,8 @@ public final class ZombieAnimationSystem {
     }
 
     public static String resolvePamPath(
-        ChapterTheme theme,
-        ZombieType type
+            ChapterTheme theme,
+            ZombieType type
     ) {
         if (type == null) {
             return null;
@@ -470,18 +498,18 @@ public final class ZombieAnimationSystem {
 
     private static boolean usesThemedBasicBody(String alias) {
         return ZombieType.DEFAULT.getAlias().equals(alias)
-            || ZombieType.ARMOR_1.getAlias().equals(alias)
-            || ZombieType.ARMOR_2.getAlias().equals(alias)
-            || ZombieType.ARMOR_4.getAlias().equals(alias);
+                || ZombieType.ARMOR_1.getAlias().equals(alias)
+                || ZombieType.ARMOR_2.getAlias().equals(alias)
+                || ZombieType.ARMOR_4.getAlias().equals(alias);
     }
 
     public static List<String> resolveVisibleParts(
-        PamPlayer pamPlayer,
-        String pamPath,
-        String alias
+            PamPlayer pamPlayer,
+            String pamPath,
+            String alias
     ) {
         LinkedHashSet<String> parts = new LinkedHashSet<>(
-            ZombieRegistry.getIdleVisibleParts(alias)
+                ZombieRegistry.getIdleVisibleParts(alias)
         );
 
         int armorTier = armorTier(alias);
@@ -497,20 +525,20 @@ public final class ZombieAnimationSystem {
         } catch (RuntimeException e) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                    "ZombieAnimation",
-                    "Could not resolve themed armor parts for "
-                        + alias
-                        + " in "
-                        + pamPath,
-                    e
+                        "ZombieAnimation",
+                        "Could not resolve themed armor parts for "
+                                + alias
+                                + " in "
+                                + pamPath,
+                        e
                 );
             }
         }
 
         if (Gdx.app != null) {
             Gdx.app.log(
-                "ZombieAnimation",
-                "Visible parts " + alias + " -> " + parts
+                    "ZombieAnimation",
+                    "Visible parts " + alias + " -> " + parts
             );
         }
 
@@ -534,9 +562,9 @@ public final class ZombieAnimationSystem {
     }
 
     private static void addNormalArmorBranch(
-        PamPlayer.AnimationPart root,
-        int armorTier,
-        Set<String> output
+            PamPlayer.AnimationPart root,
+            int armorTier,
+            Set<String> output
     ) {
         String tierToken = "armor" + armorTier;
 
@@ -580,7 +608,7 @@ public final class ZombieAnimationSystem {
     }
 
     private static List<PamPlayer.AnimationPart> findBestNormalBranch(
-        PamPlayer.AnimationPart stateRoot
+            PamPlayer.AnimationPart stateRoot
     ) {
         List<PamPlayer.AnimationPart> bestPath = List.of();
         int bestScore = Integer.MIN_VALUE;
@@ -608,8 +636,8 @@ public final class ZombieAnimationSystem {
     }
 
     private static void collectBestPath(
-        PamPlayer.AnimationPart node,
-        List<PamPlayer.AnimationPart> path
+            PamPlayer.AnimationPart node,
+            List<PamPlayer.AnimationPart> path
     ) {
         path.add(node);
 
@@ -637,7 +665,7 @@ public final class ZombieAnimationSystem {
     }
 
     private static int partPreferenceScore(
-        PamPlayer.AnimationPart part
+            PamPlayer.AnimationPart part
     ) {
         String name = normalizePartName(part.name);
         int score = part.resource ? 0 : 10;
@@ -651,8 +679,8 @@ public final class ZombieAnimationSystem {
     }
 
     private static void flattenParts(
-        PamPlayer.AnimationPart part,
-        List<PamPlayer.AnimationPart> output
+            PamPlayer.AnimationPart part,
+            List<PamPlayer.AnimationPart> output
     ) {
         output.add(part);
         for (PamPlayer.AnimationPart child : part.children) {
@@ -665,80 +693,80 @@ public final class ZombieAnimationSystem {
             return "";
         }
         return value
-            .toLowerCase(Locale.ROOT)
-            .replaceAll("[^a-z0-9]", "");
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]", "");
     }
 
     private void configureGroundSwatch(
-        String alias,
-        String pamPath,
-        String walkClip,
-        PamAnimationActor actor
+            String alias,
+            String pamPath,
+            String walkClip,
+            PamAnimationActor actor
     ) {
         try {
             ClipRef walkRef = pamPlayer.getClip(
-                pamPath,
-                walkClip
+                    pamPath,
+                    walkClip
             );
 
             if (walkRef == null) {
                 logGroundingUnavailable(
-                    alias,
-                    "walk ClipRef is null"
+                        alias,
+                        "walk ClipRef is null"
                 );
                 return;
             }
 
             Rectangle[] groundFrames =
-                pamPlayer.partBoundsByFrame(
-                    walkRef,
-                    GROUND_PART
-                );
+                    pamPlayer.partBoundsByFrame(
+                            walkRef,
+                            GROUND_PART
+                    );
 
             actor.setGroundingCurve(
-                walkClip,
-                groundFrames,
-                walkRef.duration
+                    walkClip,
+                    groundFrames,
+                    walkRef.duration
             );
 
             if (!actor.hasGrounding()) {
                 logGroundingUnavailable(
-                    alias,
-                    "part '" + GROUND_PART
-                        + "' was missing or had too few usable frames"
+                        alias,
+                        "part '" + GROUND_PART
+                                + "' was missing or had too few usable frames"
                 );
                 return;
             }
 
             if (Gdx.app != null) {
                 Gdx.app.log(
-                    "ZombieAnimation",
-                    "Grounding " + alias
-                        + " -> part=" + GROUND_PART
-                        + ", frames="
-                        + actor.getGroundingFrameCount()
-                        + ", nativeStep="
-                        + actor.getGroundingStepDistanceCanvas()
-                        + ", duration="
-                        + actor.getGroundingDuration()
+                        "ZombieAnimation",
+                        "Grounding " + alias
+                                + " -> part=" + GROUND_PART
+                                + ", frames="
+                                + actor.getGroundingFrameCount()
+                                + ", nativeStep="
+                                + actor.getGroundingStepDistanceCanvas()
+                                + ", duration="
+                                + actor.getGroundingDuration()
                 );
             }
 
         } catch (RuntimeException e) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                    "ZombieAnimation",
-                    "Could not bake " + GROUND_PART
-                        + " for " + alias,
-                    e
+                        "ZombieAnimation",
+                        "Could not bake " + GROUND_PART
+                                + " for " + alias,
+                        e
                 );
             }
         }
     }
 
     private void initializeModelPosition(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         float modelX = zombie.getX();
 
@@ -748,23 +776,23 @@ public final class ZombieAnimationSystem {
     }
 
     private void sampleModelPosition(
-        Zombie zombie,
-        ZombieVisual visual,
-        boolean modelAdvanced
+            Zombie zombie,
+            ZombieVisual visual,
+            boolean modelAdvanced
     ) {
         float modelX = zombie.getX();
 
         if (!visual.positionInitialized) {
             initializeModelPosition(
-                zombie,
-                visual
+                    zombie,
+                    visual
             );
             return;
         }
 
         if (!modelAdvanced) {
             if (Math.abs(
-                modelX - visual.currentModelX
+                    modelX - visual.currentModelX
             ) > POSITION_EPSILON) {
                 visual.previousModelX = modelX;
                 visual.currentModelX = modelX;
@@ -773,73 +801,86 @@ public final class ZombieAnimationSystem {
         }
 
         float movement =
-            modelX - visual.currentModelX;
+                modelX - visual.currentModelX;
 
         if (Math.abs(movement)
-            > MAX_INTERPOLATION_STEP_COLUMNS) {
+                > MAX_INTERPOLATION_STEP_COLUMNS) {
             visual.previousModelX = modelX;
             visual.currentModelX = modelX;
             return;
         }
 
         visual.previousModelX =
-            visual.currentModelX;
+                visual.currentModelX;
 
         visual.currentModelX = modelX;
     }
 
     private void updateLivingZombie(
-        Zombie zombie,
-        ZombieVisual visual,
-        float delta,
-        float partialTick
+            Zombie zombie,
+            ZombieVisual visual,
+            float delta,
+            float partialTick
     ) {
         PamAnimationActor actor = visual.actor;
 
         actor.setOutline(
-            zombie.isGlowing(),
-            PLANT_FOOD_OUTLINE_COLOR,
-            PLANT_FOOD_OUTLINE_THICKNESS
+                zombie.isGlowing(),
+                PLANT_FOOD_OUTLINE_COLOR,
+                PLANT_FOOD_OUTLINE_THICKNESS
         );
 
         actor.setOutlinePulse(
-            PLANT_FOOD_OUTLINE_BASE_ALPHA,
-            PLANT_FOOD_OUTLINE_AMPLITUDE,
-            PLANT_FOOD_OUTLINE_PULSE_SPEED
+                PLANT_FOOD_OUTLINE_BASE_ALPHA,
+                PLANT_FOOD_OUTLINE_AMPLITUDE,
+                PLANT_FOOD_OUTLINE_PULSE_SPEED
         );
 
         updatePosition(
-            zombie,
-            visual,
-            partialTick
+                zombie,
+                visual,
+                partialTick
         );
 
         updateDamageFlash(
-            zombie,
-            visual,
-            delta
+                zombie,
+                visual,
+                delta
         );
 
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
 
-        if (!updateSpecialClip(visual)) {
+        if (zombie.hasIceShell()) {
+
+            actor.play(
+                    visual.animations.clip(
+                            EntityAnimationState.IDLE
+                    ),
+                    true
+            );
+
+            actor.setPlaybackSpeed(0f);
+            actor.pauseAnimation();
+
+        } else if (!updateSpecialClip(visual)) {
+
             BaseAnimation base = resolveBaseAnimation(
-                zombie,
-                visual
+                    zombie,
+                    visual
             );
 
             actor.play(
-                base.clip,
-                base.loop
+                    base.clip,
+                    base.loop
             );
 
             if (base.walkSpeedSynced) {
                 actor.setPlaybackSpeed(
-                    calculateWalkPlaybackSpeed(
-                        zombie,
-                        actor
-                    )
+                        calculateWalkPlaybackSpeed(
+                                zombie,
+                                actor
+                        )
                 );
             } else {
                 actor.setPlaybackSpeed(1f);
@@ -847,30 +888,31 @@ public final class ZombieAnimationSystem {
         }
 
         updateColdTint(zombie, actor);
+        updateDangerTint(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
-        } else {
+        } else if (!zombie.hasIceShell()) {
             actor.resumeAnimation();
         }
     }
 
 
     private void updateDamageFlash(
-        Zombie zombie,
-        ZombieVisual visual,
-        float delta
+            Zombie zombie,
+            ZombieVisual visual,
+            float delta
     ) {
         if (visual.damageFlashCooldownRemaining > 0f) {
             visual.damageFlashCooldownRemaining = Math.max(
-                0f,
-                visual.damageFlashCooldownRemaining
-                    - Math.max(0f, delta)
+                    0f,
+                    visual.damageFlashCooldownRemaining
+                            - Math.max(0f, delta)
             );
         }
 
         int currentDamageHealth =
-            getDamageFlashHealth(zombie);
+                getDamageFlashHealth(zombie);
 
         if (visual.lastDamageHealth == Integer.MIN_VALUE) {
             visual.lastDamageHealth = currentDamageHealth;
@@ -878,20 +920,19 @@ public final class ZombieAnimationSystem {
         }
 
         if (currentDamageHealth < visual.lastDamageHealth
-            && zombie.getHitpoints() > 0
-            && visual.damageFlashCooldownRemaining <= 0f) {
+                && zombie.getHitpoints() > 0
+                && visual.damageFlashCooldownRemaining <= 0f) {
             visual.actor.flashAdditive(
-                DAMAGE_FLASH_DURATION,
-                DAMAGE_FLASH_ALPHA
+                    DAMAGE_FLASH_DURATION,
+                    DAMAGE_FLASH_ALPHA
             );
 
             visual.damageFlashCooldownRemaining =
-                DAMAGE_FLASH_COOLDOWN;
+                    DAMAGE_FLASH_COOLDOWN;
         }
 
         visual.lastDamageHealth = currentDamageHealth;
     }
-
 
     private static int getDamageFlashHealth(Zombie zombie) {
         int health = zombie.getHitpoints();
@@ -899,8 +940,8 @@ public final class ZombieAnimationSystem {
         for (ZombieBehavior behavior : zombie.getBehaviors()) {
             if (behavior instanceof ArmorBehavior armor) {
                 health += Math.max(
-                    0,
-                    armor.getCurrentHP()
+                        0,
+                        armor.getCurrentHP()
                 );
             }
         }
@@ -909,8 +950,8 @@ public final class ZombieAnimationSystem {
     }
 
     private void syncNormalArmorVisual(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         List<ArmorBehavior> armors = getArmorBehaviors(zombie);
 
@@ -935,9 +976,9 @@ public final class ZombieAnimationSystem {
         } catch (RuntimeException e) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                    "ZombieArmorVisual",
-                    "Could not read PAM parts for " + zombie.getAlias(),
-                    e
+                        "ZombieArmorVisual",
+                        "Could not read PAM parts for " + zombie.getAlias(),
+                        e
                 );
             }
             return;
@@ -948,14 +989,14 @@ public final class ZombieAnimationSystem {
         }
 
         Map<String, Boolean> visibility =
-            visual.actor.getVisibilityMap();
+                visual.actor.getVisibilityMap();
 
         for (ArmorBehavior armor : armors) {
             applyArmorLayerVisibility(
-                zombie,
-                armor,
-                root,
-                visibility
+                    zombie,
+                    armor,
+                    root,
+                    visibility
             );
         }
 
@@ -977,7 +1018,7 @@ public final class ZombieAnimationSystem {
     }
 
     private static String buildArmorVisualSignature(
-        List<ArmorBehavior> armors
+            List<ArmorBehavior> armors
     ) {
         StringBuilder signature = new StringBuilder();
 
@@ -995,10 +1036,10 @@ public final class ZombieAnimationSystem {
                 signature.append("gone");
             } else {
                 signature.append(
-                    resolveArmorLayerIndex(
-                        armor,
-                        def.getArmorLayers().size()
-                    )
+                        resolveArmorLayerIndex(
+                                armor,
+                                def.getArmorLayers().size()
+                        )
                 );
             }
 
@@ -1009,10 +1050,10 @@ public final class ZombieAnimationSystem {
     }
 
     private void applyArmorLayerVisibility(
-        Zombie zombie,
-        ArmorBehavior armor,
-        PamPlayer.AnimationPart root,
-        Map<String, Boolean> visibility
+            Zombie zombie,
+            ArmorBehavior armor,
+            PamPlayer.AnimationPart root,
+            Map<String, Boolean> visibility
     ) {
         ArmorDefinition def = armor.getDefinition();
         if (def == null) {
@@ -1023,9 +1064,9 @@ public final class ZombieAnimationSystem {
         if (layers == null || layers.isEmpty()) {
             if (Gdx.app != null) {
                 Gdx.app.log(
-                    "ZombieArmorVisual",
-                    zombie.getAlias() + " / " + def.getAlias()
-                        + " has no ArmorLayers"
+                        "ZombieArmorVisual",
+                        zombie.getAlias() + " / " + def.getAlias()
+                                + " has no ArmorLayers"
                 );
             }
             return;
@@ -1039,18 +1080,18 @@ public final class ZombieAnimationSystem {
         if (armor.isGone()) {
             if (Gdx.app != null) {
                 Gdx.app.log(
-                    "ZombieArmorVisual",
-                    zombie.getAlias() + " / " + def.getAlias()
-                        + " hp=0/" + def.getBaseHealth()
-                        + " -> hidden"
+                        "ZombieArmorVisual",
+                        zombie.getAlias() + " / " + def.getAlias()
+                                + " hp=0/" + def.getBaseHealth()
+                                + " -> hidden"
                 );
             }
             return;
         }
 
         int layerIndex = resolveArmorLayerIndex(
-            armor,
-            layers.size()
+                armor,
+                layers.size()
         );
 
         if (layerIndex < 0 || layerIndex >= layers.size()) {
@@ -1063,7 +1104,7 @@ public final class ZombieAnimationSystem {
         }
 
         List<PamPlayer.AnimationPart> path =
-            findPartPath(root, targetLayer);
+                findPartPath(root, targetLayer);
 
         if (!path.isEmpty()) {
             for (PamPlayer.AnimationPart part : path) {
@@ -1077,20 +1118,20 @@ public final class ZombieAnimationSystem {
 
         if (Gdx.app != null) {
             Gdx.app.log(
-                "ZombieArmorVisual",
-                zombie.getAlias() + " / " + def.getAlias()
-                    + " hp=" + armor.getCurrentHP()
-                    + "/" + def.getBaseHealth()
-                    + " stage=" + layerIndex
-                    + " -> " + targetLayer
-                    + (path.isEmpty() ? " (PAM path NOT FOUND)" : "")
+                    "ZombieArmorVisual",
+                    zombie.getAlias() + " / " + def.getAlias()
+                            + " hp=" + armor.getCurrentHP()
+                            + "/" + def.getBaseHealth()
+                            + " stage=" + layerIndex
+                            + " -> " + targetLayer
+                            + (path.isEmpty() ? " (PAM path NOT FOUND)" : "")
             );
         }
     }
 
     private static int resolveArmorLayerIndex(
-        ArmorBehavior armor,
-        int layerCount
+            ArmorBehavior armor,
+            int layerCount
     ) {
         if (layerCount <= 1 || armor == null) {
             return 0;
@@ -1111,8 +1152,8 @@ public final class ZombieAnimationSystem {
 
         int index = 0;
         int maxThresholds = Math.min(
-            thresholds.size(),
-            layerCount - 1
+                thresholds.size(),
+                layerCount - 1
         );
 
         for (int i = 0; i < maxThresholds; i++) {
@@ -1126,8 +1167,8 @@ public final class ZombieAnimationSystem {
     }
 
     private static List<PamPlayer.AnimationPart> findPartPath(
-        PamPlayer.AnimationPart root,
-        String targetName
+            PamPlayer.AnimationPart root,
+            String targetName
     ) {
         List<PamPlayer.AnimationPart> path = new ArrayList<>();
 
@@ -1144,9 +1185,9 @@ public final class ZombieAnimationSystem {
     }
 
     private static boolean findPartPathRecursive(
-        PamPlayer.AnimationPart current,
-        String targetName,
-        List<PamPlayer.AnimationPart> path
+            PamPlayer.AnimationPart current,
+            String targetName,
+            List<PamPlayer.AnimationPart> path
     ) {
         path.add(current);
 
@@ -1165,11 +1206,11 @@ public final class ZombieAnimationSystem {
     }
 
     private void syncDarkKnightVisual(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         if (theme != ChapterTheme.DARK_AGES
-            || !ZombieType.DEFAULT.getAlias().equals(zombie.getAlias())) {
+                || !ZombieType.DEFAULT.getAlias().equals(zombie.getAlias())) {
             return;
         }
 
@@ -1180,13 +1221,13 @@ public final class ZombieAnimationSystem {
         }
 
         String visualAlias = knighted
-            ? ZombieType.DARK_ARMOR_3.getAlias()
-            : ZombieType.DEFAULT.getAlias();
+                ? ZombieType.DARK_ARMOR_3.getAlias()
+                : ZombieType.DEFAULT.getAlias();
 
         List<String> visibleParts = resolveVisibleParts(
-            pamPlayer,
-            DARK_BASIC_PAM,
-            visualAlias
+                pamPlayer,
+                DARK_BASIC_PAM,
+                visualAlias
         );
 
         if (!visibleParts.isEmpty()) {
@@ -1199,15 +1240,15 @@ public final class ZombieAnimationSystem {
     private boolean hasActiveDarkKnightArmor(Zombie zombie) {
         for (var behavior : zombie.getBehaviors()) {
             if (!(behavior instanceof ArmorBehavior armor)
-                || armor.isGone()
-                || armor.getDefinition() == null) {
+                    || armor.isGone()
+                    || armor.getDefinition() == null) {
                 continue;
             }
 
             String armorAlias = armor.getDefinition().getAlias();
 
             if (DARK_KNIGHT_CROWN_ARMOR.equals(armorAlias)
-                || DARK_KNIGHT_SHOULDER_ARMOR.equals(armorAlias)) {
+                    || DARK_KNIGHT_SHOULDER_ARMOR.equals(armorAlias)) {
                 return true;
             }
         }
@@ -1215,334 +1256,428 @@ public final class ZombieAnimationSystem {
         return false;
     }
 
+
+    private void updateDangerTint(
+            Zombie zombie,
+            PamAnimationActor actor
+    ) {
+        if (zombie == null || actor == null) {
+            return;
+        }
+
+        float dangerDistance;
+
+        if (gameState != null && gameState.hasDeadline()) {
+
+            float deadlineX =
+                    gameState.getDeadlineColumn() - 1f;
+
+            dangerDistance =
+                    Math.abs(
+                            zombie.getX()
+                                    - deadlineX
+                    );
+
+        } else if (gameState != null
+                && gameState.isSaveOurSeedsActive()) {
+
+            dangerDistance = Float.MAX_VALUE;
+
+            for (Plant plant : gameState.getProtectedPlants()) {
+
+                if (plant == null || plant.isDead()) {
+                    continue;
+                }
+
+                Tile tile =
+                        gameState.getBoard()
+                                .getTileForPlant(plant);
+
+                if (tile == null
+                        || tile.getLane() != zombie.getLane()) {
+                    continue;
+                }
+
+                float distance =
+                        Math.abs(
+                                zombie.getX()
+                                        - tile.getColumn()
+                        );
+
+                dangerDistance =
+                        Math.min(
+                                dangerDistance,
+                                distance
+                        );
+            }
+
+        } else {
+
+            // Normal mode: zombies walk from right to left.
+            // Mower is at column 0, so only the last two tiles are dangerous.
+            float mowerX = 0f;
+
+            dangerDistance =
+                    zombie.getX() - mowerX;
+        }
+
+
+        float danger =
+                MathUtils.clamp(
+                        (DANGER_DISTANCE - dangerDistance)
+                                / DANGER_DISTANCE,
+                        0f,
+                        1f
+                );
+
+
+        if (danger <= 0f) {
+            actor.setColor(
+                    1f,
+                    1f,
+                    1f,
+                    1f
+            );
+            return;
+        }
+
+
+        actor.setColor(
+                1f,
+                1f - danger * MAX_DANGER_RED,
+                1f - danger * MAX_DANGER_RED,
+                1f
+        );
+    }
+
     private void updateColdTint(
-        Zombie zombie,
-        PamAnimationActor actor
+            Zombie zombie,
+            PamAnimationActor actor
     ) {
         if (zombie.isFrozen()) {
             actor.setColor(
-                0.55f,
-                0.78f,
-                1.00f,
-                1.00f
+                    0.55f,
+                    0.78f,
+                    1.00f,
+                    1.00f
             );
             return;
         }
 
         if (zombie.isChilled()) {
             actor.setColor(
-                0.72f,
-                0.88f,
-                1.00f,
-                1.00f
+                    0.72f,
+                    0.88f,
+                    1.00f,
+                    1.00f
             );
             return;
         }
 
         actor.setColor(
-            1.00f,
-            1.00f,
-            1.00f,
-            1.00f
+                1.00f,
+                1.00f,
+                1.00f,
+                1.00f
         );
     }
 
     private BaseAnimation resolveBaseAnimation(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         SandstormTransportBehavior sandstorm =
-            zombie.getBehavior(
-                SandstormTransportBehavior.class
-            );
+                zombie.getBehavior(
+                        SandstormTransportBehavior.class
+                );
 
         SnowstormTransportBehavior snowstorm =
-            zombie.getBehavior(
-                SnowstormTransportBehavior.class
-            );
+                zombie.getBehavior(
+                        SnowstormTransportBehavior.class
+                );
 
         boolean transported =
-            sandstorm != null
-                && sandstorm.isActive()
-                || snowstorm != null
-                && snowstorm.isActive();
+                sandstorm != null
+                        && sandstorm.isActive()
+                        || snowstorm != null
+                        && snowstorm.isActive();
 
         if (transported) {
             return new BaseAnimation(
-                visual.animations.clip(
-                    EntityAnimationState.IDLE
-                ),
-                false
+                    visual.animations.clip(
+                            EntityAnimationState.IDLE
+                    ),
+                    false
             );
         }
 
         EntityAnimationState fallbackState = zombie.isEating()
-            ? EntityAnimationState.EAT
-            : EntityAnimationState.WALK;
+                ? EntityAnimationState.EAT
+                : EntityAnimationState.WALK;
 
         String alias = zombie.getAlias();
 
         if (ZombieType.NEWSPAPER.getAlias().equals(alias)) {
             DamageReactionBehavior reaction =
-                zombie.getBehavior(DamageReactionBehavior.class);
+                    zombie.getBehavior(DamageReactionBehavior.class);
 
             if (reaction != null && !reaction.isRaged()) {
                 String clip = clipOrFallback(
-                    visual,
-                    zombie.isEating()
-                        ? "eat_newspaper"
-                        : "walk_newspaper",
-                    fallbackState
+                        visual,
+                        zombie.isEating()
+                                ? "eat_newspaper"
+                                : "walk_newspaper",
+                        fallbackState
                 );
 
                 return new BaseAnimation(
-                    clip,
-                    !zombie.isEating()
+                        clip,
+                        !zombie.isEating()
                 );
             }
         }
 
         if (ZombieType.MODERN_ALL_STAR.getAlias().equals(alias)) {
             InstantKillBehavior contact =
-                zombie.getBehavior(InstantKillBehavior.class);
+                    zombie.getBehavior(InstantKillBehavior.class);
 
             if (contact != null
-                && !contact.isHasKilled()
-                && contact.getRunningSpeedScale() > 0f) {
+                    && !contact.isHasKilled()
+                    && contact.getRunningSpeedScale() > 0f) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "run",
-                        EntityAnimationState.WALK
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "run",
+                                EntityAnimationState.WALK
+                        ),
+                        false
                 );
             }
         }
 
         if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
             DamageReactionBehavior reaction =
-                zombie.getBehavior(DamageReactionBehavior.class);
+                    zombie.getBehavior(DamageReactionBehavior.class);
 
             if (reaction != null && reaction.isSpinning()) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "spin_walk",
-                        EntityAnimationState.WALK
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "spin_walk",
+                                EntityAnimationState.WALK
+                        ),
+                        false
                 );
             }
         }
 
         if (ZombieType.ARCADE.getAlias().equals(alias)) {
             PushObjectBehavior push =
-                zombie.getBehavior(PushObjectBehavior.class);
+                    zombie.getBehavior(PushObjectBehavior.class);
 
             if (push != null && push.hasObject()) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "push",
-                        EntityAnimationState.WALK
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "push",
+                                EntityAnimationState.WALK
+                        ),
+                        false
                 );
             }
         }
 
         if (ZombieType.BARREL_ROLLER.getAlias().equals(alias)) {
             PushObjectBehavior push =
-                zombie.getBehavior(PushObjectBehavior.class);
+                    zombie.getBehavior(PushObjectBehavior.class);
 
             if (push != null && !push.hasObject()) {
                 String clip = clipOrFallback(
-                    visual,
-                    zombie.isEating() ? "eat2" : "walk2",
-                    fallbackState
+                        visual,
+                        zombie.isEating() ? "eat2" : "walk2",
+                        fallbackState
                 );
 
                 return new BaseAnimation(
-                    clip,
-                    false
+                        clip,
+                        false
                 );
             }
         }
 
         if (ZombieType.ICE_AGE_TROGLOBITE.getAlias().equals(alias)) {
             PushObjectBehavior push =
-                zombie.getBehavior(PushObjectBehavior.class);
+                    zombie.getBehavior(PushObjectBehavior.class);
 
             if (push != null
-                && !push.getPushedFrozenZombies().isEmpty()) {
+                    && !push.getPushedFrozenZombies().isEmpty()) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "push",
-                        EntityAnimationState.WALK
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "push",
+                                EntityAnimationState.WALK
+                        ),
+                        false
                 );
             }
         }
 
         if (ZombieType.TOMB_RAISER.getAlias().equals(alias)) {
             WorldEffectBehavior worldEffect =
-                zombie.getBehavior(WorldEffectBehavior.class);
+                    zombie.getBehavior(WorldEffectBehavior.class);
 
             if (worldEffect != null
-                && worldEffect.getType()
-                == WorldEffectBehavior.WorldEffectType.SPAWN_TOMB
-                && worldEffect.isCasting()) {
+                    && worldEffect.getType()
+                    == WorldEffectBehavior.WorldEffectType.SPAWN_TOMB
+                    && worldEffect.isCasting()) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "power",
-                        EntityAnimationState.SPECIAL
-                    ),
-                    false,
-                    false
+                        clipOrFallback(
+                                visual,
+                                "power",
+                                EntityAnimationState.SPECIAL
+                        ),
+                        false,
+                        false
                 );
             }
         }
 
         if (ZombieType.PIANO.getAlias().equals(alias)) {
             return new BaseAnimation(
-                clipOrFallback(
-                    visual,
-                    "play",
-                    EntityAnimationState.IDLE
-                ),
-                false
+                    clipOrFallback(
+                            visual,
+                            "play",
+                            EntityAnimationState.IDLE
+                    ),
+                    false
             );
         }
 
         if (ZombieType.RA.getAlias().equals(alias)) {
             SunStealBehavior sunSteal =
-                zombie.getBehavior(SunStealBehavior.class);
+                    zombie.getBehavior(SunStealBehavior.class);
 
             if (sunSteal != null && sunSteal.isStealing()) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "power",
-                        EntityAnimationState.SPECIAL
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "power",
+                                EntityAnimationState.SPECIAL
+                        ),
+                        false
                 );
             }
         }
 
         if (ZombieType.DARK_KING.getAlias().equals(alias)) {
             return new BaseAnimation(
-                visual.animations.clip(EntityAnimationState.IDLE),
-                false
+                    visual.animations.clip(EntityAnimationState.IDLE),
+                    false
             );
         }
 
         if (ZombieType.BEACH_FISHERMAN.getAlias().equals(alias)) {
             return new BaseAnimation(
-                visual.animations.clip(EntityAnimationState.IDLE),
-                false
+                    visual.animations.clip(EntityAnimationState.IDLE),
+                    false
             );
         }
 
         if (ZombieType.CRYSTAL_SKULL.getAlias().equals(alias)) {
             TurquoiseLaserBehavior laser =
-                zombie.getBehavior(TurquoiseLaserBehavior.class);
+                    zombie.getBehavior(TurquoiseLaserBehavior.class);
 
             if (laser != null && laser.suppressesMovement(zombie)) {
                 return new BaseAnimation(
-                    clipOrFallback(
-                        visual,
-                        "power",
-                        EntityAnimationState.SPECIAL
-                    ),
-                    false
+                        clipOrFallback(
+                                visual,
+                                "power",
+                                EntityAnimationState.SPECIAL
+                        ),
+                        false
                 );
             }
         }
 
         String clip = visual.animations.clip(fallbackState);
         return new BaseAnimation(
-            clip,
-            fallbackState == EntityAnimationState.WALK
+                clip,
+                fallbackState == EntityAnimationState.WALK
         );
     }
 
     private void initializeBehaviorState(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         DamageReactionBehavior reaction =
-            zombie.getBehavior(DamageReactionBehavior.class);
+                zombie.getBehavior(DamageReactionBehavior.class);
         if (reaction != null) {
             visual.lastRaged = reaction.isRaged();
             visual.lastSpinning = reaction.isSpinning();
         }
 
         InstantKillBehavior contact =
-            zombie.getBehavior(InstantKillBehavior.class);
+                zombie.getBehavior(InstantKillBehavior.class);
         if (contact != null) {
             visual.lastHasKilled = contact.isHasKilled();
         }
 
         ImpThrowBehavior summon =
-            zombie.getBehavior(ImpThrowBehavior.class);
+                zombie.getBehavior(ImpThrowBehavior.class);
         if (summon != null) {
             visual.lastImpFired = summon.isFired();
         }
 
         RangedAttackBehavior ranged =
-            zombie.getBehavior(RangedAttackBehavior.class);
+                zombie.getBehavior(RangedAttackBehavior.class);
         if (ranged != null) {
             visual.lastRangedCooldown = ranged.getCooldown();
         }
 
         SunStealBehavior sunSteal =
-            zombie.getBehavior(SunStealBehavior.class);
+                zombie.getBehavior(SunStealBehavior.class);
         if (sunSteal != null) {
             visual.lastSunStealing = sunSteal.isStealing();
         }
 
         AuraBehavior aura =
-            zombie.getBehavior(AuraBehavior.class);
+                zombie.getBehavior(AuraBehavior.class);
         if (aura != null) {
             visual.lastAuraTimer = aura.getTimer();
         }
 
         TransformBehavior transform =
-            zombie.getBehavior(TransformBehavior.class);
+                zombie.getBehavior(TransformBehavior.class);
         if (transform != null) {
             visual.lastTransformCooldown = transform.getCooldown();
         }
 
         DynamiteBehavior dynamite =
-            zombie.getBehavior(DynamiteBehavior.class);
+                zombie.getBehavior(DynamiteBehavior.class);
         if (dynamite != null) {
             visual.lastDynamiteExploded = dynamite.isExploded();
         }
 
         MovementBehavior movement =
-            zombie.getBehavior(MovementBehavior.class);
+                zombie.getBehavior(MovementBehavior.class);
         if (movement != null) {
             visual.lastDodoFly = movement.isSkipEatingThisTick();
         }
 
         TurquoiseLaserBehavior laser =
-            zombie.getBehavior(TurquoiseLaserBehavior.class);
+                zombie.getBehavior(TurquoiseLaserBehavior.class);
         if (laser != null) {
             visual.lastLaserStealing =
-                laser.suppressesMovement(zombie);
+                    laser.suppressesMovement(zombie);
         }
 
         visual.behaviorStateInitialized = true;
     }
 
     private void detectBehaviorTransitions(
-        Zombie zombie,
-        ZombieVisual visual
+            Zombie zombie,
+            ZombieVisual visual
     ) {
         if (!visual.behaviorStateInitialized) {
             initializeBehaviorState(zombie, visual);
@@ -1552,11 +1687,11 @@ public final class ZombieAnimationSystem {
         String alias = zombie.getAlias();
 
         DamageReactionBehavior reaction =
-            zombie.getBehavior(DamageReactionBehavior.class);
+                zombie.getBehavior(DamageReactionBehavior.class);
         if (reaction != null) {
             if (!visual.lastRaged
-                && reaction.isRaged()
-                && ZombieType.NEWSPAPER.getAlias().equals(alias)) {
+                    && reaction.isRaged()
+                    && ZombieType.NEWSPAPER.getAlias().equals(alias)) {
                 enqueueSpecialClip(visual, "newspaper_defeat");
             }
 
@@ -1573,7 +1708,7 @@ public final class ZombieAnimationSystem {
         }
 
         InstantKillBehavior contact =
-            zombie.getBehavior(InstantKillBehavior.class);
+                zombie.getBehavior(InstantKillBehavior.class);
         if (contact != null) {
             if (!visual.lastHasKilled && contact.isHasKilled()) {
                 if (ZombieType.MODERN_ALL_STAR.getAlias().equals(alias)) {
@@ -1586,30 +1721,30 @@ public final class ZombieAnimationSystem {
         }
 
         ImpThrowBehavior summon =
-            zombie.getBehavior(ImpThrowBehavior.class);
+                zombie.getBehavior(ImpThrowBehavior.class);
         if (summon != null) {
             visual.lastImpFired = summon.isFired();
         }
 
         RangedAttackBehavior ranged =
-            zombie.getBehavior(RangedAttackBehavior.class);
+                zombie.getBehavior(RangedAttackBehavior.class);
         if (ranged != null) {
             int currentCooldown = ranged.getCooldown();
             if (currentCooldown > visual.lastRangedCooldown) {
                 switch (ranged.getType()) {
                     case SNOWBALL ->
-                        enqueueSpecialClip(visual, "throw");
+                            enqueueSpecialClip(visual, "throw");
                     case OCTOPUS_NET ->
-                        enqueueSpecialClip(visual, "toss");
+                            enqueueSpecialClip(visual, "toss");
                     case HOOK_PULL ->
-                        enqueueSpecialSequence(
-                            visual,
-                            "cast",
-                            "cast_loop",
-                            "reel"
-                        );
+                            enqueueSpecialSequence(
+                                    visual,
+                                    "cast",
+                                    "cast_loop",
+                                    "reel"
+                            );
                     case LASER_BEAM ->
-                        enqueueSpecialClip(visual, "attack");
+                            enqueueSpecialClip(visual, "attack");
                     default -> {
                     }
                 }
@@ -1618,19 +1753,19 @@ public final class ZombieAnimationSystem {
         }
 
         SunStealBehavior sunSteal =
-            zombie.getBehavior(SunStealBehavior.class);
+                zombie.getBehavior(SunStealBehavior.class);
         if (sunSteal != null) {
             boolean stealing = sunSteal.isStealing();
 
             if (!visual.lastSunStealing && stealing) {
                 enqueueSpecialClip(
-                    visual,
-                    "power_up"
+                        visual,
+                        "power_up"
                 );
             } else if (visual.lastSunStealing && !stealing) {
                 enqueueSpecialClip(
-                    visual,
-                    "power_down"
+                        visual,
+                        "power_down"
                 );
             }
 
@@ -1638,7 +1773,7 @@ public final class ZombieAnimationSystem {
         }
 
         AuraBehavior aura =
-            zombie.getBehavior(AuraBehavior.class);
+                zombie.getBehavior(AuraBehavior.class);
         if (aura != null) {
             int currentTimer = aura.getTimer();
             if (currentTimer < visual.lastAuraTimer) {
@@ -1648,7 +1783,7 @@ public final class ZombieAnimationSystem {
         }
 
         TransformBehavior transform =
-            zombie.getBehavior(TransformBehavior.class);
+                zombie.getBehavior(TransformBehavior.class);
         if (transform != null) {
             int currentCooldown = transform.getCooldown();
             if (currentCooldown > visual.lastTransformCooldown) {
@@ -1658,49 +1793,49 @@ public final class ZombieAnimationSystem {
         }
 
         DynamiteBehavior dynamite =
-            zombie.getBehavior(DynamiteBehavior.class);
+                zombie.getBehavior(DynamiteBehavior.class);
         if (dynamite != null) {
             if (!visual.lastDynamiteExploded
-                && dynamite.isExploded()) {
+                    && dynamite.isExploded()) {
                 enqueueSpecialSequence(
-                    visual,
-                    "blastoff",
-                    "fly",
-                    "land"
+                        visual,
+                        "blastoff",
+                        "fly",
+                        "land"
                 );
             }
             visual.lastDynamiteExploded = dynamite.isExploded();
         }
 
         MovementBehavior movement =
-            zombie.getBehavior(MovementBehavior.class);
+                zombie.getBehavior(MovementBehavior.class);
         if (movement != null) {
             boolean dodoFly = movement.isSkipEatingThisTick();
             if (!visual.lastDodoFly
-                && dodoFly
-                && movement.getType()
-                == MovementBehavior.MovementType.FLY_OVER) {
+                    && dodoFly
+                    && movement.getType()
+                    == MovementBehavior.MovementType.FLY_OVER) {
                 enqueueSpecialSequence(
-                    visual,
-                    "fly_start",
-                    "fly_loop",
-                    "fly_end"
+                        visual,
+                        "fly_start",
+                        "fly_loop",
+                        "fly_end"
                 );
             }
             visual.lastDodoFly = dodoFly;
         }
 
         TurquoiseLaserBehavior laser =
-            zombie.getBehavior(TurquoiseLaserBehavior.class);
+                zombie.getBehavior(TurquoiseLaserBehavior.class);
         if (laser != null) {
             boolean stealing = laser.suppressesMovement(zombie);
             if (!visual.lastLaserStealing && stealing) {
                 enqueueSpecialClip(visual, "power_up");
             } else if (visual.lastLaserStealing && !stealing) {
                 enqueueSpecialSequence(
-                    visual,
-                    "attack",
-                    "power_down"
+                        visual,
+                        "attack",
+                        "power_down"
                 );
             }
             visual.lastLaserStealing = stealing;
@@ -1708,11 +1843,11 @@ public final class ZombieAnimationSystem {
     }
 
     private boolean updateSpecialClip(
-        ZombieVisual visual
+            ZombieVisual visual
     ) {
         if (visual.activeSpecialClip != null) {
             if (visual.actor.getStateTime()
-                < visual.activeSpecialDuration) {
+                    < visual.activeSpecialDuration) {
                 return true;
             }
 
@@ -1731,8 +1866,8 @@ public final class ZombieAnimationSystem {
     }
 
     private boolean startSpecialClip(
-        ZombieVisual visual,
-        String clip
+            ZombieVisual visual,
+            String clip
     ) {
         String resolved = findAvailableClip(visual, clip);
         if (resolved == null) {
@@ -1746,11 +1881,11 @@ public final class ZombieAnimationSystem {
 
         try {
             visual.activeSpecialDuration = Math.max(
-                MIN_DEATH_DURATION,
-                pamPlayer.clipDurationSeconds(
-                    visual.animations.getPamPath(),
-                    resolved
-                )
+                    MIN_DEATH_DURATION,
+                    pamPlayer.clipDurationSeconds(
+                            visual.animations.getPamPath(),
+                            resolved
+                    )
             );
         } catch (RuntimeException ignored) {
             visual.activeSpecialDuration = 0.5f;
@@ -1760,8 +1895,8 @@ public final class ZombieAnimationSystem {
     }
 
     private void enqueueSpecialSequence(
-        ZombieVisual visual,
-        String... clips
+            ZombieVisual visual,
+            String... clips
     ) {
         for (String clip : clips) {
             enqueueSpecialClip(visual, clip);
@@ -1769,8 +1904,8 @@ public final class ZombieAnimationSystem {
     }
 
     private void enqueueSpecialClip(
-        ZombieVisual visual,
-        String clip
+            ZombieVisual visual,
+            String clip
     ) {
         String resolved = findAvailableClip(visual, clip);
         if (resolved == null) {
@@ -1790,19 +1925,19 @@ public final class ZombieAnimationSystem {
     }
 
     private String clipOrFallback(
-        ZombieVisual visual,
-        String preferred,
-        EntityAnimationState fallback
+            ZombieVisual visual,
+            String preferred,
+            EntityAnimationState fallback
     ) {
         String clip = findAvailableClip(visual, preferred);
         return clip != null
-            ? clip
-            : visual.animations.clip(fallback);
+                ? clip
+                : visual.animations.clip(fallback);
     }
 
     private String findAvailableClip(
-        ZombieVisual visual,
-        String wanted
+            ZombieVisual visual,
+            String wanted
     ) {
         if (wanted == null || wanted.isBlank()) {
             return null;
@@ -1818,84 +1953,84 @@ public final class ZombieAnimationSystem {
     }
 
     private void updatePosition(
-        Zombie zombie,
-        ZombieVisual visual,
-        float partialTick
+            Zombie zombie,
+            ZombieVisual visual,
+            float partialTick
     ) {
         PamAnimationActor actor = visual.actor;
 
         float renderX =
-            visual.previousModelX
-                + (
-                visual.currentModelX
-                    - visual.previousModelX
-            ) * partialTick;
+                visual.previousModelX
+                        + (
+                        visual.currentModelX
+                                - visual.previousModelX
+                ) * partialTick;
 
         float x =
-            boardTransform.getArea().x()
-                + (renderX + 0.5f)
-                * boardTransform.tileWidth();
+                boardTransform.getArea().x()
+                        + (renderX + 0.5f)
+                        * boardTransform.tileWidth();
 
         float y =
-            boardTransform.tileY(zombie.getLane())
-                + boardTransform.tileHeight()
-                * 0.5f;
+                boardTransform.tileY(zombie.getLane())
+                        + boardTransform.tileHeight()
+                        * 0.5f;
 
         actor.setPosition(x, y);
 
         float scaleX =
-            zombie.getDirection() >= 0
-                ? scale
-                : -scale;
+                zombie.getDirection() >= 0
+                        ? scale
+                        : -scale;
 
         actor.setScale(scaleX, scale);
     }
 
     private float calculateWalkPlaybackSpeed(
-        Zombie zombie,
-        PamAnimationActor actor
+            Zombie zombie,
+            PamAnimationActor actor
     ) {
         if (!actor.hasGrounding()) {
             return zombie.isChilled() ? 0.5f : 1f;
         }
 
         float stepDistanceWorld =
-            actor.getGroundingStepDistanceWorld();
+                actor.getGroundingStepDistanceWorld();
 
         float duration = actor.getGroundingDuration();
 
         if (stepDistanceWorld <= MIN_STEP_DISTANCE
-            || duration <= 0f) {
+                || duration <= 0f) {
             return zombie.isChilled() ? 0.5f : 1f;
         }
 
         float movementSpeedColumnsPerSecond =
-            Math.abs(
-                zombie.getBaseSpeed()
-                    * zombie.getSpeedMultiplier()
-            );
+                Math.abs(
+                        zombie.getBaseSpeed()
+                                * zombie.getSpeedMultiplier()
+                );
 
         if (zombie.isChilled()) {
             movementSpeedColumnsPerSecond *= 0.5f;
         }
 
         float movementSpeedWorld =
-            movementSpeedColumnsPerSecond
-                * boardTransform.tileWidth();
+                movementSpeedColumnsPerSecond
+                        * boardTransform.tileWidth();
 
         if (movementSpeedWorld <= 0f) {
             return 0f;
         }
 
         float playbackSpeed =
-            movementSpeedWorld
-                * duration
-                / stepDistanceWorld;
+                movementSpeedWorld
+                        * duration
+                        / stepDistanceWorld;
 
         return clamp(
-            playbackSpeed,
-            MIN_WALK_PLAYBACK_SPEED,
-            MAX_WALK_PLAYBACK_SPEED
+                playbackSpeed,
+                MIN_WALK_PLAYBACK_SPEED,
+                MAX_WALK_PLAYBACK_SPEED
         );
     }
 
@@ -1907,15 +2042,15 @@ public final class ZombieAnimationSystem {
         visual.activeSpecialDuration = 0f;
 
         String deathClip = visual.animations.clip(
-            EntityAnimationState.DEATH
+                EntityAnimationState.DEATH
         );
 
         visual.actor.clearGroundingKeepingVisualPosition();
         visual.actor.setColor(
-            1.00f,
-            1.00f,
-            1.00f,
-            1.00f
+                1.00f,
+                1.00f,
+                1.00f,
+                1.00f
         );
 
         visual.actor.resumeAnimation();
@@ -1925,11 +2060,11 @@ public final class ZombieAnimationSystem {
 
         try {
             visual.deathDuration = Math.max(
-                MIN_DEATH_DURATION,
-                pamPlayer.clipDurationSeconds(
-                    visual.animations.getPamPath(),
-                    deathClip
-                )
+                    MIN_DEATH_DURATION,
+                    pamPlayer.clipDurationSeconds(
+                            visual.animations.getPamPath(),
+                            deathClip
+                    )
             );
         } catch (RuntimeException ignored) {
             visual.deathDuration = 0.5f;
@@ -1937,24 +2072,24 @@ public final class ZombieAnimationSystem {
     }
 
     private static float clamp(
-        float value,
-        float min,
-        float max
+            float value,
+            float min,
+            float max
     ) {
         return Math.max(min, Math.min(max, value));
     }
 
     private static void logGroundingUnavailable(
-        String alias,
-        String reason
+            String alias,
+            String reason
     ) {
         if (Gdx.app != null) {
             Gdx.app.log(
-                "ZombieAnimation",
-                "Grounding disabled for "
-                    + alias
-                    + ": "
-                    + reason
+                    "ZombieAnimation",
+                    "Grounding disabled for "
+                            + alias
+                            + ": "
+                            + reason
             );
         }
     }
@@ -1965,20 +2100,20 @@ public final class ZombieAnimationSystem {
         private final boolean loop;
 
         private BaseAnimation(
-            String clip,
-            boolean walkSpeedSynced
+                String clip,
+                boolean walkSpeedSynced
         ) {
             this(
-                clip,
-                walkSpeedSynced,
-                true
+                    clip,
+                    walkSpeedSynced,
+                    true
             );
         }
 
         private BaseAnimation(
-            String clip,
-            boolean walkSpeedSynced,
-            boolean loop
+                String clip,
+                boolean walkSpeedSynced,
+                boolean loop
         ) {
             this.clip = clip;
             this.walkSpeedSynced = walkSpeedSynced;
@@ -2021,8 +2156,8 @@ public final class ZombieAnimationSystem {
         private float deathDuration;
 
         private ZombieVisual(
-            PamAnimationActor actor,
-            ZombieAnimationResolver.ResolvedAnimations animations
+                PamAnimationActor actor,
+                ZombieAnimationResolver.ResolvedAnimations animations
         ) {
             this.actor = actor;
             this.animations = animations;

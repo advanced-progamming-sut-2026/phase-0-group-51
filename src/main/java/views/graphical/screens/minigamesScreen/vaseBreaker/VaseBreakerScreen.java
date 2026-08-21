@@ -1,8 +1,14 @@
 package views.graphical.screens.minigamesScreen.vaseBreaker;
 
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import controllers.miniGamesController.VaseBreakerController;
 import graphics.PvzGame;
 import models.App;
@@ -15,6 +21,7 @@ import models.minigames.vaseBreaker.DroppedSeedPacket;
 import models.minigames.vaseBreaker.Vase;
 import models.minigames.vaseBreaker.VaseBreaker;
 import models.sun.Sun;
+import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
@@ -28,7 +35,9 @@ import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.StartGameMenuPopup;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VaseBreakerScreen extends BaseMinigameScreen {
     private static final String BG_LEFT = "IMAGE_BACKGROUNDS_DARK_TEXTURE_LEFT";
@@ -38,6 +47,8 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     private final VaseBreakerController controller;
     private final VaseBreaker vaseBreaker;
     private final Group droppedPacketLayer = new Group();
+    private final Map<DroppedSeedPacket, DroppedSeedPacketView> droppedPacketViews =
+            new IdentityHashMap<>();
     private VasePacketBar packetBar;
     private String selectedPacketName;
     private final BoardTransform boardTransform;
@@ -46,7 +57,9 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     private PlantViewManager plantViewManager;
     private ProjectileViewManager projectileViewManager;
     private SunViewManager sunViewManager;
-
+    private PlantActor placementPreview;
+    private Image rowHighlight;
+    private Image columnHighlight;
     private final ZombieAnimationSystem zombieAnimationSystem;
 
     private final List<BrainView> brainViews =
@@ -97,11 +110,32 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     }
     private void buildBoard() {
         Board board = vaseBreaker.getGameState().getBoard();
-    boardView = new BoardView(board, boardTransform);
-    boardView.setOnTileClicked(this::handleTileClicked);
-    worldStage.addActor(
-            boardView
-    );
+        boardView = new BoardView(
+                board,
+                boardTransform
+        );
+
+        boardView.setOnTileClicked(
+                this::handleTileClicked
+        );
+
+        boardView.setOnTileHovered(
+                this::handleTileHover
+        );
+
+        createPlacementHighlights();
+
+        worldStage.addActor(
+                rowHighlight
+        );
+
+        worldStage.addActor(
+                columnHighlight
+        );
+
+        worldStage.addActor(
+                boardView
+        );
     plantViewManager = new PlantViewManager(game, boardTransform);
     worldStage.addActor(plantViewManager);
     projectileViewManager = new ProjectileViewManager(game, boardTransform);
@@ -124,18 +158,69 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     worldStage.addActor(
             droppedPacketLayer
     );
+        placementPreview =
+                new PlantActor(game);
+
+        placementPreview.setPreviewMode(
+                true
+        );
+
+        worldStage.addActor(
+                placementPreview
+        );
     syncModelViews();
         refreshDroppedPackets();
     }
     private void buildPacketBar() {
-        packetBar = new VasePacketBar(game, vaseBreaker, plantName -> selectedPacketName = plantName);
+        packetBar = new VasePacketBar(game, vaseBreaker, this::handlePacketSelectionChanged);
         packetBar.setVisible(false);
         uiStage.addActor(packetBar);
     }
+    private void handlePacketSelectionChanged(String plantName) {
+        selectedPacketName = plantName;
+        if (placementPreview == null) {
+            return;
+        }
+        if (plantName == null) {
+            placementPreview.clearPlant();
+            hidePlacementHighlights();
+            return;
+        }
+        PlantData plant = PlantRegistry.getByName(plantName);
+
+        if (plant == null) {
+            placementPreview.clearPlant();
+            selectedPacketName = null;
+            hidePlacementHighlights();
+            return;
+        }
+
+        placementPreview.setPreviewMode(true);
+        placementPreview.setPlant(plant);
+    }
     private void refreshDroppedPackets() {
-        droppedPacketLayer.clearChildren();
-        int currentTick = vaseBreaker.getGameState().getTickCounter();
-        int ticksPerSecond = vaseBreaker.getGameState().getTicksPerSecond();
+        int currentTick =
+                vaseBreaker.getGameState().getTickCounter();
+
+        int ticksPerSecond =
+                vaseBreaker.getGameState().getTicksPerSecond();
+
+        droppedPacketViews.entrySet().removeIf(entry -> {
+            DroppedSeedPacket packet = entry.getKey();
+
+            boolean stillInModel =
+                    vaseBreaker.getDroppedSeedPackets().contains(packet);
+
+            boolean shouldRemove =
+                    !stillInModel || !packet.isActive(currentTick);
+
+            if (shouldRemove) {
+                entry.getValue().remove();
+            }
+
+            return shouldRemove;
+        });
+
         for (DroppedSeedPacket packet : vaseBreaker.getDroppedSeedPackets()) {
             if (!packet.isActive(
                     currentTick
@@ -143,10 +228,25 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
                 continue;
             }
 
-            DroppedSeedPacketView packetView = new DroppedSeedPacketView(game, packet, this::handleDroppedPacketClicked);
+            DroppedSeedPacketView packetView =
+                    droppedPacketViews.get(packet);
+
+            if (packetView == null) {
+                packetView = new DroppedSeedPacketView(
+                        game,
+                        packet,
+                        this::handleDroppedPacketClicked
+                );
+
             placeDroppedPacket(packetView, packet);
-            packetView.refreshTimer(currentTick, ticksPerSecond);
             droppedPacketLayer.addActor(packetView);
+                droppedPacketViews.put(packet, packetView);
+            }
+
+            packetView.refreshTimer(
+                    currentTick,
+                    ticksPerSecond
+            );
         }
     }
     private void buildBrains() {
@@ -236,6 +336,8 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
             return;
         }
 
+        String plantName = packet.getPlantName();
+
         Result result = controller.pickUpSeedPacket(packet.getX(), packet.getY());
         if (!result.success()) {
             game.notifyError(result.message());
@@ -244,7 +346,7 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
 
         game.notifyInfo(result.message());
         refreshDroppedPackets();
-        packetBar.refresh();
+        packetBar.selectPlant(plantName);
     }
     private void handleTileClicked(Tile tile) {
 
@@ -264,10 +366,69 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
             game.notifyError(result.message());
             return;
         }
-        //game.notifyInfo(result.message());
+
         syncModelViews();
+        packetBar.clearSelection();
         packetBar.refresh();
-        selectedPacketName = packetBar.getSelectedPlantName();
+    }
+
+
+    private void createPlacementHighlights() {
+        Drawable highlightDrawable = game.getSkin().newDrawable(
+                "white_pixel",
+                new Color(1f, 1f, 1f, 0.70f)
+        );
+
+        rowHighlight = new Image(highlightDrawable);
+        columnHighlight = new Image(highlightDrawable);
+
+        rowHighlight.setTouchable(Touchable.disabled);
+        columnHighlight.setTouchable(Touchable.disabled);
+
+        rowHighlight.setVisible(false);
+        columnHighlight.setVisible(false);
+    }
+
+    private void handleTileHover(Tile tile) {
+        boolean hasPlantSelection =
+                selectedPacketName != null;
+
+        if (tile == null
+                || !hasPlantSelection
+                || !isPlaying()
+                || isPaused()) {
+            hidePlacementHighlights();
+            return;
+        }
+
+        BoardArea area = boardTransform.getArea();
+
+        rowHighlight.setBounds(
+                area.x(),
+                boardTransform.tileY(tile.getLane()),
+                area.width(),
+                boardTransform.tileHeight()
+        );
+
+        columnHighlight.setBounds(
+                boardTransform.tileX(tile.getColumn()),
+                area.y(),
+                boardTransform.tileWidth(),
+                area.height()
+        );
+
+        rowHighlight.setVisible(true);
+        columnHighlight.setVisible(true);
+    }
+
+    private void hidePlacementHighlights() {
+        if (rowHighlight != null) {
+            rowHighlight.setVisible(false);
+        }
+
+        if (columnHighlight != null) {
+            columnHighlight.setVisible(false);
+        }
     }
 
     @Override
@@ -361,6 +522,10 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
         );
 
         droppedPacketLayer.toFront();
+
+        if (placementPreview != null) {
+            placementPreview.toFront();
+        }
     }
     @Override
     protected void restartMinigame() {
@@ -380,8 +545,5 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
 
         refreshDroppedPackets();
 
-        if (packetBar != null) {
-            packetBar.refresh();
-        }
     }
 }

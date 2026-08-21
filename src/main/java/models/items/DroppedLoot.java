@@ -59,6 +59,7 @@ public class DroppedLoot {
             case COIN -> "coin";
             case GEM -> "gem";
             case POT -> "pot";
+            case PLANT_FOOD -> "plant_food";
         };
     }
 }

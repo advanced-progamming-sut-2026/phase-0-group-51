@@ -108,8 +108,19 @@ public final class FrozenZombieIceAnimationSystem {
 
         for (Zombie zombie : safeZombies) {
             if (zombie == null
-                || zombie.isDead()
-                || !zombie.hasIceShell()) {
+                || zombie.isDead()) {
+                continue;
+            }
+
+            if (!zombie.hasIceShell()) {
+
+                IceVisual oldVisual =
+                    visuals.remove(zombie);
+
+                if (oldVisual != null) {
+                    oldVisual.remove();
+                }
+
                 continue;
             }
 

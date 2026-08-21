@@ -2,8 +2,10 @@ package views.graphical.gameplay.manager;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import graphics.PvzGame;
 import models.Board.Board;
 import models.Board.Tile;
@@ -289,6 +291,140 @@ public class PlantViewManager extends Group {
         actor.setPosition(
                 centerX,
                 centerY
+        );
+    }
+    public void animateSync(Board board) {
+
+        Set<Plant> plantsOnBoard =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+
+
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+
+            for (int column = 0;
+                 column < board.getColumnCount();
+                 column++) {
+
+
+                Tile tile = board.getTile(lane, column);
+
+                animatePlant(
+                        tile.getLilyPadPlant(),
+                        lane,
+                        column,
+                        0,
+                        plantsOnBoard
+                );
+
+                animatePlant(
+                        tile.getTopPlant(),
+                        lane,
+                        column,
+                        1,
+                        plantsOnBoard
+                );
+
+                animatePlant(
+                        tile.getPumpkinPlant(),
+                        lane,
+                        column,
+                        2,
+                        plantsOnBoard
+                );
+            }
+        }
+
+
+        removeMissingPlants(plantsOnBoard);
+        sortPlantsByDepth();
+    }
+    private void animatePlant(
+            Plant plant,
+            int lane,
+            int column,
+            int layer,
+            Set<Plant> plantsOnBoard
+    ) {
+
+        if (plant == null) {
+            return;
+        }
+
+
+        plantsOnBoard.add(plant);
+
+
+        PlantActor actor =
+                plantActors.get(plant);
+
+
+        // اگر تازه آمده، بسازش
+        if (actor == null) {
+
+            actor = createPlantActor(plant);
+
+            plantActors.put(
+                    plant,
+                    actor
+            );
+
+            addActor(actor);
+
+            syncPlantBaseAnimation(
+                    plant,
+                    actor
+            );
+        }
+
+
+        actorLayers.put(
+                actor,
+                layer
+        );
+
+
+        float targetX =
+                transform.tileX(column)
+                        + transform.tileWidth() / 2f;
+
+
+        float targetY =
+                transform.tileY(lane)
+                        + transform.tileHeight() / 2f;
+
+
+
+        actor.clearActions();
+
+
+        actor.addAction(
+                Actions.moveTo(
+                        targetX,
+                        targetY,
+                        0.35f,
+                        Interpolation.smooth
+                )
+        );
+
+
+        syncPlantAction(
+                plant,
+                actor
+        );
+
+        syncPlantFoodEffect(
+                plant,
+                actor
+        );
+
+        syncDamageFlash(
+                plant,
+                actor
+        );
+
+        syncFrostVisual(
+                plant,
+                actor
         );
     }
 }

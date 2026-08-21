@@ -37,7 +37,38 @@ public final class CollectionMenuTable extends Table {
 
     private final PvzGame game;
     private final Table cardsGrid;
+    private static final String ALL_FAMILIES = "ALL FAMILIES";
+    private String selectedFamily = ALL_FAMILIES;
+    private OwnershipFilter selectedOwnership = OwnershipFilter.ALL;
+    private UpgradeFilter selectedUpgrade = UpgradeFilter.ALL;
 
+    private enum OwnershipFilter {
+        ALL("ALL"),
+        UNLOCKED("UNLOCKED"),
+        LOCKED("LOCKED");
+        private final String title;
+        OwnershipFilter(String title) {
+            this.title = title;
+        }
+        @Override
+        public String toString() {
+            return title;
+        }
+    }
+
+    private enum UpgradeFilter {
+        ALL("ALL"),
+        UPGRADEABLE("UPGRADEABLE"),
+        NOT_UPGRADEABLE("NOT UPGRADEABLE");
+        private final String title;
+        UpgradeFilter(String title) {
+            this.title = title;
+        }
+        @Override
+        public String toString() {
+            return title;
+        }
+    }
     public CollectionMenuTable(PvzGame game) {
         if (game == null) {
             throw new IllegalArgumentException("game cannot be null");
@@ -213,6 +244,38 @@ public final class CollectionMenuTable extends Table {
         plants.sort(Comparator.comparingInt(PlantData::id));
         int column = 0;
         int columnsPerRow = 8;
+        cardsGrid.add(createPlantFilterToolbar())
+                .colspan(columnsPerRow)
+                .growX()
+                .padLeft(15f)
+                .padRight(15f)
+                .padTop(10f)
+                .padBottom(5f);
+
+        cardsGrid.row();
+
+        plants = filterPlants(
+                plants,
+                user,
+                unlockedPlants,
+                plantLevels,
+                seedPackets
+        );
+
+        if (plants.isEmpty()) {
+            Label emptyLabel = new Label("NO PLANTS MATCH THESE FILTERS", game.getSkin());
+            emptyLabel.setColor(
+                    1f,
+                    0.85f,
+                    0.45f,
+                    1f
+            );
+            cardsGrid.add(emptyLabel)
+                    .colspan(columnsPerRow)
+                    .padTop(60f);
+
+            return;
+        }
         ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
 
         plantGroup.setMinCheckCount(0);
@@ -304,7 +367,537 @@ public final class CollectionMenuTable extends Table {
 
         getStage().addActor(details);
     }
+    private List<PlantData> filterPlants(
+            List<PlantData> plants,
+            User user,
+            Set<Integer> unlockedPlants,
+            Map<Integer, Integer> plantLevels,
+            Map<Integer, Integer> seedPackets
+    ) {
+        List<PlantData> result = new ArrayList<>();
+        for (PlantData plant : plants) {
+            boolean unlocked = unlockedPlants.contains(plant.id());
+            int level = plantLevels.getOrDefault(plant.id(), 1);
+            int packets = seedPackets.getOrDefault(plant.id(), 0);
+            boolean upgradeable = canUpgradePlant(plant, unlocked, level, packets);
+            if (!matchesFamily(plant)) {
+                continue;
+            }
 
+            if (!matchesOwnership(unlocked)) {
+                continue;
+            }
+
+            if (!matchesUpgrade(upgradeable)) {
+                continue;
+            }
+
+            result.add(plant);
+        }
+
+        result.sort(
+                Comparator.comparingInt(
+                        PlantData::id
+                )
+        );
+
+        return result;
+    }
+    private boolean canUpgradePlant(
+            PlantData plant,
+            boolean unlocked,
+            int currentLevel,
+            int packets
+    ) {
+        if (!unlocked) {
+            return false;
+        }
+        int maximumLevel = plant.upgrades() == null ? 1 : plant.upgrades().size() + 1;
+        if (currentLevel >= maximumLevel) {
+            return false;
+        }
+        int requiredPackets = requiredSeedPackets(plant, currentLevel);
+        return packets >= requiredPackets;
+    }
+    private boolean matchesFamily(
+            PlantData plant
+    ) {
+        if (ALL_FAMILIES.equals(
+                selectedFamily
+        )) {
+            return true;
+        }
+
+        return plant.category() != null
+                && plant.category()
+                .equalsIgnoreCase(
+                        selectedFamily
+                );
+    }
+
+    private boolean matchesOwnership(
+            boolean unlocked
+    ) {
+        return switch (selectedOwnership) {
+            case ALL -> true;
+            case UNLOCKED -> unlocked;
+            case LOCKED -> !unlocked;
+        };
+    }
+
+    private boolean matchesUpgrade(
+            boolean upgradeable
+    ) {
+        return switch (selectedUpgrade) {
+            case ALL -> true;
+            case UPGRADEABLE -> upgradeable;
+            case NOT_UPGRADEABLE -> !upgradeable;
+        };
+    }
+    private int requiredCoinsForLevel(
+            int targetLevel
+    ) {
+        return switch (targetLevel) {
+            case 2 -> 1000;
+            case 3 -> 2000;
+            case 4 -> 4000;
+            default ->
+                    4000 * Math.max(
+                            1,
+                            targetLevel - 3
+                    );
+        };
+    }
+    private Table createPlantFilterToolbar() {
+        Table toolbar = new Table();
+        Label title =
+                new Label("PLANTS", game.getSkin());
+        title.setFontScale(1.15f);
+        int activeFilters = activeFilterCount();
+        String buttonText =
+                activeFilters == 0
+                        ? "FILTERS"
+                        : "FILTERS (" + activeFilters + ")";
+
+        TextButton filterButton =
+                new TextButton(
+                        buttonText,
+                        game.getSkin(),
+                        "green"
+                );
+
+        filterButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor) {
+                        openPlantFilterDialog();
+                    }
+                }
+        );
+
+        toolbar.add(title)
+                .expandX()
+                .left();
+
+        toolbar.add(filterButton)
+                .width(150f)
+                .height(42f)
+                .right();
+
+        return toolbar;
+    }
+    private int activeFilterCount() {
+        int count = 0;
+
+        if (!ALL_FAMILIES.equals(selectedFamily)) {
+            count++;
+        }
+
+        if (selectedOwnership != OwnershipFilter.ALL) {
+            count++;
+        }
+
+        if (selectedUpgrade != UpgradeFilter.ALL) {
+            count++;
+        }
+
+        return count;
+    }
+    private void openPlantFilterDialog() {
+        if (getStage() == null) {
+            return;
+        }
+
+        SelectBox<String> familyBox =
+                createFilterSelectBox();
+
+        familyBox.setItems(
+                getFamilyOptions()
+        );
+
+        familyBox.setSelected(
+                selectedFamily
+        );
+
+        SelectBox<OwnershipFilter> ownershipBox =
+                createFilterSelectBox();
+
+        ownershipBox.setItems(
+                OwnershipFilter.values()
+        );
+
+        ownershipBox.setSelected(
+                selectedOwnership
+        );
+
+        SelectBox<UpgradeFilter> upgradeBox =
+                createFilterSelectBox();
+
+        upgradeBox.setItems(
+                UpgradeFilter.values()
+        );
+
+        upgradeBox.setSelected(
+                selectedUpgrade
+        );
+
+        // Dark fullscreen layer.
+        Table overlay = new Table();
+
+        overlay.setFillParent(true);
+        overlay.setTouchable(Touchable.enabled);
+
+        overlay.setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        new Color(
+                                0f,
+                                0f,
+                                0f,
+                                0.72f
+                        )
+                )
+        );
+
+        // Use the project's own popup style instead of Dialog.
+        BorderedPanel panel =
+                new BorderedPanel(
+                        game,
+                        Color.valueOf("75452F")
+                );
+
+        Table content =
+                panel.getContent();
+
+        content.clearChildren();
+        content.pad(
+                26f,
+                34f,
+                30f,
+                34f
+        );
+
+        // ---------------- TITLE ----------------
+
+        Label title =
+                new Label(
+                        "FILTER PLANTS",
+                        game.getSkin()
+                );
+
+        title.setColor(
+                Color.valueOf("FFE06A")
+        );
+
+        title.setFontScale(1.2f);
+
+        content.add(title)
+                .colspan(2)
+                .padBottom(25f)
+                .center()
+                .row();
+
+        // ---------------- FAMILY ----------------
+
+        Label familyLabel =
+                new Label(
+                        "FAMILY",
+                        game.getSkin()
+                );
+
+        familyLabel.setColor(Color.WHITE);
+
+        content.add(familyLabel)
+                .left()
+                .padRight(25f)
+                .padBottom(15f);
+
+        content.add(familyBox)
+                .width(280f)
+                .height(45f)
+                .padBottom(15f)
+                .row();
+
+        // ---------------- OWNERSHIP ----------------
+
+        Label ownershipLabel =
+                new Label(
+                        "OWNERSHIP",
+                        game.getSkin()
+                );
+
+        ownershipLabel.setColor(Color.WHITE);
+
+        content.add(ownershipLabel)
+                .left()
+                .padRight(25f)
+                .padBottom(15f);
+
+        content.add(ownershipBox)
+                .width(280f)
+                .height(45f)
+                .padBottom(15f)
+                .row();
+
+        // ---------------- UPGRADE ----------------
+
+        Label upgradeLabel =
+                new Label(
+                        "UPGRADE",
+                        game.getSkin()
+                );
+
+        upgradeLabel.setColor(Color.WHITE);
+
+        content.add(upgradeLabel)
+                .left()
+                .padRight(25f)
+                .padBottom(25f);
+
+        content.add(upgradeBox)
+                .width(280f)
+                .height(45f)
+                .padBottom(25f)
+                .row();
+
+        // ---------------- BUTTONS ----------------
+
+        Table buttons =
+                new Table();
+
+        TextButton resetButton =
+                new TextButton(
+                        "RESET",
+                        game.getSkin(),
+                        "brown"
+                );
+
+        TextButton cancelButton =
+                new TextButton(
+                        "CANCEL",
+                        game.getSkin(),
+                        "brown"
+                );
+
+        TextButton applyButton =
+                new TextButton(
+                        "APPLY",
+                        game.getSkin(),
+                        "green"
+                );
+
+        resetButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        selectedFamily =
+                                ALL_FAMILIES;
+
+                        selectedOwnership =
+                                OwnershipFilter.ALL;
+
+                        selectedUpgrade =
+                                UpgradeFilter.ALL;
+
+                        overlay.remove();
+
+                        showPlants();
+                    }
+                }
+        );
+
+        cancelButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+                        overlay.remove();
+                    }
+                }
+        );
+
+        applyButton.addListener(
+                new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        selectedFamily =
+                                familyBox.getSelected();
+
+                        selectedOwnership =
+                                ownershipBox.getSelected();
+
+                        selectedUpgrade =
+                                upgradeBox.getSelected();
+
+                        overlay.remove();
+
+                        showPlants();
+                    }
+                }
+        );
+
+        buttons.add(resetButton)
+                .width(125f)
+                .height(45f)
+                .padRight(10f);
+
+        buttons.add(cancelButton)
+                .width(125f)
+                .height(45f)
+                .padRight(10f);
+
+        buttons.add(applyButton)
+                .width(125f)
+                .height(45f);
+
+        content.add(buttons)
+                .colspan(2)
+                .center();
+
+        panel.pack();
+
+        overlay.add(panel)
+                .center();
+
+        getStage().addActor(overlay);
+    }
+    private <T> SelectBox<T> createFilterSelectBox() {
+        Skin skin = game.getSkin();
+        com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle listStyle =
+                new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(
+                        skin.get(
+                                "default",
+                                com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle.class
+                        )
+                );
+
+        listStyle.font = skin.getFont("FBUSV8C5EI_2");
+        listStyle.fontColorSelected = Color.WHITE;
+        listStyle.fontColorUnselected = Color.WHITE;
+        listStyle.background = skin.getDrawable("image_ui_dialog_asset_inner_bkgd_10");
+        listStyle.selection = skin.getDrawable("image_ui_generic_greenbutton_10");
+        listStyle.over = skin.getDrawable("image_ui_generic_brownbutton_10");
+
+        ScrollPane.ScrollPaneStyle scrollStyle =
+                new ScrollPane.ScrollPaneStyle(
+                        skin.get(
+                                "default",
+                                ScrollPane.ScrollPaneStyle.class
+                        )
+                );
+
+        SelectBox.SelectBoxStyle selectStyle =
+                new SelectBox.SelectBoxStyle();
+
+        selectStyle.font =
+                skin.getFont("FBUSV8C5EI_2");
+
+        selectStyle.fontColor =
+                Color.WHITE;
+
+        selectStyle.disabledFontColor =
+                Color.GRAY;
+
+        selectStyle.background =
+                skin.getDrawable(
+                        "image_ui_generic_brownbutton_10"
+                );
+
+        selectStyle.backgroundOver =
+                skin.getDrawable(
+                        "image_ui_generic_brownbutton_down_10"
+                );
+
+        selectStyle.backgroundOpen =
+                skin.getDrawable(
+                        "image_ui_generic_greenbutton_10"
+                );
+
+        selectStyle.backgroundDisabled =
+                skin.getDrawable(
+                        "image_ui_generic_disabledbutton_10"
+                );
+
+        selectStyle.listStyle =
+                listStyle;
+
+        selectStyle.scrollStyle =
+                scrollStyle;
+
+        SelectBox<T> selectBox =
+                new SelectBox<>(selectStyle);
+
+        selectBox.setAlignment(
+                com.badlogic.gdx.utils.Align.center
+        );
+
+        selectBox.getList().setAlignment(
+                com.badlogic.gdx.utils.Align.center
+        );
+
+        selectBox.setMaxListCount(6);
+
+        return selectBox;
+    }
+    private String[] getFamilyOptions() {
+        List<String> families = new ArrayList<>();
+        for (PlantData plant : PlantRegistry.getAll()) {
+            String family = plant.category();
+            if (family == null || family.isBlank()) {
+                continue;
+            }
+            boolean alreadyExists = false;
+            for (String existing : families) {
+                if (existing.equalsIgnoreCase(family)) {
+                    alreadyExists = true;
+                    break;
+                }
+            }
+            if (!alreadyExists) {
+                families.add(family);
+            }
+        }
+
+        families.sort(
+                String.CASE_INSENSITIVE_ORDER
+        );
+
+        families.add(
+                0,
+                ALL_FAMILIES
+        );
+
+        return families.toArray(
+                new String[0]
+        );
+    }
     private void showZombies() {
         cardsGrid.clearChildren();
 
