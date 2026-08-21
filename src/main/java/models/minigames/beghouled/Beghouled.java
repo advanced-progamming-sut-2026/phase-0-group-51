@@ -34,7 +34,9 @@ public class Beghouled extends Game {
     private final Random random;
     private int completedMatches;
     private boolean zombieReachedHouse;
-
+    private boolean resolvingAnimation;
+    private int pendingResolveRounds;
+    private List<MatchGroup> pendingGroups;
     public Beghouled(int stageNumber) {
         this(stageNumber, new Random());
     }
@@ -109,6 +111,30 @@ public class Beghouled extends Game {
     public void onTick() {
         GameState state = getGameState();
         if (state == null || state.isFinished()) {
+            return;
+        }
+        if (resolvingAnimation) {
+
+            if (pendingGroups != null && !pendingGroups.isEmpty()) {
+
+                resolveOneMatchStep(pendingGroups);
+
+                pendingGroups = findMatchGroups();
+
+                if (pendingGroups.isEmpty()) {
+
+                    resolvingAnimation = false;
+
+                    checkWinCondition();
+
+                    if (!getGameState().isFinished()
+                            && !hasAnyLegalSwap()) {
+
+                        resetBoardBecauseNoMoveExists();
+                    }
+                }
+            }
+
             return;
         }
         state.addTick(1);
@@ -223,55 +249,29 @@ public class Beghouled extends Game {
     }
 
     private SwapOutcome resolveMatches(List<MatchGroup> firstGroups) {
-        int directMatches = 0;
-        int cascadeMatches = 0;
-        int totalSunGained = 0;
-        boolean cascade = false;
-        int rounds = 0;
-        List<MatchGroup> groups = firstGroups;
-
-        while (!groups.isEmpty() && rounds < MAX_NEW_CASCADE_CHECK) {
-            rounds++;
-            int gainedThisRound = scoreAndLog(groups, cascade);
-            totalSunGained += gainedThisRound;
-            getGameState().increaseSunBalance(gainedThisRound);
-            completedMatches += groups.size();
-
-            if (cascade) {
-                cascadeMatches += groups.size();
-            } else {
-                directMatches += groups.size();
-            }
-
-            removeMatchedPlants(groups);
-            collapseAndRefill();
-            cascade = true;
-            groups = findMatchGroups();
-        }
-
-        if (rounds >= MAX_NEW_CASCADE_CHECK && !groups.isEmpty()) {
-            getGameState().logEvent(
-                    "Cascade safety limit reached; the board was reshuffled.\n"
-            );
-            generatePlayableBoard();
-        }
-
-        checkWinCondition();
-
-        boolean boardReset = false;
-        if (!getGameState().isFinished() && !hasAnyLegalSwap()) {
-            boardReset = resetBoardBecauseNoMoveExists();
-        }
+        pendingGroups = new ArrayList<>(firstGroups);
+        resolvingAnimation = true;
 
         return new SwapOutcome(
-                directMatches,
-                cascadeMatches,
-                totalSunGained,
+                0,
+                0,
+                0,
                 completedMatches,
-                boardReset
+                false
         );
     }
+    private void resolveOneMatchStep(List<MatchGroup> groups) {
 
+        int gained = scoreAndLog(groups, false);
+
+        getGameState().increaseSunBalance(gained);
+
+        completedMatches += groups.size();
+
+        removeMatchedPlants(groups);
+
+        collapseAndRefill();
+    }
     private int scoreAndLog(List<MatchGroup> groups, boolean cascade) {
         int total = 0;
         StringBuilder message = new StringBuilder();

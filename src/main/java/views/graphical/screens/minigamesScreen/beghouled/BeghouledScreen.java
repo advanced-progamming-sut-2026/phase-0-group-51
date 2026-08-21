@@ -113,7 +113,7 @@ public class BeghouledScreen extends BaseMinigameScreen {
                         ChapterTheme.MINIGAME);
 
         installDragListeners();
-        plantViewManager.sync(board);
+        plantViewManager.animateSync(board);
     }
 
     private void installDragListeners() {
@@ -835,11 +835,9 @@ public class BeghouledScreen extends BaseMinigameScreen {
     private void syncBoard() {
 
         if (plantViewManager != null) {
-            plantViewManager.sync(
-                    beghouled
-                            .getGameState()
-                            .getBoard()
-            );
+            plantViewManager.animateSync(    beghouled
+                    .getGameState()
+                    .getBoard());
         }
     }
 
