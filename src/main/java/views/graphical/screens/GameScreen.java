@@ -37,6 +37,8 @@ import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
 import models.games.Level;
+import models.enums.LootType;
+import models.items.DroppedLoot;
 import models.games.ZombieWaveManager;
 import models.sun.Sun;
 
@@ -59,6 +61,7 @@ import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
+import views.graphical.gameplay.loot.LootAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.dialogue.LevelDialogueRegistry;
@@ -155,6 +158,7 @@ public class GameScreen extends BaseScreen {
     private BoardArea boardArea;
     private final BoardTransform boardTransform;
     private final ZombieAnimationSystem zombieAnimationSystem;
+    private final LootAnimationSystem lootAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
     private final IceFloorAnimationSystem iceFloorAnimationSystem;
@@ -290,6 +294,14 @@ public class GameScreen extends BaseScreen {
             boardTransform,
             theme
         );
+
+        lootAnimationSystem =
+            new LootAnimationSystem(
+                game.getPamPlayer(),
+                worldStage,
+                boardTransform,
+                zombieAnimationSystem
+            );
 
         frozenZombieIceAnimationSystem =
             new FrozenZombieIceAnimationSystem(
@@ -1458,6 +1470,11 @@ public class GameScreen extends BaseScreen {
                 visualZombies
             );
 
+            lootAnimationSystem.sync(
+                visualZombies,
+                board.getActiveLoots()
+            );
+
             if (protectedPlantOverlayManager != null) {
                 protectedPlantOverlayManager.sync(
                     currentGameForVisuals.getGameState()
@@ -1833,6 +1850,30 @@ public class GameScreen extends BaseScreen {
         int x = tile.getColumn() + 1;
         int y = tile.getLane() + 1;
 
+        Game currentGame =
+            App.getInstance()
+                .getCurrentGame();
+
+        if (currentGame != null
+            && currentGame.getGameState() != null) {
+            DroppedLoot plantFoodLoot =
+                findPlantFoodLootAt(
+                    currentGame
+                        .getGameState()
+                        .getBoard(),
+                    tile.getLane(),
+                    tile.getColumn()
+                );
+
+            if (plantFoodLoot != null) {
+                collectPlantFoodPickup(
+                    currentGame.getGameState(),
+                    plantFoodLoot
+                );
+                return;
+            }
+        }
+
         if (toolMode == ToolMode.SHOVEL) {
             Result result = gamingController.pluckPlant(x, y);
             if (!result.success()) {
@@ -1873,6 +1914,71 @@ public class GameScreen extends BaseScreen {
         }
 
         plantSlotsBar.clearPlantSelection();
+    }
+
+    private DroppedLoot findPlantFoodLootAt(
+        Board board,
+        int lane,
+        int column
+    ) {
+        if (board == null) {
+            return null;
+        }
+
+        for (DroppedLoot loot : board.getActiveLoots()) {
+
+            if (loot == null
+                || loot.getType() != LootType.PLANT_FOOD) {
+                continue;
+            }
+
+            int lootColumn =
+                (int) Math.floor(
+                    loot.getX()
+                );
+
+            if (lootColumn == column
+                && loot.getLane() == lane) {
+
+                return loot;
+            }
+        }
+
+        return null;
+    }
+
+    private void collectPlantFoodPickup(
+        GameState state,
+        DroppedLoot loot
+    ) {
+        if (state == null
+            || loot == null
+            || !loot.isActive()) {
+            return;
+        }
+
+        /*
+         * Add first so a full Plant Food bank leaves the pickup on the ground.
+         * If the Board collection unexpectedly fails, roll the added Plant Food
+         * back immediately.
+         */
+        if (!state.addPlantFood()) {
+            game.notifyError(
+                "Your Plant Food storage is full."
+            );
+            return;
+        }
+
+        if (!state.getBoard()
+            .collectLoot(
+                loot
+            )) {
+            state.consumePlantFood();
+
+            game.notifyError(
+                "Plant Food could not be collected."
+            );
+        }
     }
 
     private void drawDebugGrid() {
@@ -1920,6 +2026,7 @@ public class GameScreen extends BaseScreen {
         frostbiteSnowstormAnimationSystem.clear();
         iceFloorAnimationSystem.clearVisuals();
         frozenZombieIceAnimationSystem.clear();
+        lootAnimationSystem.clear();
         mowerAnimationSystem.clear();
         zombieAnimationSystem.clear();
         graveAnimationSystem.clearVisuals();

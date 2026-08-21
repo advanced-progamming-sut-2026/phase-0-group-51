@@ -427,9 +427,29 @@ public class Zombie {
         gs.logEvent("Zombie of type " + alias + " is dead at ("
             + String.format(java.util.Locale.US, "%.2f", x + 1)
             + ", " + (lane + 1) + ")\n");
-        if (glowing && gs.addPlantFood()) {
-            gs.logEvent("The glowing zombie dropped a plant food; you have "
-                + gs.getPlantFoodCount() + " plant foods now.\n");
+        if (glowing) {
+            float lootX =
+                Math.max(
+                    0.0f,
+                    Math.min(
+                        x,
+                        gs.getBoard().getColumnCount() - 0.01f
+                    )
+                );
+
+            DroppedLoot loot =
+                new DroppedLoot(
+                    LootType.PLANT_FOOD,
+                    lootX,
+                    lane,
+                    gs.getTicksPerSecond()
+                );
+
+            gs.getBoard().spawnLoot(loot);
+
+            gs.logEvent(
+                "The glowing zombie dropped a plant food pickup.\n"
+            );
         }
         if (allowLoot && Math.random() < LOOT_DROP_CHANCE) {
             dropLoot(gs);

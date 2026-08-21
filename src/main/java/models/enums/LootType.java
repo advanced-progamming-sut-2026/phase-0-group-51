@@ -3,5 +3,6 @@ package models.enums;
 public enum LootType {
     COIN,
     GEM,
-    POT
+    POT,
+    PLANT_FOOD
 }
