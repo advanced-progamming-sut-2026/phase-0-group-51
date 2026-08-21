@@ -25,6 +25,9 @@ public final class NpcDialogueOverlay extends Table {
     private static final float ENTER_FALLBACK_DURATION = 1.4f;
     private static final float LEAVE_FALLBACK_DURATION = 1.4f;
     private static final float NPC_SCALE = 0.6f;
+    private static final float BACKGROUND_DIM_ALPHA = 0.52f;
+    private static final float BUBBLE_X_RATIO = 0.5f;
+    private static final float BUBBLE_TOP_MARGIN = 200f;
 
     private enum State {
         ENTERING,
@@ -64,7 +67,7 @@ public final class NpcDialogueOverlay extends Table {
         setBackground(
                 game.getSkin().newDrawable(
                         "white_pixel",
-                        new Color(0f, 0f, 0f, 0.18f)
+                        new Color(0f, 0f, 0f, BACKGROUND_DIM_ALPHA)
                 )
         );
 
@@ -121,7 +124,7 @@ public final class NpcDialogueOverlay extends Table {
         }
 
         Image image = new Image(new TextureRegionDrawable(region));
-        image.setScaling(Scaling.stretch);
+        image.setScaling(Scaling.none);
         image.setTouchable(Touchable.disabled);
         image.setVisible(false);
         return image;
@@ -183,6 +186,7 @@ public final class NpcDialogueOverlay extends Table {
                             int pointer,
                             int button
                     ) {
+                        handleAdvanceInput();
                         return true;
                     }
 
@@ -195,7 +199,7 @@ public final class NpcDialogueOverlay extends Table {
                             return false;
                         }
 
-                        advanceDialogue();
+                        handleAdvanceInput();
                         return true;
                     }
                 }
@@ -239,6 +243,17 @@ public final class NpcDialogueOverlay extends Table {
         continueLabel.setVisible(true);
         npcActor.play(sequence.idleClip(), true);
         npcActor.restart();
+    }
+
+    private void handleAdvanceInput() {
+        if (state == State.TYPING) {
+            finishTyping();
+            return;
+        }
+
+        if (state == State.WAITING_FOR_ENTER) {
+            advanceDialogue();
+        }
     }
 
     private void advanceDialogue() {
@@ -353,10 +368,10 @@ public final class NpcDialogueOverlay extends Table {
     }
 
     private void layoutSpeechBubble() {
-        float bubbleWidth = Math.min(620f, getWidth() * 0.60f);
-        float bubbleHeight = Math.min(220f, getHeight() * 0.38f);
-        float bubbleX = Math.max(28f, getWidth() * 0.045f);
-        float bubbleY = getHeight() - bubbleHeight - 42f;
+        float bubbleWidth = speechBubble.getDrawable().getMinWidth();
+        float bubbleHeight = speechBubble.getDrawable().getMinHeight();
+        float bubbleX = Math.max(28f, getWidth() * BUBBLE_X_RATIO);
+        float bubbleY = getHeight() - bubbleHeight - BUBBLE_TOP_MARGIN;
 
         speechBubble.setBounds(
                 bubbleX,
@@ -365,26 +380,25 @@ public final class NpcDialogueOverlay extends Table {
                 bubbleHeight
         );
 
+        float scaleX = bubbleWidth / 620f;
+        float scaleY = bubbleHeight / 220f;
+
         dialogueLabel.setBounds(
-                bubbleX + 58f,
-                bubbleY + 62f,
-                bubbleWidth - 116f,
-                bubbleHeight - 104f
+                bubbleX + 58f * scaleX,
+                bubbleY + 62f * scaleY,
+                bubbleWidth - 116f * scaleX,
+                bubbleHeight - 104f * scaleY
         );
 
         continueLabel.setBounds(
-                bubbleX + 70f,
-                bubbleY + 24f,
-                bubbleWidth - 140f,
-                28f
+                bubbleX + 70f * scaleX,
+                bubbleY + 24f * scaleY,
+                bubbleWidth - 140f * scaleX,
+                28f * scaleY
         );
     }
 
     private void layoutNpc() {
-//        npcActor.setPosition(
-//                getWidth() * 0.70f,
-//                Math.max(8f, getHeight() * 0.015f)
-//        );
         float targetX = getWidth() * 0.40f;
         float targetY = getHeight() * 0.5f;
 
