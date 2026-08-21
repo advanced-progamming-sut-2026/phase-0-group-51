@@ -4,8 +4,11 @@ import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import lombok.Getter;
+import models.Board.Tile;
+import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.Zombie.ZombieType;
 import models.Zombie.ArmorDefinition;
@@ -25,6 +28,7 @@ import models.Zombie.Behavior.TransformBehavior;
 import models.Zombie.Behavior.TurquoiseLaserBehavior;
 import models.Zombie.Behavior.WorldEffectBehavior;
 import models.games.ChapterTheme;
+import models.games.GameState;
 import pvz.libpvz.pam.ClipRef;
 import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.EntityAnimationState;
@@ -70,6 +74,9 @@ public final class ZombieAnimationSystem {
     private static final float MIN_WALK_PLAYBACK_SPEED = 0.10f;
     private static final float MAX_WALK_PLAYBACK_SPEED = 5.00f;
     private static final float POSITION_EPSILON = 0.0001f;
+
+    private static final float DANGER_DISTANCE = 2.0f;
+    private static final float MAX_DANGER_RED = 0.35f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
 
     private static final String DARK_KNIGHT_CROWN_ARMOR =
@@ -105,6 +112,7 @@ public final class ZombieAnimationSystem {
         "768/FULL/ZOMBIE/ZOMBIE_DARK_IMP_MONK/ZOMBIE_DARK_IMP_MONK.PAM";
 
     private final ChapterTheme theme;
+    private final GameState gameState;
     private final PamPlayer pamPlayer;
     private final Stage worldStage;
     private final BoardTransform boardTransform;
@@ -127,7 +135,8 @@ public final class ZombieAnimationSystem {
             worldStage,
             boardTransform,
             theme,
-            DEFAULT_SCALE
+            DEFAULT_SCALE,
+            null
         );
     }
 
@@ -138,10 +147,29 @@ public final class ZombieAnimationSystem {
         ChapterTheme theme,
         float scale
     ) {
+        this(
+            pamPlayer,
+            worldStage,
+            boardTransform,
+            theme,
+            scale,
+            null
+        );
+    }
+
+    public ZombieAnimationSystem(
+        PamPlayer pamPlayer,
+        Stage worldStage,
+        BoardTransform boardTransform,
+        ChapterTheme theme,
+        float scale,
+        GameState gameState
+    ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer, "pamPlayer");
         this.worldStage = Objects.requireNonNull(worldStage, "worldStage");
         this.boardTransform = Objects.requireNonNull(boardTransform, "boardTransform");
         this.theme = Objects.requireNonNull(theme, "theme");
+        this.gameState = gameState;
         this.scale = scale;
         this.resolver = new ZombieAnimationResolver(pamPlayer);
     }
@@ -827,7 +855,20 @@ public final class ZombieAnimationSystem {
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
 
-        if (!updateSpecialClip(visual)) {
+        if (zombie.hasIceShell()) {
+
+            actor.play(
+                visual.animations.clip(
+                    EntityAnimationState.IDLE
+                ),
+                true
+            );
+
+            actor.setPlaybackSpeed(0f);
+            actor.pauseAnimation();
+
+        } else if (!updateSpecialClip(visual)) {
+
             BaseAnimation base = resolveBaseAnimation(
                 zombie,
                 visual
@@ -851,10 +892,11 @@ public final class ZombieAnimationSystem {
         }
 
         updateColdTint(zombie, actor);
+        updateDangerTint(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
-        } else {
+        } else if (!zombie.hasIceShell()) {
             actor.resumeAnimation();
         }
     }
@@ -1164,6 +1206,95 @@ public final class ZombieAnimationSystem {
         }
 
         return false;
+    }
+
+
+    private void updateDangerTint(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (zombie == null || actor == null) {
+            return;
+        }
+
+        float dangerDistance;
+
+        if (gameState != null && gameState.hasDeadline()) {
+
+            dangerDistance =
+                (gameState.getDeadlineColumn() - 1)
+                    - zombie.getX();
+
+        } else if (gameState != null
+            && gameState.isSaveOurSeedsActive()) {
+
+            dangerDistance = Float.MAX_VALUE;
+
+            for (Plant plant : gameState.getProtectedPlants()) {
+
+                if (plant == null || plant.isDead()) {
+                    continue;
+                }
+
+                Tile tile =
+                    gameState.getBoard()
+                        .getTileForPlant(plant);
+
+                if (tile == null
+                    || tile.getLane() != zombie.getLane()) {
+                    continue;
+                }
+
+                float distance =
+                    Math.abs(
+                        zombie.getX()
+                            - tile.getColumn()
+                    );
+
+                dangerDistance =
+                    Math.min(
+                        dangerDistance,
+                        distance
+                    );
+            }
+
+        } else {
+
+            // Normal mode: zombies walk from right to left.
+            // Mower is at column 0, so only the last two tiles are dangerous.
+            float mowerX = 0f;
+
+            dangerDistance =
+                zombie.getX() - mowerX;
+        }
+
+
+        float danger =
+            MathUtils.clamp(
+                (DANGER_DISTANCE - dangerDistance)
+                    / DANGER_DISTANCE,
+                0f,
+                1f
+            );
+
+
+        if (danger <= 0f) {
+            actor.setColor(
+                1f,
+                1f,
+                1f,
+                1f
+            );
+            return;
+        }
+
+
+        actor.setColor(
+            1f,
+            1f - danger * MAX_DANGER_RED,
+            1f - danger * MAX_DANGER_RED,
+            1f
+        );
     }
 
     private void updateColdTint(
