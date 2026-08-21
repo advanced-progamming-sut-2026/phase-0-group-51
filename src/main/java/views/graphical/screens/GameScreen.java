@@ -128,6 +128,8 @@ public class GameScreen extends BaseScreen {
 
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
+    private float zombieSpawnDelay = 4f;
+    private boolean waitingBeforeZombieSpawn = false;
 
     private float cameraMainX;
     private float cameraRightX;
@@ -516,6 +518,20 @@ public class GameScreen extends BaseScreen {
         if (overlayMode != OverlayMode.NONE) {
             return;
         }
+        if (waitingBeforeZombieSpawn) {
+
+            stateTime += delta;
+
+            if (stateTime >= zombieSpawnDelay) {
+
+                waitingBeforeZombieSpawn = false;
+                stateTime = 0f;
+
+                introState = IntroState.PLAYING;
+            }
+
+            return;
+        }
 
         if (introState == IntroState.PLAYING
             || introState == IntroState.WAITING_FOR_SELECTION
@@ -617,11 +633,15 @@ public class GameScreen extends BaseScreen {
         }
 
         startCountdownNotice = null;
+
         gameTickAccumulator = 0f;
         resetRenderTickInterpolation();
+
         lastWaveNoticeNumber = 0;
         firstWaveCoveredByCountdown = isFirstWaveReadyToAutoStart();
-        introState = IntroState.PLAYING;
+
+        waitingBeforeZombieSpawn = true;
+        stateTime = 0f;
     }
 
     private boolean isFirstWaveReadyToAutoStart() {

@@ -102,9 +102,9 @@ public class LootAnimationSystem {
             }
 
             float x =
-                boardTransform.tileX(
-                    loot.getColumn()
-                );
+                boardTransform.getArea().x()
+                    + loot.getX()
+                    * boardTransform.tileWidth();
 
             float y =
                 boardTransform.tileY(
