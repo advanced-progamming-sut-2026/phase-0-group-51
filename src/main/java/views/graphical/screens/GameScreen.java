@@ -128,8 +128,8 @@ public class GameScreen extends BaseScreen {
 
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
-    private float zombieSpawnDelay = 4f;
-    private boolean waitingBeforeZombieSpawn = false;
+
+    private static final float INITIAL_ZOMBIE_SPAWN_DELAY_SECONDS = 5f;
 
     private float cameraMainX;
     private float cameraRightX;
@@ -520,21 +520,6 @@ public class GameScreen extends BaseScreen {
         if (overlayMode != OverlayMode.NONE) {
             return;
         }
-        if (waitingBeforeZombieSpawn) {
-
-            stateTime += delta;
-
-            if (stateTime >= zombieSpawnDelay) {
-
-                waitingBeforeZombieSpawn = false;
-                stateTime = 0f;
-
-                introState = IntroState.PLAYING;
-            }
-
-            return;
-        }
-
         if (introState == IntroState.PLAYING
             || introState == IntroState.WAITING_FOR_SELECTION
             || introState == IntroState.START_COUNTDOWN) {
@@ -642,8 +627,44 @@ public class GameScreen extends BaseScreen {
         lastWaveNoticeNumber = 0;
         firstWaveCoveredByCountdown = isFirstWaveReadyToAutoStart();
 
-        waitingBeforeZombieSpawn = true;
+        armInitialZombieSpawnDelay();
+
+        // Gameplay is active immediately. Only ZombieWaveManager waits
+        // before starting the first wave.
+        introState = IntroState.PLAYING;
         stateTime = 0f;
+    }
+
+    private void armInitialZombieSpawnDelay() {
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return;
+        }
+
+        ZombieWaveManager waveManager =
+            currentGame.getGameState().getZombieWaveManager();
+
+        if (waveManager == null
+            || waveManager.getCurrentWaveNumber() > 0) {
+            return;
+        }
+
+        int ticksPerSecond =
+            Math.max(
+                1,
+                currentGame.getGameState().getTicksPerSecond()
+            );
+
+        int delayTicks =
+            Math.max(
+                0,
+                Math.round(
+                    INITIAL_ZOMBIE_SPAWN_DELAY_SECONDS
+                        * ticksPerSecond
+                )
+            );
+
+        waveManager.setFirstWaveDelayTicks(delayTicks);
     }
 
     private boolean isFirstWaveReadyToAutoStart() {

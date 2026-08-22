@@ -1,3 +1,4 @@
+
 package views.graphical.gameplay.zombie;
 
 import Data.loader.ZombieRegistry;
@@ -68,6 +69,11 @@ public final class ZombieAnimationSystem {
     private static final float DANGER_DISTANCE = 2.0f;
     private static final float MAX_DANGER_RED = 0.5f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
+
+    // The Snorkel PAM has no dedicated submerge/surface clips.
+    // Reflect the real MovementBehavior.UNDERGROUND state visually instead.
+    private static final float SNORKEL_SUBMERGED_Y_OFFSET_TILES = 0.30f;
+    private static final float SNORKEL_SUBMERGED_ALPHA = 0.58f;
 
     private static final String DARK_KNIGHT_CROWN_ARMOR =
             "CrownDefault@ArmorTypes";
@@ -540,6 +546,18 @@ public final class ZombieAnimationSystem {
                     "ZombieAnimation",
                     "Visible parts " + alias + " -> " + parts
             );
+
+            Gdx.app.log(
+                "ZombiePartsFull",
+                "========== " + alias + " =========="
+            );
+
+            for (String part : parts) {
+                Gdx.app.log(
+                    "ZombiePartsFull",
+                    "PART = " + part
+                );
+            }
         }
 
         return List.copyOf(parts);
@@ -697,6 +715,8 @@ public final class ZombieAnimationSystem {
                 .replaceAll("[^a-z0-9]", "");
     }
 
+
+
     private void configureGroundSwatch(
             String alias,
             String pamPath,
@@ -850,6 +870,7 @@ public final class ZombieAnimationSystem {
 
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
+        syncArmDamageVisual(zombie, visual);
 
         if (zombie.hasIceShell()) {
 
@@ -889,6 +910,7 @@ public final class ZombieAnimationSystem {
 
         updateColdTint(zombie, actor);
         updateDangerTint(zombie, actor);
+        applySnorkelSubmergedVisual(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
@@ -897,6 +919,93 @@ public final class ZombieAnimationSystem {
         }
     }
 
+    private void syncArmDamageVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (zombie == null || visual == null) {
+            return;
+        }
+
+        boolean damaged =
+            zombie.getMaxHitpoints() > 0
+                && zombie.getHitpoints()
+                <= zombie.getMaxHitpoints() / 2f;
+
+        Map<String, Boolean> v =
+            visual.actor.getVisibilityMap();
+
+        String alias = zombie.getAlias();
+
+        if (ZombieType.IMP.getAlias().equals(alias)) {
+            applyArmParts(v, damaged,
+                "zombie_imp_arms_outer_upper",
+                "zombie_imp_arm_outer_lower",
+                "zombie_imp_hand_outer");
+            return;
+        }
+
+        if (usesThemedBasicBody(alias)) {
+            switch (theme) {
+                case ANCIENT_EGYPT -> applyArmParts(v, damaged,
+                    "zombie_egypt_arms_outer_upper",
+                    "zombie_egypt_arm_outer_lower",
+                    "zombie_egypt_hand_outer_01");
+                case FROSTBITE_CAVES, BIG_WAVE_BEACH, DARK_AGES -> applyArmParts(v, damaged,
+                    "zombie_arms_outer_upper",
+                    "zombie_arm_outer_lower",
+                    "zombie_hand_outer_01");
+                default -> {}
+            }
+        }
+
+        // Extra zombie families with their own PAM arm parts.
+        // Keep only the upper arm after HP reaches 50%.
+        if (alias.toLowerCase(Locale.ROOT).contains("arcade")) {
+            applyArmParts(v, damaged,
+                "zombie_troglobite_arm_outer_upper_bone",
+                "zombie_troglobite_arm_outer_lower",
+                "zombie_troglobite_hand_outer");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("jane")) {
+            applyArmParts(v, damaged,
+                "zombie_arms_outer_upper",
+                "zombie_arm_outer_lower",
+                "zombie_hand_outer_01_upperlayer");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("crystal")
+            || alias.toLowerCase(Locale.ROOT).contains("turquoise")) {
+            applyArmParts(v, damaged,
+                "zombie_egypt_ra_arms_outer_upper",
+                "zombie_egypt_ra_arm_outer_lower",
+                "zombie_egypt_ra_hand_outer2");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("prospector")) {
+            applyArmParts(v, damaged,
+                "_zombie_pros_arms_outer_upper",
+                "zombie_pros_arm_outer_lower",
+                "zombie_pros_hand_outer_01");
+        }
+    }
+
+    private static void applyArmParts(
+        Map<String, Boolean> visibility,
+        boolean damaged,
+        String upper,
+        String lower,
+        String hand
+    ) {
+        // Healthy: full arm. Damaged: only upper arm remains.
+        visibility.put(upper, true);
+        visibility.put(lower, !damaged);
+        visibility.put(hand, !damaged);
+    }
 
     private void updateDamageFlash(
             Zombie zombie,
@@ -1723,7 +1832,16 @@ public final class ZombieAnimationSystem {
         ImpThrowBehavior summon =
                 zombie.getBehavior(ImpThrowBehavior.class);
         if (summon != null) {
-            visual.lastImpFired = summon.isFired();
+            boolean fired = summon.isFired();
+
+            if (!visual.lastImpFired
+                && fired
+                && ZombieType.GARGANTUAR.getAlias().equals(alias)) {
+                // The Gargantuar PAM exposes "fire" (not "throw").
+                enqueueSpecialClip(visual, "fire");
+            }
+
+            visual.lastImpFired = fired;
         }
 
         RangedAttackBehavior ranged =
@@ -1952,6 +2070,47 @@ public final class ZombieAnimationSystem {
         return null;
     }
 
+    private static boolean isSnorkelSubmerged(Zombie zombie) {
+        if (zombie == null
+            || !ZombieType.BEACH_SNORKEL.getAlias().equals(
+            zombie.getAlias()
+        )) {
+            return false;
+        }
+
+        MovementBehavior movement =
+            zombie.getBehavior(MovementBehavior.class);
+
+        return movement != null
+            && movement.getType()
+            == MovementBehavior.MovementType.UNDERGROUND
+            && movement.isSubmerged();
+    }
+
+    private static void applySnorkelSubmergedVisual(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (actor == null
+            || !ZombieType.BEACH_SNORKEL.getAlias().equals(
+            zombie == null ? null : zombie.getAlias()
+        )) {
+            return;
+        }
+
+        Color color = actor.getColor();
+        float alpha = isSnorkelSubmerged(zombie)
+            ? SNORKEL_SUBMERGED_ALPHA
+            : 1f;
+
+        actor.setColor(
+            color.r,
+            color.g,
+            color.b,
+            alpha
+        );
+    }
+
     private void updatePosition(
             Zombie zombie,
             ZombieVisual visual,
@@ -1975,6 +2134,11 @@ public final class ZombieAnimationSystem {
                 boardTransform.tileY(zombie.getLane())
                         + boardTransform.tileHeight()
                         * 0.5f;
+
+        if (isSnorkelSubmerged(zombie)) {
+            y -= boardTransform.tileHeight()
+                * SNORKEL_SUBMERGED_Y_OFFSET_TILES;
+        }
 
         actor.setPosition(x, y);
 
@@ -2164,3 +2328,4 @@ public final class ZombieAnimationSystem {
         }
     }
 }
+
