@@ -20,6 +20,7 @@ public class PlantViewManager extends Group {
 
     private final PvzGame game;
     private final BoardTransform transform;
+    private final Group renderLayer;
 
     private final Map<Plant, PlantActor> plantActors = new IdentityHashMap<>();
     private final Map<Plant, Long> lastSeenActionSerial = new IdentityHashMap<>();
@@ -37,8 +38,17 @@ public class PlantViewManager extends Group {
             PvzGame game,
             BoardTransform transform
     ) {
+        this(game, transform, null);
+    }
+
+    public PlantViewManager(
+            PvzGame game,
+            BoardTransform transform,
+            Group renderLayer
+    ) {
         this.game = game;
         this.transform = transform;
+        this.renderLayer = renderLayer == null ? this : renderLayer;
 
         setTouchable(Touchable.disabled);
     }
@@ -75,7 +85,7 @@ public class PlantViewManager extends Group {
             plantActors.put(plant, actor);
             lastSeenActionSerial.put(plant, plant.getActionSerial());
             lastSeenHealth.put(plant, plant.getCurrentHP());
-            addActor(actor);
+            addPlantActor(actor);
         }
         actorLayers.put(actor, layer);
         syncPlantBaseAnimation(plant, actor);
@@ -89,7 +99,7 @@ public class PlantViewManager extends Group {
         );
 
         if (!squashAnimating) {
-        syncPlantAction(plant, actor);
+            syncPlantAction(plant, actor);
             positionPlant(actor, lane, column);
         }
 
@@ -110,7 +120,7 @@ public class PlantViewManager extends Group {
         }
 
         if (squashAnimationsStarted.add(plant)) {
-        positionPlant(actor, lane, column);
+            positionPlant(actor, lane, column);
 
             int targetLane = Math.max(
                     0,
@@ -138,7 +148,7 @@ public class PlantViewManager extends Group {
                     plant::markSquashLanded,
                     plant::finishSquashJump
             );
-    }
+        }
 
         lastSeenActionSerial.put(
                 plant,
@@ -310,7 +320,26 @@ public class PlantViewManager extends Group {
         }
         return "produce";
     }
+    private void addPlantActor(PlantActor actor) {
+        if (actor == null) {
+            return;
+        }
+
+        renderLayer.addActor(actor);
+    }
+
     private void sortPlantsByDepth() {
+        if (renderLayer instanceof DepthSortedEntityLayer depthLayer) {
+            for (Map.Entry<PlantActor, Integer> entry : actorLayers.entrySet()) {
+                DepthSortedEntityLayer.setDepthPriority(
+                        entry.getKey(),
+                        DepthSortedEntityLayer.PLANT_BASE_PRIORITY
+                                + entry.getValue()
+                );
+            }
+            depthLayer.sortNow();
+            return;
+        }
         getChildren().sort(
                 (first, second) -> {
 
@@ -509,10 +538,11 @@ public class PlantViewManager extends Group {
         if (actor == null) {
 
             actor = createPlantActor(plant);
+
             plantActors.put(plant, actor);
             lastSeenActionSerial.put(plant, plant.getActionSerial());
             lastSeenHealth.put(plant, plant.getCurrentHP());
-            addActor(actor);
+            addPlantActor(actor);
 
             syncPlantBaseAnimation(
                     plant,

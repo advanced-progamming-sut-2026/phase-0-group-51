@@ -145,14 +145,6 @@ public final class ZombieAnimationResolver {
             clips,
             resolved
         );
-
-        if (Gdx.app != null) {
-            Gdx.app.log(
-                "ZombieAnimation",
-                "Resolved " + alias + " -> " + result.describe()
-            );
-        }
-
         return result;
     }
 

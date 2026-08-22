@@ -55,6 +55,7 @@ import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.DepthSortedEntityLayer;
 import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
 import views.graphical.gameplay.manager.DeadlineOverlayManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
@@ -90,6 +91,7 @@ public class GameScreen extends BaseScreen {
     private final Viewport viewport;
     private final Stage uiStage;
     private final Stage worldStage;
+    private final DepthSortedEntityLayer entityDepthLayer;
     private final InputMultiplexer inputMultiplexer;
     private final PlantSlotsBar plantSlotsBar;
 
@@ -128,8 +130,8 @@ public class GameScreen extends BaseScreen {
 
     private IntroState introState = IntroState.WAIT_AT_MAIN;
     private float stateTime = 0f;
-    private float zombieSpawnDelay = 4f;
-    private boolean waitingBeforeZombieSpawn = false;
+
+    private static final float INITIAL_ZOMBIE_SPAWN_DELAY_SECONDS = 5f;
 
     private float cameraMainX;
     private float cameraRightX;
@@ -290,13 +292,17 @@ public class GameScreen extends BaseScreen {
             iceFloorAnimationSystem
         );
 
+        entityDepthLayer = new DepthSortedEntityLayer();
+        worldStage.addActor(entityDepthLayer);
+
         zombieAnimationSystem = new ZombieAnimationSystem(
             game.getPamPlayer(),
             worldStage,
             boardTransform,
             theme,
             0.61f,
-            currentGame.getGameState()
+            currentGame.getGameState(),
+            entityDepthLayer
         );
 
         lootAnimationSystem =
@@ -342,7 +348,9 @@ public class GameScreen extends BaseScreen {
         graveAnimationSystem = new GraveAnimationSystem(
             game.getPamPlayer(),
             boardTransform,
-            theme
+            theme,
+            GraveAnimationSystem.DEFAULT_SCALE,
+            entityDepthLayer
         );
 
         worldStage.addActor(
@@ -384,7 +392,8 @@ public class GameScreen extends BaseScreen {
             plantViewManager =
                 new PlantViewManager(
                     game,
-                    boardTransform
+                    boardTransform,
+                    entityDepthLayer
                 );
             worldStage.addActor(
                 plantViewManager
@@ -408,7 +417,8 @@ public class GameScreen extends BaseScreen {
             game.getPamPlayer(),
             worldStage,
             theme,
-            cameraRightX
+            cameraRightX,
+            entityDepthLayer
         );
 
         zombieLevelPreview.show(
@@ -520,21 +530,6 @@ public class GameScreen extends BaseScreen {
         if (overlayMode != OverlayMode.NONE) {
             return;
         }
-        if (waitingBeforeZombieSpawn) {
-
-            stateTime += delta;
-
-            if (stateTime >= zombieSpawnDelay) {
-
-                waitingBeforeZombieSpawn = false;
-                stateTime = 0f;
-
-                introState = IntroState.PLAYING;
-            }
-
-            return;
-        }
-
         if (introState == IntroState.PLAYING
             || introState == IntroState.WAITING_FOR_SELECTION
             || introState == IntroState.START_COUNTDOWN) {
@@ -642,8 +637,44 @@ public class GameScreen extends BaseScreen {
         lastWaveNoticeNumber = 0;
         firstWaveCoveredByCountdown = isFirstWaveReadyToAutoStart();
 
-        waitingBeforeZombieSpawn = true;
+        armInitialZombieSpawnDelay();
+
+        // Gameplay is active immediately. Only ZombieWaveManager waits
+        // before starting the first wave.
+        introState = IntroState.PLAYING;
         stateTime = 0f;
+    }
+
+    private void armInitialZombieSpawnDelay() {
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return;
+        }
+
+        ZombieWaveManager waveManager =
+            currentGame.getGameState().getZombieWaveManager();
+
+        if (waveManager == null
+            || waveManager.getCurrentWaveNumber() > 0) {
+            return;
+        }
+
+        int ticksPerSecond =
+            Math.max(
+                1,
+                currentGame.getGameState().getTicksPerSecond()
+            );
+
+        int delayTicks =
+            Math.max(
+                0,
+                Math.round(
+                    INITIAL_ZOMBIE_SPAWN_DELAY_SECONDS
+                        * ticksPerSecond
+                )
+            );
+
+        waveManager.setFirstWaveDelayTicks(delayTicks);
     }
 
     private boolean isFirstWaveReadyToAutoStart() {
@@ -1561,6 +1592,7 @@ public class GameScreen extends BaseScreen {
             );
         }
 
+        entityDepthLayer.sortNow();
         worldStage.draw();
 
         drawDebugGrid();

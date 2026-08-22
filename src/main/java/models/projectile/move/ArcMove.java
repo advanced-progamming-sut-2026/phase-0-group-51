@@ -40,37 +40,42 @@ public class ArcMove implements MovingStrategy {
         }
 
         projectile.setPosX(
-                projectile.getPosX()
-                        + dx / remainingDistance * speed
+            projectile.getPosX()
+                + dx / remainingDistance * speed
         );
 
         projectile.setPosY(
-                projectile.getPosY()
-                        + dy / remainingDistance * speed
+            projectile.getPosY()
+                + dy / remainingDistance * speed
         );
 
         double newRemainingDistance = Math.hypot(
-                targetX - projectile.getPosX(),
-                targetY - projectile.getPosY()
+            targetX - projectile.getPosX(),
+            targetY - projectile.getPosY()
         );
 
         double progress =
-                totalDistance <= 0
-                        ? 1.0
-                        : 1.0 - newRemainingDistance / totalDistance;
+            totalDistance <= 0
+                ? 1.0
+                : 1.0 - newRemainingDistance / totalDistance;
 
         progress = Math.max(
-                0.0,
-                Math.min(1.0, progress)
+            0.0,
+            Math.min(1.0, progress)
         );
 
         double arc =
-                4.0
-                        * ARC_HEIGHT
-                        * progress
-                        * (1.0 - progress);
+            4.0
+                * ARC_HEIGHT
+                * progress
+                * (1.0 - progress);
 
         projectile.setVisualArcOffset(arc);
+    }
+
+    public void resetForRetarget() {
+        initialized = false;
+        totalDistance = 0.0;
     }
 
     @Override
@@ -84,8 +89,8 @@ public class ArcMove implements MovingStrategy {
         Double targetY = projectile.getTargetY();
 
         return targetX != null
-                && targetY != null
-                && Math.abs(projectile.getPosX() - targetX) < ARRIVAL_EPSILON
-                && Math.abs(projectile.getPosY() - targetY) < ARRIVAL_EPSILON;
+            && targetY != null
+            && Math.abs(projectile.getPosX() - targetX) < ARRIVAL_EPSILON
+            && Math.abs(projectile.getPosY() - targetY) < ARRIVAL_EPSILON;
     }
 }

@@ -15,147 +15,375 @@ import java.util.List;
 @Getter
 public enum ChapterTheme {
     ANCIENT_EGYPT(
-            "Ancient Egypt",
-            withDefaults(ZombieType.RA, ZombieType.EXPLORER, ZombieType.TOMB_RAISER),
-            List.of(ChapterFeature.GRAVE, ChapterFeature.TORNADO),
-            List.of(
-                    new Level(
-                            1,
-                            LevelType.NORMAL,
-                            2,
-                            1000f,
-                            50,
-                            List.of(
-                                    ZombieType.DEFAULT,
-                                    ZombieType.ARMOR_1,
-                                    ZombieType.ARMOR_2,
-                                    ZombieType.RA,
-                                    ZombieType.EXPLORER,
-                                    ZombieType.TOMB_RAISER
-                            )
-                    ).withDefinition(
-                            "Survive the first Ancient Egypt attack.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(2, LevelType.SAVE_OUR_SEEDS, 3, 1500f,
-                            100, ancientEgyptSaveOurSeeds()).withDefinition(
-                            "Protect the endangered plants while surviving the Ancient Egypt attack.",
-                            "Do not let the zombies reach the house.",
-                            "Protect all endangered plants."
-                    ),
-                    new Level(3, LevelType.CONVEYOR_BELT, 4, 1500f).withDefinition(
-                            "Fight using only the plants delivered by the conveyor belt.",
-                            "Do not let the zombies reach the house.",
-                            "Use the plants delivered by the conveyor belt."
-                    ),
-                    new Level(4, LevelType.BOSS, 5, 2000f).withDefinition(
-                            "Face the Big Wave Beach boss battle.",
-                            "Defeat the boss.",
-                            "Do not let the zombies reach the house."
-                    ).withDefinition(
-                            "Face the Ancient Egypt boss battle.",
-                            "Defeat the boss.",
-                            "Do not let the zombies reach the house."
-                    )
+        "Ancient Egypt",
+        withDefaults(ZombieType.RA, ZombieType.EXPLORER, ZombieType.TOMB_RAISER),
+        List.of(ChapterFeature.GRAVE, ChapterFeature.TORNADO),
+        List.of(
+            new Level(
+                1,
+                LevelType.NORMAL,
+                2,
+                1000f,
+                50,
+                List.of(
+                    ZombieType.DEFAULT,
+                    ZombieType.ARMOR_1,
+                    ZombieType.IMP,
+                    ZombieType.RA
+                )
+            ).withDefinition(
+                "Survive the first Ancient Egypt attack.",
+                "Do not let the zombies reach the house."
             ),
-            TimeOfTheDay.DAY
+            new Level(
+                2,
+                LevelType.SAVE_OUR_SEEDS,
+                3,
+                1500f,
+                100,
+                ancientEgyptSaveOurSeeds()
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.RA,
+                ZombieType.ARMOR_2,
+                ZombieType.EXPLORER,
+                ZombieType.NEWSPAPER,
+                ZombieType.PROSPECTOR
+            ).withDefinition(
+                "Protect the endangered plants while surviving the Ancient Egypt attack.",
+                "Do not let the zombies reach the house.",
+                "Protect all endangered plants."
+            ),
+            new Level(
+                3,
+                LevelType.CONVEYOR_BELT,
+                4,
+                1500f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.RA,
+                ZombieType.ARMOR_4,
+                ZombieType.EXPLORER,
+                ZombieType.TOMB_RAISER,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.CRYSTAL_SKULL,
+                ZombieType.PIANO
+            ).withDefinition(
+                "Fight using only the plants delivered by the conveyor belt.",
+                "Do not let the zombies reach the house.",
+                "Use the plants delivered by the conveyor belt."
+            ),
+            new Level(
+                4,
+                LevelType.BOSS,
+                5,
+                2000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.RA,
+                ZombieType.TOMB_RAISER,
+                ZombieType.GARGANTUAR,
+                ZombieType.MODERN_ALL_STAR,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.ARCADE,
+                ZombieType.BARREL_ROLLER
+            ).withDefinition(
+                "Face the Ancient Egypt boss battle.",
+                "Defeat the boss.",
+                "Do not let the zombies reach the house."
+            )
+        ),
+        TimeOfTheDay.DAY
     ),
     FROSTBITE_CAVES(
-            "Frostbite Caves",
-            withDefaults(
-                    ZombieType.ICE_AGE_TROGLOBITE,
-                    ZombieType.ICE_AGE_DODO,
-                    ZombieType.ICE_AGE_HUNTER
+        "Frostbite Caves",
+        withDefaults(
+            ZombieType.ICE_AGE_TROGLOBITE,
+            ZombieType.ICE_AGE_DODO,
+            ZombieType.ICE_AGE_HUNTER
+        ),
+        List.of(ChapterFeature.ICE_WIND, ChapterFeature.ICE_FLOOR),
+        List.of(
+            new Level(
+                1,
+                LevelType.NORMAL,
+                2,
+                1000f,
+                frostbiteLevelOne()
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.ICE_AGE_HUNTER
+            ).withDefinition(
+                "Survive the freezing conditions of Frostbite Caves.",
+                "Do not let the zombies reach the house."
             ),
-            List.of(ChapterFeature.ICE_WIND, ChapterFeature.ICE_FLOOR),
-            List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f, frostbiteLevelOne()).withDefinition(
-                            "Survive the freezing conditions of Frostbite Caves.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(2, LevelType.TIMED_BATTLE, 3, 1500f,
-                            frostbiteLevelTwo(), TimedBattleConfig.combined(8, 200, 90)).withDefinition(
-                            "Complete the timed objectives while fighting through Frostbite Caves.",
-                            "Complete the timed battle objectives before time runs out.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(3, LevelType.DEAD_LINE, 4, 2000f, frostbiteLevelThree(), 3).withDefinition(
-                            "Hold the line in Frostbite Caves.",
-                            "Do not let the zombies cross the marked line.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(4, LevelType.BOSS, 5, 2000f, frostbiteLevelFour()).withDefinition(
-                            "Face the Frostbite Caves boss battle.",
-                            "Defeat the boss.",
-                            "Do not let the zombies reach the house."
-                    )
+            new Level(
+                2,
+                LevelType.TIMED_BATTLE,
+                3,
+                1500f,
+                frostbiteLevelTwo(),
+                TimedBattleConfig.combined(8, 200, 90)
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.ICE_AGE_HUNTER,
+                ZombieType.ARMOR_2,
+                ZombieType.ICE_AGE_DODO,
+                ZombieType.NEWSPAPER,
+                ZombieType.PROSPECTOR
+            ).withDefinition(
+                "Complete the timed objectives while fighting through Frostbite Caves.",
+                "Complete the timed battle objectives before time runs out.",
+                "Do not let the zombies reach the house."
             ),
-            TimeOfTheDay.DAY
+            new Level(
+                3,
+                LevelType.DEAD_LINE,
+                4,
+                2000f,
+                frostbiteLevelThree(),
+                3
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.ICE_AGE_HUNTER,
+                ZombieType.ARMOR_4,
+                ZombieType.ICE_AGE_DODO,
+                ZombieType.ICE_AGE_TROGLOBITE,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.CRYSTAL_SKULL,
+                ZombieType.PIANO
+            ).withDefinition(
+                "Hold the line in Frostbite Caves.",
+                "Do not let the zombies cross the marked line.",
+                "Do not let the zombies reach the house."
+            ),
+            new Level(
+                4,
+                LevelType.BOSS,
+                5,
+                2000f,
+                frostbiteLevelFour()
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.ICE_AGE_HUNTER,
+                ZombieType.ICE_AGE_TROGLOBITE,
+                ZombieType.GARGANTUAR,
+                ZombieType.MODERN_ALL_STAR,
+                ZombieType.ARCADE,
+                ZombieType.BARREL_ROLLER
+            ).withDefinition(
+                "Face the Frostbite Caves boss battle.",
+                "Defeat the boss.",
+                "Do not let the zombies reach the house."
+            )
+        ),
+        TimeOfTheDay.DAY
     ),
     BIG_WAVE_BEACH(
-            "Big Wave Beach",
-            withDefaults(
-                    ZombieType.BEACH_FISHERMAN,
-                    ZombieType.BEACH_OCTOPUS,
-                    ZombieType.BEACH_SNORKEL
+        "Big Wave Beach",
+        withDefaults(
+            ZombieType.BEACH_FISHERMAN,
+            ZombieType.BEACH_OCTOPUS,
+            ZombieType.BEACH_SNORKEL
+        ),
+        List.of(ChapterFeature.WATER_LEVEL, ChapterFeature.BACKWATER),
+        List.of(
+            new Level(
+                1,
+                LevelType.NORMAL,
+                2,
+                1000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.BEACH_SNORKEL
+            ).withDefinition(
+                "Survive the tides and zombies of Big Wave Beach.",
+                "Do not let the zombies reach the house."
             ),
-            List.of(ChapterFeature.WATER_LEVEL, ChapterFeature.BACKWATER),
-            List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f).withDefinition(
-                            "Survive the tides and zombies of Big Wave Beach.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(2, LevelType.LOVE_YOUR_PLANTS, 3, 1500f, 6).withDefinition(
-                            "Keep your plants alive while defending Big Wave Beach.",
-                            "Do not let the zombies reach the house.",
-                            "Do not exceed the allowed number of lost plants."
-                    ),
-                    new Level(3, LevelType.PLANT_WHAT_YOU_GET, 4, 2000f, 800, List.of()).withDefinition(
-                            "Prepare your garden first, then start the zombie waves.",
-                            "Plant your available plants before starting the zombie waves.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(4, LevelType.BOSS, 5, 2000f)
+            new Level(
+                2,
+                LevelType.LOVE_YOUR_PLANTS,
+                3,
+                1500f,
+                6
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.BEACH_SNORKEL,
+                ZombieType.ARMOR_2,
+                ZombieType.BEACH_FISHERMAN,
+                ZombieType.NEWSPAPER,
+                ZombieType.PROSPECTOR
+            ).withDefinition(
+                "Keep your plants alive while defending Big Wave Beach.",
+                "Do not let the zombies reach the house.",
+                "Do not exceed the allowed number of lost plants."
             ),
-            TimeOfTheDay.DAY
+            new Level(
+                3,
+                LevelType.PLANT_WHAT_YOU_GET,
+                4,
+                2000f,
+                800,
+                List.of()
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.BEACH_SNORKEL,
+                ZombieType.BEACH_FISHERMAN,
+                ZombieType.ARMOR_4,
+                ZombieType.BEACH_OCTOPUS,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.CRYSTAL_SKULL,
+                ZombieType.PIANO
+            ).withDefinition(
+                "Prepare your garden first, then start the zombie waves.",
+                "Plant your available plants before starting the zombie waves.",
+                "Do not let the zombies reach the house."
+            ),
+            new Level(
+                4,
+                LevelType.BOSS,
+                5,
+                2000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.BEACH_SNORKEL,
+                ZombieType.BEACH_FISHERMAN,
+                ZombieType.GARGANTUAR,
+                ZombieType.MODERN_ALL_STAR,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.ARCADE,
+                ZombieType.BARREL_ROLLER
+            ).withDefinition(
+                "Face the Big Wave Beach boss battle.",
+                "Defeat the boss.",
+                "Do not let the zombies reach the house."
+            )
+        ),
+        TimeOfTheDay.DAY
     ),
     DARK_AGES(
-            "Dark Ages",
-            withDefaults(ZombieType.DARK_KING, ZombieType.DARK_JUGGLER, ZombieType.WIZARD),
-            List.of(
-                    ChapterFeature.NIGHT,
-                    ChapterFeature.GRAVE,
-                    ChapterFeature.GRAVE_SPAWN,
-                    ChapterFeature.NECROMANCY
+        "Dark Ages",
+        withDefaults(
+            ZombieType.DARK_KING,
+            ZombieType.DARK_JUGGLER,
+            ZombieType.WIZARD,
+            ZombieType.DARK_IMP_DRAGON,
+            ZombieType.DARK_ARMOR_3
+        ),
+        List.of(
+            ChapterFeature.NIGHT,
+            ChapterFeature.GRAVE,
+            ChapterFeature.GRAVE_SPAWN,
+            ChapterFeature.NECROMANCY
+        ),
+        List.of(
+            new Level(
+                1,
+                LevelType.NORMAL,
+                2,
+                1000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.DARK_JUGGLER
+            ).withDefinition(
+                "Survive the darkness and graves of the Dark Ages.",
+                "Do not let the zombies reach the house."
             ),
-            List.of(
-                    new Level(1, LevelType.NORMAL, 2, 1000f).withDefinition(
-                            "Survive the darkness and graves of the Dark Ages.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(2, LevelType.LOCKED_PLANTS, 3, 1500f).withDefinition(
-                            "Win while obeying the Locked Plants restrictions.",
-                            "Do not let the zombies reach the house.",
-                            "Follow the plant restrictions selected for this level."
-                    ),
-                    new Level(3, LevelType.NIGHT_OPS, 4, 2000f).withDefinition(
-                            "Survive a full night operation in the Dark Ages.",
-                            "Do not let the zombies reach the house."
-                    ),
-                    new Level(4, LevelType.BOSS, 5, 2000f).withDefinition(
-                            "Face the Dark Ages boss battle.",
-                            "Defeat the boss.",
-                            "Do not let the zombies reach the house."
-                    )
+            new Level(
+                2,
+                LevelType.LOCKED_PLANTS,
+                3,
+                1500f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.DARK_JUGGLER,
+                ZombieType.ARMOR_2,
+                ZombieType.DARK_IMP_DRAGON,
+                ZombieType.WIZARD,
+                ZombieType.NEWSPAPER,
+                ZombieType.PROSPECTOR
+            ).withDefinition(
+                "Win while obeying the Locked Plants restrictions.",
+                "Do not let the zombies reach the house.",
+                "Follow the plant restrictions selected for this level."
             ),
-            TimeOfTheDay.NIGHT
+            new Level(
+                3,
+                LevelType.NIGHT_OPS,
+                4,
+                2000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.DARK_JUGGLER,
+                ZombieType.ARMOR_4,
+                ZombieType.DARK_ARMOR_3,
+                ZombieType.DARK_IMP_DRAGON,
+                ZombieType.DARK_KING,
+                ZombieType.LOST_CITY_JANE,
+                ZombieType.CRYSTAL_SKULL,
+                ZombieType.PIANO
+            ).withDefinition(
+                "Survive a full night operation in the Dark Ages.",
+                "Do not let the zombies reach the house."
+            ),
+            new Level(
+                4,
+                LevelType.BOSS,
+                5,
+                2000f
+            ).withAllowedZombies(
+                ZombieType.DEFAULT,
+                ZombieType.ARMOR_1,
+                ZombieType.IMP,
+                ZombieType.DARK_JUGGLER,
+                ZombieType.GARGANTUAR,
+                ZombieType.MODERN_ALL_STAR,
+                ZombieType.ARCADE,
+                ZombieType.CRYSTAL_SKULL,
+                ZombieType.PIANO,
+                ZombieType.BARREL_ROLLER
+            ).withDefinition(
+                "Face the Dark Ages boss battle.",
+                "Defeat the boss.",
+                "Do not let the zombies reach the house."
+            )
+        ),
+        TimeOfTheDay.NIGHT
     ),
     MINIGAME(
-            "Minigame",
-            allZombies(),
-            List.of(),
-            List.of(),
-            TimeOfTheDay.DAY
+        "Minigame",
+        allZombies(),
+        List.of(),
+        List.of(),
+        TimeOfTheDay.DAY
     );
 
     public final String name;
@@ -165,11 +393,11 @@ public enum ChapterTheme {
     public final TimeOfTheDay timeOfTheDay;
 
     ChapterTheme(
-            String name,
-            List<ZombieType> allowedZombies,
-            List<ChapterFeature> chapterFeatures,
-            List<Level> levels,
-            TimeOfTheDay timeOfTheDay
+        String name,
+        List<ZombieType> allowedZombies,
+        List<ChapterFeature> chapterFeatures,
+        List<Level> levels,
+        TimeOfTheDay timeOfTheDay
     ) {
         this.name = name;
         this.allowedZombies = allowedZombies;
@@ -195,10 +423,10 @@ public enum ChapterTheme {
 
     private static SaveOurSeedsConfig ancientEgyptSaveOurSeeds() {
         return SaveOurSeedsConfig.randomPlants(
-                1,
-                3,
-                2,
-                4
+            1,
+            3,
+            2,
+            4
         );
     }
 
@@ -208,60 +436,60 @@ public enum ChapterTheme {
 
     private static FrostbiteLevelConfig frostbiteLevelTwo() {
         return new FrostbiteLevelConfig(
-                0.65,
-                1,
-                2,
-                List.of(
-                        iceFloor(0, 5, IceFloorDirection.DOWN),
-                        iceFloor(2, 4, IceFloorDirection.UP),
-                        iceFloor(3, 6, IceFloorDirection.DOWN)
-                ),
-                List.of(frozenZombie(ZombieType.DEFAULT, 1, 6))
+            0.65,
+            1,
+            2,
+            List.of(
+                iceFloor(0, 5, IceFloorDirection.DOWN),
+                iceFloor(2, 4, IceFloorDirection.UP),
+                iceFloor(3, 6, IceFloorDirection.DOWN)
+            ),
+            List.of(frozenZombie(ZombieType.DEFAULT, 1, 6))
         );
     }
 
     private static FrostbiteLevelConfig frostbiteLevelThree() {
         return new FrostbiteLevelConfig(
-                0.75,
-                1,
-                3,
-                List.of(
-                        iceFloor(1, 5, IceFloorDirection.UP),
-                        iceFloor(2, 6, IceFloorDirection.DOWN),
-                        iceFloor(4, 4, IceFloorDirection.UP)
-                ),
-                List.of(
-                        frozenZombie(ZombieType.ARMOR_1, 0, 7),
-                        frozenZombie(ZombieType.DEFAULT, 3, 6)
-                )
+            0.75,
+            1,
+            3,
+            List.of(
+                iceFloor(1, 5, IceFloorDirection.UP),
+                iceFloor(2, 6, IceFloorDirection.DOWN),
+                iceFloor(4, 4, IceFloorDirection.UP)
+            ),
+            List.of(
+                frozenZombie(ZombieType.ARMOR_1, 0, 7),
+                frozenZombie(ZombieType.DEFAULT, 3, 6)
+            )
         );
     }
 
     private static FrostbiteLevelConfig frostbiteLevelFour() {
         return new FrostbiteLevelConfig(
-                0.85,
-                2,
-                3,
-                List.of(
-                        iceFloor(1, 6, IceFloorDirection.DOWN),
-                        iceFloor(3, 5, IceFloorDirection.UP)
-                ),
-                List.of(frozenZombie(ZombieType.ARMOR_2, 2, 7))
+            0.85,
+            2,
+            3,
+            List.of(
+                iceFloor(1, 6, IceFloorDirection.DOWN),
+                iceFloor(3, 5, IceFloorDirection.UP)
+            ),
+            List.of(frozenZombie(ZombieType.ARMOR_2, 2, 7))
         );
     }
 
     private static FrostbiteLevelConfig.IceFloorPlacement iceFloor(
-            int lane,
-            int column,
-            IceFloorDirection direction
+        int lane,
+        int column,
+        IceFloorDirection direction
     ) {
         return new FrostbiteLevelConfig.IceFloorPlacement(lane, column, direction);
     }
 
     private static FrostbiteLevelConfig.FrozenZombiePlacement frozenZombie(
-            ZombieType zombieType,
-            int lane,
-            int column
+        ZombieType zombieType,
+        int lane,
+        int column
     ) {
         return new FrostbiteLevelConfig.FrozenZombiePlacement(zombieType, lane, column);
     }

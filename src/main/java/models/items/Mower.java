@@ -33,9 +33,26 @@ public class Mower {
         }
 
         if (!activated) {
-            Zombie firstZombie = board.getFirstZombieInLane(rowNumber);
+            boolean zombieThreateningHouse = false;
 
-            if (firstZombie == null || firstZombie.getX() > 0f) {
+            for (Zombie zombie : board.getZombiesInLane(rowNumber)) {
+                if (zombie == null || zombie.isDead()) {
+                    continue;
+                }
+
+                // direction > 0 means the zombie is moving left,
+                // toward the house. Reversed zombies (Prospector
+                // after its jump, hypnotized zombies, etc.) are
+                // moving away from the house and must not trigger
+                // the mower.
+                if (zombie.getDirection() > 0
+                    && zombie.getX() <= 0f) {
+                    zombieThreateningHouse = true;
+                    break;
+                }
+            }
+
+            if (!zombieThreateningHouse) {
                 return;
             }
 

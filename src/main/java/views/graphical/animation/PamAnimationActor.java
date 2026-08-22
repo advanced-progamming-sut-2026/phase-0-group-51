@@ -182,6 +182,13 @@ public class PamAnimationActor extends Actor {
         }
     }
 
+    public void setPartVisible(String part, boolean visible) {
+        if (part == null || part.isBlank()) {
+            return;
+        }
+        visibilityMap.put(part, visible);
+    }
+
     public Map<String, Boolean> getVisibilityMap() {
         return visibilityMap;
     }

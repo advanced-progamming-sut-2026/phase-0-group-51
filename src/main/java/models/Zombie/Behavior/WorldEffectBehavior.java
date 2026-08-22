@@ -73,7 +73,11 @@ public class WorldEffectBehavior implements PersistableBehavior {
         cooldown = intervalTicks;
 
         if (type == WorldEffectType.RANDOM_LANE_SWAP) {
-            gs.swapRandomZombieLanes(count);
+            gs.swapRandomNearbyZombieLanes(
+                zombie,
+                count,
+                3f
+            );
         }
     }
 
