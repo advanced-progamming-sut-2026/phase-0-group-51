@@ -63,6 +63,10 @@ public class PlantActor extends Group {
     private static final float PLANT_FOOD_EFFECT_SCALE = 1.35f;
     private static final float PLANT_FOOD_EFFECT_OFFSET_X = 20f;
     private static final float PLANT_FOOD_EFFECT_OFFSET_Y = 120f;
+    // Key looked up in the plant's own "animations" map (plants.json) for a
+    // plant-specific sprite animation to play while the plant is buffed by
+    // Plant Food. Plants without this key just keep their normal animation.
+    private static final String PLANT_FOOD_ANIMATION_KEY = "plantFood";
 
     private static final float SQUASH_ARC_HEIGHT = 55f;
     private static final float SQUASH_STATIONARY_FRACTION = 0.45f;
@@ -74,6 +78,15 @@ public class PlantActor extends Group {
 
     private boolean temporaryAnimation;
     private boolean terminalAnimation;
+
+    private boolean plantFoodAnimationActive;
+    private PlantAnimationData plantFoodAnimationData;
+    // Whether the one-shot "plantFood" clip is still within its own
+    // duration (distinct from plantFoodAnimationActive, which spans the
+    // whole Plant Food buff - the clip plays once and then the plant goes
+    // back to its normal idle/base animation for the rest of the buff).
+    private boolean plantFoodAnimationPlaying;
+    private float plantFoodAnimationTimeRemaining;
 
     private float animationTimeRemaining;
     @Getter
@@ -347,6 +360,52 @@ public class PlantActor extends Group {
 
         float duration = plantData.animation(key).duration();
         return duration > 0f ? duration : fallback;
+    }
+    public void playPlantFoodAnimation() {
+        if (plantData == null
+                || animation == null
+                || !plantData.hasAnimation(
+                PLANT_FOOD_ANIMATION_KEY
+        )) {
+            return;
+        }
+
+        // A terminal animation has higher priority.
+        if (terminalAnimation) {
+            return;
+        }
+
+        PlantAnimationData data =
+                plantData.animation(
+                        PLANT_FOOD_ANIMATION_KEY
+                );
+
+        plantFoodAnimationData = data;
+        plantFoodAnimationPlaying = true;
+
+        if (data.loop()) {
+            plantFoodAnimationTimeRemaining = 0f;
+        } else {
+            plantFoodAnimationTimeRemaining =
+                    Math.max(
+                            0f,
+                            data.duration()
+                    );
+        }
+
+        /*
+         * Plant Food has priority over a normal attack/produce
+         * animation that may have started on this same model tick.
+         */
+        temporaryAnimation = false;
+        animationTimeRemaining = 0f;
+
+        animation.play(
+                data.clip(),
+                data.loop()
+        );
+
+        animation.restart();
     }
 
     public void playPlantFoodEffect() {
@@ -664,11 +723,98 @@ public class PlantActor extends Group {
         }
         baseAnimationKey = key;
         if (!temporaryAnimation && !terminalAnimation) {
+            if (plantFoodAnimationPlaying) {
+                // The plant-food clip is still playing out its one-shot
+                // duration; keep it running and just remember this base key
+                // for once the clip finishes.
+                return;
+            }
             if (key != null && plantData.hasAnimation(key)) {
                 playAnimation(key);
             } else {
                 playFallbackIdle();
             }
+        }
+    }
+
+    public void syncPlantFoodAnimation(boolean active) {
+        if (plantData == null || animation == null) {
+            return;
+        }
+
+        if (active == plantFoodAnimationActive) {
+            return;
+        }
+
+        plantFoodAnimationActive = active;
+
+        if (active) {
+            return;
+        }
+
+        // A one-shot animation is allowed to finish on its own.
+        // Only a looping Plant Food clip depends on isOnPlantFood().
+        if (plantFoodAnimationPlaying
+                && plantFoodAnimationData != null
+                && plantFoodAnimationData.loop()) {
+
+            plantFoodAnimationPlaying = false;
+            plantFoodAnimationData = null;
+            plantFoodAnimationTimeRemaining = 0f;
+
+            if (!temporaryAnimation && !terminalAnimation) {
+                restoreIdleAnimation();
+            }
+        }
+    }
+
+    private void updatePlantFoodAnimation(
+            float delta
+    ) {
+        if (!plantFoodAnimationPlaying
+                || plantFoodAnimationData == null) {
+            return;
+        }
+
+        if (plantFoodAnimationData.loop()) {
+            return;
+        }
+
+        plantFoodAnimationTimeRemaining -=
+                Math.max(0f, delta);
+
+        if (plantFoodAnimationTimeRemaining > 0f) {
+            return;
+        }
+
+        plantFoodAnimationPlaying = false;
+        plantFoodAnimationData = null;
+        plantFoodAnimationTimeRemaining = 0f;
+
+        if (!temporaryAnimation
+                && !terminalAnimation) {
+            restoreIdleAnimation();
+        }
+    }
+
+    private void restoreIdleAnimation() {
+        if (plantFoodAnimationPlaying
+                && plantFoodAnimationData != null) {
+
+            animation.play(
+                    plantFoodAnimationData.clip(),
+                    plantFoodAnimationData.loop()
+            );
+
+            animation.restart();
+            return;
+        }
+
+        if (baseAnimationKey != null
+                && plantData.hasAnimation(baseAnimationKey)) {
+            playAnimation(baseAnimationKey);
+        } else {
+            playFallbackIdle();
         }
     }
     private void playFallbackIdle() {
@@ -684,6 +830,9 @@ public class PlantActor extends Group {
 
     public void playTemporaryAnimation(String key) {
         if (plantData == null || animation == null || !plantData.hasAnimation(key)) {
+            return;
+        }
+        if (plantFoodAnimationPlaying) {
             return;
         }
         PlantAnimationData data = plantData.animation(key);
@@ -742,6 +891,10 @@ public class PlantActor extends Group {
         terminalAnimation = false;
         animationTimeRemaining = 0f;
         damageFlashCooldownRemaining = 0f;
+        plantFoodAnimationActive = false;
+        plantFoodAnimationData = null;
+        plantFoodAnimationPlaying = false;
+        plantFoodAnimationTimeRemaining = 0f;
 
         setVisible(false);
     }
@@ -760,6 +913,7 @@ public class PlantActor extends Group {
         if (!previewMode) {
             updateFreezeTransition(delta);
             updateAnimationState(delta);
+            updatePlantFoodAnimation(delta);
         }
 
         if (!previewMode
@@ -802,14 +956,6 @@ public class PlantActor extends Group {
         }
 
         temporaryAnimation = false;
-
-        if (baseAnimationKey != null
-                && plantData.hasAnimation(
-                baseAnimationKey
-        )) {
-            playAnimation(baseAnimationKey);
-        } else {
-            playFallbackIdle();
-        }
+        restoreIdleAnimation();
     }
 }
