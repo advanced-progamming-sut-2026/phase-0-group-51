@@ -380,6 +380,15 @@ public class GameScreen extends BaseScreen {
                 protectedPlantOverlayManager
             );
 
+            // Protected Save Our Seeds tiles must render behind the actual
+            // plant actors. Plant actors live inside entityDepthLayer.
+            int entityZ = entityDepthLayer.getZIndex();
+            int protectedZ = protectedPlantOverlayManager.getZIndex();
+
+            if (protectedZ > entityZ) {
+                protectedPlantOverlayManager.setZIndex(entityZ);
+            }
+
             deadlineOverlayManager =
                 new DeadlineOverlayManager(
                     game,
@@ -398,7 +407,6 @@ public class GameScreen extends BaseScreen {
             worldStage.addActor(
                 plantViewManager
             );
-
             protectedPlantOverlayManager.sync(
                 currentGame.getGameState()
             );
@@ -2090,3 +2098,4 @@ public class GameScreen extends BaseScreen {
     }
 
 }
+
