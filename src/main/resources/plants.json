@@ -2808,8 +2808,13 @@
         "clip": "idle",
         "loop": true
       },
-      "attack": {
+      "jumpDown": {
         "clip": "jump_down_right",
+        "loop": false,
+        "duration": 0.80
+      },
+      "attack": {
+        "clip": "jump_up_right",
         "loop": false,
         "duration": 0.80
       }

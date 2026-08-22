@@ -32,6 +32,8 @@ public enum Explosive implements PlantType {
     private static final int GRAPESHOT_GRAPE_DAMAGE = 200;
     private static final int GRAPESHOT_GRAPE_LIFETIME_SECONDS = 5;
     private static final int GRAVE_BUSTER_BASE_SECONDS = 3;
+    private static final double SQUASH_LANDING_FALLBACK_SECONDS = 0.95;
+    private static final double SQUASH_FINISH_FALLBACK_SECONDS = 1.9;
 
     private final int id;
     private final ExplosionMode mode;
@@ -158,26 +160,117 @@ public enum Explosive implements PlantType {
         removePlant(plant, state);
     }
 
+//    private void tickSquash(Plant plant, GameState state) {
+//        List<Zombie> nearby = new ArrayList<>(
+//            state.getBoard().getZombiesInRadius(
+//                plant.getPosY(),
+//                plant.getPosX(),
+//                triggerRadius
+//            )
+//        );
+//        if (nearby.isEmpty()) {
+//            return;
+//        }
+//        nearby.sort(Comparator.comparingDouble(zombie -> Math.hypot(
+//            zombie.getLane() - plant.getPosY(),
+//            zombie.getX() - plant.getPosX()
+//        )));
+//        int crushCount = plant.getLevel() >= 4 ? 2 : 1;
+//        for (int i = 0; i < Math.min(crushCount, nearby.size()); i++) {
+//            damageZombie(plant, state, nearby.get(i));
+//        }
+//        removePlant(plant, state);
+//    }
     private void tickSquash(Plant plant, GameState state) {
+
+        if (plant.isSquashJumping()) {
+            updateSquashJump(plant, state);
+            return;
+        }
+
         List<Zombie> nearby = new ArrayList<>(
-            state.getBoard().getZombiesInRadius(
-                plant.getPosY(),
-                plant.getPosX(),
-                triggerRadius
-            )
-        );
+                state.getBoard().getZombiesInRadius(
+                        plant.getPosY(),
+                        plant.getPosX(),
+                        triggerRadius
+                )
+                );
+
         if (nearby.isEmpty()) {
             return;
         }
+
         nearby.sort(Comparator.comparingDouble(zombie -> Math.hypot(
-            zombie.getLane() - plant.getPosY(),
-            zombie.getX() - plant.getPosX()
+                zombie.getLane() - plant.getPosY(),
+                zombie.getX() - plant.getPosX()
         )));
-        int crushCount = plant.getLevel() >= 4 ? 2 : 1;
-        for (int i = 0; i < Math.min(crushCount, nearby.size()); i++) {
-            damageZombie(plant, state, nearby.get(i));
+
+        Zombie target = nearby.get(0);
+        Zombie secondaryTarget = resolveSecondarySquashTarget(plant, nearby);
+        int landingFallbackTicks = (int) Math.ceil(
+                SQUASH_LANDING_FALLBACK_SECONDS * state.getTicksPerSecond()
+        );
+        int finishFallbackTicks = (int) Math.ceil(
+                SQUASH_FINISH_FALLBACK_SECONDS * state.getTicksPerSecond()
+        );
+
+        plant.startSquashJump(
+                target,
+                secondaryTarget,
+                landingFallbackTicks,
+                finishFallbackTicks
+        );
+        plant.signalAction(PlantAction.ATTACK);
+    }
+
+    private void updateSquashJump(Plant plant, GameState state) {
+        plant.advanceSquashJump();
+
+        if (plant.shouldApplySquashDamage()) {
+            applySquashDamage(plant, state);
+            plant.markSquashDamageApplied();
         }
+
+        if (plant.isSquashFinished()) {
+            finishSquashJump(plant, state);
+        }
+    }
+
+    private Zombie resolveSecondarySquashTarget(
+            Plant plant,
+            List<Zombie> nearby
+    ) {
+        if (plant.getLevel() < 4 || nearby.size() < 2) {
+            return null;
+        }
+        return nearby.get(1);
+    }
+
+    private void applySquashDamage(
+            Plant plant,
+            GameState state
+    ) {
+        damageSquashTarget(plant, state, plant.getSquashTarget());
+        damageSquashTarget(plant, state, plant.getSquashSecondaryTarget());
+    }
+
+    private void finishSquashJump(
+            Plant plant,
+            GameState state
+    ) {
+        plant.clearSquashJump();
         removePlant(plant, state);
+    }
+
+    private void damageSquashTarget(
+            Plant plant,
+            GameState state,
+            Zombie target
+    ) {
+        if (target == null || target.isDead()) {
+            return;
+        }
+        damageZombie(plant, state, target);
     }
 
     private void tickIceberg(Plant plant, GameState state) {

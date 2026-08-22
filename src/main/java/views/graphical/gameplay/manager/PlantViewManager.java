@@ -28,6 +28,10 @@ public class PlantViewManager extends Group {
     private final Map<Plant, Integer> lastSeenOctopusHealth = new IdentityHashMap<>();
     private final Map<Plant, String> lastSeenChargeAnimation = new IdentityHashMap<>();
     private final Map<PlantActor, Integer> actorLayers = new IdentityHashMap<>();
+    private final Set<Plant> squashAnimationsStarted =
+            Collections.newSetFromMap(
+                    new IdentityHashMap<Plant, Boolean>()
+            );
 
     public PlantViewManager(
             PvzGame game,
@@ -76,13 +80,73 @@ public class PlantViewManager extends Group {
         actorLayers.put(actor, layer);
         syncPlantBaseAnimation(plant, actor);
         syncChargeAnimation(plant, actor);
+
+        boolean squashAnimating = syncSquashAnimation(
+                plant,
+                actor,
+                lane,
+                column
+        );
+
+        if (!squashAnimating) {
         syncPlantAction(plant, actor);
+            positionPlant(actor, lane, column);
+        }
+
         syncPlantFoodEffect(plant, actor);
         syncDamageFlash(plant, actor);
         syncOctopusVisual(plant, actor);
         syncFrostVisual(plant, actor);
-        positionPlant(actor, lane, column);
     }
+    private boolean syncSquashAnimation(
+            Plant plant,
+            PlantActor actor,
+            int lane,
+            int column
+    ) {
+        if (!plant.isSquashJumping()) {
+            squashAnimationsStarted.remove(plant);
+            return false;
+        }
+
+        if (squashAnimationsStarted.add(plant)) {
+        positionPlant(actor, lane, column);
+
+            int targetLane = Math.max(
+                    0,
+                    Math.min(
+                            BoardTransform.ROWS - 1,
+                            plant.getSquashTargetLane()
+                    )
+            );
+            int targetColumn = Math.max(
+                    0,
+                    Math.min(
+                            BoardTransform.COLUMNS - 1,
+                            plant.getSquashTargetColumn()
+                    )
+            );
+
+            float targetX = transform.tileX(targetColumn)
+                    + transform.tileWidth() / 2f;
+            float targetY = transform.tileY(targetLane)
+                    + transform.tileHeight() / 2f;
+
+            actor.playSquashJump(
+                    targetX,
+                    targetY,
+                    plant::markSquashLanded,
+                    plant::finishSquashJump
+            );
+    }
+
+        lastSeenActionSerial.put(
+                plant,
+                plant.getActionSerial()
+        );
+        return true;
+    }
+
     private void syncPlantAction(Plant plant, PlantActor actor) {
         long lastSeen = lastSeenActionSerial.getOrDefault(plant, plant.getActionSerial());
 
@@ -445,12 +509,9 @@ public class PlantViewManager extends Group {
         if (actor == null) {
 
             actor = createPlantActor(plant);
-
-            plantActors.put(
-                    plant,
-                    actor
-            );
-
+            plantActors.put(plant, actor);
+            lastSeenActionSerial.put(plant, plant.getActionSerial());
+            lastSeenHealth.put(plant, plant.getCurrentHP());
             addActor(actor);
 
             syncPlantBaseAnimation(
@@ -459,11 +520,15 @@ public class PlantViewManager extends Group {
             );
         }
 
+        actorLayers.put(actor, layer);
 
-        actorLayers.put(
-                actor,
-                layer
-        );
+        if (syncSquashAnimation(plant, actor, lane, column)) {
+            syncPlantFoodEffect(plant, actor);
+            syncDamageFlash(plant, actor);
+            syncOctopusVisual(plant, actor);
+            syncFrostVisual(plant, actor);
+            return;
+        }
 
 
         float targetX =
@@ -489,30 +554,11 @@ public class PlantViewManager extends Group {
                 )
         );
 
-
-        syncChargeAnimation(
-                plant,
-                actor
-        );
-
-        syncPlantAction(
-                plant,
-                actor
-        );
-
-        syncPlantFoodEffect(
-                plant,
-                actor
-        );
-
-        syncDamageFlash(
-                plant,
-                actor
-        );
-
-        syncFrostVisual(
-                plant,
-                actor
-        );
+        syncChargeAnimation(plant, actor);
+        syncPlantAction(plant, actor);
+        syncPlantFoodEffect(plant, actor);
+        syncDamageFlash(plant, actor);
+        syncOctopusVisual(plant, actor);
+        syncFrostVisual(plant, actor);
     }
 }
