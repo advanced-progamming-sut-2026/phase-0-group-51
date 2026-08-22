@@ -1,3 +1,4 @@
+
 package views.graphical.gameplay.zombie;
 
 import Data.loader.ZombieRegistry;
@@ -551,6 +552,18 @@ public final class ZombieAnimationSystem {
                 "ZombieAnimation",
                 "Visible parts " + alias + " -> " + parts
             );
+
+            Gdx.app.log(
+                "ZombiePartsFull",
+                "========== " + alias + " =========="
+            );
+
+            for (String part : parts) {
+                Gdx.app.log(
+                    "ZombiePartsFull",
+                    "PART = " + part
+                );
+            }
         }
 
         return List.copyOf(parts);
@@ -708,6 +721,9 @@ public final class ZombieAnimationSystem {
             .replaceAll("[^a-z0-9]", "");
     }
 
+
+
+
     private void configureGroundSwatch(
         String alias,
         String pamPath,
@@ -854,6 +870,7 @@ public final class ZombieAnimationSystem {
 
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
+        syncArmDamageVisual(zombie, visual);
 
         if (zombie.hasIceShell()) {
 
@@ -899,6 +916,94 @@ public final class ZombieAnimationSystem {
         } else if (!zombie.hasIceShell()) {
             actor.resumeAnimation();
         }
+    }
+
+    private void syncArmDamageVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (zombie == null || visual == null) {
+            return;
+        }
+
+        boolean damaged =
+            zombie.getMaxHitpoints() > 0
+                && zombie.getHitpoints()
+                <= zombie.getMaxHitpoints() / 2f;
+
+        Map<String, Boolean> v =
+            visual.actor.getVisibilityMap();
+
+        String alias = zombie.getAlias();
+
+        if (ZombieType.IMP.getAlias().equals(alias)) {
+            applyArmParts(v, damaged,
+                "zombie_imp_arms_outer_upper",
+                "zombie_imp_arm_outer_lower",
+                "zombie_imp_hand_outer");
+            return;
+        }
+
+        if (usesThemedBasicBody(alias)) {
+            switch (theme) {
+                case ANCIENT_EGYPT -> applyArmParts(v, damaged,
+                    "zombie_egypt_arms_outer_upper",
+                    "zombie_egypt_arm_outer_lower",
+                    "zombie_egypt_hand_outer_01");
+                case FROSTBITE_CAVES, BIG_WAVE_BEACH, DARK_AGES -> applyArmParts(v, damaged,
+                    "zombie_arms_outer_upper",
+                    "zombie_arm_outer_lower",
+                    "zombie_hand_outer_01");
+                default -> {}
+            }
+        }
+
+        // Extra zombie families with their own PAM arm parts.
+        // Keep only the upper arm after HP reaches 50%.
+        if (alias.toLowerCase(Locale.ROOT).contains("arcade")) {
+            applyArmParts(v, damaged,
+                "zombie_troglobite_arm_outer_upper_bone",
+                "zombie_troglobite_arm_outer_lower",
+                "zombie_troglobite_hand_outer");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("jane")) {
+            applyArmParts(v, damaged,
+                "zombie_arms_outer_upper",
+                "zombie_arm_outer_lower",
+                "zombie_hand_outer_01_upperlayer");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("crystal")
+            || alias.toLowerCase(Locale.ROOT).contains("turquoise")) {
+            applyArmParts(v, damaged,
+                "zombie_egypt_ra_arms_outer_upper",
+                "zombie_egypt_ra_arm_outer_lower",
+                "zombie_egypt_ra_hand_outer2");
+            return;
+        }
+
+        if (alias.toLowerCase(Locale.ROOT).contains("prospector")) {
+            applyArmParts(v, damaged,
+                "_zombie_pros_arms_outer_upper",
+                "zombie_pros_arm_outer_lower",
+                "zombie_pros_hand_outer_01");
+        }
+    }
+
+    private static void applyArmParts(
+        Map<String, Boolean> visibility,
+        boolean damaged,
+        String upper,
+        String lower,
+        String hand
+    ) {
+        // Healthy: full arm. Damaged: only upper arm remains.
+        visibility.put(upper, true);
+        visibility.put(lower, !damaged);
+        visibility.put(hand, !damaged);
     }
 
     private void syncNormalArmorVisual(
@@ -2113,3 +2218,4 @@ public final class ZombieAnimationSystem {
         }
     }
 }
+

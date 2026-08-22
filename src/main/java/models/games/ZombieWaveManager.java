@@ -703,8 +703,21 @@ public class ZombieWaveManager {
                 );
 
             if (template == null) {
+
+                System.out.println(
+                    "[SPAWN MISSING] "
+                        + alias
+                        + " -> "
+                        + alias.getAlias()
+                );
+
                 continue;
             }
+
+            System.out.println(
+                "[SPAWN AVAILABLE] "
+                    + template.getAlias()
+            );
 
             Zombie candidate =
                 template.copy();
@@ -715,6 +728,14 @@ public class ZombieWaveManager {
             ) {
                 affordable.add(
                     candidate
+                );
+                System.out.println(
+                    "[SPAWN CANDIDATE] "
+                        + candidate.getAlias()
+                        + " cost="
+                        + candidate.getWavePointCost()
+                        + " weight="
+                        + candidate.getWeight()
                 );
 
                 weightSum +=
