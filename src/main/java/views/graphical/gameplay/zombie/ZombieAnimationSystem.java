@@ -80,6 +80,11 @@ public final class ZombieAnimationSystem {
     private static final float MAX_DANGER_RED = 0.5f;
     private static final float MAX_INTERPOLATION_STEP_COLUMNS = 0.75f;
 
+    // The Snorkel PAM has no dedicated submerge/surface clips.
+    // Reflect the real MovementBehavior.UNDERGROUND state visually instead.
+    private static final float SNORKEL_SUBMERGED_Y_OFFSET_TILES = 0.30f;
+    private static final float SNORKEL_SUBMERGED_ALPHA = 0.58f;
+
     private static final String DARK_KNIGHT_CROWN_ARMOR =
         "CrownDefault@ArmorTypes";
     private static final String DARK_KNIGHT_SHOULDER_ARMOR =
@@ -723,7 +728,6 @@ public final class ZombieAnimationSystem {
 
 
 
-
     private void configureGroundSwatch(
         String alias,
         String pamPath,
@@ -910,6 +914,7 @@ public final class ZombieAnimationSystem {
 
         updateColdTint(zombie, actor);
         updateDangerTint(zombie, actor);
+        applySnorkelSubmergedVisual(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
             actor.pauseAnimation();
@@ -1780,7 +1785,16 @@ public final class ZombieAnimationSystem {
         ImpThrowBehavior summon =
             zombie.getBehavior(ImpThrowBehavior.class);
         if (summon != null) {
-            visual.lastImpFired = summon.isFired();
+            boolean fired = summon.isFired();
+
+            if (!visual.lastImpFired
+                && fired
+                && ZombieType.GARGANTUAR.getAlias().equals(alias)) {
+                // The Gargantuar PAM exposes "fire" (not "throw").
+                enqueueSpecialClip(visual, "fire");
+            }
+
+            visual.lastImpFired = fired;
         }
 
         RangedAttackBehavior ranged =
@@ -2009,6 +2023,47 @@ public final class ZombieAnimationSystem {
         return null;
     }
 
+    private static boolean isSnorkelSubmerged(Zombie zombie) {
+        if (zombie == null
+            || !ZombieType.BEACH_SNORKEL.getAlias().equals(
+            zombie.getAlias()
+        )) {
+            return false;
+        }
+
+        MovementBehavior movement =
+            zombie.getBehavior(MovementBehavior.class);
+
+        return movement != null
+            && movement.getType()
+            == MovementBehavior.MovementType.UNDERGROUND
+            && movement.isSubmerged();
+    }
+
+    private static void applySnorkelSubmergedVisual(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (actor == null
+            || !ZombieType.BEACH_SNORKEL.getAlias().equals(
+            zombie == null ? null : zombie.getAlias()
+        )) {
+            return;
+        }
+
+        Color color = actor.getColor();
+        float alpha = isSnorkelSubmerged(zombie)
+            ? SNORKEL_SUBMERGED_ALPHA
+            : 1f;
+
+        actor.setColor(
+            color.r,
+            color.g,
+            color.b,
+            alpha
+        );
+    }
+
     private void updatePosition(
         Zombie zombie,
         ZombieVisual visual,
@@ -2032,6 +2087,11 @@ public final class ZombieAnimationSystem {
             boardTransform.tileY(zombie.getLane())
                 + boardTransform.tileHeight()
                 * 0.5f;
+
+        if (isSnorkelSubmerged(zombie)) {
+            y -= boardTransform.tileHeight()
+                * SNORKEL_SUBMERGED_Y_OFFSET_TILES;
+        }
 
         actor.setPosition(x, y);
 

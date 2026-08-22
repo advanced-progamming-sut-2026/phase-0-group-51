@@ -219,8 +219,8 @@ public class ZombieBehaviorFactory {
         resolveArmorProps(data, armorRegistry, behaviors);
         behaviors.add(new DamageReactionBehavior(
             DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE,
-            (float) data.path("EnragedSpeedScale").asDouble(4.0),
-            (float) data.path("EnragedDamageScale").asDouble(4.0)
+            (float) data.path("EnragedSpeedScale").asDouble(3.0),
+            (float) data.path("EnragedDamageScale").asDouble(3.0)
         ));
     }
 
