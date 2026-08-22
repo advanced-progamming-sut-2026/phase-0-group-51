@@ -21,7 +21,7 @@ import java.util.*;
 public class WallnutBowling extends Game {
     private static final int CONVEYOR_SECONDS = 7;
     private static final int MAX_CONVEYOR_SIZE = 8;
-    private static final int INITIAL_CONVEYOR_COUNT = 4;
+    private static final int INITIAL_CONVEYOR_COUNT = 2;
     private static final int DEFAULT_NORMAL_ZOMBIE_HEALTH = 190;
     private static final int DEFAULT_CHERRY_BOMB_DAMAGE = 1800;
     private final MinigameStage stage;

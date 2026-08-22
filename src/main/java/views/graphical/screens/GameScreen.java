@@ -1511,7 +1511,11 @@ public class GameScreen extends BaseScreen {
             );
 
             frozenZombieIceAnimationSystem.sync(
-                visualZombies
+                visualZombies,
+                introState == IntroState.PLAYING
+                    && overlayMode == OverlayMode.NONE
+                    ? gameplayDelta
+                    : 0f
             );
 
             lootAnimationSystem.sync(

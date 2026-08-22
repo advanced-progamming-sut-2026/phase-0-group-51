@@ -2,12 +2,15 @@ package views.graphical.gameplay.manager;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import graphics.PvzGame;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Plant.Plant;
+import models.Plant.PlantTag;
 import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardTransform;
 
@@ -22,6 +25,8 @@ public class PlantViewManager extends Group {
     private final Map<Plant, Long> lastSeenActionSerial = new IdentityHashMap<>();
     private final Map<Plant, Long> lastSeenPlantFoodSerial = new IdentityHashMap<>();
     private final Map<Plant, Integer> lastSeenHealth = new IdentityHashMap<>();
+    private final Map<Plant, Integer> lastSeenOctopusHealth = new IdentityHashMap<>();
+    private final Map<Plant, String> lastSeenChargeAnimation = new IdentityHashMap<>();
     private final Map<PlantActor, Integer> actorLayers = new IdentityHashMap<>();
 
     public PlantViewManager(
@@ -70,9 +75,11 @@ public class PlantViewManager extends Group {
         }
         actorLayers.put(actor, layer);
         syncPlantBaseAnimation(plant, actor);
+        syncChargeAnimation(plant, actor);
         syncPlantAction(plant, actor);
         syncPlantFoodEffect(plant, actor);
         syncDamageFlash(plant, actor);
+        syncOctopusVisual(plant, actor);
         syncFrostVisual(plant, actor);
         positionPlant(actor, lane, column);
     }
@@ -107,6 +114,32 @@ public class PlantViewManager extends Group {
         lastSeenPlantFoodSerial.put(plant, current);
     }
 
+    private void syncOctopusVisual(
+            Plant plant,
+            PlantActor actor
+    ) {
+        actor.syncOctopusVisual(
+                plant.hasOctopus()
+        );
+
+        int currentOctopusHealth = plant.getOctopusHP();
+        int previousOctopusHealth =
+                lastSeenOctopusHealth.getOrDefault(
+                        plant,
+                        currentOctopusHealth
+                );
+
+        if (currentOctopusHealth < previousOctopusHealth
+                && currentOctopusHealth > 0) {
+            actor.flashOctopusDamage();
+        }
+
+        lastSeenOctopusHealth.put(
+                plant,
+                currentOctopusHealth
+        );
+    }
+
     private void syncFrostVisual(
             Plant plant,
             PlantActor actor
@@ -130,6 +163,56 @@ public class PlantViewManager extends Group {
 
         lastSeenHealth.put(plant, currentHealth);
     }
+
+    private void syncChargeAnimation(
+            Plant plant,
+            PlantActor actor
+    ) {
+        if (!plant.hasTag(PlantTag.CHARGE)) {
+            return;
+        }
+
+        String animation;
+
+        if (!plant.isChargeReady()) {
+            animation = "charge";
+
+            if (!hasAnimation(plant, animation)) {
+                animation = "unarmed";
+            }
+        } else {
+            animation = "armed";
+
+            if (!hasAnimation(plant, animation)) {
+                animation = "idle";
+            }
+        }
+
+        String previous =
+                lastSeenChargeAnimation.get(plant);
+
+        if (!animation.equals(previous)) {
+            actor.setBaseAnimation(animation);
+            lastSeenChargeAnimation.put(
+                    plant,
+                    animation
+            );
+        }
+    }
+
+    private boolean hasAnimation(
+            Plant plant,
+            String animation
+    ) {
+        PlantData data =
+                PlantRegistry.getById(
+                        plant.getId()
+                );
+
+        return data != null
+                && data.hasAnimation(animation);
+    }
+
     private String resolveAttackAnimation(Plant plant) {
         PlantData data = PlantRegistry.getById(plant.getId());
 
@@ -212,6 +295,8 @@ public class PlantViewManager extends Group {
                 lastSeenActionSerial.remove(plant);
                 lastSeenPlantFoodSerial.remove(plant);
                 lastSeenHealth.remove(plant);
+                lastSeenOctopusHealth.remove(plant);
+                lastSeenChargeAnimation.remove(plant);
                 iterator.remove();
             }
         }
@@ -289,6 +374,145 @@ public class PlantViewManager extends Group {
         actor.setPosition(
                 centerX,
                 centerY
+        );
+    }
+    public void animateSync(Board board) {
+
+        Set<Plant> plantsOnBoard =
+                Collections.newSetFromMap(new IdentityHashMap<>());
+
+
+        for (int lane = 0; lane < board.getLaneCount(); lane++) {
+
+            for (int column = 0;
+                 column < board.getColumnCount();
+                 column++) {
+
+
+                Tile tile = board.getTile(lane, column);
+
+                animatePlant(
+                        tile.getLilyPadPlant(),
+                        lane,
+                        column,
+                        0,
+                        plantsOnBoard
+                );
+
+                animatePlant(
+                        tile.getTopPlant(),
+                        lane,
+                        column,
+                        1,
+                        plantsOnBoard
+                );
+
+                animatePlant(
+                        tile.getPumpkinPlant(),
+                        lane,
+                        column,
+                        2,
+                        plantsOnBoard
+                );
+            }
+        }
+
+
+        removeMissingPlants(plantsOnBoard);
+        sortPlantsByDepth();
+    }
+    private void animatePlant(
+            Plant plant,
+            int lane,
+            int column,
+            int layer,
+            Set<Plant> plantsOnBoard
+    ) {
+
+        if (plant == null) {
+            return;
+        }
+
+
+        plantsOnBoard.add(plant);
+
+
+        PlantActor actor =
+                plantActors.get(plant);
+
+
+        // اگر تازه آمده، بسازش
+        if (actor == null) {
+
+            actor = createPlantActor(plant);
+
+            plantActors.put(
+                    plant,
+                    actor
+            );
+
+            addActor(actor);
+
+            syncPlantBaseAnimation(
+                    plant,
+                    actor
+            );
+        }
+
+
+        actorLayers.put(
+                actor,
+                layer
+        );
+
+
+        float targetX =
+                transform.tileX(column)
+                        + transform.tileWidth() / 2f;
+
+
+        float targetY =
+                transform.tileY(lane)
+                        + transform.tileHeight() / 2f;
+
+
+
+        actor.clearActions();
+
+
+        actor.addAction(
+                Actions.moveTo(
+                        targetX,
+                        targetY,
+                        0.35f,
+                        Interpolation.smooth
+                )
+        );
+
+
+        syncChargeAnimation(
+                plant,
+                actor
+        );
+
+        syncPlantAction(
+                plant,
+                actor
+        );
+
+        syncPlantFoodEffect(
+                plant,
+                actor
+        );
+
+        syncDamageFlash(
+                plant,
+                actor
+        );
+
+        syncFrostVisual(
+                plant,
+                actor
         );
     }
 }
