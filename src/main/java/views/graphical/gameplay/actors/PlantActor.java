@@ -3,6 +3,7 @@ package views.graphical.gameplay.actors;
 import Data.loader.PlantAnimationData;
 import Data.loader.PlantData;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -62,6 +63,11 @@ public class PlantActor extends Group {
     private static final float PLANT_FOOD_EFFECT_SCALE = 1.35f;
     private static final float PLANT_FOOD_EFFECT_OFFSET_X = 20f;
     private static final float PLANT_FOOD_EFFECT_OFFSET_Y = 120f;
+
+    private static final float SQUASH_ARC_HEIGHT = 55f;
+    private static final float SQUASH_STATIONARY_FRACTION = 0.45f;
+    private static final float SQUASH_ATTACK_FALLBACK_DURATION = 0.8f;
+    private static final float SQUASH_JUMP_DOWN_FALLBACK_DURATION = 0.8f;
 
     private final PvzGame game;
     private String baseAnimationKey;
@@ -241,6 +247,106 @@ public class PlantActor extends Group {
                 DAMAGE_FLASH_DURATION,
                 DAMAGE_FLASH_ALPHA
         );
+    }
+
+    public void playSquashJump(
+            float targetX,
+            float targetY,
+            Runnable onLanding,
+            Runnable onFinished
+    ) {
+        Runnable landing = onLanding == null
+                ? () -> { }
+                : onLanding;
+        Runnable completion = onFinished == null
+                ? () -> { }
+                : onFinished;
+
+        clearActions();
+
+        if (!playOneShotAnimation("attack")) {
+            setPosition(targetX, targetY);
+            landing.run();
+            completion.run();
+            return;
+        }
+
+        float attackDuration = animationDuration(
+                "attack",
+                SQUASH_ATTACK_FALLBACK_DURATION
+        );
+        float jumpDownDuration = animationDuration(
+                "jumpDown",
+                SQUASH_JUMP_DOWN_FALLBACK_DURATION
+        );
+
+        float stationaryDuration =
+                attackDuration * SQUASH_STATIONARY_FRACTION;
+        float travelDuration = Math.max(
+                0.05f,
+                attackDuration - stationaryDuration
+        );
+        float firstHalfDuration = travelDuration * 0.5f;
+        float secondHalfDuration = travelDuration - firstHalfDuration;
+
+        float middleX = (getX() + targetX) * 0.5f;
+        float middleY = Math.max(getY(), targetY) + SQUASH_ARC_HEIGHT;
+
+        addAction(
+                Actions.sequence(
+                        Actions.delay(stationaryDuration),
+                        Actions.moveTo(
+                                middleX,
+                                middleY,
+                                firstHalfDuration,
+                                        Interpolation.sineOut
+                                ),
+
+                        Actions.moveTo(
+                                targetX,
+                                targetY,
+                                secondHalfDuration,
+                                Interpolation.sineIn
+                        ),
+                        Actions.run(() -> {
+                            setPosition(targetX, targetY);
+                            playOneShotAnimation("jumpDown");
+                            landing.run();
+                        }),
+                        Actions.delay(jumpDownDuration),
+                        Actions.run(completion)
+                )
+        );
+    }
+
+    private boolean playOneShotAnimation(String key) {
+        if (plantData == null
+                || animation == null
+                || !plantData.hasAnimation(key)) {
+            return false;
+        }
+
+        PlantAnimationData data = plantData.animation(key);
+
+        temporaryAnimation = false;
+        terminalAnimation = false;
+        animationTimeRemaining = 0f;
+
+        animation.play(data.clip(), false);
+        animation.restart();
+        return true;
+    }
+
+    private float animationDuration(
+            String key,
+            float fallback
+    ) {
+        if (plantData == null || !plantData.hasAnimation(key)) {
+            return fallback;
+        }
+
+        float duration = plantData.animation(key).duration();
+        return duration > 0f ? duration : fallback;
     }
 
     public void playPlantFoodEffect() {

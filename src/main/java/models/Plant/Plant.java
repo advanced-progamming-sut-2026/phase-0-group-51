@@ -2,6 +2,7 @@ package models.Plant;
 
 import lombok.Getter;
 import lombok.Setter;
+import models.Zombie.Zombie;
 import models.games.GameState;
 import models.projectile.ElementType;
 
@@ -58,6 +59,17 @@ public class Plant {
     private int blueFlameTicks;
     private boolean autoPlantFoodOnEntry;
 
+    private boolean squashJumping = false;
+    private boolean squashLanded;
+    private boolean squashDamageApplied;
+    private boolean squashFinished;
+    private int squashTargetLane = -1;
+    private int squashTargetColumn = -1;
+    private int squashLandingTicksRemaining;
+    private int squashFinishTicksRemaining;
+    private Zombie squashTarget;
+    private Zombie squashSecondaryTarget;
+
     @Getter
     private PlantAction lastAction = PlantAction.NONE;
 
@@ -84,7 +96,8 @@ public class Plant {
 
 
     public void tick(GameState gameState) {
-        if (isFrozenByIce() || hasOctopus() || isTransformed()) {
+        if (!squashJumping
+                && (isFrozenByIce() || hasOctopus() || isTransformed())) {
             return;
         }
         ageTicks++;
@@ -295,6 +308,92 @@ public class Plant {
             return Integer.MAX_VALUE;
         }
         return bowlingBulbCooldownTicks[slot];
+    }
+    public void startSquashJump(
+            Zombie target,
+            Zombie secondaryTarget,
+            int landingFallbackTicks,
+            int finishFallbackTicks
+    ) {
+        if (target == null) {
+            throw new IllegalArgumentException(
+                    "Squash jump target cannot be null."
+            );
+        }
+
+        squashJumping = true;
+        squashLanded = false;
+        squashDamageApplied = false;
+        squashFinished = false;
+        squashLandingTicksRemaining = Math.max(
+                1,
+                landingFallbackTicks
+        );
+        squashFinishTicksRemaining = Math.max(
+                squashLandingTicksRemaining + 1,
+                finishFallbackTicks
+        );
+        squashTarget = target;
+        squashSecondaryTarget = secondaryTarget;
+        squashTargetLane = target.getLane();
+        squashTargetColumn = (int) Math.floor(target.getX());
+    }
+
+    public void advanceSquashJump() {
+        if (!squashJumping) {
+            return;
+        }
+
+        if (!squashLanded && squashLandingTicksRemaining > 0) {
+            squashLandingTicksRemaining--;
+            if (squashLandingTicksRemaining <= 0) {
+                squashLanded = true;
+            }
+        }
+
+        if (!squashFinished && squashFinishTicksRemaining > 0) {
+            squashFinishTicksRemaining--;
+            if (squashFinishTicksRemaining <= 0) {
+                squashFinished = true;
+            }
+        }
+    }
+
+    public void markSquashLanded() {
+        if (squashJumping) {
+            squashLanded = true;
+        }
+    }
+
+    public boolean shouldApplySquashDamage() {
+        return squashJumping
+                && squashLanded
+                && !squashDamageApplied;
+    }
+
+    public void markSquashDamageApplied() {
+        if (squashJumping) {
+            squashDamageApplied = true;
+        }
+    }
+
+    public void finishSquashJump() {
+        if (squashJumping) {
+        squashFinished = true;
+    }
+    }
+
+    public void clearSquashJump() {
+        squashJumping = false;
+        squashLanded = false;
+        squashDamageApplied = false;
+        squashFinished = false;
+        squashTargetLane = -1;
+        squashTargetColumn = -1;
+        squashLandingTicksRemaining = 0;
+        squashFinishTicksRemaining = 0;
+        squashTarget = null;
+        squashSecondaryTarget = null;
     }
 
     public void meltCompletely(GameState state) {
