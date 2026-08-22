@@ -131,7 +131,9 @@ public class GameState {
         }
 
         for (Zombie zombie : zombiesInTheGame) {
-            if (!zombie.isDead() && zombie.getX() < 0) {
+            if (!zombie.isDead()
+                && zombie.getDirection() > 0
+                && zombie.getX() < 0) {
                 int lane = zombie.getLane();
                 Mower mower = lawnMowers[lane];
                 boolean passedActiveMower =
@@ -849,20 +851,113 @@ public class GameState {
         }
     }
     public void swapRandomZombieLanes(int swapCount) {
-        for (Zombie z : getZombiesInTheGame()) {
-            if (z.isDead()) continue;
-            int current = z.getLane();
-            int target = getRandomNeighborLane(current);
-            if (target != current) {
-                z.setLane(target);
+        if (swapCount <= 0) {
+            return;
+        }
+
+        List<Zombie> candidates = new ArrayList<>();
+
+        for (Zombie zombie : getZombiesInTheGame()) {
+            if (zombie == null || zombie.isDead()) {
+                continue;
             }
+
+            candidates.add(zombie);
+        }
+
+        Collections.shuffle(candidates);
+
+        int changed = 0;
+
+        for (Zombie targetZombie : candidates) {
+            if (changed >= swapCount) {
+                break;
+            }
+
+            int currentLane = targetZombie.getLane();
+            int targetLane = getRandomNeighborLane(currentLane);
+
+            if (targetLane == currentLane) {
+                continue;
+            }
+
+            targetZombie.setLane(targetLane);
+            changed++;
+        }
+    }
+
+    public void swapRandomNearbyZombieLanes(
+        Zombie source,
+        int swapCount,
+        float maxDistanceColumns
+    ) {
+        if (source == null
+            || source.isDead()
+            || swapCount <= 0) {
+            return;
+        }
+
+        float range = Math.max(0f, maxDistanceColumns);
+
+        List<Zombie> candidates = new ArrayList<>();
+
+        for (Zombie other : getZombiesInTheGame()) {
+            if (other == null
+                || other == source
+                || other.isDead()) {
+                continue;
+            }
+
+            if (Math.abs(other.getX() - source.getX()) > range) {
+                continue;
+            }
+
+            candidates.add(other);
+        }
+
+        if (candidates.isEmpty()) {
+            return;
+        }
+
+        Collections.shuffle(candidates);
+
+        int changed = 0;
+
+        for (Zombie targetZombie : candidates) {
+            if (changed >= swapCount) {
+                break;
+            }
+
+            int currentLane = targetZombie.getLane();
+            int targetLane = getRandomNeighborLane(currentLane);
+
+            if (targetLane == currentLane) {
+                continue;
+            }
+
+            targetZombie.setLane(targetLane);
+            changed++;
         }
     }
 
     private int getRandomNeighborLane(int lane) {
-        if (lane == 0) return 1;
-        if (lane == 4) return 3;
-        return Math.random() < 0.5 ? lane - 1 : lane + 1;
+        int laneCount = board.getLaneCount();
+
+        if (laneCount <= 1) {
+            return lane;
+        }
+
+        if (lane <= 0) {
+            return 1;
+        }
+
+        if (lane >= laneCount - 1) {
+            return laneCount - 2;
+        }
+
+        return Math.random() < 0.5
+            ? lane - 1
+            : lane + 1;
     }
     public int getPlantCooldownEnd(int plantId) {
         return cooldownUntilTick.getOrDefault(plantId, 0);
@@ -877,3 +972,4 @@ public class GameState {
         cooldownUntilTick.put(plant.getId(), tickCounter + rechargeTicks);
     }
 }
+

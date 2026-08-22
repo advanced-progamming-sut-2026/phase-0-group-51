@@ -13,10 +13,14 @@ import models.quests.QuestKillSourceType;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.IntConsumer;
 
 @Getter
@@ -46,6 +50,12 @@ public class ZombieWaveManager {
     private final boolean endless;
 
     private final float maxDifficulty;
+
+    // Normal levels keep random wave generation, but every allowed zombie
+    // must appear at least once before the level ends.
+    private final List<ZombieType> coverageOrder;
+    private final Set<String> coveredZombieAliases =
+        new HashSet<>();
 
     private boolean started;
 
@@ -172,6 +182,24 @@ public class ZombieWaveManager {
         this.started = autoStart;
         this.endless = endless;
         this.maxDifficulty = maxDifficulty;
+
+        List<ZombieType> uniqueCoverage =
+            new ArrayList<>(
+                new LinkedHashSet<>(
+                    this.allowedAliases
+                )
+            );
+
+        // Shuffle once per level. This avoids always guaranteeing the same
+        // zombie types in the same early waves while remaining deterministic
+        // when a seeded Random is supplied.
+        Collections.shuffle(
+            uniqueCoverage,
+            this.random
+        );
+
+        this.coverageOrder =
+            List.copyOf(uniqueCoverage);
     }
 
     public static ZombieWaveManager endless(
@@ -473,6 +501,77 @@ public class ZombieWaveManager {
             spawnColumn
                 + ZOMBIE_SPAWN_X_OFFSET;
 
+        // Endless mode has no level ending, so it stays fully random.
+        // Normal levels reserve enough unseen zombie types per wave so that
+        // every allowed type is guaranteed to appear by the final wave.
+        if (!endless) {
+            List<ZombieType> uncovered =
+                getUncoveredAllowedTypes();
+
+            int wavesRemainingIncludingThis =
+                Math.max(
+                    1,
+                    totalWaves
+                        - wave.getWaveNumber()
+                        + 1
+                );
+
+            int guaranteedThisWave =
+                uncovered.isEmpty()
+                    ? 0
+                    : (
+                    uncovered.size()
+                    + wavesRemainingIncludingThis
+                    - 1
+                ) / wavesRemainingIncludingThis;
+
+            for (
+                int i = 0;
+                i < guaranteedThisWave
+                    && i < uncovered.size();
+                i++
+            ) {
+                ZombieType guaranteedType =
+                    uncovered.get(i);
+
+                Zombie guaranteedZombie =
+                    createZombieForCoverage(
+                        guaranteedType
+                    );
+
+                if (guaranteedZombie == null) {
+                    continue;
+                }
+
+                queuePreparedZombie(
+                    guaranteedZombie,
+                    wave,
+                    activeSnowstormLanes,
+                    preparedZombieCount,
+                    lanes,
+                    spawnColumn,
+                    spawnX
+                );
+
+                markCovered(
+                    guaranteedZombie
+                );
+
+                remaining =
+                    Math.max(
+                        0f,
+                        remaining
+                            - Math.max(
+                            0f,
+                            guaranteedZombie
+                                .getWavePointCost()
+                        )
+                    );
+
+                preparedZombieCount++;
+            }
+        }
+
         while (true) {
 
             Zombie zombie =
@@ -484,99 +583,18 @@ public class ZombieWaveManager {
                 break;
             }
 
-            boolean snowstormTransport =
-                !activeSnowstormLanes.isEmpty()
-                    && (
-                    preparedZombieCount == 0
-                        || random.nextBoolean()
-                );
-
-            int lane =
-                snowstormTransport
-                    ? activeSnowstormLanes.get(
-                    random.nextInt(
-                        activeSnowstormLanes.size()
-                    )
-                )
-                    : chooseSpawnLane(
-                    lanes
-                );
-
-            float x =
-                spawnX;
-
-            if (snowstormTransport) {
-                int movedColumns =
-                    1 + random.nextInt(3);
-
-                float targetX =
-                    Math.max(
-                        0f,
-                        spawnColumn
-                            - movedColumns
-                    );
-
-                zombie.addBehavior(
-                    new SnowstormTransportBehavior(
-                        spawnX,
-                        targetX,
-                        SNOWSTORM_TRANSPORT_TICKS
-                    )
-                );
-
-                gs.logEvent(
-                    "A snowstorm is carrying "
-                        + zombie.getAlias()
-                        + " "
-                        + movedColumns
-                        + " columns forward in lane "
-                        + (lane + 1)
-                        + ".\n"
-                );
-            }
-
-            if (
-                wave.isFinalWave()
-                    && tornadoFinalWave
-                    && random.nextBoolean()
-            ) {
-                int movedColumns =
-                    1 + random.nextInt(4);
-
-                float targetX =
-                    Math.max(
-                        0f,
-                        spawnX
-                            - movedColumns
-                    );
-
-                zombie.addBehavior(
-                    new SandstormTransportBehavior(
-                        spawnX,
-                        targetX,
-                        SANDSTORM_TRANSPORT_TICKS
-                    )
-                );
-
-                gs.logEvent(
-                    "A sandstorm is carrying "
-                        + zombie.getAlias()
-                        + " "
-                        + movedColumns
-                        + " columns forward.\n"
-                );
-            }
-
-            zombie.setGlowing(
-                random.nextInt(100) < 5
+            queuePreparedZombie(
+                zombie,
+                wave,
+                activeSnowstormLanes,
+                preparedZombieCount,
+                lanes,
+                spawnColumn,
+                spawnX
             );
 
-            pendingSpawns.addLast(
-                new PendingZombieSpawn(
-                    zombie,
-                    lane,
-                    x
-                )
+            markCovered(
+                zombie
             );
 
             remaining -=
@@ -584,6 +602,183 @@ public class ZombieWaveManager {
 
             preparedZombieCount++;
         }
+    }
+
+    private List<ZombieType> getUncoveredAllowedTypes() {
+        List<ZombieType> uncovered =
+            new ArrayList<>();
+
+        for (
+            ZombieType type :
+            coverageOrder
+        ) {
+            if (type == null) {
+                continue;
+            }
+
+            String alias =
+                type.getAlias();
+
+            if (alias == null
+                || alias.isBlank()
+                || coveredZombieAliases
+                .contains(alias)) {
+                continue;
+            }
+
+            // A missing registry template cannot be spawned. Do not let one
+            // broken alias block the coverage of all valid zombie types.
+            if (
+                ZombieRegistry.getTemplate(alias)
+                    == null
+            ) {
+                continue;
+            }
+
+            uncovered.add(type);
+        }
+
+        return uncovered;
+    }
+
+    private Zombie createZombieForCoverage(
+        ZombieType type
+    ) {
+        if (type == null) {
+            return null;
+        }
+
+        Zombie template =
+            ZombieRegistry.getTemplate(
+                type.getAlias()
+            );
+
+        if (template == null) {
+            return null;
+        }
+
+        return template.copy();
+    }
+
+    private void markCovered(
+        Zombie zombie
+    ) {
+        if (zombie == null
+            || zombie.getAlias() == null
+            || zombie.getAlias().isBlank()) {
+            return;
+        }
+
+        coveredZombieAliases.add(
+            zombie.getAlias()
+        );
+    }
+
+    private void queuePreparedZombie(
+        Zombie zombie,
+        Wave wave,
+        List<Integer> activeSnowstormLanes,
+        int preparedZombieCount,
+        int lanes,
+        int spawnColumn,
+        float spawnX
+    ) {
+        boolean snowstormTransport =
+            !activeSnowstormLanes.isEmpty()
+                && (
+                preparedZombieCount == 0
+                    || random.nextBoolean()
+            );
+
+        int lane =
+            snowstormTransport
+                ? activeSnowstormLanes.get(
+                random.nextInt(
+                    activeSnowstormLanes.size()
+                )
+            )
+                : chooseSpawnLane(
+                lanes
+            );
+
+        float x =
+            spawnX;
+
+        if (snowstormTransport) {
+            int movedColumns =
+                1
+                    + random.nextInt(3);
+
+            float targetX =
+                Math.max(
+                    0f,
+                    spawnColumn
+                        - movedColumns
+                );
+
+            zombie.addBehavior(
+                new SnowstormTransportBehavior(
+                    spawnX,
+                    targetX,
+                    SNOWSTORM_TRANSPORT_TICKS
+                )
+            );
+
+            gs.logEvent(
+                "A snowstorm is carrying "
+                    + zombie.getAlias()
+                    + " "
+                    + movedColumns
+                    + " columns forward in lane "
+                    + (lane + 1)
+                    + ".\n"
+            );
+        }
+
+        if (
+            wave.isFinalWave()
+                && tornadoFinalWave
+                && random.nextBoolean()
+        ) {
+            int movedColumns =
+                1
+                    + random.nextInt(4);
+
+            float targetX =
+                Math.max(
+                    0f,
+                    spawnX
+                        - movedColumns
+                );
+
+            zombie.addBehavior(
+                new SandstormTransportBehavior(
+                    spawnX,
+                    targetX,
+                    SANDSTORM_TRANSPORT_TICKS
+                )
+            );
+
+            gs.logEvent(
+                "A sandstorm is carrying "
+                    + zombie.getAlias()
+                    + " "
+                    + movedColumns
+                    + " columns forward.\n"
+            );
+        }
+
+        zombie.setGlowing(
+            random.nextInt(100) < 5
+        );
+
+        pendingSpawns.addLast(
+            new PendingZombieSpawn(
+                zombie,
+                lane,
+                x
+            )
+        );
     }
 
     private void tickPendingSpawns() {
@@ -611,6 +806,10 @@ public class ZombieWaveManager {
         );
 
         gs.addZombie(
+            zombie
+        );
+
+        markCovered(
             zombie
         );
 
@@ -709,9 +908,12 @@ public class ZombieWaveManager {
             Zombie candidate =
                 template.copy();
 
+            float cost =
+                candidate.getWavePointCost();
+
             if (
-                candidate.getWavePointCost()
-                    <= remainingBudget
+                cost > 0f
+                    && cost <= remainingBudget
             ) {
                 affordable.add(
                     candidate
@@ -885,6 +1087,10 @@ public class ZombieWaveManager {
             zombie
         );
 
+        markCovered(
+            zombie
+        );
+
         if (currentWave != null) {
             currentWave.addZombie(
                 zombie
@@ -951,6 +1157,10 @@ public class ZombieWaveManager {
         );
 
         gs.addZombie(
+            zombie
+        );
+
+        markCovered(
             zombie
         );
 
