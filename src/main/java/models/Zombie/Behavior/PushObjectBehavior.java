@@ -100,17 +100,95 @@ public class PushObjectBehavior implements PersistableBehavior {
         if (!pendingSpawn) {
             return;
         }
+
         pendingSpawn = false;
-        for (int i = 0; i < spawnCountOnBreak; i++) {
-            Zombie template = ZombieRegistry.getTemplate(spawnAliasOnBreak);
-            if (template == null) {
+
+        Zombie template =
+            ZombieRegistry.getTemplate(spawnAliasOnBreak);
+
+        if (template == null) {
+            return;
+        }
+
+        int laneCount =
+            gs.getBoard().getLaneCount();
+        if (type == PushType.BARREL
+            && spawnCountOnBreak == 2) {
+
+            int upperLane = breakLane - 1;
+            int lowerLane = breakLane + 1;
+
+            boolean hasUpper =
+                upperLane >= 0;
+
+            boolean hasLower =
+                lowerLane < laneCount;
+
+            if (hasUpper && hasLower) {
+                spawnBrokenObjectZombie(
+                    gs,
+                    template,
+                    upperLane,
+                    breakColumn
+                );
+
+                spawnBrokenObjectZombie(
+                    gs,
+                    template,
+                    lowerLane,
+                    breakColumn
+                );
+
                 return;
             }
-            Zombie imp = template.copy();
-            imp.setLane(breakLane);
-            imp.setX(breakColumn);
-            gs.addZombie(imp);
+
+            // Edge lane fallback: there is only one adjacent lane.
+            // Keep both Imps, but separate their X positions slightly so
+            // they remain visibly distinct instead of overlapping forever.
+            int adjacentLane =
+                hasLower
+                    ? lowerLane
+                    : upperLane;
+
+            spawnBrokenObjectZombie(
+                gs,
+                template,
+                adjacentLane,
+                breakColumn - 0.18f
+            );
+
+            spawnBrokenObjectZombie(
+                gs,
+                template,
+                adjacentLane,
+                breakColumn + 0.18f
+            );
+
+            return;
         }
+        for (int i = 0; i < spawnCountOnBreak; i++) {
+            spawnBrokenObjectZombie(
+                gs,
+                template,
+                breakLane,
+                breakColumn + i * 0.18f
+            );
+        }
+    }
+
+    private void spawnBrokenObjectZombie(
+        GameState gs,
+        Zombie template,
+        int lane,
+        float x
+    ) {
+        Zombie spawnedZombie =
+            template.copy();
+
+        spawnedZombie.setLane(lane);
+        spawnedZombie.setX(x);
+
+        gs.addZombie(spawnedZombie);
     }
 
     private void tickIceBlocks(Zombie zombie, GameState gs) {
