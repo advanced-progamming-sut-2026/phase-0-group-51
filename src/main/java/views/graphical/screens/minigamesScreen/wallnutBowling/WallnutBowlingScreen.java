@@ -30,10 +30,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
 import views.graphical.screens.minigamesScreen.minigames;
-import views.graphical.ui.GameOverPopup;
-import views.graphical.ui.GameWinPopup;
-import views.graphical.ui.PlantCard;
-import views.graphical.ui.StartGameMenuPopup;
+import views.graphical.ui.*;
 
 import java.util.*;
 
@@ -63,11 +60,10 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
 
     private final Group rollingLayer = new Group();
     private final Map<RollingWallnut, Actor> rollingActors = new IdentityHashMap<>();
-
-    private final Table conveyorTable = new Table();
+    private ConveyorBeltActor conveyorBelt;
     private List<WallnutType> lastConveyorSnapshot = List.of();
     private int selectedConveyorIndex = -1;
-
+    private final ButtonGroup<PlantCard> conveyorButtonGroup = new ButtonGroup<>();
     private float renderDelta;
 
     public WallnutBowlingScreen(PvzGame game, int stageNumber) {
@@ -97,7 +93,9 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
                 boardTransform,
                 ChapterTheme.MINIGAME
         );
-
+        conveyorButtonGroup.setMinCheckCount(0);
+        conveyorButtonGroup.setMaxCheckCount(1);
+        conveyorButtonGroup.setUncheckLast(true);
         buildBoard();
         buildConveyorBar();
     }
@@ -114,108 +112,59 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
     }
 
     private void buildConveyorBar() {
-        conveyorTable.top().center();
-        conveyorTable.pad(6f);
-        conveyorTable.setBackground(
-                game.getSkin().newDrawable(
-                        "white_pixel",
-                        new Color(0f, 0f, 0f, 0.55f)
-                )
+        conveyorBelt = new ConveyorBeltActor("assets/UIs/Belt.png");
+        conveyorBelt.setPosition(
+                0f,
+                82f
         );
-        conveyorTable.setTouchable(Touchable.childrenOnly);
-        conveyorTable.setVisible(false);
-        conveyorTable.setPosition(12f, 82f);
-        conveyorTable.setSize(110f, 430f);
-
-        uiStage.addActor(conveyorTable);
-        refreshConveyorBar(true);
+        uiStage.addActor(
+                conveyorBelt
+        );
     }
 
     private void refreshConveyorBar(boolean force) {
-        List<WallnutType> current = new ArrayList<>(wallnutBowling.getConveyorBelt());
+        List<WallnutType> current = wallnutBowling.getConveyorBelt();
+        if (!force && current.equals(lastConveyorSnapshot)) return;
 
-        if (!force && current.equals(lastConveyorSnapshot)) {
-            return;
+        int diff = current.size() - lastConveyorSnapshot.size();
+
+        if (force || current.isEmpty()) {
+            conveyorBelt.clearPlants();
+            conveyorButtonGroup.clear();
+            for (WallnutType type : current) {
+                addCardToBelt(type);
+            }
+        } else if (diff > 0) {
+            for (int i = lastConveyorSnapshot.size(); i < current.size(); i++) {
+                addCardToBelt(current.get(i));
+            }
         }
 
         lastConveyorSnapshot = List.copyOf(current);
-
-        if (selectedConveyorIndex >= current.size()) {
-            selectedConveyorIndex = -1;
-        }
-
-        conveyorTable.clearChildren();
-
-        ButtonGroup<PlantCard> group = new ButtonGroup<>();
-        group.setMinCheckCount(0);
-        group.setMaxCheckCount(1);
-        group.setUncheckLast(true);
-
-        if (current.isEmpty()) {
-            Label empty = new Label("WAITING...", game.getSkin(), "default");
-            conveyorTable.add(empty).center().padTop(8f);
-            return;
-        }
-
-        for (int i = 0; i < current.size(); i++) {
-            WallnutType type = current.get(i);
-            PlantData plantData = plantDataFor(type);
-
-            if (plantData == null) {
-                continue;
-            }
-
-            PlantCard card = new PlantCard(
-                    game,
-                    new PlantCard.ViewData(
-                            plantData,
-                            true,
-                            false,
-                            1,
-                            0,
-                            1,
-                            false,
-                            false
-                    ),
-                    CARD_SCALE
-            );
-
-            final int conveyorIndex = i;
-            card.setChecked(conveyorIndex == selectedConveyorIndex);
-            group.add(card);
-
-            card.addListener(new ChangeListener() {
-                @Override
-                public void changed(ChangeEvent event, Actor actor) {
-                    if (card.isChecked()) {
-                        selectedConveyorIndex = conveyorIndex;
-                    } else if (selectedConveyorIndex == conveyorIndex) {
-                        selectedConveyorIndex = -1;
-                    }
-                }
-            });
-
-            Stack stack = new Stack();
-            stack.add(card);
-
-            if (type == WallnutType.BIG_WALLNUT) {
-                Table badgeLayer = new Table();
-                badgeLayer.bottom().right();
-                badgeLayer.setTouchable(Touchable.disabled);
-
-                Label badge = new Label("BIG", game.getSkin(), "default");
-                badge.setColor(Color.YELLOW);
-                badgeLayer.add(badge).padRight(3f).padBottom(2f);
-                stack.add(badgeLayer);
-            }
-
-            conveyorTable.add(stack)
-                    .size(card.getPrefWidth(), card.getPrefHeight())
-                    .padBottom(3f)
-                    .row();
-        }
     }
+    private void addCardToBelt(WallnutType type) {
+        PlantData plantData = plantDataFor(type);
+        if (plantData == null) return;
 
+        PlantCard card = new PlantCard(game, new PlantCard.ViewData(plantData, true, false, 1, 0, 1, false, false), CARD_SCALE);
+        Stack stack = new Stack();
+        stack.add(card);
+        conveyorButtonGroup.add(card);
+
+        card.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                if (card.isChecked()) {
+                    selectedConveyorIndex = conveyorBelt.getItems().indexOf(stack, true);
+                } else {
+                    int currentIndex = conveyorBelt.getItems().indexOf(stack, true);
+                    if (selectedConveyorIndex == currentIndex) selectedConveyorIndex = -1;
+                }
+            }
+        });
+
+        conveyorBelt.addPlant(stack);
+    }
     private PlantData plantDataFor(WallnutType type) {
         return switch (type) {
             case BOWLING -> PlantRegistry.getById(WALLNUT_PLANT_ID);
@@ -233,37 +182,39 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
     }
 
     private void handleTileClicked(Tile tile) {
-        if (!isPlaying() || isPaused() || tile == null) {
-            return;
-        }
-
+        if (!isPlaying() || isPaused() || tile == null) return;
         if (selectedConveyorIndex < 0) {
             game.notifyError("Select a walnut from the conveyor first.");
             return;
         }
 
-        int x = tile.getColumn() + 1;
-        int y = tile.getLane() + 1;
-
-        Result result = controller.rollWallnutAt(
-                selectedConveyorIndex,
-                x,
-                y
-        );
-
+        Result result = controller.rollWallnutAt(selectedConveyorIndex, tile.getColumn() + 1, tile.getLane() + 1);
         if (!result.success()) {
             game.notifyError(result.message());
             return;
         }
 
-        game.notifyInfo(result.message());
+        conveyorBelt.removePlant(selectedConveyorIndex);
+        conveyorButtonGroup.uncheckAll();
         selectedConveyorIndex = -1;
-        refreshConveyorBar(true);
+        lastConveyorSnapshot = List.copyOf(wallnutBowling.getConveyorBelt());
+        rebuildButtonGroup();
     }
 
+    private void rebuildButtonGroup() {
+        conveyorButtonGroup.clear();
+        for (Actor actor : conveyorBelt.getItems()) {
+            if (actor instanceof Stack stack && stack.getChildren().size > 0 && stack.getChild(0) instanceof PlantCard card) {
+                conveyorButtonGroup.add(card);
+            }
+        }
+    }
     @Override
     public void render(float delta) {
         renderDelta = Math.min(delta, 0.25f);
+        if (conveyorBelt != null) {
+            conveyorBelt.update(delta);
+        }
         super.render(delta);
     }
 
@@ -412,7 +363,7 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
     @Override
     protected void onGameplayStarted() {
         gameTickAccumulator = 0f;
-        conveyorTable.setVisible(true);
+        conveyorBelt.setVisible(true);
         refreshConveyorBar(true);
     }
 
@@ -435,7 +386,7 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
     @Override
     protected void onGameFinished(boolean won) {
         controller.recordGraphicalResult();
-        conveyorTable.setVisible(false);
+        conveyorBelt.setVisible(false);
 
         if (won) {
             showWinPopup();
