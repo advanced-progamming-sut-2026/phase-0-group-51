@@ -104,6 +104,7 @@ public class PlantViewManager extends Group {
         }
 
         syncPlantFoodEffect(plant, actor);
+        syncPlantFoodAnimation(plant, actor);
         syncDamageFlash(plant, actor);
         syncOctopusVisual(plant, actor);
         syncFrostVisual(plant, actor);
@@ -178,14 +179,30 @@ public class PlantViewManager extends Group {
             Plant plant,
             PlantActor actor
     ) {
-        long current = plant.getPlantFoodVisualSerial();
-        long lastSeen = lastSeenPlantFoodSerial.getOrDefault(plant, 0L);
+        long current =
+                plant.getPlantFoodVisualSerial();
+
+        long lastSeen =
+                lastSeenPlantFoodSerial.getOrDefault(
+                        plant,
+                        0L
+                );
 
         if (current > lastSeen) {
             actor.playPlantFoodEffect();
+            actor.playPlantFoodAnimation();
         }
 
-        lastSeenPlantFoodSerial.put(plant, current);
+        lastSeenPlantFoodSerial.put(
+                plant,
+                current
+        );
+    }
+    private void syncPlantFoodAnimation(
+            Plant plant,
+            PlantActor actor
+    ) {
+        actor.syncPlantFoodAnimation(plant.isOnPlantFood());
     }
 
     private void syncOctopusVisual(
@@ -554,6 +571,7 @@ public class PlantViewManager extends Group {
 
         if (syncSquashAnimation(plant, actor, lane, column)) {
             syncPlantFoodEffect(plant, actor);
+            syncPlantFoodAnimation(plant, actor);
             syncDamageFlash(plant, actor);
             syncOctopusVisual(plant, actor);
             syncFrostVisual(plant, actor);
@@ -587,6 +605,7 @@ public class PlantViewManager extends Group {
         syncChargeAnimation(plant, actor);
         syncPlantAction(plant, actor);
         syncPlantFoodEffect(plant, actor);
+        syncPlantFoodAnimation(plant, actor);
         syncDamageFlash(plant, actor);
         syncOctopusVisual(plant, actor);
         syncFrostVisual(plant, actor);
