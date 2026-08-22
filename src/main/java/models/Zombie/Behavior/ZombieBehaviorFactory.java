@@ -220,7 +220,7 @@ public class ZombieBehaviorFactory {
         behaviors.add(new DamageReactionBehavior(
             DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE,
             (float) data.path("EnragedSpeedScale").asDouble(3.0),
-            (float) data.path("EnragedDamageScale").asDouble(3.0)
+            (float) data.path("EnragedDamageScale").asDouble(2.0)
         ));
     }
 
@@ -465,7 +465,7 @@ public class ZombieBehaviorFactory {
             MovementBehavior.MovementType.PROSPECTOR_JUMP
         ));
         int delay = (int) (
-            data.path("LaunchCountdown").asDouble(10)
+            data.path("LaunchCountdown").asDouble(15)
                 * TICKS_PER_SECOND
         );
         behaviors.add(new DynamiteBehavior(delay));
@@ -480,7 +480,7 @@ public class ZombieBehaviorFactory {
             (float) data.path("FastMoveSpeed").asDouble(0.4)
         ));
         behaviors.add(new WorldEffectBehavior(
-            WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 30, 1));
+            WorldEffectBehavior.WorldEffectType.RANDOM_LANE_SWAP, 50, 1));
     }
 
     private static void addAllStarBehavior(
