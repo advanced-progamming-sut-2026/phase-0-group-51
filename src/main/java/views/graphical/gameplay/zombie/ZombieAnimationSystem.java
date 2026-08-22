@@ -502,6 +502,12 @@ public final class ZombieAnimationSystem {
                 piano
             );
 
+            initializeExplorerTorchVisual(
+                alias,
+                pamPath,
+                visual
+            );
+
             initializeModelPosition(
                 zombie,
                 visual
@@ -1026,6 +1032,7 @@ public final class ZombieAnimationSystem {
         syncDarkKnightVisual(zombie, visual);
         syncNormalArmorVisual(zombie, visual);
         syncProspectorDynamiteVisual(zombie, visual);
+        syncExplorerTorchVisual(zombie, visual);
         syncArmDamageVisual(zombie, visual);
 
         if (zombie.hasIceShell()) {
@@ -1210,6 +1217,121 @@ public final class ZombieAnimationSystem {
                 iterator.remove();
             }
         }
+    }
+
+    private void initializeExplorerTorchVisual(
+        String alias,
+        String pamPath,
+        ZombieVisual visual
+    ) {
+        if (visual == null
+            || !ZombieType.EXPLORER.getAlias().equals(alias)) {
+            return;
+        }
+
+        LinkedHashSet<String> torchFireParts =
+            new LinkedHashSet<>();
+
+        for (String part : visual.actor.getVisibilityMap().keySet()) {
+            if (isTorchFireFramePart(part)) {
+                torchFireParts.add(part);
+            }
+        }
+
+        try {
+            PamPlayer.AnimationPart root = pamPlayer.getParts(pamPath);
+            collectTorchFireFrameParts(root, torchFireParts);
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Could not inspect Explorer torch parts in " + pamPath,
+                    e
+                );
+            }
+        }
+
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        for (String part : torchFireParts) {
+            visual.explorerTorchFireBaseline.put(
+                part,
+                visibility.containsKey(part)
+                    ? visibility.get(part)
+                    : null
+            );
+        }
+    }
+
+    private static void collectTorchFireFrameParts(
+        PamPlayer.AnimationPart part,
+        Collection<String> out
+    ) {
+        if (part == null || out == null) {
+            return;
+        }
+
+        if (isTorchFireFramePart(part.name)) {
+            out.add(part.name);
+        }
+
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectTorchFireFrameParts(child, out);
+        }
+    }
+
+    private static boolean isTorchFireFramePart(String partName) {
+        return partName != null
+            && partName.toLowerCase(Locale.ROOT)
+            .contains("torch_fire_frame");
+    }
+
+    private void syncExplorerTorchVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (zombie == null
+            || visual == null
+            || !ZombieType.EXPLORER.getAlias().equals(zombie.getAlias())) {
+            return;
+        }
+
+        TorchBehavior torch =
+            zombie.getBehavior(TorchBehavior.class);
+
+        boolean lit =
+            torch == null || torch.isLit();
+
+        if (visual.explorerTorchStateInitialized
+            && visual.lastExplorerTorchLit == lit) {
+            return;
+        }
+
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        for (Map.Entry<String, Boolean> entry :
+            visual.explorerTorchFireBaseline.entrySet()) {
+
+            String part = entry.getKey();
+
+            if (!lit) {
+                visibility.put(part, false);
+                continue;
+            }
+
+            Boolean baseline = entry.getValue();
+
+            if (baseline == null) {
+                visibility.remove(part);
+            } else {
+                visibility.put(part, baseline);
+            }
+        }
+
+        visual.lastExplorerTorchLit = lit;
+        visual.explorerTorchStateInitialized = true;
     }
 
     private void syncArmDamageVisual(
@@ -2810,6 +2932,11 @@ public final class ZombieAnimationSystem {
         private boolean lastLaserStealing;
         private String armorVisualSignature;
         private boolean darkKnightVisual;
+
+        private final Map<String, Boolean> explorerTorchFireBaseline =
+            new java.util.LinkedHashMap<>();
+        private boolean explorerTorchStateInitialized;
+        private boolean lastExplorerTorchLit = true;
 
         private int lastDamageHealth = Integer.MIN_VALUE;
         private float damageFlashCooldownRemaining;
