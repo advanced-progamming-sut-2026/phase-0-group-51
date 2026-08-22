@@ -55,6 +55,7 @@ import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.DepthSortedEntityLayer;
 import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
 import views.graphical.gameplay.manager.DeadlineOverlayManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
@@ -90,6 +91,7 @@ public class GameScreen extends BaseScreen {
     private final Viewport viewport;
     private final Stage uiStage;
     private final Stage worldStage;
+    private final DepthSortedEntityLayer entityDepthLayer;
     private final InputMultiplexer inputMultiplexer;
     private final PlantSlotsBar plantSlotsBar;
 
@@ -290,13 +292,17 @@ public class GameScreen extends BaseScreen {
             iceFloorAnimationSystem
         );
 
+        entityDepthLayer = new DepthSortedEntityLayer();
+        worldStage.addActor(entityDepthLayer);
+
         zombieAnimationSystem = new ZombieAnimationSystem(
             game.getPamPlayer(),
             worldStage,
             boardTransform,
             theme,
             0.61f,
-            currentGame.getGameState()
+            currentGame.getGameState(),
+            entityDepthLayer
         );
 
         lootAnimationSystem =
@@ -342,7 +348,9 @@ public class GameScreen extends BaseScreen {
         graveAnimationSystem = new GraveAnimationSystem(
             game.getPamPlayer(),
             boardTransform,
-            theme
+            theme,
+            GraveAnimationSystem.DEFAULT_SCALE,
+            entityDepthLayer
         );
 
         worldStage.addActor(
@@ -384,7 +392,8 @@ public class GameScreen extends BaseScreen {
             plantViewManager =
                 new PlantViewManager(
                     game,
-                    boardTransform
+                    boardTransform,
+                    entityDepthLayer
                 );
             worldStage.addActor(
                 plantViewManager
@@ -408,7 +417,8 @@ public class GameScreen extends BaseScreen {
             game.getPamPlayer(),
             worldStage,
             theme,
-            cameraRightX
+            cameraRightX,
+            entityDepthLayer
         );
 
         zombieLevelPreview.show(
@@ -1582,6 +1592,7 @@ public class GameScreen extends BaseScreen {
             );
         }
 
+        entityDepthLayer.sortNow();
         worldStage.draw();
 
         drawDebugGrid();

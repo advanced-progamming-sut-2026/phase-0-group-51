@@ -2,11 +2,13 @@ package views.graphical.gameplay.zombie;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import models.Zombie.ZombieType;
 import models.games.ChapterTheme;
 import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.EntityAnimationState;
 import views.graphical.animation.PamAnimationActor;
+import views.graphical.gameplay.manager.DepthSortedEntityLayer;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -37,6 +39,7 @@ public final class ZombieLevelPreview {
 
     private final PamPlayer pamPlayer;
     private final Stage worldStage;
+    private final Group renderLayer;
     private final ChapterTheme theme;
     private final float cameraRightX;
 
@@ -51,6 +54,22 @@ public final class ZombieLevelPreview {
         ChapterTheme theme,
         float cameraRightX
     ) {
+        this(
+            pamPlayer,
+            worldStage,
+            theme,
+            cameraRightX,
+            null
+        );
+    }
+
+    public ZombieLevelPreview(
+        PamPlayer pamPlayer,
+        Stage worldStage,
+        ChapterTheme theme,
+        float cameraRightX,
+        Group renderLayer
+    ) {
         this.pamPlayer =
             Objects.requireNonNull(
                 pamPlayer,
@@ -62,6 +81,11 @@ public final class ZombieLevelPreview {
                 worldStage,
                 "worldStage"
             );
+
+        this.renderLayer =
+            renderLayer == null
+                ? worldStage.getRoot()
+                : renderLayer;
 
         this.theme =
             Objects.requireNonNull(
@@ -129,6 +153,10 @@ public final class ZombieLevelPreview {
                     y
                 );
             }
+        }
+
+        if (renderLayer instanceof DepthSortedEntityLayer depthLayer) {
+            depthLayer.sortNow();
         }
     }
 
@@ -222,7 +250,12 @@ public final class ZombieLevelPreview {
                 0.85f
             );
 
-            worldStage.addActor(
+            DepthSortedEntityLayer.setDepthPriority(
+                actor,
+                DepthSortedEntityLayer.ZOMBIE_PRIORITY
+            );
+
+            renderLayer.addActor(
                 actor
             );
 

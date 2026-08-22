@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import lombok.Getter;
 import models.Zombie.Behavior.*;
@@ -22,6 +23,7 @@ import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.EntityAnimationState;
 import views.graphical.animation.PamAnimationActor;
 import views.graphical.gameplay.board.BoardTransform;
+import views.graphical.gameplay.manager.DepthSortedEntityLayer;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -136,6 +138,7 @@ public final class ZombieAnimationSystem {
     private final GameState gameState;
     private final PamPlayer pamPlayer;
     private final Stage worldStage;
+    private final Group entityRenderLayer;
     private final BoardTransform boardTransform;
     private final ZombieAnimationResolver resolver;
     private final float scale;
@@ -189,8 +192,32 @@ public final class ZombieAnimationSystem {
         float scale,
         GameState gameState
     ) {
+        this(
+            pamPlayer,
+            worldStage,
+            boardTransform,
+            theme,
+            scale,
+            gameState,
+            null
+        );
+    }
+
+    public ZombieAnimationSystem(
+        PamPlayer pamPlayer,
+        Stage worldStage,
+        BoardTransform boardTransform,
+        ChapterTheme theme,
+        float scale,
+        GameState gameState,
+        Group entityRenderLayer
+    ) {
         this.pamPlayer = Objects.requireNonNull(pamPlayer, "pamPlayer");
         this.worldStage = Objects.requireNonNull(worldStage, "worldStage");
+        this.entityRenderLayer =
+            entityRenderLayer == null
+                ? worldStage.getRoot()
+                : entityRenderLayer;
         this.boardTransform = Objects.requireNonNull(boardTransform, "boardTransform");
         this.theme = Objects.requireNonNull(theme, "theme");
         this.gameState = gameState;
@@ -457,9 +484,17 @@ public final class ZombieAnimationSystem {
 
             PianoVisual piano = createPianoVisual(alias);
             if (piano != null) {
-                worldStage.addActor(piano.actor);
+                DepthSortedEntityLayer.setDepthPriority(
+                    piano.actor,
+                    DepthSortedEntityLayer.ZOMBIE_PRIORITY
+                );
+                entityRenderLayer.addActor(piano.actor);
             }
-            worldStage.addActor(actor);
+            DepthSortedEntityLayer.setDepthPriority(
+                actor,
+                DepthSortedEntityLayer.ZOMBIE_PRIORITY
+            );
+            entityRenderLayer.addActor(actor);
 
             ZombieVisual visual = new ZombieVisual(
                 actor,

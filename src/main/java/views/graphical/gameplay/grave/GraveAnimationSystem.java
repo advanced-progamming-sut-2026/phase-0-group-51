@@ -9,6 +9,7 @@ import models.games.ancientEgypt.Grave;
 import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.PamAnimationActor;
 import views.graphical.gameplay.board.BoardTransform;
+import views.graphical.gameplay.manager.DepthSortedEntityLayer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,6 +57,7 @@ public final class GraveAnimationSystem extends Group {
     private final BoardTransform transform;
     private final ChapterTheme theme;
     private final float scale;
+    private final Group renderLayer;
 
     private final Map<Grave, GraveVisual> visuals =
         new IdentityHashMap<>();
@@ -83,7 +85,8 @@ public final class GraveAnimationSystem extends Group {
             pamPlayer,
             transform,
             theme,
-            DEFAULT_SCALE
+            DEFAULT_SCALE,
+            null
         );
     }
 
@@ -92,6 +95,22 @@ public final class GraveAnimationSystem extends Group {
         BoardTransform transform,
         ChapterTheme theme,
         float scale
+    ) {
+        this(
+            pamPlayer,
+            transform,
+            theme,
+            scale,
+            null
+        );
+    }
+
+    public GraveAnimationSystem(
+        PamPlayer pamPlayer,
+        BoardTransform transform,
+        ChapterTheme theme,
+        float scale,
+        Group renderLayer
     ) {
         this.pamPlayer =
             Objects.requireNonNull(
@@ -112,6 +131,7 @@ public final class GraveAnimationSystem extends Group {
             );
 
         this.scale = scale;
+        this.renderLayer = renderLayer == null ? this : renderLayer;
 
         setTransform(false);
     }
@@ -451,7 +471,7 @@ public final class GraveAnimationSystem extends Group {
                 column
             );
 
-            addActor(actor);
+            addGraveActor(actor);
 
             return new GraveVisual(
                 grave,
@@ -625,7 +645,7 @@ public final class GraveAnimationSystem extends Group {
                 column
             );
 
-            addActor(actor);
+            addGraveActor(actor);
 
             float duration =
                 safeDuration(
@@ -1062,7 +1082,24 @@ public final class GraveAnimationSystem extends Group {
         );
     }
 
+    private void addGraveActor(PamAnimationActor actor) {
+        if (actor == null) {
+            return;
+        }
+
+        DepthSortedEntityLayer.setDepthPriority(
+            actor,
+            DepthSortedEntityLayer.GRAVE_PRIORITY
+        );
+        renderLayer.addActor(actor);
+    }
+
     private void sortByDepth() {
+        if (renderLayer instanceof DepthSortedEntityLayer depthLayer) {
+            depthLayer.sortNow();
+            return;
+        }
+
         getChildren().sort(
             (first, second) ->
                 Float.compare(

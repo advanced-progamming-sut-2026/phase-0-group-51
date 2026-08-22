@@ -20,6 +20,7 @@ public class PlantViewManager extends Group {
 
     private final PvzGame game;
     private final BoardTransform transform;
+    private final Group renderLayer;
 
     private final Map<Plant, PlantActor> plantActors = new IdentityHashMap<>();
     private final Map<Plant, Long> lastSeenActionSerial = new IdentityHashMap<>();
@@ -30,11 +31,20 @@ public class PlantViewManager extends Group {
     private final Map<PlantActor, Integer> actorLayers = new IdentityHashMap<>();
 
     public PlantViewManager(
-            PvzGame game,
-            BoardTransform transform
+        PvzGame game,
+        BoardTransform transform
+    ) {
+        this(game, transform, null);
+    }
+
+    public PlantViewManager(
+        PvzGame game,
+        BoardTransform transform,
+        Group renderLayer
     ) {
         this.game = game;
         this.transform = transform;
+        this.renderLayer = renderLayer == null ? this : renderLayer;
 
         setTouchable(Touchable.disabled);
     }
@@ -71,7 +81,7 @@ public class PlantViewManager extends Group {
             plantActors.put(plant, actor);
             lastSeenActionSerial.put(plant, plant.getActionSerial());
             lastSeenHealth.put(plant, plant.getCurrentHP());
-            addActor(actor);
+            addPlantActor(actor);
         }
         actorLayers.put(actor, layer);
         syncPlantBaseAnimation(plant, actor);
@@ -101,8 +111,8 @@ public class PlantViewManager extends Group {
     }
 
     private void syncPlantFoodEffect(
-            Plant plant,
-            PlantActor actor
+        Plant plant,
+        PlantActor actor
     ) {
         long current = plant.getPlantFoodVisualSerial();
         long lastSeen = lastSeenPlantFoodSerial.getOrDefault(plant, 0L);
@@ -115,44 +125,44 @@ public class PlantViewManager extends Group {
     }
 
     private void syncOctopusVisual(
-            Plant plant,
-            PlantActor actor
+        Plant plant,
+        PlantActor actor
     ) {
         actor.syncOctopusVisual(
-                plant.hasOctopus()
+            plant.hasOctopus()
         );
 
         int currentOctopusHealth = plant.getOctopusHP();
         int previousOctopusHealth =
-                lastSeenOctopusHealth.getOrDefault(
-                        plant,
-                        currentOctopusHealth
-                );
+            lastSeenOctopusHealth.getOrDefault(
+                plant,
+                currentOctopusHealth
+            );
 
         if (currentOctopusHealth < previousOctopusHealth
-                && currentOctopusHealth > 0) {
+            && currentOctopusHealth > 0) {
             actor.flashOctopusDamage();
         }
 
         lastSeenOctopusHealth.put(
-                plant,
-                currentOctopusHealth
+            plant,
+            currentOctopusHealth
         );
     }
 
     private void syncFrostVisual(
-            Plant plant,
-            PlantActor actor
+        Plant plant,
+        PlantActor actor
     ) {
         actor.syncFrost(
-                plant.getFrostLevel(),
-                plant.getIceHealth()
+            plant.getFrostLevel(),
+            plant.getIceHealth()
         );
     }
 
     private void syncDamageFlash(
-            Plant plant,
-            PlantActor actor
+        Plant plant,
+        PlantActor actor
     ) {
         int currentHealth = plant.getCurrentHP();
         int previousHealth = lastSeenHealth.getOrDefault(plant, currentHealth);
@@ -165,8 +175,8 @@ public class PlantViewManager extends Group {
     }
 
     private void syncChargeAnimation(
-            Plant plant,
-            PlantActor actor
+        Plant plant,
+        PlantActor actor
     ) {
         if (!plant.hasTag(PlantTag.CHARGE)) {
             return;
@@ -189,28 +199,28 @@ public class PlantViewManager extends Group {
         }
 
         String previous =
-                lastSeenChargeAnimation.get(plant);
+            lastSeenChargeAnimation.get(plant);
 
         if (!animation.equals(previous)) {
             actor.setBaseAnimation(animation);
             lastSeenChargeAnimation.put(
-                    plant,
-                    animation
+                plant,
+                animation
             );
         }
     }
 
     private boolean hasAnimation(
-            Plant plant,
-            String animation
+        Plant plant,
+        String animation
     ) {
         PlantData data =
-                PlantRegistry.getById(
-                        plant.getId()
-                );
+            PlantRegistry.getById(
+                plant.getId()
+            );
 
         return data != null
-                && data.hasAnimation(animation);
+            && data.hasAnimation(animation);
     }
 
     private String resolveAttackAnimation(Plant plant) {
@@ -246,37 +256,56 @@ public class PlantViewManager extends Group {
         }
         return "produce";
     }
+    private void addPlantActor(PlantActor actor) {
+        if (actor == null) {
+            return;
+        }
+
+        renderLayer.addActor(actor);
+    }
+
     private void sortPlantsByDepth() {
+        if (renderLayer instanceof DepthSortedEntityLayer depthLayer) {
+            for (Map.Entry<PlantActor, Integer> entry : actorLayers.entrySet()) {
+                DepthSortedEntityLayer.setDepthPriority(
+                    entry.getKey(),
+                    DepthSortedEntityLayer.PLANT_BASE_PRIORITY
+                        + entry.getValue()
+                );
+            }
+            depthLayer.sortNow();
+            return;
+        }
         getChildren().sort(
-                (first, second) -> {
+            (first, second) -> {
 
-                    int rowOrder =
-                            Float.compare(
-                                    second.getY(),
-                                    first.getY()
-                            );
-
-                    if (rowOrder != 0) {
-                        return rowOrder;
-                    }
-
-                    int firstLayer =
-                            actorLayers.getOrDefault(
-                                    (PlantActor) first,
-                                    1
-                            );
-
-                    int secondLayer =
-                            actorLayers.getOrDefault(
-                                    (PlantActor) second,
-                                    1
-                            );
-
-                    return Integer.compare(
-                            firstLayer,
-                            secondLayer
+                int rowOrder =
+                    Float.compare(
+                        second.getY(),
+                        first.getY()
                     );
+
+                if (rowOrder != 0) {
+                    return rowOrder;
                 }
+
+                int firstLayer =
+                    actorLayers.getOrDefault(
+                        (PlantActor) first,
+                        1
+                    );
+
+                int secondLayer =
+                    actorLayers.getOrDefault(
+                        (PlantActor) second,
+                        1
+                    );
+
+                return Integer.compare(
+                    firstLayer,
+                    secondLayer
+                );
+            }
         );
     }
     private void removeMissingPlants(Set<Plant> plantsOnBoard) {
@@ -309,7 +338,7 @@ public class PlantViewManager extends Group {
         }
     }
     private String resolveWallNutAnimation(
-            Plant plant
+        Plant plant
     ) {
         float maxHp = plant.getPlantStat().maxHp();
 
@@ -318,7 +347,7 @@ public class PlantViewManager extends Group {
         }
 
         float hpRatio =
-                plant.getCurrentHP() / maxHp;
+            plant.getCurrentHP() / maxHp;
 
         if (hpRatio > 0.75f) {
             return "idle";
@@ -336,17 +365,17 @@ public class PlantViewManager extends Group {
     }
 
     private PlantActor createPlantActor(
-            Plant plant
+        Plant plant
     ) {
         PlantData data =
-                PlantRegistry.getById(
-                        plant.getId()
-                );
+            PlantRegistry.getById(
+                plant.getId()
+            );
 
         if (data == null) {
             throw new IllegalStateException(
-                    "No PlantData found for plant id: "
-                            + plant.getId()
+                "No PlantData found for plant id: "
+                    + plant.getId()
             );
         }
 
@@ -359,27 +388,27 @@ public class PlantViewManager extends Group {
     }
 
     private void positionPlant(
-            PlantActor actor,
-            int lane,
-            int column
+        PlantActor actor,
+        int lane,
+        int column
     ) {
         float centerX =
-                transform.tileX(column)
-                        + transform.tileWidth() / 2f;
+            transform.tileX(column)
+                + transform.tileWidth() / 2f;
 
         float centerY =
-                transform.tileY(lane)
-                        + transform.tileHeight() / 2f;
+            transform.tileY(lane)
+                + transform.tileHeight() / 2f;
 
         actor.setPosition(
-                centerX,
-                centerY
+            centerX,
+            centerY
         );
     }
     public void animateSync(Board board) {
 
         Set<Plant> plantsOnBoard =
-                Collections.newSetFromMap(new IdentityHashMap<>());
+            Collections.newSetFromMap(new IdentityHashMap<>());
 
 
         for (int lane = 0; lane < board.getLaneCount(); lane++) {
@@ -392,27 +421,27 @@ public class PlantViewManager extends Group {
                 Tile tile = board.getTile(lane, column);
 
                 animatePlant(
-                        tile.getLilyPadPlant(),
-                        lane,
-                        column,
-                        0,
-                        plantsOnBoard
+                    tile.getLilyPadPlant(),
+                    lane,
+                    column,
+                    0,
+                    plantsOnBoard
                 );
 
                 animatePlant(
-                        tile.getTopPlant(),
-                        lane,
-                        column,
-                        1,
-                        plantsOnBoard
+                    tile.getTopPlant(),
+                    lane,
+                    column,
+                    1,
+                    plantsOnBoard
                 );
 
                 animatePlant(
-                        tile.getPumpkinPlant(),
-                        lane,
-                        column,
-                        2,
-                        plantsOnBoard
+                    tile.getPumpkinPlant(),
+                    lane,
+                    column,
+                    2,
+                    plantsOnBoard
                 );
             }
         }
@@ -422,11 +451,11 @@ public class PlantViewManager extends Group {
         sortPlantsByDepth();
     }
     private void animatePlant(
-            Plant plant,
-            int lane,
-            int column,
-            int layer,
-            Set<Plant> plantsOnBoard
+        Plant plant,
+        int lane,
+        int column,
+        int layer,
+        Set<Plant> plantsOnBoard
     ) {
 
         if (plant == null) {
@@ -438,7 +467,7 @@ public class PlantViewManager extends Group {
 
 
         PlantActor actor =
-                plantActors.get(plant);
+            plantActors.get(plant);
 
 
         // اگر تازه آمده، بسازش
@@ -447,33 +476,33 @@ public class PlantViewManager extends Group {
             actor = createPlantActor(plant);
 
             plantActors.put(
-                    plant,
-                    actor
+                plant,
+                actor
             );
 
-            addActor(actor);
+            addPlantActor(actor);
 
             syncPlantBaseAnimation(
-                    plant,
-                    actor
+                plant,
+                actor
             );
         }
 
 
         actorLayers.put(
-                actor,
-                layer
+            actor,
+            layer
         );
 
 
         float targetX =
-                transform.tileX(column)
-                        + transform.tileWidth() / 2f;
+            transform.tileX(column)
+                + transform.tileWidth() / 2f;
 
 
         float targetY =
-                transform.tileY(lane)
-                        + transform.tileHeight() / 2f;
+            transform.tileY(lane)
+                + transform.tileHeight() / 2f;
 
 
 
@@ -481,38 +510,38 @@ public class PlantViewManager extends Group {
 
 
         actor.addAction(
-                Actions.moveTo(
-                        targetX,
-                        targetY,
-                        0.35f,
-                        Interpolation.smooth
-                )
+            Actions.moveTo(
+                targetX,
+                targetY,
+                0.35f,
+                Interpolation.smooth
+            )
         );
 
 
         syncChargeAnimation(
-                plant,
-                actor
+            plant,
+            actor
         );
 
         syncPlantAction(
-                plant,
-                actor
+            plant,
+            actor
         );
 
         syncPlantFoodEffect(
-                plant,
-                actor
+            plant,
+            actor
         );
 
         syncDamageFlash(
-                plant,
-                actor
+            plant,
+            actor
         );
 
         syncFrostVisual(
-                plant,
-                actor
+            plant,
+            actor
         );
     }
 }

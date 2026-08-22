@@ -3,6 +3,7 @@ package models.projectile;
 import lombok.Getter;
 import lombok.Setter;
 import models.Board.Tile;
+import models.Plant.Lobber;
 import models.Plant.Plant;
 import models.Plant.PlantTag;
 import models.Zombie.Zombie;
@@ -12,6 +13,7 @@ import models.effects.VisualEffectEvent;
 import models.games.ancientEgypt.Grave;
 import models.projectile.move.MovingStrategy;
 import models.projectile.move.BounceMove;
+import models.projectile.move.ArcMove;
 import models.projectile.move.StarMove;
 import models.projectile.move.StraightMove;
 
@@ -51,9 +53,9 @@ public class Projectile {
     private final double aoeRadius;
     private final int effectDurationTicks;
     @Getter
-    private final Double targetX;
+    private Double targetX;
     @Getter
-    private final Double targetY;
+    private Double targetY;
     @Setter
     @Getter
     private Zombie homingTarget;
@@ -75,6 +77,12 @@ public class Projectile {
     private boolean torchwoodModified;
     @Getter
     private boolean reflected;
+
+    // Used by Lost City Jane / Parasol. Lobbed projectiles are sent back
+    // along a new arc to the plant that launched them. This is separate
+    // from the Jester straight-shot reflection because ArcMove must keep
+    // moving with a positive speed toward a new target point.
+    private Plant reflectedLobberPlantTarget;
 
     public static Projectile straight(
         int damage,
@@ -434,6 +442,18 @@ public class Projectile {
             hitPlantIfCrossedWhileReflected(state, previousX);
             return;
         }
+
+        if (reflectedLobberPlantTarget != null) {
+            if (isOutOfBounds(state)) {
+                destroy(state);
+                return;
+            }
+            if (movingStrategy.hasReachedTarget(this)) {
+                hitReflectedLobberPlant(state);
+            }
+            return;
+        }
+
         applyTorchwoodIfCrossed(state, previousX, previousY);
         if (isOutOfBounds(state)) {
             destroy(state);
@@ -533,9 +553,9 @@ public class Projectile {
             return false;
         }
         emitImpactEffect(
-                state,
-                frozenPlant.getPosX(),
-                frozenPlant.getPosY()
+            state,
+            frozenPlant.getPosX(),
+            frozenPlant.getPosY()
         );
         frozenPlant.damageIce(damage, elementType, state);
         state.logEvent("Ice around " + frozenPlant.getName() + " has "
@@ -571,9 +591,9 @@ public class Projectile {
             return false;
         }
         emitImpactEffect(
-                state,
-                graveTile.getColumn(),
-                graveTile.getLane()
+            state,
+            graveTile.getColumn(),
+            graveTile.getLane()
         );
         damageGrave(state, graveTile);
         destroy(state);
@@ -620,9 +640,21 @@ public class Projectile {
     }
 
     private void handleTargetedMovement(GameState state) {
-        if (movingStrategy.hasReachedTarget(this)) {
-            impact(state, null);
+        if (!movingStrategy.hasReachedTarget(this)) {
+            return;
         }
+
+        Zombie landed = state.getBoard().getZombieNear(
+            (int) Math.round(targetY == null ? posY : targetY),
+            targetX == null ? posX : targetX,
+            0.75
+        );
+
+        if (tryReflectLobberByJane(state, landed)) {
+            return;
+        }
+
+        impact(state, null);
     }
 
     private Zombie findContact(
@@ -649,14 +681,14 @@ public class Projectile {
 
     private void impact(GameState state, Zombie primaryTarget) {
         double impactX =
-                primaryTarget != null
-                        ? primaryTarget.getX()
-                        : targetX != null ? targetX : posX;
+            primaryTarget != null
+                ? primaryTarget.getX()
+                : targetX != null ? targetX : posX;
 
         double impactY =
-                primaryTarget != null
-                        ? primaryTarget.getLane()
-                        : targetY != null ? targetY : posY;
+            primaryTarget != null
+                ? primaryTarget.getLane()
+                : targetY != null ? targetY : posY;
 
         emitImpactEffect(state, impactX, impactY);
 
@@ -806,6 +838,111 @@ public class Projectile {
         return movingStrategy instanceof StraightMove;
     }
 
+    private boolean tryReflectLobberByJane(
+        GameState state,
+        Zombie zombie
+    ) {
+        if (zombie == null
+            || sourcePlant == null
+            || graveTarget
+            || reflectedLobberPlantTarget != null
+            || !(movingStrategy instanceof ArcMove)
+            || !(sourcePlant.getPlantType() instanceof Lobber)) {
+            return false;
+        }
+
+        DamageReactionBehavior reaction =
+            zombie.getBehavior(DamageReactionBehavior.class);
+
+        if (reaction == null
+            || reaction.getType()
+            != DamageReactionBehavior.DamageReactionType.DEFLECT_LOBBER) {
+            return false;
+        }
+
+        // If the original firing plant has already disappeared, Jane still
+        // blocks the lobbed shot, but there is no valid return target.
+        if (sourcePlant.isDead()
+            || sourcePlant.isMarkedForRemoval()
+            || state.getBoard().getTileForPlant(sourcePlant) == null) {
+            emitImpactEffect(state, zombie.getX(), zombie.getLane());
+            destroy(state);
+            return true;
+        }
+
+        // Keep THIS projectile object alive. The graphical layer keys actors
+        // by Projectile identity, so retargeting in place means the exact same
+        // ProjectileActor / PAM sprite reverses direction instead of being
+        // removed and recreated for the return trip.
+        reflectedLobberPlantTarget = sourcePlant;
+        targetX = (double) sourcePlant.getPosX();
+        targetY = (double) sourcePlant.getPosY();
+
+        // ArcMove caches its first flight distance. Reset that cache so the
+        // return path starts a fresh smooth parabola from Jane's parasol to
+        // the firing plant.
+        ArcMove arcMove = (ArcMove) movingStrategy;
+        arcMove.resetForRetarget();
+
+        emitImpactEffect(state, zombie.getX(), zombie.getLane());
+
+        state.logEvent(
+            zombie.getAlias()
+                + " reflected a lobbed projectile back toward "
+                + sourcePlant.getName()
+                + "!\n"
+        );
+
+        // Start the first return step immediately. This avoids spending a full
+        // game tick parked on the parasol and keeps the visual motion continuous.
+        arcMove.move(this, speed);
+        return true;
+    }
+
+    private void hitReflectedLobberPlant(GameState state) {
+        Plant plant = reflectedLobberPlantTarget;
+
+        if (plant == null
+            || plant.isDead()
+            || plant.isMarkedForRemoval()
+            || state.getBoard().getTileForPlant(plant) == null) {
+            destroy(state);
+            return;
+        }
+
+        emitImpactEffect(
+            state,
+            plant.getPosX(),
+            plant.getPosY()
+        );
+
+        if (plant.isFrozenByIce()) {
+            plant.damageIce(damage, elementType, state);
+            state.logEvent(
+                "A reflected lobbed projectile hit the ice around "
+                    + plant.getName()
+                    + ". It has "
+                    + plant.getIceHealth()
+                    + " health left.\n"
+            );
+        } else {
+            plant.takeDamage(damage, state);
+            state.logEvent(
+                "A reflected lobbed projectile hit "
+                    + plant.getName()
+                    + " at ("
+                    + (plant.getPosX() + 1)
+                    + ", "
+                    + (plant.getPosY() + 1)
+                    + ") for "
+                    + damage
+                    + " damage.\n"
+            );
+        }
+
+        destroy(state);
+    }
+
     private boolean tryReflectByJester(GameState state, Zombie zombie) {
         if (reflected || !(movingStrategy instanceof StraightMove) || graveTarget) {
             return false;
@@ -856,15 +993,15 @@ public class Projectile {
     }
 
     private void emitImpactEffect(
-            GameState state,
-            double impactX,
-            double impactY
+        GameState state,
+        double impactX,
+        double impactY
     ) {
         state.emitVisualEffect(
-                VisualEffectEvent.projectileImpact(
-                        impactX,
-                        impactY
-                )
+            VisualEffectEvent.projectileImpact(
+                impactX,
+                impactY
+            )
         );
     }
 
