@@ -122,25 +122,50 @@ public final class ScoreTracker {
             return;
         }
 
-        for (Wave wave : state.getZombieWaveManager().getWaves()) {
-            int number = wave.getWaveNumber();
-            if (!wave.allDead() || rewardedWaves.contains(number)) {
+        int currentWave = state.getZombieWaveManager().getCurrentWaveNumber();
+        boolean levelCleared = state.getZombieWaveManager().isLevelCleared();
+
+
+        for (Integer number : new ArrayList<>(waveStartTicks.keySet())) {
+
+            if (rewardedWaves.contains(number)) {
                 continue;
             }
 
-            int startTick = waveStartTicks.getOrDefault(number, state.getTickCounter());
+
+            if (!levelCleared && currentWave <= number) {
+                continue;
+            }
+
+            boolean hasAliveZombies = false;
+            for (SpawnInfo info : activeZombies.values()) {
+                if (info.waveNumber() == number) {
+                    hasAliveZombies = true;
+                    break;
+                }
+            }
+
+            if (hasAliveZombies) {
+                continue;
+            }
+
+
+
+            int startTick = waveStartTicks.get(number);
             int elapsedTicks = Math.max(0, state.getTickCounter() - startTick);
             int windowTicks = ScoringRules.FAST_WAVE_WINDOW_SECONDS
                     * Math.max(1, state.getTicksPerSecond());
+
             if (elapsedTicks < windowTicks) {
                 int remainingTicks = windowTicks - elapsedTicks;
                 fastWaveBonus += ScoringRules.FAST_WAVE_MAX_BONUS
                         * remainingTicks / windowTicks;
             }
+
+
             rewardedWaves.add(number);
         }
     }
-
     private int calculateGardenPreservation(GameState state) {
         if (state == null) {
             return 0;
