@@ -582,7 +582,6 @@ public final class GlobalHud extends Table {
         Game currentGame = App.getInstance().getCurrentGame();
 
 
-
         if (currentGame != null) {
             meowPointDisplay.setVisible(false);
             meowPointDisplay.setTouchable(Touchable.disabled);

@@ -39,9 +39,14 @@ import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.MainMenuScreen;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
+import views.graphical.ui.CenterGameNotice;
 import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
 
 public class MeowPointScreen extends BaseMinigameScreen {
     private static final String BG_LEFT = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE_LEFT";
@@ -68,6 +73,18 @@ public class MeowPointScreen extends BaseMinigameScreen {
     private boolean gameplayViewsBuilt;
     private float renderDelta;
 
+    private int lastQuickKillBonus = 0;
+    private int lastSimultaneousKillBonus = 0;
+    private int lastFastWaveBonus = 0;
+
+
+    private int lastZombieValuePoints = 0;
+    private int lastGardenPreservationBonus = 0;
+
+
+
+    private CenterGameNotice centerNotice;
+    private final Deque<String> noticeQueue = new ArrayDeque<>();
     public MeowPointScreen(PvzGame game) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
 
@@ -193,17 +210,87 @@ public class MeowPointScreen extends BaseMinigameScreen {
     protected void onGameplayStarted() {
         gameTickAccumulator = 0f;
         gameHud.showGameHud();
-
+        lastZombieValuePoints = 0;
+        lastQuickKillBonus = 0;
+        lastSimultaneousKillBonus = 0;
+        lastFastWaveBonus = 0;
+        lastGardenPreservationBonus = 0;
+        noticeQueue.clear();
+        if (centerNotice != null) {
+            centerNotice.remove();
+            centerNotice = null;
+        }
 
         if (plantViewManager != null && scoringGame.getGameState() != null) {
             plantViewManager.sync(scoringGame.getGameState().getBoard());
         }
     }
+    private void checkScoreNotices() {
+        if (scoringGame == null || scoringGame.getScoreTracker() == null) return;
+        ScoreTracker tracker = scoringGame.getScoreTracker();
+
+
+        int zombieValueDiff = tracker.getZombieValuePoints() - lastZombieValuePoints;
+        if (zombieValueDiff > 0) {
+            queueNotice("ZOMBIE KILLED!\n(Base Value & Wave Cost)\n+" + zombieValueDiff);
+            lastZombieValuePoints = tracker.getZombieValuePoints();
+        }
+
+
+        int quickKillDiff = tracker.getQuickKillBonus() - lastQuickKillBonus;
+        if (quickKillDiff > 0) {
+            queueNotice("QUICK KILL!\n(Killed under 30s)\n+" + quickKillDiff);
+            lastQuickKillBonus = tracker.getQuickKillBonus();
+        }
+
+
+        int comboDiff = tracker.getSimultaneousKillBonus() - lastSimultaneousKillBonus;
+        if (comboDiff > 0) {
+            queueNotice("SIMULTANEOUS KILL!\n(Multiple in same tick)\n+" + comboDiff);
+            lastSimultaneousKillBonus = tracker.getSimultaneousKillBonus();
+        }
+
+
+        int fastWaveDiff = tracker.getFastWaveBonus() - lastFastWaveBonus;
+        if (fastWaveDiff > 0) {
+            queueNotice("FAST WAVE!\n(Cleared under 60s)\n+" + fastWaveDiff);
+            lastFastWaveBonus = tracker.getFastWaveBonus();
+        }
+    }
+
+    private void queueNotice(String message) {
+        noticeQueue.addLast(message);
+        showNextNotice();
+    }
+
+    private void showNextNotice() {
+        if (centerNotice != null || noticeQueue.isEmpty()) {
+            return;
+        }
+
+        centerNotice = new views.graphical.ui.CenterGameNotice(game.getSkin(), false);
+        uiStage.addActor(centerNotice);
+        centerNotice.toFront();
+
+        centerNotice.showSequence(
+                java.util.List.of(noticeQueue.removeFirst()),
+                1.5f,
+                () -> {
+                    centerNotice = null;
+                    showNextNotice();
+                }
+        );
+    }
+
+
 
 
     @Override
     public void render(float delta) {
         renderDelta = Math.min(delta, 0.25f);
+        if (isPlaying() && !isPaused()) {
+            checkScoreNotices();
+        }
         super.render(delta);
     }
 
@@ -357,52 +444,43 @@ public class MeowPointScreen extends BaseMinigameScreen {
 
         var breakdown = scoringGame.getScoreTracker().finish(state, won);
 
+
+        if (breakdown.gardenPreservationBonus() > 0) {
+            queueNotice("GARDEN PRESERVATION!\n(Plants, Mowers & Sun remaining)\n+" + breakdown.gardenPreservationBonus());
+        }
+
         gameHud.hideGameHud();
         hidePlacementHighlights();
+
         if (placementPreview != null) {
             placementPreview.clearPlant();
         }
 
-        Table resultPopup = new Table();
-        resultPopup.setBackground(
-                game.getSkin().newDrawable(
-                        "white_pixel",
-                        new Color(0f, 0f, 0f, 0.88f)
-                )
-        );
-        resultPopup.pad(30f);
+        if (won) {
 
-        Label title = new Label(
-                won ? "MEOWPOINT COMPLETE!" : "GAME OVER",
-                game.getSkin(),
-                "title"
-        );
-        Label details = new Label(breakdown.format(), game.getSkin(), "default");
-
-        TextButton retryButton = new TextButton("RETRY", game.getSkin());
-        TextButton exitButton = new TextButton("EXIT", game.getSkin());
-
-        retryButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                restartMinigame();
-            }
-        });
-        exitButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                exitMinigame();
-            }
-        });
-
-        resultPopup.add(title).colspan(2).padBottom(20f).row();
-        resultPopup.add(details).colspan(2).padBottom(20f).row();
-        resultPopup.add(retryButton).padRight(10f);
-        resultPopup.add(exitButton);
-
-        resultPopup.getColor().a = 0f;
-        resultPopup.addAction(Actions.fadeIn(0.35f));
-        showModal(resultPopup);
+            views.graphical.ui.GameWinPopup winPopup = new views.graphical.ui.GameWinPopup(
+                    game,
+                    "MEOWPOINT COMPLETE!",
+                    breakdown.format(),
+                    "EXIT",
+                    this::exitMinigame,
+                    "RETRY",
+                    this::restartMinigame
+            );
+            uiStage.addActor(winPopup);
+            winPopup.toFront();
+        } else {
+            views.graphical.ui.GameOverPopup losePopup = new views.graphical.ui.GameOverPopup(
+                    game,
+                    "THE ZOMBIES\nREACHED YOUR HOUSE!",
+                    "EXIT",
+                    this::exitMinigame,
+                    "RETRY",
+                    this::restartMinigame
+            );
+            uiStage.addActor(losePopup);
+            losePopup.toFront();
+        }
     }
 
     @Override

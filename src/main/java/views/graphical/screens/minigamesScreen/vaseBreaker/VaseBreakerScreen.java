@@ -66,6 +66,7 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
             new ArrayList<>();
 
     private float renderDelta;
+    private boolean resultShown;
     public VaseBreakerScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
         this.stageNumber = stageNumber;
@@ -545,5 +546,43 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
 
         refreshDroppedPackets();
 
+    }
+    @Override
+    protected void onGameFinished(boolean won) {
+
+        if (packetBar != null) {
+            packetBar.setVisible(false);
+        }
+        hidePlacementHighlights();
+        if (placementPreview != null) {
+            placementPreview.clearPlant();
+        }
+
+        if (won) {
+
+            views.graphical.ui.GameWinPopup winPopup = new views.graphical.ui.GameWinPopup(
+                    game,
+                    "VASEBREAKER COMPLETE!",
+                    "You broke all vases and survived!",
+                    "EXIT",
+                    this::exitMinigame,
+                    "RETRY",
+                    this::restartMinigame
+            );
+            uiStage.addActor(winPopup);
+            winPopup.toFront();
+        } else {
+
+            views.graphical.ui.GameOverPopup losePopup = new views.graphical.ui.GameOverPopup(
+                    game,
+                    "THE ZOMBIES\nATE YOUR BRAINS!",
+                    "EXIT",
+                    this::exitMinigame,
+                    "RETRY",
+                    this::restartMinigame
+            );
+            uiStage.addActor(losePopup);
+            losePopup.toFront();
+        }
     }
 }

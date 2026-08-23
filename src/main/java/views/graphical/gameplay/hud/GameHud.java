@@ -29,6 +29,7 @@ import models.User;
 import models.Zombie.Zombie;
 import models.games.Game;
 import models.games.GameState;
+import models.games.ScoringGame;
 import models.games.ZombieWaveManager;
 import models.games.specialLevelConfig.TimedBattleConfig;
 import views.graphical.ui.BorderedPanel;
@@ -64,6 +65,12 @@ public class GameHud extends Table {
     private static final float STATE_REFRESH = 0.10f;
     private static final float CURRENCY_REFRESH = 0.50f;
 
+    private static final String MEOW_POINT = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER";
+    private static final String MEOW_POINT_SELECTED = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER_DOWN";
+
+
+    private Label meowPointLabel;
+    private Group meowPointDisplay;
     private static final float TIMED_BATTLE_PANEL_WIDTH = 270f;
     private static final double TIMED_BATTLE_DANGER_SECONDS = 10.0;
     private static final String TIMED_BATTLE_ZOMBIE_ICON =
@@ -457,10 +464,38 @@ public class GameHud extends Table {
             .left()
             .padTop(3f);
     }
+    private void refreshMeowPointLabel() {
+        if (meowPointDisplay == null || meowPointLabel == null) {
+            return;
+        }
 
+        Game currentGame = App.getInstance().getCurrentGame();
+
+        if (currentGame instanceof ScoringGame scoringGame) {
+            meowPointDisplay.setVisible(true);
+            int liveScore = scoringGame.getScoreTracker().currentTotal();
+            meowPointLabel.setText(String.format("%,d", liveScore));
+        } else {
+            meowPointDisplay.setVisible(false);
+        }
+    }
     private void buildRightControls() {
         topRight.top().right();
         Table buttons = new Table();
+        meowPointLabel = new Label("0", game.getSkin());
+        meowPointLabel.setTouchable(Touchable.disabled);
+        meowPointLabel.setFontScale(1.1f);
+
+        meowPointDisplay = createCurrencyDisplay(
+                MEOW_POINT,
+                MEOW_POINT_SELECTED,
+                meowPointLabel,
+                null
+        );
+
+        buttons.add(meowPointDisplay)
+                .size(meowPointDisplay.getWidth(), meowPointDisplay.getHeight())
+                .padRight(8f);
         gemLabel = new Label("0", game.getSkin());
         gemLabel.setTouchable(Touchable.disabled);
         gemLabel.setFontScale(1.1f);
@@ -1560,6 +1595,7 @@ public class GameHud extends Table {
         }
 
         GameState state = currentGame.getGameState();
+        refreshMeowPointLabel();
         refreshTimedBattle(state);
         refreshLoveYourPlants(state);
         refreshPlantWhatYouGet(currentGame);
