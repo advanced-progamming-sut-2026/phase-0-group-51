@@ -9,9 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Stack;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import controllers.miniGamesController.WallnutBowlingController;
 import graphics.PvzGame;
@@ -31,6 +29,7 @@ import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
 import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.*;
+import views.graphical.ui.conveyorBelt.ConveyorBeltActor;
 
 import java.util.*;
 
