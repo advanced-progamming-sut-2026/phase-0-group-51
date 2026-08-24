@@ -35,7 +35,7 @@ public class IZombie extends Game {
     private final float plantTileChance;
 
     public static final float SUN_PRODUCER_HP = 1290f;
-    public static final String SUN_PRODUCER_ALIAS = "IZombieSunProducer";
+    public static final String SUN_PRODUCER_ALIAS = "ZombieDefault";
     private static final int SUN_PER_PRODUCTION = 25;
 
     private static final int START_INTERVAL_TICKS = 250;
@@ -286,13 +286,6 @@ public class IZombie extends Game {
         return true;
     }
 
-    private void spawnSunProducer(int lane, int column) {
-        Zombie producer = new Zombie(SUN_PRODUCER_ALIAS, SUN_PRODUCER_HP, 0f, 0f, 0f, 0);
-        producer.setLane(lane);
-        producer.setColumn(column);
-        getGameState().addZombie(producer);
-        sunProducers.add(new SunProducer(producer));
-    }
 
     private String randomPlantName() {
         List<PlantData> combatPlants = PlantRegistry.getAll().stream()
@@ -305,72 +298,73 @@ public class IZombie extends Game {
         return pool.get(random.nextInt(pool.size())).name();
     }
 
+    private void spawnSunProducer(int lane, int column) {
+
+        Zombie producer = ZombieRegistry.spawn(SUN_PRODUCER_ALIAS);
+
+        producer.setMaxHitpoints((int) SUN_PRODUCER_HP);
+        producer.setHitpoints((int) SUN_PRODUCER_HP);
+
+        producer.setLane(lane);
+        producer.setColumn(column);
+        getGameState().addZombie(producer);
+        sunProducers.add(new SunProducer(producer));
+    }
 
     private void produceSun() {
-
         GameState state = getGameState();
         Board board = state.getBoard();
+        int currentTick = state.getTickCounter();
+        int tps = Math.max(1, state.getTicksPerSecond());
 
-        for (SunProducer producer : sunProducers) {
+        java.util.Iterator<SunProducer> iterator = sunProducers.iterator();
+        while (iterator.hasNext()) {
+            SunProducer producer = iterator.next();
 
-            if (producer.zombie.isDead()) {
+            if (producer.zombie.isDead() || !state.getZombiesInTheGame().contains(producer.zombie)) {
+                iterator.remove();
                 continue;
             }
 
-            producer.ticksUntilProduction--;
+            if (producer.zombie.getColumn() <= 0) {
+                iterator.remove();
+                continue;
+            }
 
             if (producer.ticksUntilProduction > 0) {
+                producer.ticksUntilProduction--;
                 continue;
             }
 
+            float tileWidth = 737f / board.getColumnCount();
+            float tileCenter = (producer.zombie.getColumn() * tileWidth) + (tileWidth / 2f);
+            float zombieCenter = producer.zombie.getX() + 40f;
 
-            int lane =
-                    producer.zombie.getLane();
+            if (zombieCenter > tileCenter + 5f) {
+                continue;
+            }
 
-            int firstZombieColumn =
-                    RED_LINE_COLUMN;
+            int lane = producer.zombie.getLane();
+            int sunColumn = producer.zombie.getColumn();
 
-            int lastColumn =
-                    board.getColumnCount() - 1;
-
-
-            int sunColumn =
-                    firstZombieColumn
-                            + random.nextInt(
-                            lastColumn
-                                    - firstZombieColumn
-                                    + 1
-                    );
-
-
-            Sun sun =
-                    new Sun(
-                            sunColumn,
-                            lane,
-                            lane,
-                            SunType.ORDINARY,
-                            SUN_PER_PRODUCTION,
-                            SunType.ORDINARY.getLifeTicks()
-                    );
+            Sun sun = new Sun(
+                    sunColumn,
+                    lane,
+                    lane,
+                    SunType.ORDINARY,
+                    SUN_PER_PRODUCTION,
+                    SunType.ORDINARY.getLifeTicks()
+            );
 
 
             sun.setGrounded(true);
-
             board.spawnSun(sun);
 
-
-            producer.intervalTicks =
-                    Math.max(
-                            MIN_INTERVAL_TICKS,
-                            producer.intervalTicks
-                                    - INTERVAL_STEP_TICKS
-                    );
-
-            producer.ticksUntilProduction =
-                    producer.intervalTicks;
+            int elapsedSeconds = currentTick / tps;
+            int secondsToNextDrop = Math.max(3, 8 - (elapsedSeconds / 20));
+            producer.ticksUntilProduction = secondsToNextDrop * tps;
         }
     }
-
     private void updateBrains() {
         GameState state = getGameState();
         for (Zombie zombie : new ArrayList<>(state.getZombiesInTheGame())) {
@@ -440,8 +434,7 @@ public class IZombie extends Game {
 
     private static final class SunProducer {
         private final Zombie zombie;
-        private int intervalTicks = START_INTERVAL_TICKS;
-        private int ticksUntilProduction = START_INTERVAL_TICKS;
+        private int ticksUntilProduction = 20;
 
         private SunProducer(Zombie zombie) {
             this.zombie = zombie;

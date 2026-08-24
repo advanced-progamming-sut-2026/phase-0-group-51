@@ -197,7 +197,8 @@ public class IZombieController extends GamingController {
         char base = getBaseMapSymbol(state, tile);
         char zombieChar = '.';
         for (Zombie zombie : getZombiesAtTile(state, tile.getLane(), tile.getColumn())) {
-            if (IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias())) {
+
+            if (zombie.getMaxHitpoints() == IZombie.SUN_PRODUCER_HP) {
                 if (zombieChar == '.') {
                     zombieChar = 'S';
                 }
@@ -205,12 +206,8 @@ public class IZombieController extends GamingController {
                 zombieChar = 'Z';
             }
         }
-        char sun = getSunMapSymbol(
-            state.getBoard(), tile.getLane(), tile.getColumn()
-        );
-        char loot = getLootMapSymbol(
-            state.getBoard(), tile.getLane(), tile.getColumn()
-        );
+        char sun = getSunMapSymbol(state.getBoard(), tile.getLane(), tile.getColumn());
+        char loot = getLootMapSymbol(state.getBoard(), tile.getLane(), tile.getColumn());
         return new String(new char[]{base, zombieChar, sun, loot});
     }
 
