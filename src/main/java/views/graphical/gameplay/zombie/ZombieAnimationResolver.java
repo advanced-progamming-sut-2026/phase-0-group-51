@@ -58,7 +58,9 @@ public final class ZombieAnimationResolver {
 
         EnumMap<EntityAnimationState, String> resolved =
             new EnumMap<>(EntityAnimationState.class);
-
+        if (alias.equals("IZombieSunProducer")) {
+            alias = "ZombieDefault";
+        }
         String idle = findClip(
             clips,
             ZombieRegistry.getIdleClip(alias),

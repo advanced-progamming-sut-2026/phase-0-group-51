@@ -60,7 +60,7 @@ public class IZombieScreen extends BaseMinigameScreen {
     private IZombieBar zombieBar;
     private String selectedZombieAlias;
 
-    private final List<PamAnimationActor> sunProducerViews = new ArrayList<>();
+    private final Map<Zombie, Image> sunHats = new IdentityHashMap<>();
     private Image rowHighlight;
     private Image columnHighlight;
 
@@ -125,7 +125,6 @@ public class IZombieScreen extends BaseMinigameScreen {
         worldStage.addActor(columnHighlight);
         worldStage.addActor(boardView);
         buildBrains();
-        buildSunProducerZombies();
         plantViewManager = new PlantViewManager(game, boardTransform);
         worldStage.addActor(plantViewManager);
         projectileViewManager = new ProjectileViewManager(game, boardTransform);
@@ -137,76 +136,7 @@ public class IZombieScreen extends BaseMinigameScreen {
         worldStage.addActor(sunViewManager);
         syncViews();
     }
-    private void buildSunProducerZombies() {
 
-        sunProducerViews.clear();
-        String pamPath =
-                ZombieAnimationSystem.resolvePamPath(
-                        ChapterTheme.MINIGAME,
-                        IZombie.SUN_PRODUCER_ALIAS
-                );
-
-        String idleClip =
-                ZombieRegistry.getIdleClip(
-                        IZombie.SUN_PRODUCER_ALIAS
-                );
-
-
-        System.out.println("SUN PRODUCER PAM = " + pamPath);
-        System.out.println("SUN PRODUCER IDLE = " + idleClip);
-        for (int lane = 0; lane < 5; lane++) {
-
-            PamAnimationActor zombie =
-                    game.createPamActor(
-                            ZombieAnimationSystem.resolvePamPath(
-                                    ChapterTheme.MINIGAME,
-                                    IZombie.SUN_PRODUCER_ALIAS
-                            ),
-                            ZombieRegistry.getIdleClip(
-                                    IZombie.SUN_PRODUCER_ALIAS
-                            ),
-                            0f,
-                            0f,
-                            true,
-                            ZombieAnimationSystem.resolveVisibleParts(
-                                    game.getPamPlayer(),
-                                    ZombieAnimationSystem.resolvePamPath(
-                                            ChapterTheme.MINIGAME,
-                                            IZombie.SUN_PRODUCER_ALIAS
-                                    ),
-                                    IZombie.SUN_PRODUCER_ALIAS
-                            )
-                    );
-
-
-            zombie.setScale(
-                    ZombieAnimationSystem.DEFAULT_SCALE,
-                    ZombieAnimationSystem.DEFAULT_SCALE
-            );
-
-
-            float x =
-                    boardArea.x()
-                            + boardArea.width()
-                            + 40f;
-
-
-            float y =
-                    boardTransform.tileY(lane)
-                            + boardTransform.tileHeight()/2f;
-
-
-            zombie.setPosition(
-                    x,
-                    y
-            );
-
-
-            worldStage.addActor(zombie);
-
-            sunProducerViews.add(zombie);
-        }
-    }
     private void handleSunClicked(Sun sun) {
         boolean collected =
                 iZombie
@@ -474,38 +404,54 @@ public class IZombieScreen extends BaseMinigameScreen {
                     iZombie.getGameState().getBoard().getProjectiles(),
                     partialTick
             );
-            sunViewManager.sync(
-                    iZombie.getGameState()
-                            .getBoard()
-                            .getActiveSuns(),
-                    partialTick
-            );
 
             iZombie.getGameState()
                     .consumeVisualEffects()
                     .forEach(worldEffectManager::play);
 
             worldEffectManager.toFront();
-            sunViewManager.toFront();
 
-            Set<Zombie> renderableZombies =
-                    new HashSet<>(
-                            iZombie.getGameState().getZombiesInTheGame()
-                    );
-
-            renderableZombies.removeIf(
-                    zombie -> IZombie.SUN_PRODUCER_ALIAS.equals(zombie.getAlias())
-            );
+            Set<Zombie> renderableZombies = new HashSet<>(iZombie.getGameState().getZombiesInTheGame());
 
             zombieAnimationSystem.update(
-                    renderDelta,
-                    partialTick,
-                    iZombie.getGameState().getTickCounter(),
-                    renderableZombies
+                    renderDelta, partialTick, iZombie.getGameState().getTickCounter(), renderableZombies
             );
 
-            updateZombiePlacementPreviewPosition();
 
+            for (Zombie zombie : renderableZombies) {
+                if (zombie.getMaxHitpoints() == IZombie.SUN_PRODUCER_HP && !zombie.isDead()) {
+                    Image hat = sunHats.get(zombie);
+                    if (hat == null) {
+                        com.badlogic.gdx.graphics.g2d.TextureRegion sunRegion = game.getTextureBank().region("IMAGE_UI_HUD_INGAME_SUN");
+                        hat = new Image(new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(sunRegion));
+                        hat.setSize(40f, 40f);
+                        hat.setTouchable(Touchable.disabled);
+                        worldStage.addActor(hat);
+                        sunHats.put(zombie, hat);
+                    }
+
+                    float hatX = boardArea.x() + zombie.getX() + 20f;
+                    float hatY = boardTransform.tileY(zombie.getLane()) + 95f;
+
+                    hat.setPosition(hatX, hatY);
+                    hat.toFront();
+                }
+            }
+
+
+            sunHats.entrySet().removeIf(entry -> {
+                if (!renderableZombies.contains(entry.getKey()) || entry.getKey().isDead()) {
+                    entry.getValue().remove();
+                    return true;
+                }
+                return false;
+            });
+
+
+            sunViewManager.sync(iZombie.getGameState().getBoard().getActiveSuns(), partialTick);
+            sunViewManager.toFront();
+
+            updateZombiePlacementPreviewPosition();
             if (zombiePlacementPreview != null) {
                 zombiePlacementPreview.toFront();
             }
@@ -515,13 +461,7 @@ public class IZombieScreen extends BaseMinigameScreen {
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(Color.RED);
-        shapeRenderer.rectLine(
-                redLineX,
-                boardArea.y(),
-                redLineX,
-                boardArea.y() + boardArea.height(),
-                4f
-        );
+        shapeRenderer.rectLine(redLineX, boardArea.y(), redLineX, boardArea.y() + boardArea.height(), 4f);
         shapeRenderer.end();
     }
 
