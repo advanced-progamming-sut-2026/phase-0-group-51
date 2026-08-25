@@ -27,12 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Visual layer for Big Wave Beach water mechanics.
- *
- * The model remains authoritative: Board.isWater()/leftmostWaterColumn decide
- * where water exists. This class only mirrors that state visually.
- */
 public final class BigWaveBeachWaterAnimationSystem {
 
     private static final String TIDE_LINE_PAM =
@@ -40,6 +34,9 @@ public final class BigWaveBeachWaterAnimationSystem {
 
     private static final String WATER_UNDERLAYER_PAM =
         "768/FULL/BACKGROUNDS/WATER_UNDERLAYER/WATER_UNDERLAYER.PAM";
+
+    private static final String WAVE_UPPERLAYER_PAM =
+        "768/FULL/BACKGROUNDS/WAVE_UPPERLAYER/WAVE_UPPERLAYER.PAM";
 
     private static final String WATER_SPLASH_PAM =
         "768/FULL/EFFECTS/WATER_SPLASH/WATER_SPLASH.PAM";
@@ -59,35 +56,17 @@ public final class BigWaveBeachWaterAnimationSystem {
     private static final float SPLASH_FALLBACK_DURATION = 0.45f;
     private static final float TIDE_MOVE_SPEED = 7.5f;
 
-    // Matches BigWaveBeachFeature.MAX_WATER_COLUMNS.
-    // The tide line is a fixed visual marker for the farthest point the
-    // water is ever allowed to reach.
     private static final int MAX_WATER_COLUMNS = 6;
 
-    // Only the underlayer is slightly transparent. Tide line/ripples/splash
-    // keep their normal alpha.
-    private static final float WATER_ALPHA = 0.93f;
+    private static final float WATER_ALPHA = 0.68f;
 
-    // Water surface inside each tile, measured upward from the tile bottom.
-    // IMPORTANT: Zombie actor Y is around the tile center, so using actorY
-    // directly makes the water cut through the zombie's face.
-    //
-    // 0.25f = lower water line / more zombie visible
-    // 0.30f = default
-    // 0.40f = higher water line / less zombie visible
-    private static final float WATER_SURFACE_TILE_RATIO = 0.30f;
+    private static final float WAVE_UPPERLAYER_ALPHA = 0.55f;
 
-    /**
-     * Manually trims pixels/world-units from the TOP of the sea rendering.
-     *
-     * Increase this value to hide more of the water from the top.
-     * Example:
-     *   0f   = no top cut
-     *   50f  = cut 50 units from the top
-     *   100f = cut 100 units from the top
-     *
-     * This does NOT move the water actor; it only changes the clipping area.
-     */
+    private static final float WATER_SURFACE_TILE_RATIO = 0.18f;
+    private static final float WATER_SURFACE_TILE_RATIO_SUBMERGED = 0.6f;
+
+    private static final float WATER_RENDER_SHIFT_COLUMNS = 1f;
+
     private static final float WATER_TOP_CUT = 70f;
 
     private final PvzGame game;
@@ -97,17 +76,14 @@ public final class BigWaveBeachWaterAnimationSystem {
     private final ZombieAnimationSystem zombieAnimationSystem;
     private final Group renderLayer;
 
-    // Full-background-height clipping for WATER_UNDERLAYER only.
     private final WaterBackgroundClipGroup waterBackgroundClipLayer;
 
-    // Tile/board-bounds clipping for the fixed tide line.
     private final BoardClipGroup boardClipLayer;
 
-    // Ripple/splash need to render above entityDepthLayer. This contains only
-    // effects; no duplicate WATER_UNDERLAYER is drawn here.
     private final BoardClipGroup foregroundEffectsClipLayer;
 
     private PamAnimationActor waterUnderlayer;
+    private PamAnimationActor waveUpperlayer;
     private PamAnimationActor tideLine;
     private float renderedTideX = Float.NaN;
 
@@ -134,15 +110,11 @@ public final class BigWaveBeachWaterAnimationSystem {
         );
         this.renderLayer = Objects.requireNonNull(renderLayer, "renderLayer");
 
-        // WATER_UNDERLAYER may use the full gameplay-background height,
-        // but it is still horizontally restricted to the board strip.
         this.waterBackgroundClipLayer =
             new WaterBackgroundClipGroup(this.transform);
         this.waterBackgroundClipLayer.setTouchable(Touchable.disabled);
         this.renderLayer.addActor(this.waterBackgroundClipLayer);
 
-        // Tide line, ripples and splashes are restricted to the actual
-        // tile/board rectangle.
         this.boardClipLayer = new BoardClipGroup(this.transform);
         this.boardClipLayer.setTouchable(Touchable.disabled);
         this.renderLayer.addActor(this.boardClipLayer);
@@ -154,6 +126,7 @@ public final class BigWaveBeachWaterAnimationSystem {
         if (theme == ChapterTheme.BIG_WAVE_BEACH) {
             safeLoad(TIDE_LINE_PAM);
             safeLoad(WATER_UNDERLAYER_PAM);
+            safeLoad(WAVE_UPPERLAYER_PAM);
             safeLoad(WATER_SPLASH_PAM);
             safeLoad(ZOMBIE_RIPPLE_PAM);
             safeLoad(IMP_RIPPLE_PAM);
@@ -176,8 +149,6 @@ public final class BigWaveBeachWaterAnimationSystem {
         syncTide(board, delta);
         syncZombieRipples(board, zombies);
 
-        // World actors may be added after this system is constructed. Keep
-        // ripple/splash over the zombie/entity layer.
         foregroundEffectsClipLayer.toFront();
     }
 
@@ -185,6 +156,10 @@ public final class BigWaveBeachWaterAnimationSystem {
         if (waterUnderlayer != null) {
             waterUnderlayer.remove();
             waterUnderlayer = null;
+        }
+        if (waveUpperlayer != null) {
+            waveUpperlayer.remove();
+            waveUpperlayer = null;
         }
         if (tideLine != null) {
             tideLine.remove();
@@ -226,6 +201,27 @@ public final class BigWaveBeachWaterAnimationSystem {
                     WATER_ALPHA
                 );
                 waterBackgroundClipLayer.addActor(waterUnderlayer);
+            }
+        }
+
+        if (waveUpperlayer == null) {
+            waveUpperlayer = createLoopingActor(
+                WAVE_UPPERLAYER_PAM,
+                BACKGROUND_SCALE,
+                "water",
+                "idle",
+                "loop",
+                "animation",
+                "anim"
+            );
+            if (waveUpperlayer != null) {
+                waveUpperlayer.setColor(
+                    1f,
+                    1f,
+                    1f,
+                    WAVE_UPPERLAYER_ALPHA
+                );
+                waterBackgroundClipLayer.addActor(waveUpperlayer);
             }
         }
 
@@ -274,14 +270,15 @@ public final class BigWaveBeachWaterAnimationSystem {
             }
         }
 
-        // WATER_UNDERLAYER keeps the full gameplay-background height.
         float backgroundHeight = getGameplayBackgroundHeight();
         float waterCenterY = backgroundHeight * 0.5f;
 
+        float waterX = renderedTideX
+            + transform.tileWidth() * WATER_RENDER_SHIFT_COLUMNS;
+
         if (waterUnderlayer != null) {
-            // The water body may still follow the current model tide.
             waterUnderlayer.setPosition(
-                renderedTideX,
+                waterX,
                 waterCenterY
             );
             waterUnderlayer.setVisible(
@@ -289,10 +286,17 @@ public final class BigWaveBeachWaterAnimationSystem {
             );
         }
 
+        if (waveUpperlayer != null) {
+            waveUpperlayer.setPosition(
+                waterX,
+                waterCenterY
+            );
+            waveUpperlayer.setVisible(
+                board.getWaterColumnCount() > 0
+            );
+        }
+
         if (tideLine != null) {
-            // Fixed maximum shoreline:
-            // Big Wave Beach allows at most MAX_WATER_COLUMNS water columns.
-            // For a 9-column board this is column index 3 (the fourth tile).
             int maxTideLeftmostColumn = Math.max(
                 0,
                 board.getColumnCount() - MAX_WATER_COLUMNS
@@ -301,8 +305,6 @@ public final class BigWaveBeachWaterAnimationSystem {
             float fixedTideX =
                 transform.tileX(maxTideLeftmostColumn);
 
-            // The tide line belongs to the tile area, not to the full
-            // background height.
             float tideCenterY =
                 area.y() + area.height() * 0.5f;
 
@@ -392,26 +394,27 @@ public final class BigWaveBeachWaterAnimationSystem {
                 continue;
             }
 
-            // One physical water surface per lane. Calculate it from the
-            // tile bottom instead of the zombie actor origin.
             float laneBottom =
                 transform.tileY(zombie.getLane());
+
+            float surfaceRatio = isDeeplySubmerged(zombie)
+                ? WATER_SURFACE_TILE_RATIO_SUBMERGED
+                : WATER_SURFACE_TILE_RATIO;
 
             float surfaceY =
                 laneBottom
                     + transform.tileHeight()
-                    * WATER_SURFACE_TILE_RATIO;
+                    * surfaceRatio;
 
-            // Do NOT draw another water image over the zombie. Instead clip
-            // the zombie itself, so every pixel below the ripple disappears
-            // while the original background water remains untouched.
-            float worldWidth = getGameplayBackgroundWidth();
+            BoardArea clipArea = transform.getArea();
             float worldHeight = getGameplayBackgroundHeight();
+            float clipX = clipArea.x() - transform.tileWidth();
+            float clipWidth = clipArea.width() + transform.tileWidth() * 3f;
 
             zombieActor.setDrawClip(
-                0f,
+                clipX,
                 surfaceY,
-                worldWidth,
+                clipWidth,
                 Math.max(
                     1f,
                     worldHeight - surfaceY
@@ -429,6 +432,7 @@ public final class BigWaveBeachWaterAnimationSystem {
                 PamAnimationActor ripple = createLoopingActor(
                     pamPath,
                     RIPPLE_SCALE,
+                    "ripple",
                     "idle",
                     "loop",
                     "animation",
@@ -459,9 +463,6 @@ public final class BigWaveBeachWaterAnimationSystem {
 
             visual.actor.toFront();
         }
-
-        // Zombies that disappeared from the living collection must not keep
-        // a stale clip while their death animation is still being rendered.
         for (Zombie zombie :
             new java.util.ArrayList<>(previousWaterState.keySet())) {
 
@@ -489,6 +490,14 @@ public final class BigWaveBeachWaterAnimationSystem {
             entry.getValue().actor.remove();
             return true;
         });
+    }
+
+    private boolean isDeeplySubmerged(Zombie zombie) {
+        String alias = zombie.getAlias() == null
+            ? ""
+            : zombie.getAlias().toLowerCase(Locale.ROOT);
+
+        return alias.contains("snorkel");
     }
 
     private String ripplePamFor(Zombie zombie) {
@@ -607,22 +616,12 @@ public final class BigWaveBeachWaterAnimationSystem {
         }
     }
 
-    private float getGameplayBackgroundWidth() {
-        if (renderLayer.getStage() != null
-            && renderLayer.getStage().getViewport() != null) {
-            return renderLayer.getStage().getViewport().getWorldWidth();
-        }
-
-        return 1600f;
-    }
-
     private float getGameplayBackgroundHeight() {
         if (renderLayer.getStage() != null
             && renderLayer.getStage().getViewport() != null) {
             return renderLayer.getStage().getViewport().getWorldHeight();
         }
 
-        // GameScreen's gameplay background is authored at 600 world units.
         return 600f;
     }
 
@@ -640,11 +639,6 @@ public final class BigWaveBeachWaterAnimationSystem {
         }
     }
 
-    /**
-     * Clips WATER_UNDERLAYER to the board's horizontal span, while allowing
-     * it to use the full gameplay-background height. WATER_TOP_CUT only
-     * trims the top of this background-water layer.
-     */
     private static final class WaterBackgroundClipGroup extends Group {
         private final BoardTransform transform;
         private final Rectangle clipBounds = new Rectangle();
@@ -711,11 +705,6 @@ public final class BigWaveBeachWaterAnimationSystem {
         }
     }
 
-    /**
-     * Clips Tide Line, ripples and splashes to the actual 5x9 tile area.
-     * This prevents the tide-line PAM from stretching visually through the
-     * full gameplay background.
-     */
     private static final class BoardClipGroup extends Group {
         private final BoardTransform transform;
         private final Rectangle clipBounds = new Rectangle();
