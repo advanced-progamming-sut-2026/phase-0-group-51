@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.utils.ScissorStack;
 import pvz.libpvz.pam.PamPlayer;
 
 import java.util.Collection;
@@ -44,6 +45,13 @@ public class PamAnimationActor extends Actor {
 
     private final Map<String, Boolean> visibilityMap =
         new HashMap<>();
+
+    // Optional stage/world-space clipping rectangle used by effects such as
+    // Big Wave Beach water. It clips the actor itself instead of painting a
+    // fake water rectangle over it.
+    private boolean drawClipEnabled = false;
+    private final Rectangle drawClipBounds = new Rectangle();
+    private final Rectangle drawClipScissor = new Rectangle();
 
     private String groundingClip;
     private float[] groundCenterXByFrame = new float[0];
@@ -193,6 +201,38 @@ public class PamAnimationActor extends Actor {
         return visibilityMap;
     }
 
+    /**
+     * Restricts this actor's rendering to the given STAGE/WORLD rectangle.
+     * The actor position and animation are not changed.
+     */
+    public void setDrawClip(
+        float x,
+        float y,
+        float width,
+        float height
+    ) {
+        if (width <= 0f || height <= 0f) {
+            drawClipEnabled = false;
+            return;
+        }
+
+        drawClipBounds.set(
+            x,
+            y,
+            width,
+            height
+        );
+        drawClipEnabled = true;
+    }
+
+    public void clearDrawClip() {
+        drawClipEnabled = false;
+    }
+
+    public boolean isDrawClipEnabled() {
+        return drawClipEnabled;
+    }
+
     public void setGroundingCurve(
         String clip,
         Rectangle[] boundsByFrame,
@@ -298,6 +338,42 @@ public class PamAnimationActor extends Actor {
 
     @Override
     public void draw(
+        Batch batch,
+        float parentAlpha
+    ) {
+        if (!drawClipEnabled || getStage() == null) {
+            drawUnclipped(
+                batch,
+                parentAlpha
+            );
+            return;
+        }
+
+        batch.flush();
+
+        ScissorStack.calculateScissors(
+            getStage().getCamera(),
+            batch.getTransformMatrix(),
+            drawClipBounds,
+            drawClipScissor
+        );
+
+        if (!ScissorStack.pushScissors(drawClipScissor)) {
+            return;
+        }
+
+        try {
+            drawUnclipped(
+                batch,
+                parentAlpha
+            );
+            batch.flush();
+        } finally {
+            ScissorStack.popScissors();
+        }
+    }
+
+    private void drawUnclipped(
         Batch batch,
         float parentAlpha
     ) {

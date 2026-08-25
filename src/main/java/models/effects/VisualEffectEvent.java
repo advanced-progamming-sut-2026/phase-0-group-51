@@ -8,6 +8,7 @@ public record VisualEffectEvent(
     public enum Type {
         PROJECTILE_IMPACT,
         PLANT_EXPLOSION,
+        PLANT_DROWNING,
         ICY_WIND
     }
 
@@ -28,6 +29,18 @@ public record VisualEffectEvent(
     ) {
         return new VisualEffectEvent(
             Type.PLANT_EXPLOSION,
+            posX,
+            posY
+        );
+    }
+
+
+    public static VisualEffectEvent plantDrowning(
+        double posX,
+        double posY
+    ) {
+        return new VisualEffectEvent(
+            Type.PLANT_DROWNING,
             posX,
             posY
         );

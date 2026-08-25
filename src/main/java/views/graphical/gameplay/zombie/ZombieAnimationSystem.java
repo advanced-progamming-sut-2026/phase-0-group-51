@@ -78,6 +78,10 @@ public final class ZombieAnimationSystem {
     private static final float SNORKEL_SUBMERGED_Y_OFFSET_TILES = 0.30f;
     private static final float SNORKEL_SUBMERGED_ALPHA = 0.58f;
 
+    // How far ahead of the Arcade zombie (in the direction it's facing)
+    // the cabinet prop is pushed. Positive = further out in front.
+    private static final float ARCADE_CABINET_LEAD_OFFSET_TILES = 0.0f;
+
     private static final String PROSPECTOR_DYNAMITE_STATES =
         "_dynamite_damage_states";
     private static final String PROSPECTOR_DYNAMITE_BURNING_01 =
@@ -133,6 +137,9 @@ public final class ZombieAnimationSystem {
         "768/FULL/ZOMBIE/ZOMBIE_PIANO/ZOMBIE_PIANO.PAM";
     private static final String PIANO_PROP_PAM =
         "768/FULL/ZOMBIE/PIANO/PIANO.PAM";
+
+    private static final String ARCADE_CABINET_PROP_PAM =
+        "768/FULL/EFFECTS/80S_ARCADE_CABINET/80S_ARCADE_CABINET.PAM";
 
     private final ChapterTheme theme;
     private final GameState gameState;
@@ -342,6 +349,9 @@ public final class ZombieAnimationSystem {
             if (visual.piano != null) {
                 visual.piano.actor.remove();
             }
+            if (visual.cabinet != null) {
+                visual.cabinet.actor.remove();
+            }
             iterator.remove();
         }
 
@@ -356,6 +366,9 @@ public final class ZombieAnimationSystem {
             visual.actor.remove();
             if (visual.piano != null) {
                 visual.piano.actor.remove();
+            }
+            if (visual.cabinet != null) {
+                visual.cabinet.actor.remove();
             }
         }
 
@@ -398,6 +411,14 @@ public final class ZombieAnimationSystem {
             if (visual.piano != null) {
                 visual.piano.actor.toFront();
             }
+
+            // Cabinet first, ZombieArcade body second: the body/hands are
+            // drawn over the machine so it looks like the zombie is actually
+            // leaning on and pushing the cabinet, rather than standing behind it.
+            if (visual.cabinet != null) {
+                visual.cabinet.actor.toFront();
+            }
+
             visual.actor.toFront();
         }
     }
@@ -490,6 +511,14 @@ public final class ZombieAnimationSystem {
                 );
                 entityRenderLayer.addActor(piano.actor);
             }
+            ArcadeCabinetVisual cabinet = createArcadeCabinetVisual(alias);
+            if (cabinet != null) {
+                DepthSortedEntityLayer.setDepthPriority(
+                    cabinet.actor,
+                    DepthSortedEntityLayer.ZOMBIE_PRIORITY
+                );
+                entityRenderLayer.addActor(cabinet.actor);
+            }
             DepthSortedEntityLayer.setDepthPriority(
                 actor,
                 DepthSortedEntityLayer.ZOMBIE_PRIORITY
@@ -499,11 +528,23 @@ public final class ZombieAnimationSystem {
             ZombieVisual visual = new ZombieVisual(
                 actor,
                 animations,
-                piano
+                piano,
+                cabinet
             );
 
             initializeExplorerTorchVisual(
                 alias,
+                pamPath,
+                visual
+            );
+
+            initializeGargantuarImpVisual(
+                alias,
+                pamPath,
+                visual
+            );
+
+            initializeButterVisual(
                 pamPath,
                 visual
             );
@@ -586,6 +627,54 @@ public final class ZombieAnimationSystem {
                     "ZombieAnimation",
                     "Failed to create piano prop actor ("
                         + PIANO_PROP_PAM + ")",
+                    e
+                );
+            }
+            return null;
+        }
+    }
+
+    private ArcadeCabinetVisual createArcadeCabinetVisual(String alias) {
+        if (!ZombieType.ARCADE.getAlias().equals(alias)) {
+            return null;
+        }
+
+        try {
+            pamPlayer.loadSync(ARCADE_CABINET_PROP_PAM);
+
+            List<String> available = pamPlayer.clips(ARCADE_CABINET_PROP_PAM);
+            if (available == null || available.isEmpty()) {
+                throw new IllegalStateException(
+                    "Arcade cabinet PAM has no animation clips: "
+                        + ARCADE_CABINET_PROP_PAM
+                );
+            }
+
+            List<String> clips = Collections.unmodifiableList(
+                new ArrayList<>(available)
+            );
+
+            String initialClip = findClipIgnoreCase(clips, "idle");
+            if (initialClip == null) {
+                initialClip = clips.get(0);
+            }
+
+            PamAnimationActor cabinetActor = new PamAnimationActor(
+                pamPlayer,
+                ARCADE_CABINET_PROP_PAM,
+                initialClip,
+                true
+            );
+            cabinetActor.setScale(scale, scale);
+
+            return new ArcadeCabinetVisual(cabinetActor, clips);
+
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Failed to create arcade cabinet prop actor ("
+                        + ARCADE_CABINET_PROP_PAM + ")",
                     e
                 );
             }
@@ -1034,6 +1123,7 @@ public final class ZombieAnimationSystem {
         syncProspectorDynamiteVisual(zombie, visual);
         syncExplorerTorchVisual(zombie, visual);
         syncArmDamageVisual(zombie, visual);
+        syncButterVisual(zombie, visual);
 
         if (zombie.hasIceShell()) {
 
@@ -1082,6 +1172,7 @@ public final class ZombieAnimationSystem {
         }
 
         updatePianoVisual(zombie, visual);
+        updateArcadeCabinetVisual(zombie, visual);
     }
 
     private void syncProspectorDynamiteVisual(
@@ -1219,6 +1310,144 @@ public final class ZombieAnimationSystem {
         }
     }
 
+    /**
+     * Discovers every PAM part/root whose name contains "butter" and stores
+     * the actor's original visibility entry. PamPlayer hides butter parts by
+     * default, so they must be explicitly enabled while the BUTTERED status
+     * effect is active.
+     */
+    private void initializeButterVisual(
+        String pamPath,
+        ZombieVisual visual
+    ) {
+        if (visual == null || pamPath == null || pamPath.isBlank()) {
+            return;
+        }
+
+        LinkedHashSet<String> butterParts =
+            new LinkedHashSet<>();
+
+        // Include any butter entry that was already present in the actor map.
+        for (String part : visual.actor.getVisibilityMap().keySet()) {
+            if (isButterPart(part)) {
+                butterParts.add(part);
+            }
+        }
+
+        try {
+            PamPlayer.AnimationPart root =
+                pamPlayer.getParts(pamPath);
+
+            collectButterParts(
+                root,
+                butterParts
+            );
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Could not inspect butter parts in " + pamPath,
+                    e
+                );
+            }
+        }
+
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        for (String part : butterParts) {
+            visual.butterPartBaseline.put(
+                part,
+                visibility.containsKey(part)
+                    ? visibility.get(part)
+                    : null
+            );
+        }
+
+        if (Gdx.app != null && !butterParts.isEmpty()) {
+            Gdx.app.log(
+                "ZombieButterVisual",
+                "Butter parts -> " + butterParts
+            );
+        }
+    }
+
+    private static void collectButterParts(
+        PamPlayer.AnimationPart part,
+        Collection<String> out
+    ) {
+        if (part == null || out == null) {
+            return;
+        }
+
+        if (isButterPart(part.name)) {
+            out.add(part.name);
+        }
+
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectButterParts(
+                child,
+                out
+            );
+        }
+    }
+
+    private static boolean isButterPart(String partName) {
+        return partName != null
+            && partName.toLowerCase(Locale.ROOT)
+            .contains("butter");
+    }
+
+    /**
+     * While the model says the zombie is buttered, force every discovered
+     * butter root visible. When the effect expires, restore exactly what the
+     * visibility map contained before the effect was shown.
+     */
+    private void syncButterVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        if (zombie == null
+            || visual == null
+            || visual.butterPartBaseline.isEmpty()) {
+            return;
+        }
+
+        boolean buttered = zombie.isButtered();
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        if (buttered) {
+            // Force these on every frame so another visual-state update cannot
+            // accidentally hide the butter while the status is still active.
+            for (String part : visual.butterPartBaseline.keySet()) {
+                visibility.put(part, true);
+            }
+
+            visual.butterVisualActive = true;
+            return;
+        }
+
+        if (!visual.butterVisualActive) {
+            return;
+        }
+
+        for (Map.Entry<String, Boolean> entry :
+            visual.butterPartBaseline.entrySet()) {
+
+            if (entry.getValue() == null) {
+                visibility.remove(entry.getKey());
+            } else {
+                visibility.put(
+                    entry.getKey(),
+                    entry.getValue()
+                );
+            }
+        }
+
+        visual.butterVisualActive = false;
+    }
+
     private void initializeExplorerTorchVisual(
         String alias,
         String pamPath,
@@ -1303,24 +1532,43 @@ public final class ZombieAnimationSystem {
         boolean lit =
             torch == null || torch.isLit();
 
-        if (visual.explorerTorchStateInitialized
-            && visual.lastExplorerTorchLit == lit) {
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        if (!lit) {
+            // Force the flame off EVERY frame while the torch is
+            // extinguished. This makes the visual state authoritative even
+            // if a PAM clip or another visual update changes part visibility.
+            for (String part :
+                visual.explorerTorchFireBaseline.keySet()) {
+                visibility.put(part, false);
+            }
+
+            // Extra safety for any fire-frame key that appears dynamically
+            // in the visibility map after the actor was initialized.
+            for (String part :
+                new ArrayList<>(visibility.keySet())) {
+                if (isTorchFireFramePart(part)) {
+                    visibility.put(part, false);
+                }
+            }
+
+            visual.lastExplorerTorchLit = false;
+            visual.explorerTorchStateInitialized = true;
             return;
         }
 
-        Map<String, Boolean> visibility =
-            visual.actor.getVisibilityMap();
+        // When lit, restore the PAM's original visibility only on a
+        // transition back from the extinguished state.
+        if (visual.explorerTorchStateInitialized
+            && visual.lastExplorerTorchLit) {
+            return;
+        }
 
         for (Map.Entry<String, Boolean> entry :
             visual.explorerTorchFireBaseline.entrySet()) {
 
             String part = entry.getKey();
-
-            if (!lit) {
-                visibility.put(part, false);
-                continue;
-            }
-
             Boolean baseline = entry.getValue();
 
             if (baseline == null) {
@@ -1330,8 +1578,105 @@ public final class ZombieAnimationSystem {
             }
         }
 
-        visual.lastExplorerTorchLit = lit;
+        visual.lastExplorerTorchLit = true;
         visual.explorerTorchStateInitialized = true;
+    }
+
+    private void initializeGargantuarImpVisual(
+        String alias,
+        String pamPath,
+        ZombieVisual visual
+    ) {
+        if (visual == null
+            || !ZombieType.GARGANTUAR.getAlias().equals(alias)) {
+            return;
+        }
+
+        for (String part : visual.actor.getVisibilityMap().keySet()) {
+            if (isGargantuarImpPart(part)) {
+                visual.gargantuarImpParts.add(part);
+            }
+        }
+
+        try {
+            PamPlayer.AnimationPart root =
+                pamPlayer.getParts(pamPath);
+
+            collectGargantuarImpParts(
+                root,
+                visual.gargantuarImpParts
+            );
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Could not inspect Gargantuar Imp parts in "
+                        + pamPath,
+                    e
+                );
+            }
+        }
+    }
+
+    private static void collectGargantuarImpParts(
+        PamPlayer.AnimationPart part,
+        Collection<String> out
+    ) {
+        if (part == null || out == null) {
+            return;
+        }
+
+        if (isGargantuarImpPart(part.name)) {
+            out.add(part.name);
+        }
+
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectGargantuarImpParts(
+                child,
+                out
+            );
+        }
+    }
+
+    private static boolean isGargantuarImpPart(
+        String partName
+    ) {
+        if (partName == null || partName.isBlank()) {
+            return false;
+        }
+
+        String normalized =
+            "_"
+                + partName
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "_")
+                + "_";
+
+        // Match "imp" as a real part-name token. This avoids false
+        // positives such as a hypothetical name containing "simple".
+        return normalized.contains("_imp_");
+    }
+
+    private void hideGargantuarImpParts(
+        ZombieVisual visual
+    ) {
+        if (visual == null
+            || visual.gargantuarImpHidden) {
+            return;
+        }
+
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
+
+        for (String part : visual.gargantuarImpParts) {
+            visibility.put(
+                part,
+                false
+            );
+        }
+
+        visual.gargantuarImpHidden = true;
+        visual.gargantuarHideImpAfterFire = false;
     }
 
     private void syncArmDamageVisual(
@@ -1491,6 +1836,15 @@ public final class ZombieAnimationSystem {
             );
         }
 
+        if (tookDamage
+            && visual.cabinet != null
+            && visual.cabinet.actor.isVisible()) {
+            visual.cabinet.actor.flashAdditive(
+                DAMAGE_FLASH_DURATION,
+                DAMAGE_FLASH_ALPHA
+            );
+        }
+
         visual.lastDamageHealth = currentDamageHealth;
     }
 
@@ -1591,6 +1945,124 @@ public final class ZombieAnimationSystem {
 
         if (clip != null) {
             piano.actor.play(clip, true);
+        }
+    }
+
+    private void updateArcadeCabinetVisual(
+        Zombie zombie,
+        ZombieVisual visual
+    ) {
+        ArcadeCabinetVisual cabinet = visual.cabinet;
+        if (cabinet == null) {
+            return;
+        }
+
+        PushObjectBehavior push =
+            zombie.getBehavior(PushObjectBehavior.class);
+
+        boolean hasObject =
+            push != null && push.hasObject();
+
+        // While alive, the prop follows the real PushObjectBehavior.
+        // If the cabinet has been destroyed separately, do not keep drawing
+        // an active machine beside a normal walking Arcade zombie.
+        cabinet.actor.setVisible(hasObject);
+
+        if (!hasObject) {
+            cabinet.lastBodyPushing = false;
+            return;
+        }
+
+        // Drive the cabinet from the ACTUAL body clip, not from an unrelated
+        // guessed state. This keeps ZombieArcade "push" and cabinet "active"
+        // as one composite animation.
+        boolean bodyPushing =
+            "push".equalsIgnoreCase(
+                visual.actor.getClip()
+            );
+
+        String wanted =
+            bodyPushing ? "active" : "idle";
+
+        String cabinetClip =
+            cabinet.clip(wanted);
+
+        if (cabinetClip == null) {
+            cabinetClip = cabinet.clip("idle");
+        }
+
+        if (cabinetClip != null) {
+            boolean changed =
+                !cabinetClip.equalsIgnoreCase(
+                    cabinet.actor.getClip()
+                );
+
+            cabinet.actor.play(
+                cabinetClip,
+                true
+            );
+
+            // The body also enters its push clip on this update. Restarting
+            // the prop only on the state transition makes both animations
+            // begin from frame/time zero together instead of drifting.
+            if (changed
+                || bodyPushing != cabinet.lastBodyPushing) {
+                cabinet.actor.restart();
+            }
+        }
+
+        cabinet.lastBodyPushing = bodyPushing;
+
+        // Keep the prop visually synchronized with the zombie body.
+        Color bodyColor = visual.actor.getColor();
+        cabinet.actor.setColor(
+            bodyColor.r,
+            bodyColor.g,
+            bodyColor.b,
+            bodyColor.a
+        );
+
+        cabinet.actor.setOutline(
+            zombie.isGlowing(),
+            PLANT_FOOD_OUTLINE_COLOR,
+            PLANT_FOOD_OUTLINE_THICKNESS
+        );
+        cabinet.actor.setOutlinePulse(
+            PLANT_FOOD_OUTLINE_BASE_ALPHA,
+            PLANT_FOOD_OUTLINE_AMPLITUDE,
+            PLANT_FOOD_OUTLINE_PULSE_SPEED
+        );
+
+        // Same playback rate as the body, just like the pianist + piano pair.
+        cabinet.actor.setPlaybackSpeed(
+            visual.actor.getPlaybackSpeed()
+        );
+
+        if (zombie.isFrozen()
+            || zombie.isButtered()
+            || zombie.hasIceShell()) {
+            cabinet.actor.pauseAnimation();
+        } else {
+            cabinet.actor.resumeAnimation();
+        }
+    }
+
+    private void playArcadeCabinetLoop(
+        ArcadeCabinetVisual cabinet,
+        boolean active
+    ) {
+        if (cabinet == null) {
+            return;
+        }
+
+        String wanted = active ? "active" : "idle";
+        String clip = cabinet.clip(wanted);
+        if (clip == null) {
+            clip = cabinet.clip("idle");
+        }
+
+        if (clip != null) {
+            cabinet.actor.play(clip, true);
         }
     }
 
@@ -1922,6 +2394,14 @@ public final class ZombieAnimationSystem {
         PamAnimationActor actor
     ) {
         if (zombie == null || actor == null) {
+            return;
+        }
+
+        // Cold-state tint has visual priority over the red danger tint.
+        // updateColdTint() runs immediately before this method, so returning
+        // here preserves the blue Frozen/Chilled color instead of resetting
+        // it to white when danger == 0 or overwriting it with red near danger.
+        if (zombie.isFrozen() || zombie.isChilled()) {
             return;
         }
 
@@ -2388,7 +2868,10 @@ public final class ZombieAnimationSystem {
             if (!visual.lastImpFired
                 && fired
                 && ZombieType.GARGANTUAR.getAlias().equals(alias)) {
-                // The Gargantuar PAM exposes "fire" (not "throw").
+                // Keep the Imp visible throughout the Gargantuar's fire
+                // animation. Once that one-shot clip has fully completed,
+                // all Imp-related PAM parts are hidden permanently.
+                visual.gargantuarHideImpAfterFire = true;
                 enqueueSpecialClip(visual, "fire");
             }
 
@@ -2524,8 +3007,18 @@ public final class ZombieAnimationSystem {
                 return true;
             }
 
+            String completedSpecialClip =
+                visual.activeSpecialClip;
+
             visual.activeSpecialClip = null;
             visual.activeSpecialDuration = 0f;
+
+            if (visual.gargantuarHideImpAfterFire
+                && completedSpecialClip.equalsIgnoreCase("fire")) {
+                hideGargantuarImpParts(
+                    visual
+                );
+            }
         }
 
         while (!visual.specialQueue.isEmpty()) {
@@ -2708,6 +3201,20 @@ public final class ZombieAnimationSystem {
             visual.piano.actor.setPosition(x, y);
             visual.piano.actor.setScale(scaleX, scale);
         }
+
+        if (visual.cabinet != null) {
+            // Push the cabinet out in front of the zombie, in whichever
+            // direction it's currently facing (mirrors with scaleX).
+            float cabinetLeadWorld =
+                ARCADE_CABINET_LEAD_OFFSET_TILES
+                    * boardTransform.tileWidth();
+
+            float cabinetX =
+                x - Math.signum(scaleX) * cabinetLeadWorld - 100;
+
+            visual.cabinet.actor.setPosition(cabinetX, y);
+            visual.cabinet.actor.setScale(scaleX, scale);
+        }
     }
 
     private float calculateWalkPlaybackSpeed(
@@ -2816,6 +3323,45 @@ public final class ZombieAnimationSystem {
                 }
             }
         }
+
+        if (visual.cabinet != null) {
+            String cabinetDeath =
+                visual.cabinet.clip("death");
+
+            if (cabinetDeath != null) {
+                // Treat ZombieArcade + cabinet as one death sequence. Even if
+                // the living update hid the cabinet on the final model tick,
+                // make the prop visible again so its own death clip is shown.
+                visual.cabinet.actor.setVisible(true);
+                visual.cabinet.actor.setColor(
+                    1f, 1f, 1f, 1f
+                );
+                visual.cabinet.actor.resumeAnimation();
+                visual.cabinet.actor.setPlaybackSpeed(1f);
+                visual.cabinet.actor.play(
+                    cabinetDeath,
+                    false
+                );
+                visual.cabinet.actor.restart();
+
+                // beginDeath() restarts the zombie body immediately above,
+                // so body "die" and cabinet "death" both start at t = 0.
+                // Keep both actors alive until the longer death clip ends.
+                try {
+                    visual.deathDuration = Math.max(
+                        visual.deathDuration,
+                        pamPlayer.clipDurationSeconds(
+                            ARCADE_CABINET_PROP_PAM,
+                            cabinetDeath
+                        )
+                    );
+                } catch (RuntimeException ignored) {
+                    // Keep the Arcade zombie's own death duration.
+                }
+            } else {
+                visual.cabinet.actor.setVisible(false);
+            }
+        }
     }
 
     private static float clamp(
@@ -2906,6 +3452,24 @@ public final class ZombieAnimationSystem {
         }
     }
 
+    private static final class ArcadeCabinetVisual {
+        private final PamAnimationActor actor;
+        private final List<String> availableClips;
+        private boolean lastBodyPushing;
+
+        private ArcadeCabinetVisual(
+            PamAnimationActor actor,
+            List<String> availableClips
+        ) {
+            this.actor = actor;
+            this.availableClips = availableClips;
+        }
+
+        private String clip(String wanted) {
+            return findClipIgnoreCase(availableClips, wanted);
+        }
+    }
+
     private static final class ZombieVisual {
         private final PamAnimationActor actor;
         private final ZombieAnimationResolver.ResolvedAnimations animations;
@@ -2923,6 +3487,12 @@ public final class ZombieAnimationSystem {
         private boolean lastSpinning;
         private boolean lastHasKilled;
         private boolean lastImpFired;
+
+        private final Set<String> gargantuarImpParts =
+            new LinkedHashSet<>();
+        private boolean gargantuarHideImpAfterFire;
+        private boolean gargantuarImpHidden;
+
         private int lastRangedCooldown;
         private boolean lastSunStealing;
         private int lastAuraTimer;
@@ -2933,6 +3503,10 @@ public final class ZombieAnimationSystem {
         private String armorVisualSignature;
         private boolean darkKnightVisual;
 
+        private final Map<String, Boolean> butterPartBaseline =
+            new java.util.LinkedHashMap<>();
+        private boolean butterVisualActive;
+
         private final Map<String, Boolean> explorerTorchFireBaseline =
             new java.util.LinkedHashMap<>();
         private boolean explorerTorchStateInitialized;
@@ -2942,6 +3516,7 @@ public final class ZombieAnimationSystem {
         private float damageFlashCooldownRemaining;
 
         private final PianoVisual piano;
+        private final ArcadeCabinetVisual cabinet;
 
         private boolean deathStarted;
         private float deathElapsed;
@@ -2950,11 +3525,13 @@ public final class ZombieAnimationSystem {
         private ZombieVisual(
             PamAnimationActor actor,
             ZombieAnimationResolver.ResolvedAnimations animations,
-            PianoVisual piano
+            PianoVisual piano,
+            ArcadeCabinetVisual cabinet
         ) {
             this.actor = actor;
             this.animations = animations;
             this.piano = piano;
+            this.cabinet = cabinet;
         }
     }
 }

@@ -72,7 +72,10 @@ public class InstantKillBehavior implements PersistableBehavior {
     }
 
     private void applySpeedScale(Zombie zombie, float scale) {
-        zombie.setSpeedMultiplier(zombie.getBaseSpeed() * scale);
+        // scale is already a speed multiplier.
+        // Example: All-Star runningSpeedScale 2.5 means
+        // base speed * 2.5, not base speed * (base speed * 2.5).
+        zombie.setSpeedMultiplier(scale);
     }
 
 

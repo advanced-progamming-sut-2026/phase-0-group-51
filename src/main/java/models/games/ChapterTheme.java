@@ -28,6 +28,8 @@ public enum ChapterTheme {
                 List.of(
                     ZombieType.DEFAULT,
                     ZombieType.ARMOR_1,
+                    ZombieType.ARMOR_2,
+                    ZombieType.EXPLORER,
                     ZombieType.IMP,
                     ZombieType.RA
                 )
@@ -119,6 +121,7 @@ public enum ChapterTheme {
             ).withAllowedZombies(
                 ZombieType.DEFAULT,
                 ZombieType.ARMOR_1,
+                ZombieType.ARMOR_2,
                 ZombieType.IMP,
                 ZombieType.ICE_AGE_HUNTER
             ).withDefinition(
@@ -137,6 +140,7 @@ public enum ChapterTheme {
                 ZombieType.ARMOR_1,
                 ZombieType.IMP,
                 ZombieType.ICE_AGE_HUNTER,
+                ZombieType.LOST_CITY_JANE,
                 ZombieType.ARMOR_2,
                 ZombieType.ICE_AGE_DODO,
                 ZombieType.NEWSPAPER,
@@ -210,6 +214,7 @@ public enum ChapterTheme {
             ).withAllowedZombies(
                 ZombieType.DEFAULT,
                 ZombieType.ARMOR_1,
+                ZombieType.ARMOR_2,
                 ZombieType.IMP,
                 ZombieType.BEACH_SNORKEL
             ).withDefinition(
@@ -230,6 +235,7 @@ public enum ChapterTheme {
                 ZombieType.ARMOR_2,
                 ZombieType.BEACH_FISHERMAN,
                 ZombieType.NEWSPAPER,
+                ZombieType.LOST_CITY_JANE,
                 ZombieType.PROSPECTOR
             ).withDefinition(
                 "Keep your plants alive while defending Big Wave Beach.",
@@ -307,7 +313,9 @@ public enum ChapterTheme {
             ).withAllowedZombies(
                 ZombieType.DEFAULT,
                 ZombieType.ARMOR_1,
+                ZombieType.ARMOR_2,
                 ZombieType.IMP,
+                ZombieType.DARK_IMP_DRAGON,
                 ZombieType.DARK_JUGGLER
             ).withDefinition(
                 "Survive the darkness and graves of the Dark Ages.",
