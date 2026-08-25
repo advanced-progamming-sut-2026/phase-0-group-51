@@ -39,6 +39,11 @@ public class DynamiteBehavior implements PersistableBehavior {
         }
     }
 
+    @Override
+    public void onFrozen(Zombie zombie) {
+        extinguish();
+    }
+
     public void extinguish() {
         if (!exploded) {
             extinguished = true;
