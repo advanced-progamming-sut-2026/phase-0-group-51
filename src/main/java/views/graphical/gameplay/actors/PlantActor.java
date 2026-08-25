@@ -26,29 +26,37 @@ public class PlantActor extends Group {
     public static final float BOARD_SCALE = 0.65f;
 
     private static final String PLANT_FOOD_EFFECT_PAM =
-            "768/INITIAL/EFFECTS/PLANTFOOD_FX/PLANTFOOD_FX.PAM";
+        "768/INITIAL/EFFECTS/PLANTFOOD_FX/PLANTFOOD_FX.PAM";
 
     private static final String FROST_LEVEL_ONE_ASSET =
-            "IMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X62";
+        "IMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X62";
     private static final String FROST_LEVEL_TWO_ASSET =
-            "IMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X79";
+        "IMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X79";
     // Kept as a runtime fallback because the supplied address had two leading I characters.
     private static final String FROST_LEVEL_TWO_ASSET_ALTERNATE =
-            "IIMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X79";
+        "IIMAGE_EFFECTS_FROSTBITE_CHILL_PLANT_FROSTBITE_CHILL_PLANT_153X79";
 
     private static final String ICE_BLOCK_PAM =
-            "768/FULL/EFFECTS/FROSTBITE_ICE_BLOCK_PLANT/"
-                    + "FROSTBITE_ICE_BLOCK_PLANT.PAM";
+        "768/FULL/EFFECTS/FROSTBITE_ICE_BLOCK_PLANT/"
+            + "FROSTBITE_ICE_BLOCK_PLANT.PAM";
     private static final String FREEZE_START_CLIP = "freeze_start";
     private static final String FREEZE_IDLE_CLIP = "freeze_idle";
 
+    private static final String SHEEP_PAM =
+        "768/FULL/EFFECTS/DARK_WIZARD_SHEEPENING/DARK_WIZARD_SHEEPENING.PAM";
+    private static final String SHEEP_INTRO_CLIP = "animation";
+    private static final String SHEEP_IDLE_CLIP = "idle";
+    private static final String SHEEP_OUTRO_CLIP = "animation2";
+    private static final float SHEEP_INTRO_SECONDS = 1.7f;
+    private static final float SHEEP_OUTRO_SECONDS = 1.1f;
+
     private static final String[] ICE_DAMAGE_PARTS = {
-            "ice_block_damage0",
-            "ice_block_damage1",
-            "ice_block_damage2",
-            "ice_block_damage3",
-            "ice_block_damage4",
-            "ice_block_damage5"
+        "ice_block_damage0",
+        "ice_block_damage1",
+        "ice_block_damage2",
+        "ice_block_damage3",
+        "ice_block_damage4",
+        "ice_block_damage5"
     };
 
     private static final float CHILL_OFFSET_X = 0f;
@@ -81,10 +89,6 @@ public class PlantActor extends Group {
 
     private boolean plantFoodAnimationActive;
     private PlantAnimationData plantFoodAnimationData;
-    // Whether the one-shot "plantFood" clip is still within its own
-    // duration (distinct from plantFoodAnimationActive, which spans the
-    // whole Plant Food buff - the clip plays once and then the plant goes
-    // back to its normal idle/base animation for the rest of the buff).
     private boolean plantFoodAnimationPlaying;
     private float plantFoodAnimationTimeRemaining;
 
@@ -94,6 +98,10 @@ public class PlantActor extends Group {
     private PamAnimationActor animation;
     private PamAnimationActor plantFoodEffect;
     private PamAnimationActor octopusEffect;
+    private PamAnimationActor sheepEffect;
+    private boolean transformedShown;
+    private int sheepPhase;
+    private float sheepPhaseRemaining;
 
     private boolean octopusShown;
 
@@ -129,22 +137,22 @@ public class PlantActor extends Group {
         this.plantData = plantData;
 
         if (plantData.idlePamPath() == null
-                || plantData.idlePamPath().isBlank()
-                || plantData.idleClip() == null
-                || plantData.idleClip().isBlank()) {
+            || plantData.idlePamPath().isBlank()
+            || plantData.idleClip() == null
+            || plantData.idleClip().isBlank()) {
             return;
         }
 
         game.getPamPlayer().loadSync(
-                plantData.idlePamPath()
+            plantData.idlePamPath()
         );
 
         animation = game.createPamActor(
-                plantData.idlePamPath(),
-                plantData.idleClip(),
-                0f,
-                0f,
-                true
+            plantData.idlePamPath(),
+            plantData.idleClip(),
+            0f,
+            0f,
+            true
         );
 
         animation.setTouchable(Touchable.disabled);
@@ -173,18 +181,18 @@ public class PlantActor extends Group {
 
         if (previewMode) {
             animation.setColor(
-                    1f,
-                    1f,
-                    1f,
-                    PREVIEW_ALPHA
+                1f,
+                1f,
+                1f,
+                PREVIEW_ALPHA
             );
             setScale(BOARD_SCALE);
         } else {
             animation.setColor(
-                    1f,
-                    1f,
-                    1f,
-                    1f
+                1f,
+                1f,
+                1f,
+                1f
             );
             setScale(BOARD_SCALE);
         }
@@ -193,7 +201,7 @@ public class PlantActor extends Group {
     public void setPlantScale(float scale) {
         if (scale <= 0f) {
             throw new IllegalArgumentException(
-                    "Plant scale must be positive."
+                "Plant scale must be positive."
             );
         }
 
@@ -202,18 +210,18 @@ public class PlantActor extends Group {
 
     public void flashDamage() {
         if (animation == null
-                || previewMode
-                || damageFlashCooldownRemaining > 0f) {
+            || previewMode
+            || damageFlashCooldownRemaining > 0f) {
             return;
         }
 
         animation.flashAdditive(
-                DAMAGE_FLASH_DURATION,
-                DAMAGE_FLASH_ALPHA
+            DAMAGE_FLASH_DURATION,
+            DAMAGE_FLASH_ALPHA
         );
 
         damageFlashCooldownRemaining =
-                DAMAGE_FLASH_COOLDOWN;
+            DAMAGE_FLASH_COOLDOWN;
     }
 
     public void syncOctopusVisual(boolean hasOctopus) {
@@ -234,11 +242,11 @@ public class PlantActor extends Group {
 
         try {
             octopusEffect = game.createPamActor(
-                    "768/FULL/EFFECTS/ZOMBIE_OCTOPUS_PROJECTILE/ZOMBIE_OCTOPUS_PROJECTILE.PAM",
-                    "animation4",
-                    0f,
-                    0f,
-                    true
+                "768/FULL/EFFECTS/ZOMBIE_OCTOPUS_PROJECTILE/ZOMBIE_OCTOPUS_PROJECTILE.PAM",
+                "animation4",
+                0f,
+                0f,
+                true
             );
 
             octopusEffect.setTouchable(Touchable.disabled);
@@ -252,28 +260,28 @@ public class PlantActor extends Group {
 
     public void flashOctopusDamage() {
         if (octopusEffect == null
-                || previewMode) {
+            || previewMode) {
             return;
         }
 
         octopusEffect.flashAdditive(
-                DAMAGE_FLASH_DURATION,
-                DAMAGE_FLASH_ALPHA
+            DAMAGE_FLASH_DURATION,
+            DAMAGE_FLASH_ALPHA
         );
     }
 
     public void playSquashJump(
-            float targetX,
-            float targetY,
-            Runnable onLanding,
-            Runnable onFinished
+        float targetX,
+        float targetY,
+        Runnable onLanding,
+        Runnable onFinished
     ) {
         Runnable landing = onLanding == null
-                ? () -> { }
-                : onLanding;
+            ? () -> { }
+            : onLanding;
         Runnable completion = onFinished == null
-                ? () -> { }
-                : onFinished;
+            ? () -> { }
+            : onFinished;
 
         clearActions();
 
@@ -285,19 +293,19 @@ public class PlantActor extends Group {
         }
 
         float attackDuration = animationDuration(
-                "attack",
-                SQUASH_ATTACK_FALLBACK_DURATION
+            "attack",
+            SQUASH_ATTACK_FALLBACK_DURATION
         );
         float jumpDownDuration = animationDuration(
-                "jumpDown",
-                SQUASH_JUMP_DOWN_FALLBACK_DURATION
+            "jumpDown",
+            SQUASH_JUMP_DOWN_FALLBACK_DURATION
         );
 
         float stationaryDuration =
-                attackDuration * SQUASH_STATIONARY_FRACTION;
+            attackDuration * SQUASH_STATIONARY_FRACTION;
         float travelDuration = Math.max(
-                0.05f,
-                attackDuration - stationaryDuration
+            0.05f,
+            attackDuration - stationaryDuration
         );
         float firstHalfDuration = travelDuration * 0.5f;
         float secondHalfDuration = travelDuration - firstHalfDuration;
@@ -306,36 +314,36 @@ public class PlantActor extends Group {
         float middleY = Math.max(getY(), targetY) + SQUASH_ARC_HEIGHT;
 
         addAction(
-                Actions.sequence(
-                        Actions.delay(stationaryDuration),
-                        Actions.moveTo(
-                                middleX,
-                                middleY,
-                                firstHalfDuration,
-                                        Interpolation.sineOut
-                                ),
+            Actions.sequence(
+                Actions.delay(stationaryDuration),
+                Actions.moveTo(
+                    middleX,
+                    middleY,
+                    firstHalfDuration,
+                    Interpolation.sineOut
+                ),
 
-                        Actions.moveTo(
-                                targetX,
-                                targetY,
-                                secondHalfDuration,
-                                Interpolation.sineIn
-                        ),
-                        Actions.run(() -> {
-                            setPosition(targetX, targetY);
-                            playOneShotAnimation("jumpDown");
-                            landing.run();
-                        }),
-                        Actions.delay(jumpDownDuration),
-                        Actions.run(completion)
-                )
+                Actions.moveTo(
+                    targetX,
+                    targetY,
+                    secondHalfDuration,
+                    Interpolation.sineIn
+                ),
+                Actions.run(() -> {
+                    setPosition(targetX, targetY);
+                    playOneShotAnimation("jumpDown");
+                    landing.run();
+                }),
+                Actions.delay(jumpDownDuration),
+                Actions.run(completion)
+            )
         );
     }
 
     private boolean playOneShotAnimation(String key) {
         if (plantData == null
-                || animation == null
-                || !plantData.hasAnimation(key)) {
+            || animation == null
+            || !plantData.hasAnimation(key)) {
             return false;
         }
 
@@ -351,8 +359,8 @@ public class PlantActor extends Group {
     }
 
     private float animationDuration(
-            String key,
-            float fallback
+        String key,
+        float fallback
     ) {
         if (plantData == null || !plantData.hasAnimation(key)) {
             return fallback;
@@ -363,9 +371,9 @@ public class PlantActor extends Group {
     }
     public void playPlantFoodAnimation() {
         if (plantData == null
-                || animation == null
-                || !plantData.hasAnimation(
-                PLANT_FOOD_ANIMATION_KEY
+            || animation == null
+            || !plantData.hasAnimation(
+            PLANT_FOOD_ANIMATION_KEY
         )) {
             return;
         }
@@ -376,9 +384,9 @@ public class PlantActor extends Group {
         }
 
         PlantAnimationData data =
-                plantData.animation(
-                        PLANT_FOOD_ANIMATION_KEY
-                );
+            plantData.animation(
+                PLANT_FOOD_ANIMATION_KEY
+            );
 
         plantFoodAnimationData = data;
         plantFoodAnimationPlaying = true;
@@ -387,10 +395,10 @@ public class PlantActor extends Group {
             plantFoodAnimationTimeRemaining = 0f;
         } else {
             plantFoodAnimationTimeRemaining =
-                    Math.max(
-                            0f,
-                            data.duration()
-                    );
+                Math.max(
+                    0f,
+                    data.duration()
+                );
         }
 
         /*
@@ -401,8 +409,8 @@ public class PlantActor extends Group {
         animationTimeRemaining = 0f;
 
         animation.play(
-                data.clip(),
-                data.loop()
+            data.clip(),
+            data.loop()
         );
 
         animation.restart();
@@ -420,38 +428,38 @@ public class PlantActor extends Group {
 
         try {
             EffectPamFactory.OneShot effect =
-                    EffectPamFactory.create(
-                            game,
-                            PLANT_FOOD_EFFECT_PAM,
-                            PLANT_FOOD_EFFECT_SCALE,
-                            1.0f,
-                            "plantfood",
-                            "plant_food",
-                            "effect",
-                            "animation",
-                            "anim"
-                    );
+                EffectPamFactory.create(
+                    game,
+                    PLANT_FOOD_EFFECT_PAM,
+                    PLANT_FOOD_EFFECT_SCALE,
+                    1.0f,
+                    "plantfood",
+                    "plant_food",
+                    "effect",
+                    "animation",
+                    "anim"
+                );
 
             plantFoodEffect = effect.actor();
             plantFoodEffect.setPosition(
-                    PLANT_FOOD_EFFECT_OFFSET_X,
-                    PLANT_FOOD_EFFECT_OFFSET_Y
+                PLANT_FOOD_EFFECT_OFFSET_X,
+                PLANT_FOOD_EFFECT_OFFSET_Y
             );
             addActorAt(0, plantFoodEffect);
 
             plantFoodEffect.addAction(
-                    Actions.sequence(
-                            Actions.delay(effect.duration()),
-                            Actions.run(() -> plantFoodEffect = null),
-                            Actions.removeActor()
-                    )
+                Actions.sequence(
+                    Actions.delay(effect.duration()),
+                    Actions.run(() -> plantFoodEffect = null),
+                    Actions.removeActor()
+                )
             );
         } catch (RuntimeException e) {
             if (Gdx.app != null) {
                 Gdx.app.error(
-                        "PlantActor",
-                        "Could not play Plant Food effect.",
-                        e
+                    "PlantActor",
+                    "Could not play Plant Food effect.",
+                    e
                 );
             }
         }
@@ -464,8 +472,8 @@ public class PlantActor extends Group {
         }
 
         int clampedLevel = Math.max(
-                0,
-                Math.min(Plant.MAX_FROST_LEVEL, frostLevel)
+            0,
+            Math.min(Plant.MAX_FROST_LEVEL, frostLevel)
         );
 
         syncedIceHealth = Math.max(0, iceHealth);
@@ -504,7 +512,7 @@ public class PlantActor extends Group {
         TextureRegion region = chillRegion(frostLevel);
 
         frostChillEffect = new Image(
-                new TextureRegionDrawable(region)
+            new TextureRegionDrawable(region)
         );
         frostChillEffect.setTouchable(Touchable.disabled);
 
@@ -513,8 +521,8 @@ public class PlantActor extends Group {
 
         frostChillEffect.setSize(width, height);
         frostChillEffect.setPosition(
-                -width / 2f + CHILL_OFFSET_X,
-                -height / 2f + CHILL_OFFSET_Y
+            -width / 2f + CHILL_OFFSET_X,
+            -height / 2f + CHILL_OFFSET_Y
         );
 
         /*
@@ -533,8 +541,8 @@ public class PlantActor extends Group {
                 return region;
             }
             throw new IllegalStateException(
-                    "Missing frost level 1 asset: "
-                            + FROST_LEVEL_ONE_ASSET
+                "Missing frost level 1 asset: "
+                    + FROST_LEVEL_ONE_ASSET
             );
         }
 
@@ -547,10 +555,10 @@ public class PlantActor extends Group {
         }
 
         throw new IllegalStateException(
-                "Missing frost level 2 asset. Tried: "
-                        + FROST_LEVEL_TWO_ASSET
-                        + " and "
-                        + FROST_LEVEL_TWO_ASSET_ALTERNATE
+            "Missing frost level 2 asset. Tried: "
+                + FROST_LEVEL_TWO_ASSET
+                + " and "
+                + FROST_LEVEL_TWO_ASSET_ALTERNATE
         );
     }
 
@@ -576,7 +584,7 @@ public class PlantActor extends Group {
 
         if (!freezeStartPlaying) {
             applyIceDamageStage(
-                    resolveIceDamageStage(syncedIceHealth)
+                resolveIceDamageStage(syncedIceHealth)
             );
         }
     }
@@ -587,11 +595,11 @@ public class PlantActor extends Group {
         game.getPamPlayer().loadSync(ICE_BLOCK_PAM);
 
         iceBlockEffect = game.createPamActor(
-                ICE_BLOCK_PAM,
-                FREEZE_START_CLIP,
-                ICE_BLOCK_OFFSET_X,
-                ICE_BLOCK_OFFSET_Y,
-                false
+            ICE_BLOCK_PAM,
+            FREEZE_START_CLIP,
+            ICE_BLOCK_OFFSET_X,
+            ICE_BLOCK_OFFSET_Y,
+            false
         );
         iceBlockEffect.setTouchable(Touchable.disabled);
 
@@ -611,11 +619,11 @@ public class PlantActor extends Group {
     private float freezeStartDuration() {
         try {
             return Math.max(
-                    0.05f,
-                    game.getPamPlayer().clipDurationSeconds(
-                            ICE_BLOCK_PAM,
-                            FREEZE_START_CLIP
-                    )
+                0.05f,
+                game.getPamPlayer().clipDurationSeconds(
+                    ICE_BLOCK_PAM,
+                    FREEZE_START_CLIP
+                )
             );
         } catch (RuntimeException ignored) {
             return FREEZE_START_FALLBACK_DURATION;
@@ -639,22 +647,22 @@ public class PlantActor extends Group {
         iceBlockEffect.restart();
 
         applyIceDamageStage(
-                resolveIceDamageStage(syncedIceHealth)
+            resolveIceDamageStage(syncedIceHealth)
         );
     }
 
     private int resolveIceDamageStage(int iceHealth) {
         int clampedHealth = Math.max(
-                1,
-                Math.min(Plant.ICE_MAX_HEALTH, iceHealth)
+            1,
+            Math.min(Plant.ICE_MAX_HEALTH, iceHealth)
         );
 
         int damageTaken =
-                Plant.ICE_MAX_HEALTH - clampedHealth;
+            Plant.ICE_MAX_HEALTH - clampedHealth;
 
         return Math.min(
-                ICE_DAMAGE_PARTS.length - 1,
-                damageTaken / 100
+            ICE_DAMAGE_PARTS.length - 1,
+            damageTaken / 100
         );
     }
 
@@ -664,8 +672,8 @@ public class PlantActor extends Group {
         }
 
         int clampedStage = Math.max(
-                0,
-                Math.min(ICE_DAMAGE_PARTS.length - 1, stage)
+            0,
+            Math.min(ICE_DAMAGE_PARTS.length - 1, stage)
         );
 
         if (shownIceDamageStage == clampedStage) {
@@ -675,15 +683,15 @@ public class PlantActor extends Group {
         shownIceDamageStage = clampedStage;
 
         iceBlockEffect.setVisibleParts(
-                List.of(ICE_DAMAGE_PARTS[clampedStage])
+            List.of(ICE_DAMAGE_PARTS[clampedStage])
         );
     }
 
     private void clearFrostVisual() {
         boolean hadFrostVisual =
-                shownFrostLevel != 0
-                        || frostChillEffect != null
-                        || iceBlockEffect != null;
+            shownFrostLevel != 0
+                || frostChillEffect != null
+                || iceBlockEffect != null;
 
         removeChillEffect();
         removeIceBlockEffect();
@@ -724,9 +732,6 @@ public class PlantActor extends Group {
         baseAnimationKey = key;
         if (!temporaryAnimation && !terminalAnimation) {
             if (plantFoodAnimationPlaying) {
-                // The plant-food clip is still playing out its one-shot
-                // duration; keep it running and just remember this base key
-                // for once the clip finishes.
                 return;
             }
             if (key != null && plantData.hasAnimation(key)) {
@@ -752,11 +757,9 @@ public class PlantActor extends Group {
             return;
         }
 
-        // A one-shot animation is allowed to finish on its own.
-        // Only a looping Plant Food clip depends on isOnPlantFood().
         if (plantFoodAnimationPlaying
-                && plantFoodAnimationData != null
-                && plantFoodAnimationData.loop()) {
+            && plantFoodAnimationData != null
+            && plantFoodAnimationData.loop()) {
 
             plantFoodAnimationPlaying = false;
             plantFoodAnimationData = null;
@@ -769,10 +772,10 @@ public class PlantActor extends Group {
     }
 
     private void updatePlantFoodAnimation(
-            float delta
+        float delta
     ) {
         if (!plantFoodAnimationPlaying
-                || plantFoodAnimationData == null) {
+            || plantFoodAnimationData == null) {
             return;
         }
 
@@ -781,7 +784,7 @@ public class PlantActor extends Group {
         }
 
         plantFoodAnimationTimeRemaining -=
-                Math.max(0f, delta);
+            Math.max(0f, delta);
 
         if (plantFoodAnimationTimeRemaining > 0f) {
             return;
@@ -792,18 +795,18 @@ public class PlantActor extends Group {
         plantFoodAnimationTimeRemaining = 0f;
 
         if (!temporaryAnimation
-                && !terminalAnimation) {
+            && !terminalAnimation) {
             restoreIdleAnimation();
         }
     }
 
     private void restoreIdleAnimation() {
         if (plantFoodAnimationPlaying
-                && plantFoodAnimationData != null) {
+            && plantFoodAnimationData != null) {
 
             animation.play(
-                    plantFoodAnimationData.clip(),
-                    plantFoodAnimationData.loop()
+                plantFoodAnimationData.clip(),
+                plantFoodAnimationData.loop()
             );
 
             animation.restart();
@@ -811,7 +814,7 @@ public class PlantActor extends Group {
         }
 
         if (baseAnimationKey != null
-                && plantData.hasAnimation(baseAnimationKey)) {
+            && plantData.hasAnimation(baseAnimationKey)) {
             playAnimation(baseAnimationKey);
         } else {
             playFallbackIdle();
@@ -823,8 +826,8 @@ public class PlantActor extends Group {
         }
 
         animation.play(
-                plantData.idleClip(),
-                true
+            plantData.idleClip(),
+            true
         );
     }
 
@@ -869,12 +872,76 @@ public class PlantActor extends Group {
         animation.play(data.clip(), data.loop());
     }
 
+    public void syncTransformed(boolean transformed) {
+        if (transformed == transformedShown) {
+            return;
+        }
+        transformedShown = transformed;
+        if (transformed) {
+            showSheepClip(SHEEP_INTRO_CLIP, false);
+            sheepPhase = 1;
+            sheepPhaseRemaining = SHEEP_INTRO_SECONDS;
+            if (animation != null) {
+                animation.setVisible(false);
+            }
+        } else if (sheepPhase != 0) {
+            showSheepClip(SHEEP_OUTRO_CLIP, false);
+            sheepPhase = 3;
+            sheepPhaseRemaining = SHEEP_OUTRO_SECONDS;
+        }
+    }
+
+    private void showSheepClip(String clip, boolean loop) {
+        if (sheepEffect != null) {
+            sheepEffect.remove();
+            sheepEffect = null;
+        }
+        game.getPamPlayer().loadSync(SHEEP_PAM);
+        sheepEffect = game.createPamActor(
+            SHEEP_PAM,
+            clip,
+            0f,
+            0f,
+            loop
+        );
+        sheepEffect.setTouchable(Touchable.disabled);
+        addActor(sheepEffect);
+        sheepEffect.toFront();
+    }
+
+    private void updateSheepTransform(float delta) {
+        if (sheepPhase != 1 && sheepPhase != 3) {
+            return;
+        }
+        sheepPhaseRemaining -= Math.max(0f, delta);
+        if (sheepPhaseRemaining > 0f) {
+            return;
+        }
+        if (sheepPhase == 1) {
+            showSheepClip(SHEEP_IDLE_CLIP, true);
+            sheepPhase = 2;
+        } else {
+            if (sheepEffect != null) {
+                sheepEffect.remove();
+                sheepEffect = null;
+            }
+            if (animation != null) {
+                animation.setVisible(true);
+            }
+            sheepPhase = 0;
+        }
+    }
+
     public void clearPlant() {
         clearChildren();
 
         animation = null;
         plantFoodEffect = null;
         octopusEffect = null;
+        sheepEffect = null;
+        transformedShown = false;
+        sheepPhase = 0;
+        sheepPhaseRemaining = 0f;
         octopusShown = false;
         frostChillEffect = null;
         iceBlockEffect = null;
@@ -905,8 +972,8 @@ public class PlantActor extends Group {
 
         if (damageFlashCooldownRemaining > 0f) {
             damageFlashCooldownRemaining = Math.max(
-                    0f,
-                    damageFlashCooldownRemaining - Math.max(0f, delta)
+                0f,
+                damageFlashCooldownRemaining - Math.max(0f, delta)
             );
         }
 
@@ -914,33 +981,34 @@ public class PlantActor extends Group {
             updateFreezeTransition(delta);
             updateAnimationState(delta);
             updatePlantFoodAnimation(delta);
+            updateSheepTransform(delta);
         }
 
         if (!previewMode
-                || !isVisible()
-                || getStage() == null) {
+            || !isVisible()
+            || getStage() == null) {
             return;
         }
 
         cursorPosition.set(
-                Gdx.input.getX(),
-                Gdx.input.getY()
+            Gdx.input.getX(),
+            Gdx.input.getY()
         );
 
         getStage().screenToStageCoordinates(
-                cursorPosition
+            cursorPosition
         );
 
         setPosition(
-                cursorPosition.x,
-                cursorPosition.y
+            cursorPosition.x,
+            cursorPosition.y
         );
     }
     private void updateAnimationState(
-            float delta
+        float delta
     ) {
         if (!temporaryAnimation
-                && !terminalAnimation) {
+            && !terminalAnimation) {
             return;
         }
 

@@ -2,6 +2,7 @@ package views.graphical.gameplay.loot;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import graphics.PvzGame;
@@ -204,6 +205,7 @@ public class LootAnimationSystem {
                     );
 
                 pot.setScale(POT_SCALE);
+                pot.setTouchable(Touchable.disabled);
 
                 return pot;
             }

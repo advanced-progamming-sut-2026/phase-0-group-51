@@ -2,6 +2,7 @@ package models.Zombie.Behavior;
 
 import lombok.Getter;
 import models.Board.Board;
+import models.Plant.Explosive;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -49,6 +50,9 @@ public class InstantKillBehavior implements PersistableBehavior {
         Board board = gs.getBoard();
         Plant target = board.findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), 0);
         if (target != null) {
+            if (resistsInstantKill(target)) {
+                return;
+            }
             target.takeDamage(target.getCurrentHP(),gs);
             afterKill(zombie);
             return;
@@ -62,6 +66,10 @@ public class InstantKillBehavior implements PersistableBehavior {
                 afterKill(zombie);
             }
         }
+    }
+
+    private boolean resistsInstantKill(Plant plant) {
+        return plant.getPlantType() instanceof Explosive && !plant.isDisabled();
     }
 
     private void afterKill(Zombie zombie) {
