@@ -12,15 +12,15 @@ import java.util.Map;
 public class RangedAttackBehavior implements PersistableBehavior {
     private static final int DEFAULT_JUGGLE_DAMAGE = 20;
 
-    private static final int SNOWBALL_SPACING_TICKS = 10;
+    private static final int SNOWBALL_REST_SECONDS = 3;
 
     private final RangedAttackType type;
     private final int intervalTicks;
     private final int range;
     private final int extraParam;
     private int cooldown;
-    private int snowballsRemaining;
-    private int snowballDelayTicks;
+    private int snowThrowCount;
+    private boolean octopusHasTarget;
 
     public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
         this(type, intervalTicks, range, 0);
@@ -36,8 +36,12 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
     @Override
     public void onTick(Zombie zombie, GameState state) {
-        if (type == RangedAttackType.SNOWBALL && snowballsRemaining > 0) {
-            tickSnowballBarrage(zombie, state);
+        if (type == RangedAttackType.SNOWBALL) {
+            tickSnowball(zombie, state);
+            return;
+        }
+        if (type == RangedAttackType.OCTOPUS_NET) {
+            tickOctopus(zombie, state);
             return;
         }
         if (--cooldown > 0) {
@@ -48,18 +52,6 @@ public class RangedAttackBehavior implements PersistableBehavior {
         int lane = zombie.getLane();
         int col = zombie.getColumn();
         switch (type) {
-            case SNOWBALL -> {
-                throwSnowball(zombie, board, state);
-                snowballsRemaining = Math.max(0, extraParam - 1);
-                snowballDelayTicks = SNOWBALL_SPACING_TICKS;
-            }
-            case OCTOPUS_NET -> {
-                // Octopus
-                Plant target = board.findNearestPlantInRange(lane, col, range);
-                if (target != null) {
-                    target.attachOctopus();
-                }
-            }
             case JUGGLE_BALL -> {
                 Plant target = board.findNearestPlantInRange(lane, col, range);
                 if (target != null) {
@@ -81,16 +73,77 @@ public class RangedAttackBehavior implements PersistableBehavior {
         }
     }
 
-    private void tickSnowballBarrage(Zombie zombie, GameState state) {
-        if (--snowballDelayTicks > 0) {
+    private void tickSnowball(Zombie zombie, GameState state) {
+        if (cooldown > 0) {
+            cooldown--;
             return;
         }
-        throwSnowball(zombie, state.getBoard(), state);
-        snowballsRemaining--;
-        snowballDelayTicks = SNOWBALL_SPACING_TICKS;
-        if (snowballsRemaining <= 0) {
+        Board board = state.getBoard();
+        if (!hasSnowballTarget(zombie, board, state)) {
+            return;
+        }
+        throwSnowball(zombie, board, state);
+        snowThrowCount++;
+        int throwsPerSet = extraParam > 0 ? extraParam : 3;
+        if (snowThrowCount >= throwsPerSet) {
+            snowThrowCount = 0;
+            cooldown = SNOWBALL_REST_SECONDS * state.getTicksPerSecond();
+        } else {
             cooldown = intervalTicks;
         }
+    }
+
+    private boolean hasSnowballTarget(Zombie zombie, Board board, GameState state) {
+        if (board.findNearestPlantInRange(
+            zombie.getLane(), zombie.getColumn(), range) != null) {
+            return true;
+        }
+        for (Zombie other : state.getZombiesInTheGame()) {
+            if (other == zombie || other.isDead() || !other.hasIceShell()) {
+                continue;
+            }
+            if (other.getLane() != zombie.getLane()) {
+                continue;
+            }
+            if (Math.abs(zombie.getX() - other.getX()) <= range) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void tickOctopus(Zombie zombie, GameState state) {
+        Plant target = findThrowablePlant(state.getBoard(), zombie);
+        octopusHasTarget = target != null;
+        if (target == null) {
+            return;
+        }
+        if (--cooldown > 0) {
+            return;
+        }
+        cooldown = intervalTicks;
+        target.attachOctopus();
+    }
+
+    private Plant findThrowablePlant(Board board, Zombie zombie) {
+        int lane = zombie.getLane();
+        int col = zombie.getColumn();
+        Plant best = null;
+        int bestDist = Integer.MAX_VALUE;
+        for (Plant plant : board.getPlantsInLane(lane)) {
+            if (plant.hasOctopus()) {
+                continue;
+            }
+            int dist = col - plant.getPosX();
+            if (dist < 0 || dist > range) {
+                continue;
+            }
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = plant;
+            }
+        }
+        return best;
     }
 
     private void throwSnowball(Zombie zombie, Board board, GameState state) {
@@ -116,7 +169,8 @@ public class RangedAttackBehavior implements PersistableBehavior {
 
     @Override
     public boolean suppressesMovement(Zombie zombie) {
-        return type == RangedAttackType.HOOK_PULL;
+        return type == RangedAttackType.HOOK_PULL
+            || (type == RangedAttackType.OCTOPUS_NET && octopusHasTarget);
     }
 
     public enum RangedAttackType {

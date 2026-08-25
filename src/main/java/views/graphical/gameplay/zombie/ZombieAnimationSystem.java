@@ -2603,6 +2603,17 @@ public final class ZombieAnimationSystem {
             }
         }
 
+        if (ZombieType.BEACH_OCTOPUS.getAlias().equals(alias)) {
+            RangedAttackBehavior octopus =
+                zombie.getBehavior(RangedAttackBehavior.class);
+            if (octopus != null && octopus.suppressesMovement(zombie)) {
+                return new BaseAnimation(
+                    pickOctopusIdle(visual),
+                    true
+                );
+            }
+        }
+
         if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
             DamageReactionBehavior reaction =
                 zombie.getBehavior(DamageReactionBehavior.class);
@@ -2898,8 +2909,10 @@ public final class ZombieAnimationSystem {
                 switch (ranged.getType()) {
                     case SNOWBALL ->
                         enqueueSpecialClip(visual, "throw");
-                    case OCTOPUS_NET ->
+                    case OCTOPUS_NET -> {
                         enqueueSpecialClip(visual, "toss");
+                        visual.octopusIdleIndex++;
+                    }
                     case HOOK_PULL ->
                         enqueueSpecialSequence(
                             visual,
@@ -3100,6 +3113,22 @@ public final class ZombieAnimationSystem {
         }
 
         visual.specialQueue.addLast(resolved);
+    }
+
+    private String pickOctopusIdle(ZombieVisual visual) {
+        String[] variants = {"idle", "idle2", "idle3", "idle4", "idle5"};
+        java.util.List<String> available = new java.util.ArrayList<>();
+        for (String v : variants) {
+            String clip = findAvailableClip(visual, v);
+            if (clip != null) {
+                available.add(clip);
+            }
+        }
+        if (available.isEmpty()) {
+            return visual.animations.clip(EntityAnimationState.IDLE);
+        }
+        int index = Math.floorMod(visual.octopusIdleIndex, available.size());
+        return available.get(index);
     }
 
     private String clipOrFallback(
@@ -3568,6 +3597,7 @@ public final class ZombieAnimationSystem {
         private boolean gargantuarImpHidden;
 
         private int lastRangedCooldown;
+        private int octopusIdleIndex;
         private boolean lastSunStealing;
         private int lastAuraTimer;
         private int lastTransformCooldown;
