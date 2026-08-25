@@ -38,13 +38,27 @@ public class TorchBehavior implements PersistableBehavior {
     }
 
     @Override
-    public int onHit(Zombie zombie, int rawDamage, ElementType element, Plant plant) {
+    public int onHit(
+        Zombie zombie,
+        int rawDamage,
+        ElementType element,
+        Plant plant
+    ) {
         if (element == ElementType.ICE) {
-            lit = false;
+            extinguish();
         } else if (element == ElementType.FIRE) {
-            lit = true;
+            ignite();
         }
+
         return rawDamage;
+    }
+
+    public void extinguish() {
+        lit = false;
+    }
+
+    public void ignite() {
+        lit = true;
     }
 
     public boolean isLit() {
