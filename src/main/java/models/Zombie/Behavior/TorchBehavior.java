@@ -53,6 +53,11 @@ public class TorchBehavior implements PersistableBehavior {
         return rawDamage;
     }
 
+    @Override
+    public void onFrozen(Zombie zombie) {
+        extinguish();
+    }
+
     public void extinguish() {
         lit = false;
     }

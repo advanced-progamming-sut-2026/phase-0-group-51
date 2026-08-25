@@ -371,8 +371,8 @@ public class ZombieBehaviorFactory {
     ) {
         behaviors.add(new RangedAttackBehavior(
             RangedAttackBehavior.RangedAttackType.OCTOPUS_NET,
-            40,
-            3
+            70,
+            4
         ));
     }
 

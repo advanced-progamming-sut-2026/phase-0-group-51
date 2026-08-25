@@ -101,6 +101,14 @@ public final class ZombieAnimationSystem {
     private static final String PROSPECTOR_BLAST_CLIP = "animation";
     private static final float PROSPECTOR_BLAST_FALLBACK_DURATION = 0.75f;
 
+    private static final String ZOMBIE_ASH_PAM =
+        "768/INITIAL/EFFECTS/ZOMBIE_ASH/ZOMBIE_ASH.PAM";
+    private static final String ZOMBIE_GARGANTUAR_ASH_PAM =
+        "768/INITIAL/EFFECTS/ZOMBIE_GARGANTUAR_ASH/ZOMBIE_GARGANTUAR_ASH.PAM";
+    private static final String ZOMBIE_IMP_ASH_PAM =
+        "768/INITIAL/EFFECTS/ZOMBIE_IMP_ASH/ZOMBIE_IMP_ASH.PAM";
+    private static final String ZOMBIE_ASH_CLIP = "animation";
+
     private static final String DARK_KNIGHT_CROWN_ARMOR =
         "CrownDefault@ArmorTypes";
     private static final String DARK_KNIGHT_SHOULDER_ARMOR =
@@ -335,7 +343,7 @@ public final class ZombieAnimationSystem {
                 syncNormalArmorVisual(zombie, visual);
 
                 if (!visual.deathStarted) {
-                    beginDeath(visual);
+                    beginDeath(zombie, visual);
                 }
 
                 visual.deathElapsed += Math.max(0f, delta);
@@ -2595,6 +2603,17 @@ public final class ZombieAnimationSystem {
             }
         }
 
+        if (ZombieType.BEACH_OCTOPUS.getAlias().equals(alias)) {
+            RangedAttackBehavior octopus =
+                zombie.getBehavior(RangedAttackBehavior.class);
+            if (octopus != null && octopus.suppressesMovement(zombie)) {
+                return new BaseAnimation(
+                    pickOctopusIdle(visual),
+                    true
+                );
+            }
+        }
+
         if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
             DamageReactionBehavior reaction =
                 zombie.getBehavior(DamageReactionBehavior.class);
@@ -2852,7 +2871,11 @@ public final class ZombieAnimationSystem {
         if (contact != null) {
             if (!visual.lastHasKilled && contact.isHasKilled()) {
                 if (ZombieType.MODERN_ALL_STAR.getAlias().equals(alias)) {
-                    enqueueSpecialClip(visual, "tackle");
+                    if (contact.getRunningSpeedScale() > 0f) {
+                        enqueueSpecialClip(visual, "kick");
+                    } else {
+                        enqueueSpecialClip(visual, "tackle");
+                    }
                 } else if (ZombieType.GARGANTUAR.getAlias().equals(alias)) {
                     enqueueSpecialClip(visual, "smash_left");
                 }
@@ -2872,7 +2895,7 @@ public final class ZombieAnimationSystem {
                 // animation. Once that one-shot clip has fully completed,
                 // all Imp-related PAM parts are hidden permanently.
                 visual.gargantuarHideImpAfterFire = true;
-                enqueueSpecialClip(visual, "fire");
+                enqueueSpecialSequence(visual, "fire", "cannon_fire");
             }
 
             visual.lastImpFired = fired;
@@ -2886,8 +2909,10 @@ public final class ZombieAnimationSystem {
                 switch (ranged.getType()) {
                     case SNOWBALL ->
                         enqueueSpecialClip(visual, "throw");
-                    case OCTOPUS_NET ->
+                    case OCTOPUS_NET -> {
                         enqueueSpecialClip(visual, "toss");
+                        visual.octopusIdleIndex++;
+                    }
                     case HOOK_PULL ->
                         enqueueSpecialSequence(
                             visual,
@@ -3090,6 +3115,22 @@ public final class ZombieAnimationSystem {
         visual.specialQueue.addLast(resolved);
     }
 
+    private String pickOctopusIdle(ZombieVisual visual) {
+        String[] variants = {"idle", "idle2", "idle3", "idle4", "idle5"};
+        java.util.List<String> available = new java.util.ArrayList<>();
+        for (String v : variants) {
+            String clip = findAvailableClip(visual, v);
+            if (clip != null) {
+                available.add(clip);
+            }
+        }
+        if (available.isEmpty()) {
+            return visual.animations.clip(EntityAnimationState.IDLE);
+        }
+        int index = Math.floorMod(visual.octopusIdleIndex, available.size());
+        return available.get(index);
+    }
+
     private String clipOrFallback(
         ZombieVisual visual,
         String preferred,
@@ -3265,16 +3306,78 @@ public final class ZombieAnimationSystem {
         );
     }
 
-    private void beginDeath(ZombieVisual visual) {
+    private float spawnZombieAshEffect(Zombie zombie, ZombieVisual visual) {
+        String pam = ZOMBIE_ASH_PAM;
+        String alias = zombie.getAlias();
+        if (ZombieType.GARGANTUAR.getAlias().equals(alias)) {
+            pam = ZOMBIE_GARGANTUAR_ASH_PAM;
+        } else if (ZombieType.IMP.getAlias().equals(alias)
+            || ZombieType.DARK_IMP_DRAGON.getAlias().equals(alias)) {
+            pam = ZOMBIE_IMP_ASH_PAM;
+        }
+        try {
+            pamPlayer.loadSync(pam);
+            PamAnimationActor effect = new PamAnimationActor(
+                pamPlayer,
+                pam,
+                ZOMBIE_ASH_CLIP,
+                false
+            );
+            effect.setTouchable(Touchable.disabled);
+            effect.setScale(scale, scale);
+            effect.setPosition(
+                visual.actor.getX(),
+                visual.actor.getY()
+            );
+            worldStage.addActor(effect);
+            effect.restart();
+            float duration;
+            try {
+                duration = Math.max(
+                    MIN_DEATH_DURATION,
+                    pamPlayer.clipDurationSeconds(pam, ZOMBIE_ASH_CLIP)
+                );
+            } catch (RuntimeException ignored) {
+                duration = 3.5f;
+            }
+            prospectorBlastVisuals.add(
+                new ProspectorBlastVisual(effect, duration)
+            );
+            return duration;
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Could not play zombie ash effect: " + pam,
+                    e
+                );
+            }
+            return MIN_DEATH_DURATION;
+        }
+    }
+
+    private void beginDeath(Zombie zombie, ZombieVisual visual) {
         visual.deathStarted = true;
         visual.deathElapsed = 0f;
         visual.specialQueue.clear();
         visual.activeSpecialClip = null;
         visual.activeSpecialDuration = 0f;
 
+        if (zombie.isDeathByExplosion()) {
+            float ashDuration = spawnZombieAshEffect(zombie, visual);
+            visual.actor.setVisible(false);
+            visual.deathDuration = ashDuration;
+            return;
+        }
+
         String deathClip = visual.animations.clip(
             EntityAnimationState.DEATH
         );
+
+        String alternateDeathClip = findAvailableClip(visual, "die2");
+        if (alternateDeathClip != null && Math.random() < 0.5) {
+            deathClip = alternateDeathClip;
+        }
 
         visual.actor.clearGroundingKeepingVisualPosition();
         visual.actor.setColor(
@@ -3494,6 +3597,7 @@ public final class ZombieAnimationSystem {
         private boolean gargantuarImpHidden;
 
         private int lastRangedCooldown;
+        private int octopusIdleIndex;
         private boolean lastSunStealing;
         private int lastAuraTimer;
         private int lastTransformCooldown;

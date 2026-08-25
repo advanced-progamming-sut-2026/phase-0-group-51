@@ -17,5 +17,6 @@ public interface ZombieBehavior {
         return false;
     }
     default void onDeath(Zombie zombie, GameState gs) {};
+    default void onFrozen(Zombie zombie) {};
     ZombieBehavior copy();
 }

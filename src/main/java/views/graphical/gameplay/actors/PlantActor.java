@@ -49,6 +49,12 @@ public class PlantActor extends Group {
     private static final String SHEEP_OUTRO_CLIP = "animation2";
     private static final float SHEEP_INTRO_SECONDS = 1.7f;
     private static final float SHEEP_OUTRO_SECONDS = 1.1f;
+    private static final String OCTOPUS_PAM =
+        "768/FULL/EFFECTS/ZOMBIE_OCTOPUS_PROJECTILE/ZOMBIE_OCTOPUS_PROJECTILE.PAM";
+    private static final float OCTOPUS_FLIGHT_SECONDS = 0.3f;
+    private static final float OCTOPUS_LAND_SECONDS = 0.9667f;
+    private static final float OCTOPUS_DIE_SECONDS = 2.0f;
+    private static final float OCTOPUS_SCALE = 1.12f;
 
     private static final String[] ICE_DAMAGE_PARTS = {
         "ice_block_damage0",
@@ -103,7 +109,8 @@ public class PlantActor extends Group {
     private int sheepPhase;
     private float sheepPhaseRemaining;
 
-    private boolean octopusShown;
+    private int octopusPhase;
+    private float octopusPhaseRemaining;
 
     private Image frostChillEffect;
     private PamAnimationActor iceBlockEffect;
@@ -225,36 +232,69 @@ public class PlantActor extends Group {
     }
 
     public void syncOctopusVisual(boolean hasOctopus) {
-        if (hasOctopus == octopusShown) {
+        if (previewMode) {
+            if (octopusEffect != null) {
+                octopusEffect.remove();
+                octopusEffect = null;
+            }
+            octopusPhase = 0;
             return;
         }
 
-        octopusShown = hasOctopus;
+        if (hasOctopus && octopusPhase == 0) {
+            showOctopusClip("animation", false);
+            octopusPhase = 1;
+            octopusPhaseRemaining = OCTOPUS_FLIGHT_SECONDS;
+        } else if (!hasOctopus && octopusPhase != 0 && octopusPhase != 4) {
+            showOctopusClip("die", false);
+            octopusPhase = 4;
+            octopusPhaseRemaining = OCTOPUS_DIE_SECONDS;
+        }
+    }
 
+    private void showOctopusClip(String clip, boolean loop) {
         if (octopusEffect != null) {
             octopusEffect.remove();
             octopusEffect = null;
         }
-
-        if (!hasOctopus || previewMode) {
-            return;
-        }
-
         try {
             octopusEffect = game.createPamActor(
-                "768/FULL/EFFECTS/ZOMBIE_OCTOPUS_PROJECTILE/ZOMBIE_OCTOPUS_PROJECTILE.PAM",
-                "animation4",
+                OCTOPUS_PAM,
+                clip,
                 0f,
                 0f,
-                true
+                loop
             );
-
+            octopusEffect.setScale(OCTOPUS_SCALE, OCTOPUS_SCALE);
             octopusEffect.setTouchable(Touchable.disabled);
             addActor(octopusEffect);
-            octopusEffect.toFront();
-
+            octopusEffect.toBack();
         } catch (RuntimeException ignored) {
             octopusEffect = null;
+        }
+    }
+
+    private void updateOctopusSequence(float delta) {
+        if (octopusPhase == 0 || octopusPhase == 3) {
+            return;
+        }
+        octopusPhaseRemaining -= Math.max(0f, delta);
+        if (octopusPhaseRemaining > 0f) {
+            return;
+        }
+        if (octopusPhase == 1) {
+            showOctopusClip("animation2", false);
+            octopusPhase = 2;
+            octopusPhaseRemaining = OCTOPUS_LAND_SECONDS;
+        } else if (octopusPhase == 2) {
+            showOctopusClip("animation4", true);
+            octopusPhase = 3;
+        } else if (octopusPhase == 4) {
+            if (octopusEffect != null) {
+                octopusEffect.remove();
+                octopusEffect = null;
+            }
+            octopusPhase = 0;
         }
     }
 
@@ -378,7 +418,6 @@ public class PlantActor extends Group {
             return;
         }
 
-        // A terminal animation has higher priority.
         if (terminalAnimation) {
             return;
         }
@@ -401,10 +440,6 @@ public class PlantActor extends Group {
                 );
         }
 
-        /*
-         * Plant Food has priority over a normal attack/produce
-         * animation that may have started on this same model tick.
-         */
         temporaryAnimation = false;
         animationTimeRemaining = 0f;
 
@@ -757,6 +792,8 @@ public class PlantActor extends Group {
             return;
         }
 
+        // A one-shot animation is allowed to finish on its own.
+        // Only a looping Plant Food clip depends on isOnPlantFood().
         if (plantFoodAnimationPlaying
             && plantFoodAnimationData != null
             && plantFoodAnimationData.loop()) {
@@ -942,7 +979,8 @@ public class PlantActor extends Group {
         transformedShown = false;
         sheepPhase = 0;
         sheepPhaseRemaining = 0f;
-        octopusShown = false;
+        octopusPhase = 0;
+        octopusPhaseRemaining = 0f;
         frostChillEffect = null;
         iceBlockEffect = null;
         plantData = null;
@@ -982,6 +1020,7 @@ public class PlantActor extends Group {
             updateAnimationState(delta);
             updatePlantFoodAnimation(delta);
             updateSheepTransform(delta);
+            updateOctopusSequence(delta);
         }
 
         if (!previewMode

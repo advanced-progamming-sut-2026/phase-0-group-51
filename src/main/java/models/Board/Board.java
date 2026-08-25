@@ -698,6 +698,20 @@ public class Board {
         return null;
     }
 
+    public Plant getFirstOctopusPlantCrossed(int lane, double fromX, double toX) {
+        int step = toX >= fromX ? 1 : -1;
+        int column = (int) Math.floor(fromX) + step;
+        int end = (int) Math.floor(toX);
+        while ((step > 0 && column <= end) || (step < 0 && column >= end)) {
+            Tile tile = getTile(lane, column);
+            if (tile != null && tile.hasPlant() && tile.getPlant().hasOctopus()) {
+                return tile.getPlant();
+            }
+            column += step;
+        }
+        return null;
+    }
+
 
     public Tile getFirstGraveCrossed(
         double fromX,
