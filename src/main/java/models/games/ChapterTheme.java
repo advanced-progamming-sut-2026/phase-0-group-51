@@ -216,6 +216,7 @@ public enum ChapterTheme {
                 ZombieType.ARMOR_1,
                 ZombieType.ARMOR_2,
                 ZombieType.IMP,
+                ZombieType.BEACH_OCTOPUS,
                 ZombieType.BEACH_SNORKEL
             ).withDefinition(
                 "Survive the tides and zombies of Big Wave Beach.",
@@ -315,6 +316,7 @@ public enum ChapterTheme {
                 ZombieType.ARMOR_1,
                 ZombieType.ARMOR_2,
                 ZombieType.IMP,
+                ZombieType.WIZARD,
                 ZombieType.DARK_IMP_DRAGON,
                 ZombieType.DARK_JUGGLER
             ).withDefinition(
