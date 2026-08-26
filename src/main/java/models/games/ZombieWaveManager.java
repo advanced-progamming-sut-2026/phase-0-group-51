@@ -29,6 +29,10 @@ public class ZombieWaveManager {
 
     private static final float BACKWATER_MAX_ZOMBIE_COST = 700f;
 
+    private static final int MAX_GARGANTUARS_PER_WAVE = 1;
+
+    private static final String FLAG_ALIAS = "ZombieFlag";
+
     private static final int SANDSTORM_TRANSPORT_TICKS = 10;
     private static final int SNOWSTORM_TRANSPORT_TICKS = 10;
 
@@ -486,6 +490,8 @@ public class ZombieWaveManager {
 
         int preparedZombieCount = 0;
 
+        int gargantuarCount = 0;
+
         float remaining =
             wave.getDifficulty();
 
@@ -500,6 +506,39 @@ public class ZombieWaveManager {
         float spawnX =
             spawnColumn
                 + ZOMBIE_SPAWN_X_OFFSET;
+
+        if (wave.getWaveNumber() >= 2) {
+            Zombie flagTemplate =
+                ZombieRegistry.getTemplate(FLAG_ALIAS);
+
+            if (flagTemplate != null) {
+                Zombie flagZombie = flagTemplate.copy();
+
+                queuePreparedZombie(
+                    flagZombie,
+                    wave,
+                    activeSnowstormLanes,
+                    preparedZombieCount,
+                    lanes,
+                    spawnColumn,
+                    spawnX
+                );
+
+                markCovered(flagZombie);
+
+                remaining =
+                    Math.max(
+                        0f,
+                        remaining
+                            - Math.max(
+                            0f,
+                            flagZombie.getWavePointCost()
+                        )
+                    );
+
+                preparedZombieCount++;
+            }
+        }
 
         // Endless mode has no level ending, so it stays fully random.
         // Normal levels reserve enough unseen zombie types per wave so that
@@ -557,6 +596,10 @@ public class ZombieWaveManager {
                     guaranteedZombie
                 );
 
+                if (isGargantuar(guaranteedZombie)) {
+                    gargantuarCount++;
+                }
+
                 remaining =
                     Math.max(
                         0f,
@@ -576,7 +619,8 @@ public class ZombieWaveManager {
 
             Zombie zombie =
                 pickAffordableZombie(
-                    remaining
+                    remaining,
+                    gargantuarCount < MAX_GARGANTUARS_PER_WAVE
                 );
 
             if (zombie == null) {
@@ -596,6 +640,10 @@ public class ZombieWaveManager {
             markCovered(
                 zombie
             );
+
+            if (isGargantuar(zombie)) {
+                gargantuarCount++;
+            }
 
             remaining -=
                 zombie.getWavePointCost();
@@ -625,9 +673,6 @@ public class ZombieWaveManager {
                 .contains(alias)) {
                 continue;
             }
-
-            // A missing registry template cannot be spawned. Do not let one
-            // broken alias block the coverage of all valid zombie types.
             if (
                 ZombieRegistry.getTemplate(alias)
                     == null
@@ -887,6 +932,21 @@ public class ZombieWaveManager {
     private Zombie pickAffordableZombie(
         float remainingBudget
     ) {
+        return pickAffordableZombie(remainingBudget, true);
+    }
+
+    private boolean isGargantuar(Zombie zombie) {
+        return zombie != null
+            && zombie.getAlias() != null
+            && zombie.getAlias()
+            .toLowerCase(java.util.Locale.ROOT)
+            .contains("gargantuar");
+    }
+
+    private Zombie pickAffordableZombie(
+        float remainingBudget,
+        boolean allowGargantuar
+    ) {
         List<Zombie> affordable =
             new ArrayList<>();
 
@@ -914,6 +974,8 @@ public class ZombieWaveManager {
             if (
                 cost > 0f
                     && cost <= remainingBudget
+                    && (allowGargantuar
+                    || !isGargantuar(candidate))
             ) {
                 affordable.add(
                     candidate

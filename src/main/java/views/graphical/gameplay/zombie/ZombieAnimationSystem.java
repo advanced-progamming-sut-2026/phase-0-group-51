@@ -127,6 +127,18 @@ public final class ZombieAnimationSystem {
     private static final String DARK_BASIC_PAM =
         "768/FULL/ZOMBIE/ZOMBIE_DARK_BASIC/ZOMBIE_DARK_BASIC.PAM";
 
+    private static final String FLAG_ALIAS = "ZombieFlag";
+    private static final String DEFAULT_FLAG_PAM =
+        "768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL_FLAG/ZOMBIE_TUTORIAL_FLAG.PAM";
+    private static final String EGYPT_FLAG_PAM =
+        "768/INITIAL/ZOMBIE/ZOMBIE_EGYPT_FLAG/ZOMBIE_EGYPT_FLAG.PAM";
+    private static final String ICEAGE_FLAG_PAM =
+        "768/FULL/ZOMBIE/ZOMBIE_ICEAGE_FLAG/ZOMBIE_ICEAGE_FLAG.PAM";
+    private static final String BEACH_FLAG_PAM =
+        "768/FULL/ZOMBIE/ZOMBIE_BEACH_FLAG/ZOMBIE_BEACH_FLAG.PAM";
+    private static final String DARK_FLAG_PAM =
+        "768/FULL/ZOMBIE/ZOMBIE_DARK_FLAG/ZOMBIE_DARK_FLAG.PAM";
+
     private static final String EGYPT_GARGANTUAR_PAM =
         "768/INITIAL/ZOMBIE/EGYPT_GARGANTUAR/EGYPT_GARGANTUAR.PAM";
     private static final String ICEAGE_GARGANTUAR_PAM =
@@ -731,6 +743,16 @@ public final class ZombieAnimationSystem {
                 case BIG_WAVE_BEACH -> BEACH_BASIC_PAM;
                 case DARK_AGES -> DARK_BASIC_PAM;
                 default -> ZombieRegistry.getIdlePamPath(alias);
+            };
+        }
+
+        if (FLAG_ALIAS.equals(alias)) {
+            return switch (theme) {
+                case ANCIENT_EGYPT -> EGYPT_FLAG_PAM;
+                case FROSTBITE_CAVES -> ICEAGE_FLAG_PAM;
+                case BIG_WAVE_BEACH -> BEACH_FLAG_PAM;
+                case DARK_AGES -> DARK_FLAG_PAM;
+                default -> DEFAULT_FLAG_PAM;
             };
         }
 
@@ -1734,6 +1756,9 @@ public final class ZombieAnimationSystem {
                 default -> {}
             }
         }
+
+        // Extra zombie families with their own PAM arm parts.
+        // Keep only the upper arm after HP reaches 50%.
         if (alias.toLowerCase(Locale.ROOT).contains("arcade")) {
             applyArm(visual, damaged,
                 "zombie_troglobite_arm_outer_upper_bone",
@@ -1908,6 +1933,9 @@ public final class ZombieAnimationSystem {
                         + " of " + allParts.size() + " parts"
                 );
             }
+
+            // If none of the target parts exist in this PAM there is
+            // nothing to show, so skip spawning an empty actor.
             if (keep.isEmpty()) {
                 return;
             }
@@ -2227,6 +2255,9 @@ public final class ZombieAnimationSystem {
                 true
             );
 
+            // The body also enters its push clip on this update. Restarting
+            // the prop only on the state transition makes both animations
+            // begin from frame/time zero together instead of drifting.
             if (changed
                 || bodyPushing != cabinet.lastBodyPushing) {
                 cabinet.actor.restart();
@@ -2255,6 +2286,7 @@ public final class ZombieAnimationSystem {
             PLANT_FOOD_OUTLINE_PULSE_SPEED
         );
 
+        // Same playback rate as the body, just like the pianist + piano pair.
         cabinet.actor.setPlaybackSpeed(
             visual.actor.getPlaybackSpeed()
         );
