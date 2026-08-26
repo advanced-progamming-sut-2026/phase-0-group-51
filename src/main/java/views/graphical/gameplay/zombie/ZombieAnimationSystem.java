@@ -108,6 +108,10 @@ public final class ZombieAnimationSystem {
     private static final String ZOMBIE_IMP_ASH_PAM =
         "768/INITIAL/EFFECTS/ZOMBIE_IMP_ASH/ZOMBIE_IMP_ASH.PAM";
     private static final String ZOMBIE_ASH_CLIP = "animation";
+    private static final float ARM_DROP_VX = 45f;
+    private static final float ARM_DROP_VY0 = 130f;
+    private static final float ARM_DROP_GRAVITY = 650f;
+    private static final float ARM_DROP_LIFETIME = 1.5f;
 
     private static final String DARK_KNIGHT_CROWN_ARMOR =
         "CrownDefault@ArmorTypes";
@@ -162,6 +166,8 @@ public final class ZombieAnimationSystem {
         new IdentityHashMap<>();
 
     private final List<ProspectorBlastVisual> prospectorBlastVisuals =
+        new ArrayList<>();
+    private final List<FallingArmVisual> fallingArms =
         new ArrayList<>();
 
     private int lastObservedModelTick = Integer.MIN_VALUE;
@@ -365,6 +371,7 @@ public final class ZombieAnimationSystem {
 
         updateZombieDrawOrder();
         updateProspectorBlastEffects(delta);
+        updateFallingArms(delta);
 
         lastObservedModelTick = modelTick;
     }
@@ -386,6 +393,10 @@ public final class ZombieAnimationSystem {
             visual.actor.remove();
         }
         prospectorBlastVisuals.clear();
+        for (FallingArmVisual fallingArm : fallingArms) {
+            fallingArm.actor.remove();
+        }
+        fallingArms.clear();
 
         resolver.clearCache();
         lastObservedModelTick = Integer.MIN_VALUE;
@@ -1700,13 +1711,10 @@ public final class ZombieAnimationSystem {
                 && zombie.getHitpoints()
                 <= zombie.getMaxHitpoints() / 2f;
 
-        Map<String, Boolean> v =
-            visual.actor.getVisibilityMap();
-
         String alias = zombie.getAlias();
 
         if (ZombieType.IMP.getAlias().equals(alias)) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "zombie_imp_arms_outer_upper",
                 "zombie_imp_arm_outer_lower",
                 "zombie_imp_hand_outer");
@@ -1715,22 +1723,19 @@ public final class ZombieAnimationSystem {
 
         if (usesThemedBasicBody(alias)) {
             switch (theme) {
-                case ANCIENT_EGYPT -> applyArmParts(v, damaged,
+                case ANCIENT_EGYPT -> applyArm(visual, damaged,
                     "zombie_egypt_arms_outer_upper",
                     "zombie_egypt_arm_outer_lower",
                     "zombie_egypt_hand_outer_01");
-                case FROSTBITE_CAVES, BIG_WAVE_BEACH, DARK_AGES -> applyArmParts(v, damaged,
+                case FROSTBITE_CAVES, BIG_WAVE_BEACH, DARK_AGES -> applyArm(visual, damaged,
                     "zombie_arms_outer_upper",
                     "zombie_arm_outer_lower",
                     "zombie_hand_outer_01");
                 default -> {}
             }
         }
-
-        // Extra zombie families with their own PAM arm parts.
-        // Keep only the upper arm after HP reaches 50%.
         if (alias.toLowerCase(Locale.ROOT).contains("arcade")) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "zombie_troglobite_arm_outer_upper_bone",
                 "zombie_troglobite_arm_outer_lower",
                 "zombie_troglobite_hand_outer");
@@ -1738,7 +1743,7 @@ public final class ZombieAnimationSystem {
         }
 
         if (alias.toLowerCase(Locale.ROOT).contains("jane")) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "zombie_arms_outer_upper",
                 "zombie_arm_outer_lower",
                 "zombie_hand_outer_01_upperlayer");
@@ -1747,7 +1752,7 @@ public final class ZombieAnimationSystem {
 
         if (alias.toLowerCase(Locale.ROOT).contains("crystal")
             || alias.toLowerCase(Locale.ROOT).contains("turquoise")) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "zombie_egypt_ra_arms_outer_upper",
                 "zombie_egypt_ra_arm_outer_lower",
                 "zombie_egypt_ra_hand_outer2");
@@ -1755,7 +1760,7 @@ public final class ZombieAnimationSystem {
         }
 
         if (alias.toLowerCase(Locale.ROOT).contains("prospector")) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "_zombie_pros_arm_outer_upper2",
                 "zombie_pros_arm_outer_lower",
                 "zombie_pros_hand_outer_01");
@@ -1769,7 +1774,7 @@ public final class ZombieAnimationSystem {
             // Newspaper's regular body arm parts should only be controlled
             // after the newspaper has been destroyed and the zombie is raged.
             if (reaction != null && reaction.isRaged()) {
-                applyArmParts(v, damaged,
+                applyArm(visual, damaged,
                     "zombie_arms_outer_upper",
                     "zombie_arm_outer_lower",
                     "zombie_hand_outer_01");
@@ -1777,24 +1782,236 @@ public final class ZombieAnimationSystem {
         }
 
         if (ZombieType.PIANO.getAlias().equals(alias)) {
-            applyArmParts(v, damaged,
+            applyArm(visual, damaged,
                 "zombie_piano_arms_outer_upper",
                 "zombie_piano_arm_outer_lower",
                 "zombie_piano_hand_outer");
         }
     }
 
-    private static void applyArmParts(
-        Map<String, Boolean> visibility,
+    private void applyArm(
+        ZombieVisual visual,
         boolean damaged,
         String upper,
         String lower,
         String hand
     ) {
-        // Healthy: full arm. Damaged: only upper arm remains.
+        Map<String, Boolean> visibility =
+            visual.actor.getVisibilityMap();
         visibility.put(upper, true);
         visibility.put(lower, !damaged);
         visibility.put(hand, !damaged);
+
+        if (damaged && !visual.armDropped) {
+            visual.armDropped = true;
+            spawnFallingArm(visual, lower, hand);
+        }
+    }
+
+    private void spawnFallingArm(
+        ZombieVisual visual,
+        String lower,
+        String hand
+    ) {
+        java.util.Set<String> targets = new java.util.HashSet<>();
+        targets.add(lower);
+        targets.add(hand);
+        spawnFallingPart(visual, targets, "arm");
+    }
+
+    private void spawnFallingHead(ZombieVisual visual) {
+        if (visual == null || visual.headDropped) {
+            return;
+        }
+        visual.headDropped = true;
+
+        // Detect the head parts straight from this zombie's PAM tree so the
+        // effect works for every zombie (skull / jaw / head bones).
+        String pamPath = visual.animations.getPamPath();
+        java.util.Set<String> headParts = new java.util.HashSet<>();
+        try {
+            collectHeadParts(pamPlayer.getParts(pamPath), headParts);
+        } catch (RuntimeException ignored) {
+            return;
+        }
+        if (headParts.isEmpty()) {
+            return;
+        }
+
+        // Hide the head parts on the dying body so it looks decapitated.
+        Map<String, Boolean> bodyVis =
+            visual.actor.getVisibilityMap();
+        for (String head : headParts) {
+            bodyVis.put(head, false);
+        }
+
+        spawnFallingPart(visual, headParts, "head");
+    }
+
+    private static void collectHeadParts(
+        PamPlayer.AnimationPart part,
+        java.util.Set<String> out
+    ) {
+        if (part == null) {
+            return;
+        }
+        if (part.name != null) {
+            String n = part.name.toLowerCase(Locale.ROOT);
+            if (!n.contains("particle")
+                && (n.contains("skull")
+                || n.contains("jaw")
+                || n.contains("head"))) {
+                out.add(part.name);
+            }
+        }
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectHeadParts(child, out);
+        }
+    }
+
+    private void spawnFallingPart(
+        ZombieVisual visual,
+        java.util.Set<String> targets,
+        String label
+    ) {
+        try {
+            String pamPath = visual.animations.getPamPath();
+            PamAnimationActor part = new PamAnimationActor(
+                pamPlayer,
+                pamPath,
+                visual.animations.clip(EntityAnimationState.IDLE),
+                true
+            );
+            part.setTouchable(Touchable.disabled);
+            part.setScale(
+                Math.copySign(scale, visual.actor.getScaleX()),
+                scale
+            );
+            part.setPosition(
+                visual.actor.getX(),
+                visual.actor.getY()
+            );
+
+            java.util.Set<String> keep = new java.util.HashSet<>();
+            markArmChain(pamPlayer.getParts(pamPath), targets, keep);
+            java.util.Set<String> allParts = new java.util.HashSet<>();
+            collectAllPartNames(pamPlayer.getParts(pamPath), allParts);
+            Map<String, Boolean> vis = part.getVisibilityMap();
+            vis.clear();
+            for (String name : allParts) {
+                vis.put(name, keep.contains(name));
+            }
+            if (Gdx.app != null) {
+                Gdx.app.log(
+                    "ZombieAnimation",
+                    "Dropped " + label + " kept " + keep.size()
+                        + " of " + allParts.size() + " parts"
+                );
+            }
+            if (keep.isEmpty()) {
+                return;
+            }
+
+            worldStage.addActor(part);
+            part.restart();
+
+            float dir = visual.actor.getScaleX() >= 0 ? 1f : -1f;
+            float restY =
+                visual.actor.getY() - boardTransform.tileHeight();
+            fallingArms.add(new FallingArmVisual(
+                part,
+                dir * ARM_DROP_VX,
+                ARM_DROP_VY0,
+                restY
+            ));
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                    "ZombieAnimation",
+                    "Could not spawn dropped " + label,
+                    e
+                );
+            }
+        }
+    }
+
+    private static void collectAllPartNames(
+        PamPlayer.AnimationPart part,
+        java.util.Set<String> out
+    ) {
+        if (part == null) {
+            return;
+        }
+        if (part.name != null) {
+            out.add(part.name);
+        }
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectAllPartNames(child, out);
+        }
+    }
+
+    private static boolean markArmChain(
+        PamPlayer.AnimationPart part,
+        java.util.Set<String> targets,
+        java.util.Set<String> keep
+    ) {
+        if (part == null) {
+            return false;
+        }
+        if (part.name != null && targets.contains(part.name)) {
+            keepSubtree(part, keep);
+            return true;
+        }
+        boolean onPath = false;
+        for (PamPlayer.AnimationPart child : part.children) {
+            if (markArmChain(child, targets, keep)) {
+                onPath = true;
+            }
+        }
+        if (onPath && part.name != null) {
+            keep.add(part.name);
+        }
+        return onPath;
+    }
+
+    private static void keepSubtree(
+        PamPlayer.AnimationPart part,
+        java.util.Set<String> keep
+    ) {
+        if (part == null) {
+            return;
+        }
+        if (part.name != null) {
+            keep.add(part.name);
+        }
+        for (PamPlayer.AnimationPart child : part.children) {
+            keepSubtree(child, keep);
+        }
+    }
+
+    private void updateFallingArms(float delta) {
+        float d = Math.max(0f, delta);
+        Iterator<FallingArmVisual> iterator = fallingArms.iterator();
+        while (iterator.hasNext()) {
+            FallingArmVisual fallingArm = iterator.next();
+            fallingArm.vy -= ARM_DROP_GRAVITY * d;
+            fallingArm.actor.moveBy(
+                fallingArm.vx * d,
+                fallingArm.vy * d
+            );
+            // Stop after falling roughly one tile; rest in place.
+            if (fallingArm.actor.getY() <= fallingArm.restY) {
+                fallingArm.actor.setY(fallingArm.restY);
+                fallingArm.vx = 0f;
+                fallingArm.vy = 0f;
+            }
+            fallingArm.actor.toFront();
+            fallingArm.elapsed += d;
+            if (fallingArm.elapsed >= ARM_DROP_LIFETIME) {
+                fallingArm.actor.remove();
+                iterator.remove();
+            }
+        }
     }
 
     private void updateDamageFlash(
@@ -2010,9 +2227,6 @@ public final class ZombieAnimationSystem {
                 true
             );
 
-            // The body also enters its push clip on this update. Restarting
-            // the prop only on the state transition makes both animations
-            // begin from frame/time zero together instead of drifting.
             if (changed
                 || bodyPushing != cabinet.lastBodyPushing) {
                 cabinet.actor.restart();
@@ -2041,7 +2255,6 @@ public final class ZombieAnimationSystem {
             PLANT_FOOD_OUTLINE_PULSE_SPEED
         );
 
-        // Same playback rate as the body, just like the pianist + piano pair.
         cabinet.actor.setPlaybackSpeed(
             visual.actor.getPlaybackSpeed()
         );
@@ -3370,6 +3583,8 @@ public final class ZombieAnimationSystem {
             return;
         }
 
+        spawnFallingHead(visual);
+
         String deathClip = visual.animations.clip(
             EntityAnimationState.DEATH
         );
@@ -3534,6 +3749,26 @@ public final class ZombieAnimationSystem {
         }
     }
 
+    private static final class FallingArmVisual {
+        private final PamAnimationActor actor;
+        private float vx;
+        private float vy;
+        private float elapsed;
+        private final float restY;
+
+        private FallingArmVisual(
+            PamAnimationActor actor,
+            float vx,
+            float vy,
+            float restY
+        ) {
+            this.actor = actor;
+            this.vx = vx;
+            this.vy = vy;
+            this.restY = restY;
+        }
+    }
+
     private static final class PianoVisual {
         private final PamAnimationActor actor;
         private final List<String> availableClips;
@@ -3598,6 +3833,8 @@ public final class ZombieAnimationSystem {
 
         private int lastRangedCooldown;
         private int octopusIdleIndex;
+        private boolean armDropped;
+        private boolean headDropped;
         private boolean lastSunStealing;
         private int lastAuraTimer;
         private int lastTransformCooldown;
