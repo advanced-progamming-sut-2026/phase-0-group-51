@@ -7,5 +7,7 @@ public enum MessageType {
     REGISTER_RESPONSE,
     LOGIN_REQUEST,
     LOGIN_RESPONSE,
+    LOGOUT_REQUEST,
+    LOGOUT_RESPONSE,
     ERROR
 }

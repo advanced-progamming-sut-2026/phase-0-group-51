@@ -1,6 +1,8 @@
 package network.server.service;
 
+import Data.database.PlantRepository;
 import Data.database.UserRepository;
+import Data.loader.PlantRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import controllers.HashUtil;
 import controllers.validation.SignUpValidation;
@@ -8,8 +10,8 @@ import models.User;
 import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
-import network.protocol.auth.RegisterRequest;
-import network.protocol.auth.RegisterResponse;
+import network.protocol.auth.*;
+import network.server.ClientConnection;
 
 public class AuthService {
     private final UserRepository userRepository =
@@ -47,6 +49,158 @@ public class AuthService {
                     "Invalid registration payload."
             );
         }
+    }
+
+    public NetworkMessage handleLogin(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        if (message.getPayload() == null) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Login payload is required."
+            );
+        }
+
+        try {
+            LoginRequest request = codec.decodePayload(
+                    message.getPayload(),
+                    LoginRequest.class
+            );
+
+            LoginResponse response = login(connection, request);
+
+            return new NetworkMessage(
+                    MessageType.LOGIN_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid login payload."
+            );
+        }
+    }
+
+    public LoginResponse login(
+            ClientConnection connection,
+            LoginRequest request
+    ) {
+        if (connection.getSession().isAuthenticated()) {
+            return loginFailure(
+                    "This connection is already logged in."
+            );
+        }
+
+        String validationError =
+                validateLoginRequest(request);
+
+        if (validationError != null) {
+            return loginFailure(validationError);
+        }
+
+        String username = request.getUsername().trim();
+
+        User user =
+                userRepository.getUserByUsername(username);
+
+        if (user == null) {
+            return loginFailure(
+                    "Username does not exist."
+            );
+        }
+
+        String passwordHash =
+                HashUtil.hashPassword(request.getPassword());
+
+        if (!user.getPasswordHash().equals(passwordHash)) {
+            return loginFailure(
+                    "Password is incorrect."
+            );
+        }
+
+        PlantRepository.unlockPlantsAndReturnNew(
+                user.getId(),
+                PlantRegistry.getStarterPlantIds()
+        );
+
+        connection.getSession().authenticate(
+                user.getId(),
+                user.getUsername()
+        );
+
+        return new LoginResponse(
+                true,
+                "Login successful.",
+                UserProfileDto.fromUser(user)
+        );
+    }
+
+    private LoginResponse loginFailure(String message) {
+        return new LoginResponse(
+                false,
+                message,
+                null
+        );
+    }
+
+    private String validateLoginRequest(
+            LoginRequest request
+    ) {
+        if (request == null) {
+            return "Login data is required.";
+        }
+
+        if (request.getUsername() == null
+                || request.getUsername().isBlank()) {
+            return "Please enter your username.";
+        }
+
+        if (request.getPassword() == null
+                || request.getPassword().isEmpty()) {
+            return "Please enter your password.";
+        }
+
+        return null;
+    }
+
+    public NetworkMessage handleLogout(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        LogoutResponse response = logout(connection);
+
+        try {
+            return new NetworkMessage(
+                    MessageType.LOGOUT_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Could not create logout response."
+            );
+        }
+    }
+
+    public LogoutResponse logout(
+            ClientConnection connection
+    ) {
+        if (!connection.getSession().isAuthenticated()) {
+            return new LogoutResponse(
+                    false,
+                    "This connection is not logged in."
+            );
+        }
+
+        connection.getSession().clear();
+
+        return new LogoutResponse(
+                true,
+                "Logout successful."
+        );
     }
 
     public RegisterResponse register(
