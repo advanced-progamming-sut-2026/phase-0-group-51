@@ -404,6 +404,9 @@ public class GameScreen extends BaseScreen {
             worldStage.addActor(
                 protectedPlantOverlayManager
             );
+            protectedPlantOverlayManager.setZIndex(
+                entityDepthLayer.getZIndex()
+            );
 
             deadlineOverlayManager =
                 new DeadlineOverlayManager(
