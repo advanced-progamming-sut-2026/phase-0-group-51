@@ -1,6 +1,7 @@
 package network.server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import lombok.Getter;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 
@@ -21,6 +22,8 @@ public class ClientConnection implements Runnable, Closeable {
     private BufferedReader reader;
     private BufferedWriter writer;
     private volatile boolean running = true;
+    @Getter
+    private final ClientSession session = new ClientSession();
 
     public ClientConnection(Socket socket, MessageRouter messageRouter, Runnable onClosed) {
         this.socket = socket;
@@ -62,7 +65,7 @@ public class ClientConnection implements Runnable, Closeable {
                     "Received " + request.getType() + " from " + getRemoteAddress()
                             + " requestId=" + request.getRequestId()
             );
-            NetworkMessage response = messageRouter.route(request);
+            NetworkMessage response = messageRouter.route(this, request);
             send(response);
         } catch (JsonProcessingException exception) {
             send(NetworkMessage.error(null, "Invalid JSON message."));
@@ -81,6 +84,7 @@ public class ClientConnection implements Runnable, Closeable {
     @Override
     public void close() {
         running = false;
+        session.clear();
         try {
             socket.close();
         } catch (IOException ignored) {
