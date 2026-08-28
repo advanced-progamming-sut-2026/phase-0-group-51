@@ -3,10 +3,14 @@ package network.server;
 import network.protocol.MessageType;
 import network.protocol.NetworkMessage;
 import network.server.service.AuthService;
+import network.server.service.ProfileService;
 
 public class MessageRouter {
     private final AuthService authService =
             new AuthService();
+
+    private final ProfileService profileService =
+            new ProfileService();
 
     public NetworkMessage route(
             ClientConnection connection,
@@ -74,6 +78,31 @@ public class MessageRouter {
                     message
             );
         }
+
+        if (message.getType()
+                == MessageType.PROFILE_GET_REQUEST) {
+            return profileService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PROFILE_UPDATE_REQUEST) {
+            return profileService.handleUpdate(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PROFILE_PASSWORD_CHANGE_REQUEST) {
+            return profileService.handlePasswordChange(
+                    connection,
+                    message
+            );
+        }
+
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "

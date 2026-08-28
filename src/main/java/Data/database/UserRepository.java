@@ -179,6 +179,47 @@ public class UserRepository {
         return null;
     }
 
+    public User getUserById(int userId) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return readUser(resultSet);
+                }
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean updateProfile(
+            int userId,
+            String username,
+            String nickname,
+            String email
+    ) {
+        String sql = """
+                UPDATE users
+                SET username = ?, nickname = ?, email = ?
+                WHERE id = ?
+                """;
+
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            statement.setString(2, nickname);
+            statement.setString(3, email);
+            statement.setInt(4, userId);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean setStayLoggedIn(int userId, boolean stayLoggedIn) {
         String clearSql = "UPDATE users SET stay_logged_in = 0";
         String rememberSql = "UPDATE users SET stay_logged_in = 1 WHERE id = ?";
