@@ -462,6 +462,9 @@ public class Projectile {
         if (hitFrozenPlantIfCrossed(state, previousX, previousY)) {
             return;
         }
+        if (hitOctopusPlantIfCrossed(state, previousX, previousY)) {
+            return;
+        }
         if (hitGraveIfCrossed(state, previousX, previousY)) {
             return;
         }
@@ -560,6 +563,33 @@ public class Projectile {
         frozenPlant.damageIce(damage, elementType, state);
         state.logEvent("Ice around " + frozenPlant.getName() + " has "
             + frozenPlant.getIceHealth() + " health left.\n");
+        destroy(state);
+        return true;
+    }
+
+    private boolean hitOctopusPlantIfCrossed(
+        GameState state,
+        double previousX,
+        double previousY
+    ) {
+        if (!(movingStrategy instanceof StraightMove)
+            || Math.abs(posY - previousY) >= 0.001) {
+            return false;
+        }
+        Plant octopusPlant = state.getBoard().getFirstOctopusPlantCrossed(
+            (int) Math.round(posY),
+            previousX,
+            posX
+        );
+        if (octopusPlant == null) {
+            return false;
+        }
+        emitImpactEffect(
+            state,
+            octopusPlant.getPosX(),
+            octopusPlant.getPosY()
+        );
+        octopusPlant.takeDamage(damage, state);
         destroy(state);
         return true;
     }

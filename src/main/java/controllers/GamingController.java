@@ -1292,9 +1292,16 @@ public class GamingController {
         User user,
         UserRepository.LootResult result
     ) {
+        GameState state = activeState();
+        if (state != null) {
+            state.addPlantFood();
+        }
         user.setPlantFoodNum(user.getPlantFoodNum() + 1);
+        int inGameCount = state != null
+            ? state.getPlantFoodCount()
+            : user.getPlantFoodNum();
         return "Collected 1 plant food; you have "
-            + user.getPlantFoodNum()
+            + inGameCount
             + " plant foods now.\n";
     }
 

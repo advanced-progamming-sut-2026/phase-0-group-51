@@ -17,6 +17,11 @@
         "clip": "special",
         "loop": false,
         "duration": 2.0
+      },
+      "plantFood": {
+        "clip": "plantfood_on",
+        "loop": false,
+        "duration": 0.5
       }
     },
     "onPlantFoodDescription": "Immediately produces a large amount of sun.",
@@ -88,6 +93,11 @@
         "clip": "special",
         "loop": false,
         "duration": 1.5
+      },
+      "plantFood": {
+        "clip": "plantfood_on",
+        "loop": false,
+        "duration": 0.5
       }
     },
     "onPlantFoodDescription": "Immediately produces a large amount of sun.",
@@ -404,6 +414,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.03
+      },
+      "plantFood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Shoots a barrage of peas.",
@@ -496,6 +510,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.0
+      },
+      "plantFood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Shoots two volleys of peas at zombies in its row.",
@@ -593,6 +611,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.0
+      },
+      "plantFood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "idlePamPath": "768/INITIAL/PLANT/THREEPEATER/THREEPEATER.PAM",
@@ -681,6 +703,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.43
+      },
+      "plantFood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Slows all zombies in the column , then shoots a barrage of frozen peas.",
@@ -783,6 +809,11 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.73
+      },
+      "plantFood": {
+        "clip": "plantfood_on",
+        "loop": false,
+        "duration": 3.37
       }
     },
     "onPlantFoodDescription": "Shoots multiple huge rotobagas in four directions.",
@@ -1032,6 +1063,10 @@
         "clip": "attack2",
         "loop": false,
         "duration": 1.00
+      },
+      "plantFood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Shoots a barrage of peas at both the front and behind the plant, then fires a giant pea behind.",
@@ -1290,6 +1325,11 @@
       "charge": {
         "clip": "idle1_1",
         "loop": true
+      },
+      "plantfood": {
+        "clip": "plantfood",
+        "loop": false,
+        "duration": 2.0
       }
     },
     "onPlantFoodDescription": "Creates a storm cloud that targets 3 random zombies, dealing damage.",
@@ -1569,6 +1609,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.03
+      },
+      "plantfood": {
+        "clip": "plantfood_loop",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Creates a fire trail, unfreezing plants and damaging zombies in the row.",
@@ -1763,6 +1807,11 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.60
+      },
+      "plantfood": {
+        "clip": "plantfood",
+        "loop": false,
+        "duration": 2.3
       }
     },
     "onPlantFoodDescription": "Summons a large ball of poison that deals damage, knock back, and poison all zombies on the lawn.",
@@ -1849,6 +1898,10 @@
         "clip": "attack",
         "loop": false,
         "duration": 1.03
+      },
+      "plantfood": {
+        "clip": "plantfood",
+        "loop": true
       }
     },
     "onPlantFoodDescription": "Shoots a huge number of peas out, dealing massive damage. Normal attack will fire five peas instead of four,",
@@ -2808,8 +2861,13 @@
         "clip": "idle",
         "loop": true
       },
-      "attack": {
+      "jumpDown": {
         "clip": "jump_down_right",
+        "loop": false,
+        "duration": 0.80
+      },
+      "attack": {
+        "clip": "jump_up_right",
         "loop": false,
         "duration": 0.80
       }

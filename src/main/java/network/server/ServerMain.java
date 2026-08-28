@@ -1,0 +1,60 @@
+package network.server;
+
+import Data.database.DataBaseManager;
+import Data.loader.PlantLoader;
+import Data.loader.QuestLoader;
+import Data.loader.ZombieRegistry;
+
+import java.io.IOException;
+
+public final class ServerMain {
+    private ServerMain() {
+    }
+
+    public static void main(String[] args) {
+        configureDatabase();
+        initializeServerData();
+
+        int port = parsePort(args);
+
+        GameServer server = new GameServer(port);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(server::close));
+
+        try {
+            server.start();
+        } catch (IOException exception) {
+            System.err.println(
+                    "Server failed: " + exception.getMessage()
+            );
+            server.close();
+        }
+    }
+
+    private static void configureDatabase() {
+        if (System.getProperty(DataBaseManager.DB_PATH_PROPERTY) == null) {
+            System.setProperty(DataBaseManager.DB_PATH_PROPERTY, "pvz_server.db");
+        }
+    }
+
+    private static void initializeServerData() {
+        System.out.println("Server database: " + DataBaseManager.getDatabasePath());
+        DataBaseManager.initializeDatabase();
+
+        PlantLoader.load();
+        ZombieRegistry.load();
+        QuestLoader.loadQuestsToDatabase();
+    }
+
+    private static int parsePort(String[] args) {
+        if (args.length == 0) {
+            return GameServer.DEFAULT_PORT;
+        }
+        try {
+            return Integer.parseInt(args[0]);
+        } catch (NumberFormatException exception) {
+            System.err.println("Invalid port '" + args[0] + "'. Using " + GameServer.DEFAULT_PORT + ".");
+            return GameServer.DEFAULT_PORT;
+        }
+    }
+}

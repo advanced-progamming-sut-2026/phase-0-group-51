@@ -19,8 +19,12 @@ public final class WorldEffectManager extends Group {
     private static final String PROJECTILE_HIT_PAM =
         "768/INITIAL/EFFECTS/PVINE_PROJECTILE_HIT/PVINE_PROJECTILE_HIT.PAM";
 
+    private static final String PLANT_DROWNING_PAM =
+        "768/FULL/EFFECTS/PLANT_DROWNING/PLANT_DROWNING.PAM";
+
     private static final float EXPLOSION_SCALE = 0.75f;
     private static final float PROJECTILE_HIT_SCALE = 0.50f;
+    private static final float PLANT_DROWNING_SCALE = 0.61f;
 
     private final PvzGame game;
     private final BoardTransform transform;
@@ -42,6 +46,7 @@ public final class WorldEffectManager extends Group {
         switch (event.type()) {
             case PLANT_EXPLOSION -> playExplosion(event);
             case PROJECTILE_IMPACT -> playProjectileImpact(event);
+            case PLANT_DROWNING -> playPlantDrowning(event);
             case ICY_WIND -> {
             }
         }
@@ -73,6 +78,23 @@ public final class WorldEffectManager extends Group {
             "hit",
             "impact",
             "projectile_hit",
+            "effect",
+            "animation",
+            "anim"
+        );
+    }
+
+
+    private void playPlantDrowning(VisualEffectEvent event) {
+        playOneShot(
+            PLANT_DROWNING_PAM,
+            PLANT_DROWNING_SCALE,
+            0.75f,
+            event.posX(),
+            event.posY(),
+            "drown",
+            "drowning",
+            "sink",
             "effect",
             "animation",
             "anim"

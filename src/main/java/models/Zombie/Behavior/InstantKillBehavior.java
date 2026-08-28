@@ -2,6 +2,7 @@ package models.Zombie.Behavior;
 
 import lombok.Getter;
 import models.Board.Board;
+import models.Plant.Explosive;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -49,6 +50,9 @@ public class InstantKillBehavior implements PersistableBehavior {
         Board board = gs.getBoard();
         Plant target = board.findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), 0);
         if (target != null) {
+            if (resistsInstantKill(target)) {
+                return;
+            }
             target.takeDamage(target.getCurrentHP(),gs);
             afterKill(zombie);
             return;
@@ -64,6 +68,10 @@ public class InstantKillBehavior implements PersistableBehavior {
         }
     }
 
+    private boolean resistsInstantKill(Plant plant) {
+        return plant.getPlantType() instanceof Explosive && !plant.isDisabled();
+    }
+
     private void afterKill(Zombie zombie) {
         hasKilled = true;
         if (!repeating) {
@@ -72,7 +80,10 @@ public class InstantKillBehavior implements PersistableBehavior {
     }
 
     private void applySpeedScale(Zombie zombie, float scale) {
-        zombie.setSpeedMultiplier(zombie.getBaseSpeed() * scale);
+        // scale is already a speed multiplier.
+        // Example: All-Star runningSpeedScale 2.5 means
+        // base speed * 2.5, not base speed * (base speed * 2.5).
+        zombie.setSpeedMultiplier(scale);
     }
 
 

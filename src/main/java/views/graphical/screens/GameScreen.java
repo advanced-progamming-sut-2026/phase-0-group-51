@@ -51,6 +51,7 @@ import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
+import views.graphical.gameplay.effects.BigWaveBeachWaterAnimationSystem;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
@@ -66,7 +67,6 @@ import views.graphical.dialogue.LevelDialogueRegistry;
 import views.graphical.dialogue.NpcDialogueSequence;
 import views.graphical.ui.*;
 import views.graphical.ui.conveyorBelt.ConveyorBeltActor;
-import views.graphical.ui.conveyorBelt.ConveyorSpecialLevel;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -82,6 +82,7 @@ public class GameScreen extends BaseScreen {
     private final Viewport viewport;
     private final Stage uiStage;
     private final Stage worldStage;
+    private final Group bigWaveBeachWaterLayer;
     private final DepthSortedEntityLayer entityDepthLayer;
     private final InputMultiplexer inputMultiplexer;
     private final PlantSlotsBar plantSlotsBar;
@@ -161,6 +162,7 @@ public class GameScreen extends BaseScreen {
     private final LootAnimationSystem lootAnimationSystem;
     private final SandstormAnimationSystem sandstormAnimationSystem;
     private final FrostbiteSnowstormAnimationSystem frostbiteSnowstormAnimationSystem;
+    private final BigWaveBeachWaterAnimationSystem bigWaveBeachWaterAnimationSystem;
     private final IceFloorAnimationSystem iceFloorAnimationSystem;
     private final FrozenZombieIceAnimationSystem frozenZombieIceAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
@@ -288,6 +290,11 @@ public class GameScreen extends BaseScreen {
             iceFloorAnimationSystem
         );
 
+
+        bigWaveBeachWaterLayer = new Group();
+        bigWaveBeachWaterLayer.setTouchable(Touchable.disabled);
+        worldStage.addActor(bigWaveBeachWaterLayer);
+
         entityDepthLayer = new DepthSortedEntityLayer();
         worldStage.addActor(entityDepthLayer);
 
@@ -300,6 +307,15 @@ public class GameScreen extends BaseScreen {
             currentGame.getGameState(),
             entityDepthLayer
         );
+
+        bigWaveBeachWaterAnimationSystem =
+            new BigWaveBeachWaterAnimationSystem(
+                game,
+                boardTransform,
+                theme,
+                zombieAnimationSystem,
+                bigWaveBeachWaterLayer
+            );
 
         lootAnimationSystem =
             new LootAnimationSystem(
@@ -367,6 +383,12 @@ public class GameScreen extends BaseScreen {
                     .getBoard()
             );
 
+            bigWaveBeachWaterAnimationSystem.sync(
+                currentGame.getGameState().getBoard(),
+                currentGame.getGameState().getZombiesInTheGame(),
+                0f
+            );
+
             protectedPlantOverlayManager =
                 new ProtectedPlantOverlayManager(
                     game,
@@ -374,6 +396,9 @@ public class GameScreen extends BaseScreen {
                 );
             worldStage.addActor(
                 protectedPlantOverlayManager
+            );
+            protectedPlantOverlayManager.setZIndex(
+                entityDepthLayer.getZIndex()
             );
 
             deadlineOverlayManager =
@@ -579,7 +604,7 @@ public class GameScreen extends BaseScreen {
                     startGameAfterSelection();
                     break;
                 }
-                AudioManager.getInstance().playMusic("assets/sounds/ChooseYourSeeds.mp3");
+
                 PlantSelectionMenuTable plantSelection =
                     new PlantSelectionMenuTable(
                         game,
@@ -804,6 +829,7 @@ public class GameScreen extends BaseScreen {
     public void startGameAfterSelection() {
         AudioManager.getInstance().playMusic("assets/sounds/wholeLevel.mp3");
         zombieLevelPreview.clear();
+
         plantSlotsBar.remove();
         plantSlotsBar.setOnRemoveRequested(null);
 
@@ -1524,7 +1550,23 @@ public class GameScreen extends BaseScreen {
                         .getGameState()
                         .getZombiesInTheGame()
                 );
+
+                bigWaveBeachWaterAnimationSystem.sync(
+                    currentGame.getGameState().getBoard(),
+                    currentGame.getGameState().getZombiesInTheGame(),
+                    gameplayDelta
+                );
             }
+        } else if (renderGame != null && renderGame.getGameState() != null) {
+            float waterVisualDelta = introState == IntroState.PLAYING
+                ? 0f
+                : delta;
+
+            bigWaveBeachWaterAnimationSystem.sync(
+                renderGame.getGameState().getBoard(),
+                renderGame.getGameState().getZombiesInTheGame(),
+                waterVisualDelta
+            );
         }
 
         updateToolCursorPreview();

@@ -5,6 +5,7 @@ import models.Board.Tile;
 import models.Plant.Plant;
 import models.Plant.PlantTag;
 import models.effects.GameplayNoticeEvent;
+import models.effects.VisualEffectEvent;
 import models.games.GameState;
 import models.games.ZombieWaveManager;
 
@@ -58,22 +59,22 @@ public class BigWaveBeachFeature {
 
     private void applyWaterColumnCount(int waterColumns, int waveNumber) {
         int boundedColumns = Math.max(
-                MIN_WATER_COLUMNS,
-                Math.min(MAX_WATER_COLUMNS, waterColumns)
+            MIN_WATER_COLUMNS,
+            Math.min(MAX_WATER_COLUMNS, waterColumns)
         );
         int leftmostWaterColumn = board.getColumnCount() - boundedColumns;
         board.setWaterLevel(leftmostWaterColumn);
         drownDryPlants();
 
         String moment = waveNumber <= 0
-                ? "at the start of the level"
-                : "at the start of zombie wave " + waveNumber;
+            ? "at the start of the level"
+            : "at the start of zombie wave " + waveNumber;
         state.logEvent(
-                "The tide changed " + moment + ": the rightmost "
-                        + boundedColumns + " columns are water. "
-                        + "The water wave cannot pass column "
-                        + (board.getColumnCount() - MAX_WATER_COLUMNS + 1)
-                        + ".\n"
+            "The tide changed " + moment + ": the rightmost "
+                + boundedColumns + " columns are water. "
+                + "The water wave cannot pass column "
+                + (board.getColumnCount() - MAX_WATER_COLUMNS + 1)
+                + ".\n"
         );
     }
 
@@ -88,8 +89,11 @@ public class BigWaveBeachFeature {
                 boolean isWet = plant.hasTag(PlantTag.WATER) || tile.hasLilyPad();
                 if (!isWet) {
                     state.logEvent(
-                            "The rising wave drowned " + plant.getName() + " at (" + (column + 1) +
-                                    ", " + (lane + 1) + ").\n");
+                        "The rising wave drowned " + plant.getName() + " at (" + (column + 1) +
+                            ", " + (lane + 1) + ").\n");
+                    state.emitVisualEffect(
+                        VisualEffectEvent.plantDrowning(column, lane)
+                    );
                     plant.die(state);
                 }
             }

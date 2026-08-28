@@ -5,6 +5,7 @@ import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
+import models.Plant.Explosive;
 import models.Plant.Plant;
 import models.User;
 import models.Zombie.Behavior.ArmorBehavior;
@@ -109,12 +110,20 @@ public class Zombie {
         hitpoints = Math.max(1, Math.round(hitpoints * scale));
     }
 
+    private boolean deathByExplosion;
+
     public void applyChill(int ticks) {
         effects.merge(EFFECT_CHILLED, ticks, Math::max);
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onFrozen(this);
+        }
     }
 
     public void applyFreeze(int ticks) {
         effects.merge(EFFECT_FROZEN, ticks, Math::max);
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onFrozen(this);
+        }
     }
     public void applyButter(int ticks) {
         effects.merge(EFFECT_BUTTERED, ticks, Math::max);
@@ -423,6 +432,10 @@ public class Zombie {
             return;
         }
         dead = true;
+        if (sourcePlant != null
+            && sourcePlant.getPlantType() instanceof Explosive) {
+            deathByExplosion = true;
+        }
         models.items.Mower mower = lane >= 0 && lane < gs.getLawnMowers().length
             ? gs.getLawnMowers()[lane] : null;
         gs.getQuestTracker().recordZombieKill(
