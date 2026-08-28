@@ -19,10 +19,14 @@ import network.protocol.auth.ForgotPasswordStartRequest;
 import network.protocol.auth.ForgotPasswordStartResponse;
 import network.protocol.auth.PasswordResetRequest;
 import network.protocol.auth.PasswordResetResponse;
+import Data.database.AuthSessionRepository;
 
 public class AuthService {
     private final UserRepository userRepository =
             new UserRepository();
+    private final AuthSessionRepository
+            authSessionRepository =
+            new AuthSessionRepository();
 
     private final NetworkJsonCodec codec =
             new NetworkJsonCodec();
@@ -331,6 +335,15 @@ public class AuthService {
                     "Password could not be saved."
             );
         }
+        Integer recoveryUserId =
+                connection.getSession()
+                        .getRecoveryUserId();
+
+        if (recoveryUserId != null) {
+            authSessionRepository.deleteAllForUser(
+                    recoveryUserId
+            );
+        }
 
         connection.getSession()
                 .clearPasswordRecovery();
@@ -415,15 +428,137 @@ public class AuthService {
                 PlantRegistry.getStarterPlantIds()
         );
 
+        String rawToken = null;
+        String tokenHash = null;
+
+        if (request.isRememberMe()) {
+            rawToken =
+                    AuthTokenUtil.generateToken();
+
+            tokenHash =
+                    AuthTokenUtil.hashToken(rawToken);
+
+            boolean saved =
+                    authSessionRepository.saveToken(
+                            user.getId(),
+                            tokenHash
+                    );
+
+            if (!saved) {
+                return loginFailure(
+                        "Could not create persistent login session."
+                );
+            }
+        }
+
         connection.getSession().authenticate(
                 user.getId(),
-                user.getUsername()
+                user.getUsername(),
+                tokenHash
         );
 
         return new LoginResponse(
                 true,
                 "Login successful.",
-                UserProfileDto.fromUser(user)
+                UserProfileDto.fromUser(user),
+                rawToken
+        );
+    }
+    public NetworkMessage handleResumeSession(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        if (message.getPayload() == null) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Session token is required."
+            );
+        }
+
+        try {
+            ResumeSessionRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            ResumeSessionRequest.class
+                    );
+
+            LoginResponse response =
+                    resumeSession(
+                            connection,
+                            request
+                    );
+
+            return new NetworkMessage(
+                    MessageType.RESUME_SESSION_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid session resume request."
+            );
+        }
+    }
+    private LoginResponse resumeSession(
+            ClientConnection connection,
+            ResumeSessionRequest request
+    ) {
+        if (connection.getSession().isAuthenticated()) {
+            return loginFailure(
+                    "This connection is already logged in."
+            );
+        }
+
+        if (request == null
+                || request.getToken() == null
+                || request.getToken().isBlank()) {
+            return loginFailure(
+                    "Saved session token is required."
+            );
+        }
+
+        String tokenHash =
+                AuthTokenUtil.hashToken(
+                        request.getToken()
+                );
+
+        String username =
+                authSessionRepository
+                        .findUsernameByTokenHash(tokenHash);
+
+        if (username == null) {
+            return loginFailure(
+                    "Saved login session is invalid."
+            );
+        }
+
+        User user =
+                userRepository.getUserByUsername(username);
+
+        if (user == null) {
+            authSessionRepository
+                    .deleteToken(tokenHash);
+
+            return loginFailure(
+                    "Saved account no longer exists."
+            );
+        }
+
+        authSessionRepository.touch(tokenHash);
+
+        connection.getSession().authenticate(
+                user.getId(),
+                user.getUsername(),
+                tokenHash
+        );
+
+        return new LoginResponse(
+                true,
+                "Session restored.",
+                UserProfileDto.fromUser(user),
+                null
         );
     }
 
@@ -483,6 +618,14 @@ public class AuthService {
                     false,
                     "This connection is not logged in."
             );
+        }
+        String tokenHash =
+                connection.getSession()
+                        .getPersistentTokenHash();
+
+        if (tokenHash != null) {
+            authSessionRepository
+                    .deleteToken(tokenHash);
         }
 
         connection.getSession().clear();

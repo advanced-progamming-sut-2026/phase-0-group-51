@@ -18,6 +18,7 @@ import models.App;
 import models.Result;
 import models.enums.Menu;
 import models.enums.SecurityQuestions;
+import network.client.ClientSessionTokenStore;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
@@ -519,6 +520,7 @@ public class SignupScreen extends BaseScreen{
             );
             return;
         }
+        ClientSessionTokenStore.clear();
 
         ClientAuthState.applyLogin(
                 response.getUser()

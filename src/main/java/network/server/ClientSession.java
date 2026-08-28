@@ -6,6 +6,7 @@ public class ClientSession {
     private volatile Integer recoveryUserId;
     private volatile String recoveryUsername;
     private volatile boolean recoveryVerified;
+    private volatile String persistentTokenHash;
 
     public boolean isAuthenticated() {
         return userId != null;
@@ -15,13 +16,31 @@ public class ClientSession {
             int authenticatedUserId,
             String authenticatedUsername
     ) {
+        authenticate(
+                authenticatedUserId,
+                authenticatedUsername,
+                null
+        );
+    }
+    public void authenticate(
+            int authenticatedUserId,
+            String authenticatedUsername,
+            String tokenHash
+    ) {
         userId = authenticatedUserId;
         username = authenticatedUsername;
+        persistentTokenHash = tokenHash;
+
+        clearPasswordRecovery();
+    }
+    public String getPersistentTokenHash() {
+        return persistentTokenHash;
     }
 
     public void clear() {
         userId = null;
         username = null;
+        persistentTokenHash = null;
         clearPasswordRecovery();
     }
 

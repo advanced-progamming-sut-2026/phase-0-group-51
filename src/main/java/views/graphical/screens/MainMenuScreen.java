@@ -18,6 +18,7 @@ import controllers.MainMenuController;
 import graphics.PvzGame;
 import models.Result;
 import models.minigames.MinigameType;
+import network.client.ClientSessionTokenStore;
 import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.minigamesScreen.meowPoint.MeowPointScreen;
 import views.graphical.screens.minigamesScreen.minigames;
@@ -477,6 +478,8 @@ public class MainMenuScreen extends BaseScreen{
         finishLocalLogout();
     }
     private void finishLocalLogout() {
+        ClientSessionTokenStore.clear();
+
         ClientAuthState.clear();
 
         game.showScreen(

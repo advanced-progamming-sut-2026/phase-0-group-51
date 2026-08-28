@@ -6,6 +6,7 @@ import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 import network.protocol.auth.*;
+import network.protocol.auth.ResumeSessionRequest;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -165,6 +166,55 @@ public class AccountClientService {
                                 ForgotPasswordAnswerResponse.class
                         )
                 );
+    }
+    public CompletableFuture<LoginResponse> resumeSession(
+            String token
+    ) throws IOException {
+        String payload =
+                codec.encodePayload(
+                        new ResumeSessionRequest(token)
+                );
+
+        NetworkMessage message =
+                new NetworkMessage(
+                        MessageType.RESUME_SESSION_REQUEST,
+                        UUID.randomUUID().toString(),
+                        payload
+                );
+
+        return networkClient
+                .sendRequest(message)
+                .thenApply(this::decodeResumeResponse);
+    }
+    private LoginResponse decodeResumeResponse(
+            NetworkMessage message
+    ) {
+        if (message.getType() == MessageType.ERROR) {
+            return new LoginResponse(
+                    false,
+                    message.getPayload(),
+                    null
+            );
+        }
+
+        if (message.getType()
+                != MessageType.RESUME_SESSION_RESPONSE) {
+            throw new CompletionException(
+                    new IllegalStateException(
+                            "Unexpected response type: "
+                                    + message.getType()
+                    )
+            );
+        }
+
+        try {
+            return codec.decodePayload(
+                    message.getPayload(),
+                    LoginResponse.class
+            );
+        } catch (JsonProcessingException exception) {
+            throw new CompletionException(exception);
+        }
     }
     public CompletableFuture<PasswordResetResponse>
     resetPassword(

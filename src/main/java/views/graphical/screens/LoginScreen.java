@@ -15,6 +15,7 @@ import graphics.PvzGame;
 import models.App;
 import models.Result;
 import models.enums.Menu;
+import network.client.ClientSessionTokenStore;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
 import network.client.ClientAuthState;
@@ -58,7 +59,6 @@ public class LoginScreen extends BaseScreen {
         backgroundImage.setTouchable(Touchable.disabled);
 
         stayLoggedInCheckBox = createStayLoggedIn();
-        stayLoggedInCheckBox.setDisabled(true);
         Table content = new Table();
         content.center().center();
         usernameField = createUsernameBox();
@@ -175,7 +175,8 @@ public class LoginScreen extends BaseScreen {
         LoginRequest request =
                 new LoginRequest(
                         username,
-                        password
+                        password,
+                        stayLoggedInCheckBox.isChecked()
                 );
 
         game.getNetworkManager()
@@ -214,6 +215,17 @@ public class LoginScreen extends BaseScreen {
                             : response.getMessage()
             );
             return;
+        }
+
+        if (response.getSessionToken() != null
+                && !response.getSessionToken().isBlank()) {
+
+            ClientSessionTokenStore.save(
+                    response.getSessionToken()
+            );
+
+        } else {
+            ClientSessionTokenStore.clear();
         }
 
         ClientAuthState.applyLogin(

@@ -67,6 +67,13 @@ public class MessageRouter {
                     message
             );
         }
+        if (message.getType()
+                == MessageType.RESUME_SESSION_REQUEST) {
+            return authService.handleResumeSession(
+                    connection,
+                    message
+            );
+        }
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
