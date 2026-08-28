@@ -16,8 +16,11 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
@@ -48,35 +51,22 @@ import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 
+import views.graphical.gameplay.effects.BigWaveBeachWaterAnimationSystem;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
 import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
 import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
-import views.graphical.gameplay.effects.BigWaveBeachWaterAnimationSystem;
-import views.graphical.gameplay.manager.PlantViewManager;
-import views.graphical.gameplay.manager.DepthSortedEntityLayer;
-import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
-import views.graphical.gameplay.manager.DeadlineOverlayManager;
-import views.graphical.gameplay.manager.ProjectileViewManager;
-import views.graphical.gameplay.manager.SunViewManager;
-import views.graphical.gameplay.manager.WorldEffectManager;
+import views.graphical.gameplay.manager.*;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.loot.LootAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieLevelPreview;
 import views.graphical.dialogue.LevelDialogueRegistry;
 import views.graphical.dialogue.NpcDialogueSequence;
-import views.graphical.ui.GameSettings;
-import views.graphical.ui.NpcDialogueOverlay;
-import views.graphical.ui.CenterGameNotice;
-import views.graphical.ui.GameOverPopup;
-import views.graphical.ui.GameWinPopup;
-import views.graphical.ui.PauseMenuPopup;
-import views.graphical.ui.PlantSelectionMenuTable;
-import views.graphical.ui.PlantSlotsBar;
-import views.graphical.ui.StartGameMenuPopup;
+import views.graphical.ui.*;
+import views.graphical.ui.conveyorBelt.ConveyorBeltActor;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -104,6 +94,11 @@ public class GameScreen extends BaseScreen {
     private final float viewWidth = 1066f;
     private final float worldHeight = 600f;
     private static final float FROSTBITE_MIDDLE_BACKGROUND_Y_OFFSET = -10f;
+    private ConveyorBeltActor specialConveyorBelt;
+    private List<PlantData> lastConveyorSnapshot = List.of();
+    private int selectedConveyorIndex = -1;
+    private final ButtonGroup<PlantCard> conveyorButtonGroup = new ButtonGroup<>();
+    private PlantData specialConveyorSelectedPlant;
     private enum IntroState {
         WAIT_AT_MAIN,
         PAN_TO_ZOMBIES,
@@ -295,9 +290,7 @@ public class GameScreen extends BaseScreen {
             iceFloorAnimationSystem
         );
 
-        // Big Wave Beach water/ripples are always behind plants, graves and
-        // zombies. Keeping them in their own stage layer also prevents the
-        // global entity depth sorter from mixing water effects with actors.
+
         bigWaveBeachWaterLayer = new Group();
         bigWaveBeachWaterLayer.setTouchable(Touchable.disabled);
         worldStage.addActor(bigWaveBeachWaterLayer);
@@ -454,6 +447,9 @@ public class GameScreen extends BaseScreen {
                 theme.getAllowedZombies()
             )
         );
+        conveyorButtonGroup.setMinCheckCount(0);
+        conveyorButtonGroup.setMaxCheckCount(1);
+        conveyorButtonGroup.setUncheckLast(true);
     }
     private float getMiddleBackgroundYOffset() {
         return theme == ChapterTheme.FROSTBITE_CAVES
@@ -603,7 +599,11 @@ public class GameScreen extends BaseScreen {
                 break;
 
             case SHOW_PLANT_SELECT:
-
+                Game currentGame = App.getInstance().getCurrentGame();
+                if (currentGame != null && currentGame.isConveyorBeltLevel()) {
+                    startGameAfterSelection();
+                    break;
+                }
 
                 PlantSelectionMenuTable plantSelection =
                     new PlantSelectionMenuTable(
@@ -667,8 +667,6 @@ public class GameScreen extends BaseScreen {
 
         armInitialZombieSpawnDelay();
 
-        // Gameplay is active immediately. Only ZombieWaveManager waits
-        // before starting the first wave.
         introState = IntroState.PLAYING;
         stateTime = 0f;
     }
@@ -829,6 +827,7 @@ public class GameScreen extends BaseScreen {
     }
 
     public void startGameAfterSelection() {
+        AudioManager.getInstance().playMusic("assets/sounds/wholeLevel.mp3");
         zombieLevelPreview.clear();
 
         plantSlotsBar.remove();
@@ -865,7 +864,24 @@ public class GameScreen extends BaseScreen {
                 "Game state was not created."
             );
         }
+        if (currentGame.isConveyorBeltLevel()) {
 
+            plantSlotsBar.setVisible(
+                    false
+            );
+
+
+            specialConveyorBelt = new ConveyorBeltActor("assets/UIs/Belt.png");
+
+            if (currentGame.isConveyorBeltLevel()) {
+                plantSlotsBar.setVisible(false);
+                specialConveyorBelt = new ConveyorBeltActor("assets/UIs/Belt.png");
+                specialConveyorBelt.setPosition(0f, 82f);
+                uiStage.addActor(specialConveyorBelt);
+                specialConveyorBelt.toFront();
+                refreshConveyorBar(true);
+            }
+        }
         Board board =
             currentGame
                 .getGameState()
@@ -936,7 +952,67 @@ public class GameScreen extends BaseScreen {
         introState = IntroState.PAN_BACK_TO_MAIN;
         stateTime = 0f;
     }
+    private void refreshConveyorBar(boolean force) {
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || !currentGame.isConveyorBeltLevel()) return;
 
+        List<PlantData> current = currentGame.getConveyorBeltPlants();
+        if (!force && current.equals(lastConveyorSnapshot)) return;
+
+        int diff = current.size() - lastConveyorSnapshot.size();
+
+        if (force || current.isEmpty()) {
+            specialConveyorBelt.clearPlants();
+            conveyorButtonGroup.clear();
+            for (PlantData data : current) {
+                addCardToBelt(data);
+            }
+        } else if (diff > 0) {
+            for (int i = lastConveyorSnapshot.size(); i < current.size(); i++) {
+                addCardToBelt(current.get(i));
+            }
+        }
+        lastConveyorSnapshot = List.copyOf(current);
+    }
+
+    private void addCardToBelt(PlantData data) {
+        if (data == null) return;
+
+        PlantCard card = new PlantCard(game, new PlantCard.ViewData(data, true, false, 1, 0, 1, false, false), 0.72f);
+        Stack stack = new Stack();
+        stack.add(card);
+
+        stack.setSize(card.getPrefWidth(), card.getPrefHeight());
+        stack.layout();
+
+        conveyorButtonGroup.add(card);
+
+        card.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                if (card.isChecked()) {
+                    selectedConveyorIndex = specialConveyorBelt.getItems().indexOf(stack, true);
+                    handleSpecialConveyorSelection(data);
+                } else {
+                    int currentIndex = specialConveyorBelt.getItems().indexOf(stack, true);
+                    if (selectedConveyorIndex == currentIndex) {
+                        selectedConveyorIndex = -1;
+                        handleSpecialConveyorSelection(null);
+                    }
+                }
+            }
+        });
+        specialConveyorBelt.addPlant(stack);
+    }
+
+    private void rebuildButtonGroup() {
+        conveyorButtonGroup.clear();
+        for (Actor actor : specialConveyorBelt.getItems()) {
+            if (actor instanceof Stack stack && stack.getChildren().size > 0 && stack.getChild(0) instanceof PlantCard card) {
+                conveyorButtonGroup.add(card);
+            }
+        }
+    }
     private void handlePlantSelectionChanged(
         PlantData plant
     ) {
@@ -963,7 +1039,7 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        plantSlotsBar.clearPlantSelection();
+        clearCurrentPlantSelection();
         setToolMode(ToolMode.SHOVEL);
     }
 
@@ -984,7 +1060,7 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        plantSlotsBar.clearPlantSelection();
+        clearCurrentPlantSelection();
         setToolMode(ToolMode.PLANT_FOOD);
     }
 
@@ -1008,7 +1084,7 @@ public class GameScreen extends BaseScreen {
         }
 
         if (mode == ToolMode.NONE
-            && plantSlotsBar.getSelectedPlant() == null) {
+            && getCurrentSelectedPlant() == null) {
             hidePlacementHighlights();
         }
     }
@@ -1292,7 +1368,7 @@ public class GameScreen extends BaseScreen {
     }
     private void handleTileHover(Tile tile) {
         boolean hasPlantSelection =
-            plantSlotsBar.getSelectedPlant() != null;
+                getCurrentSelectedPlant() != null;
         boolean hasToolSelection =
             toolMode != ToolMode.NONE;
 
@@ -1428,6 +1504,7 @@ public class GameScreen extends BaseScreen {
         handlePauseShortcut();
         updateCutscene(delta);
         updateGameplayTicks(delta);
+        updateSpecialConveyor(delta);
         processGameplayNotices();
         updateRenderTickInterpolation(delta);
         updateWaveNotice();
@@ -1481,10 +1558,6 @@ public class GameScreen extends BaseScreen {
                 );
             }
         } else if (renderGame != null && renderGame.getGameState() != null) {
-            // Keep the beach water visible during the zombie preview / plant
-            // selection camera sequence too. While gameplay is paused by an
-            // overlay, keep the visual state synchronized without advancing
-            // the tide transition.
             float waterVisualDelta = introState == IntroState.PLAYING
                 ? 0f
                 : delta;
@@ -1706,7 +1779,7 @@ public class GameScreen extends BaseScreen {
             placementPreview.setVisible(false);
         }
 
-        plantSlotsBar.clearPlantSelection();
+        clearCurrentPlantSelection();
 
         if (gameHud != null) {
             gameHud.hideGameHud();
@@ -2020,7 +2093,7 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        PlantData selectedPlant = plantSlotsBar.getSelectedPlant();
+        PlantData selectedPlant = getCurrentSelectedPlant();
         if (selectedPlant == null) {
             return;
         }
@@ -2037,7 +2110,16 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        plantSlotsBar.clearPlantSelection();
+        if (isSpecialConveyorLevel() && selectedConveyorIndex >= 0) {
+            specialConveyorBelt.removePlant(selectedConveyorIndex);
+            conveyorButtonGroup.uncheckAll();
+            selectedConveyorIndex = -1;
+            specialConveyorSelectedPlant = null;
+            lastConveyorSnapshot = List.copyOf(App.getInstance().getCurrentGame().getConveyorBeltPlants());
+            rebuildButtonGroup();
+        }
+
+        clearCurrentPlantSelection();
     }
 
     private DroppedLoot findLootAt(
@@ -2131,10 +2213,49 @@ public class GameScreen extends BaseScreen {
         if (deadlineOverlayManager != null) {
             deadlineOverlayManager.clearVisuals();
         }
+//        if (specialConveyorBelt != null) {
+//            specialConveyorBelt.dispose();
+//            specialConveyorBelt = null;
+//        }
         uiStage.dispose();
         worldStage.dispose();
         shapeRenderer.dispose();
         modalDimTexture.dispose();
+
+    }
+    private boolean isSpecialConveyorLevel() {
+        Game currentGame = App.getInstance().getCurrentGame();
+        return currentGame != null && currentGame.isConveyorBeltLevel();
     }
 
+
+    private PlantData getCurrentSelectedPlant() {
+        if (isSpecialConveyorLevel()) {
+            return specialConveyorSelectedPlant;
+        }
+        return plantSlotsBar.getSelectedPlant();
+    }
+
+
+    private void handleSpecialConveyorSelection(PlantData plant) {
+        specialConveyorSelectedPlant = plant;
+        handlePlantSelectionChanged(plant);
+    }
+
+
+    private void clearCurrentPlantSelection() {
+        if (isSpecialConveyorLevel()) {
+            specialConveyorSelectedPlant = null;
+            conveyorButtonGroup.uncheckAll();
+            selectedConveyorIndex = -1;
+            handlePlantSelectionChanged(null);
+            return;
+        }
+        plantSlotsBar.clearPlantSelection();
+    }
+    private void updateSpecialConveyor(float delta) {
+        if (specialConveyorBelt == null) return;
+        specialConveyorBelt.update(delta);
+        refreshConveyorBar(false);
+    }
 }
