@@ -44,6 +44,29 @@ public class MessageRouter {
                     message
             );
         }
+        if (message.getType()
+                == MessageType.FORGOT_PASSWORD_START_REQUEST) {
+            return authService.handleForgotPasswordStart(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.FORGOT_PASSWORD_ANSWER_REQUEST) {
+            return authService.handleForgotPasswordAnswer(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PASSWORD_RESET_REQUEST) {
+            return authService.handlePasswordReset(
+                    connection,
+                    message
+            );
+        }
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "

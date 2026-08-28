@@ -5,16 +5,12 @@ import network.client.NetworkClient;
 import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
-import network.protocol.auth.RegisterRequest;
-import network.protocol.auth.RegisterResponse;
+import network.protocol.auth.*;
 
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import network.protocol.auth.LoginRequest;
-import network.protocol.auth.LoginResponse;
-import network.protocol.auth.LogoutResponse;
 
 public class AccountClientService {
     private final NetworkClient networkClient;
@@ -90,6 +86,109 @@ public class AccountClientService {
         return networkClient
                 .sendRequest(message)
                 .thenApply(this::decodeLoginResponse);
+    }
+    public CompletableFuture<ForgotPasswordStartResponse>
+    startPasswordRecovery(
+            ForgotPasswordStartRequest request
+    ) throws IOException {
+        String payload =
+                codec.encodePayload(request);
+
+        NetworkMessage message =
+                new NetworkMessage(
+                        MessageType.FORGOT_PASSWORD_START_REQUEST,
+                        UUID.randomUUID().toString(),
+                        payload
+                );
+
+        return networkClient
+                .sendRequest(message)
+                .thenApply(
+                        response -> decodePayloadResponse(
+                                response,
+                                MessageType.FORGOT_PASSWORD_START_RESPONSE,
+                                ForgotPasswordStartResponse.class
+                        )
+                );
+    }
+    private <T> T decodePayloadResponse(
+            NetworkMessage message,
+            MessageType expectedType,
+            Class<T> responseType
+    ) {
+        if (message.getType() == MessageType.ERROR) {
+            throw new CompletionException(
+                    new IllegalStateException(
+                            message.getPayload()
+                    )
+            );
+        }
+
+        if (message.getType() != expectedType) {
+            throw new CompletionException(
+                    new IllegalStateException(
+                            "Unexpected response type: "
+                                    + message.getType()
+                    )
+            );
+        }
+
+        try {
+            return codec.decodePayload(
+                    message.getPayload(),
+                    responseType
+            );
+        } catch (JsonProcessingException exception) {
+            throw new CompletionException(exception);
+        }
+    }
+    public CompletableFuture<ForgotPasswordAnswerResponse>
+    answerSecurityQuestion(
+            ForgotPasswordAnswerRequest request
+    ) throws IOException {
+        String payload =
+                codec.encodePayload(request);
+
+        NetworkMessage message =
+                new NetworkMessage(
+                        MessageType.FORGOT_PASSWORD_ANSWER_REQUEST,
+                        UUID.randomUUID().toString(),
+                        payload
+                );
+
+        return networkClient
+                .sendRequest(message)
+                .thenApply(
+                        response -> decodePayloadResponse(
+                                response,
+                                MessageType.FORGOT_PASSWORD_ANSWER_RESPONSE,
+                                ForgotPasswordAnswerResponse.class
+                        )
+                );
+    }
+    public CompletableFuture<PasswordResetResponse>
+    resetPassword(
+            PasswordResetRequest request
+    ) throws IOException {
+        String payload =
+                codec.encodePayload(request);
+
+        NetworkMessage message =
+                new NetworkMessage(
+                        MessageType.PASSWORD_RESET_REQUEST,
+                        UUID.randomUUID().toString(),
+                        payload
+                );
+
+        return networkClient
+                .sendRequest(message)
+                .thenApply(
+                        response -> decodePayloadResponse(
+                                response,
+                                MessageType.PASSWORD_RESET_RESPONSE,
+                                PasswordResetResponse.class
+                        )
+                );
     }
 
     private LoginResponse decodeLoginResponse(

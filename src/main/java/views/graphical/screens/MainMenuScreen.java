@@ -23,13 +23,17 @@ import views.graphical.screens.minigamesScreen.meowPoint.MeowPointScreen;
 import views.graphical.screens.minigamesScreen.minigames;
 import views.graphical.ui.*;
 import views.graphical.ui.leaderBoard.LeaderBoardPopup;
+import network.client.ClientAuthState;
+import network.protocol.auth.LogoutResponse;
+
+import java.io.IOException;
 
 public class MainMenuScreen extends BaseScreen{
     private ProfilePopup profilePopup;
     private LeaderBoardPopup leaderBoardPopup;
     private Stack root;
     private Texture backgroundTexture;
-    private final MainMenuController controller = new MainMenuController();
+    private boolean logoutInFlight;
     private static final String EXIT_NORMAL_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON";
     private static final String EXIT_PRESSED_ID = "IMAGE_UI_DRAPER_CLOSE_BUTTON_DOWN";
     private static final String PROFILE = "IMAGE_UI_MAINMENU_MM_PLAYERICON";
@@ -413,13 +417,70 @@ public class MainMenuScreen extends BaseScreen{
     @Override
     public void show() {
         super.show();
-        game.showHud(0, 0, true, () -> {Result result = controller.logout();
-                    if (result.success()) {
-                        game.showScreen(new FirstScreen(game));
-                    } else {
-                        game.notifyError(result.message());
-                    }
-                }
+        game.showHud(
+                0,
+                0,
+                true,
+                this::handleLogout
         );
         AudioManager.getInstance().playMusic("assets/sounds/MainMenu.mp3");
-}}
+    }
+    private void handleLogout() {
+        if (logoutInFlight) {
+            return;
+        }
+
+        if (!game.getNetworkManager().isConnected()) {
+            finishLocalLogout();
+            return;
+        }
+
+        logoutInFlight = true;
+
+        try {
+            game.getNetworkManager()
+                    .getAccountClientService()
+                    .logout()
+                    .whenComplete(
+                            (response, throwable) ->
+                                    Gdx.app.postRunnable(
+                                            () -> finishServerLogout(
+                                                    response,
+                                                    throwable
+                                            )
+                                    )
+                    );
+        } catch (IOException | RuntimeException exception) {
+            finishServerLogout(
+                    null,
+                    exception
+            );
+        }
+    }
+    private void finishServerLogout(
+            LogoutResponse response,
+            Throwable throwable
+    ) {
+        logoutInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Connection was lost while logging out."
+            );
+        } else if (response != null
+                && !response.isSuccess()) {
+            game.notifyError(
+                    response.getMessage()
+            );
+        }
+
+        finishLocalLogout();
+    }
+    private void finishLocalLogout() {
+        ClientAuthState.clear();
+
+        game.showScreen(
+                new FirstScreen(game)
+        );
+    }
+}

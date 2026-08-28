@@ -24,31 +24,41 @@ public class App {
     private Game currentGame;
     public static User loggedInUser;
     public ArrayList<User> users = new ArrayList<>();
+//    private App() {
+//        DataBaseManager.initializeDatabase();
+//        QuestLoader.loadQuestsToDatabase();
+//        PlantLoader.load();
+//        ZombieRegistry.load();
+//        UserRepository repository = new UserRepository();
+//        User rememberedUser = repository.getRememberedUser();
+//        if (rememberedUser != null) {
+//
+//            GreenHouse greenHouse =
+//                    GreenHouseRepository.load(rememberedUser.getId());
+//
+//            rememberedUser.setGreenHouse(greenHouse);
+//
+//            PlantRepository.unlockPlantsAndReturnNew(
+//                    rememberedUser.getId(),
+//                    PlantRegistry.getStarterPlantIds()
+//            );
+//
+//            loggedInUser = rememberedUser;
+//            currentMenu = Menu.MAIN_MENU;
+//
+//        } else {
+//            currentMenu = Menu.SIGN_UP_MENU;
+//        }
+//    }
     private App() {
         DataBaseManager.initializeDatabase();
         QuestLoader.loadQuestsToDatabase();
+
         PlantLoader.load();
         ZombieRegistry.load();
-        UserRepository repository = new UserRepository();
-        User rememberedUser = repository.getRememberedUser();
-        if (rememberedUser != null) {
 
-            GreenHouse greenHouse =
-                    GreenHouseRepository.load(rememberedUser.getId());
-
-            rememberedUser.setGreenHouse(greenHouse);
-
-            PlantRepository.unlockPlantsAndReturnNew(
-                    rememberedUser.getId(),
-                    PlantRegistry.getStarterPlantIds()
-            );
-
-            loggedInUser = rememberedUser;
-            currentMenu = Menu.MAIN_MENU;
-
-        } else {
-            currentMenu = Menu.SIGN_UP_MENU;
-        }
+        loggedInUser = null;
+        currentMenu = Menu.SIGN_UP_MENU;
     }
 
     private static final class AppHolder {

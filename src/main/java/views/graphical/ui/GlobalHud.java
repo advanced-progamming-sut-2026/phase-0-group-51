@@ -552,26 +552,50 @@ public final class GlobalHud extends Table {
         return button;
     }
 
+//    private void refreshCurrencyLabels() {
+//        User user = App.getInstance().getLoggedInUser();
+//        if (user == null) {
+//            coinLabel.setText("0");
+//            gemLabel.setText("0");
+//            return;
+//        }
+//
+//        UserRepository.CurrencyBalance balance = userRepository.getCurrencyBalance(user.getId());
+//        if (balance == null) {
+//            coinLabel.setText("0");
+//            gemLabel.setText("0");
+//            return;
+//        }
+//
+//        user.setCoins(balance.coins());
+//        user.setGems(balance.gems());
+//
+//        coinLabel.setText(String.format("%,d", balance.coins()));
+//        gemLabel.setText(String.format("%,d", balance.gems()));
+//    }
     private void refreshCurrencyLabels() {
-        User user = App.getInstance().getLoggedInUser();
+        User user =
+                App.getInstance().getLoggedInUser();
+
         if (user == null) {
             coinLabel.setText("0");
             gemLabel.setText("0");
             return;
         }
 
-        UserRepository.CurrencyBalance balance = userRepository.getCurrencyBalance(user.getId());
-        if (balance == null) {
-            coinLabel.setText("0");
-            gemLabel.setText("0");
-            return;
-        }
+        coinLabel.setText(
+                String.format(
+                        "%,d",
+                        user.getCoins()
+                )
+        );
 
-        user.setCoins(balance.coins());
-        user.setGems(balance.gems());
-
-        coinLabel.setText(String.format("%,d", balance.coins()));
-        gemLabel.setText(String.format("%,d", balance.gems()));
+        gemLabel.setText(
+                String.format(
+                        "%,d",
+                        user.getGems()
+                )
+        );
     }
 
     private void refreshMeowPointLabel() {

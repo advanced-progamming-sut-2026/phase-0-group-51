@@ -25,6 +25,7 @@ import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
 import pvz.libpvz.pam.PamPlayer;
+import network.client.ClientNetworkManager;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,8 @@ public final class PvzGame extends Game {
     private GlobalUiLayer globalUiLayer;
     private TextureBank textureBank;
     private PamPlayer pamPlayer;
+
+    private ClientNetworkManager networkManager;
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -63,6 +66,7 @@ public final class PvzGame extends Game {
             );
         }
         App.getInstance();
+        networkManager = new ClientNetworkManager();
 
         textureBank = new TextureBank("768", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
@@ -255,6 +259,11 @@ public final class PvzGame extends Game {
     @Override
     public void dispose() {
         Screen currentScreen = getScreen();
+
+        if (networkManager != null) {
+            networkManager.close();
+            networkManager = null;
+        }
 
         if (currentScreen != null) {
             currentScreen.dispose();

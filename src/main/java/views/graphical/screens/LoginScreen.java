@@ -17,6 +17,13 @@ import models.Result;
 import models.enums.Menu;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
+import network.client.ClientAuthState;
+import network.client.service.AccountClientService;
+import network.protocol.auth.LoginRequest;
+import network.protocol.auth.LoginResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 public class LoginScreen extends BaseScreen {
     private Stack root;
@@ -25,9 +32,10 @@ public class LoginScreen extends BaseScreen {
     private static final String BACK = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_NORMAL";
     private static final String BACK_PRESSED = "IMAGE_UI_ALMANAC_BUTTONS_HUD_BACK_SELECTED";
     private static final String LOGIN = "IMAGE_UI_GENERIC_VTB";
-    private final LoginMenuController controller = new LoginMenuController();
+    //private final LoginMenuController controller = new LoginMenuController();
     private TextField usernameField;
     private TextField passwordField;
+    private boolean loginInFlight;
     private NotificationOverlay notificationOverlay;
     private CheckBox stayLoggedInCheckBox;
     public LoginScreen(PvzGame game) {
@@ -50,6 +58,7 @@ public class LoginScreen extends BaseScreen {
         backgroundImage.setTouchable(Touchable.disabled);
 
         stayLoggedInCheckBox = createStayLoggedIn();
+        stayLoggedInCheckBox.setDisabled(true);
         Table content = new Table();
         content.center().center();
         usernameField = createUsernameBox();
@@ -81,8 +90,15 @@ public class LoginScreen extends BaseScreen {
             public void changed(ChangeEvent event, Actor actor) {
                 Table modalLayer = new Table();
                 modalLayer.setFillParent(true);
-                ForgotPassPopup popup = new ForgotPassPopup(game, Color.valueOf("EB8634"),
-                        notificationOverlay, modalLayer::remove);
+
+                ForgotPassPopup popup =
+                        new ForgotPassPopup(
+                                game,
+                                Color.valueOf("EB8634"),
+                                notificationOverlay,
+                                modalLayer::remove
+                        );
+
                 modalLayer.add(popup);
                 root.add(modalLayer);
             }
@@ -118,16 +134,122 @@ public class LoginScreen extends BaseScreen {
     public void hide() {
 
     }
+//    private void handleLogin() {
+//        String username = usernameField.getText().trim();
+//        String password = passwordField.getText();
+//        Result result = controller.login(username, password,  stayLoggedInCheckBox.isChecked());
+//        if (!result.success()) {
+//            notificationOverlay.showError(result.message());
+//            return;
+//        }
+//        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+//        game.showScreen(new MainMenuScreen(game));
+//    }
     private void handleLogin() {
-        String username = usernameField.getText().trim();
-        String password = passwordField.getText();
-        Result result = controller.login(username, password,  stayLoggedInCheckBox.isChecked());
-        if (!result.success()) {
-            notificationOverlay.showError(result.message());
+        if (loginInFlight) {
             return;
         }
-        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
-        game.showScreen(new MainMenuScreen(game));
+
+        String username =
+                usernameField.getText().trim();
+
+        String password =
+                passwordField.getText();
+
+        if (username.isEmpty()) {
+            notificationOverlay.showError(
+                    "Please enter your username."
+            );
+            return;
+        }
+
+        if (password.isEmpty()) {
+            notificationOverlay.showError(
+                    "Please enter your password."
+            );
+            return;
+        }
+
+        loginInFlight = true;
+
+        LoginRequest request =
+                new LoginRequest(
+                        username,
+                        password
+                );
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendLogin(request))
+                .whenComplete((response, throwable) -> Gdx.app.postRunnable(() -> finishLogin(response, throwable)));
+    }
+    private CompletableFuture<LoginResponse> sendLogin(
+            LoginRequest request
+    ) {
+        try {
+            AccountClientService service =
+                    game.getNetworkManager()
+                            .getAccountClientService();
+
+            return service.login(request);
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+    private void finishLogin(
+            LoginResponse response,
+            Throwable throwable
+    ) {
+        loginInFlight = false;
+
+        if (throwable != null) {
+            notificationOverlay.showError("Could not connect to server: " + rootMessage(throwable));
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            notificationOverlay.showError(
+                    response == null
+                            ? "Login failed."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientAuthState.applyLogin(
+                response.getUser()
+        );
+
+        game.showScreen(
+                new MainMenuScreen(game)
+        );
+    }
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future =
+                new CompletableFuture<>();
+
+        future.completeExceptionally(throwable);
+
+        return future;
+    }
+    private static String rootMessage(
+            Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+
+        if (message == null || message.isBlank()) {
+            return current.getClass().getSimpleName();
+        }
+
+        return message;
     }
     private ImageButton createBackButton() {
         TextureRegion normalRegion = game.getTextureBank().region(BACK);
