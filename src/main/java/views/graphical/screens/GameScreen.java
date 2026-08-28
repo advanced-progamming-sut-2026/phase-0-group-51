@@ -57,13 +57,7 @@ import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
 import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
 import views.graphical.gameplay.effects.FrostbiteSnowstormAnimationSystem;
-import views.graphical.gameplay.manager.PlantViewManager;
-import views.graphical.gameplay.manager.DepthSortedEntityLayer;
-import views.graphical.gameplay.manager.ProtectedPlantOverlayManager;
-import views.graphical.gameplay.manager.DeadlineOverlayManager;
-import views.graphical.gameplay.manager.ProjectileViewManager;
-import views.graphical.gameplay.manager.SunViewManager;
-import views.graphical.gameplay.manager.WorldEffectManager;
+import views.graphical.gameplay.manager.*;
 import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.gameplay.loot.LootAnimationSystem;
 import views.graphical.gameplay.zombie.ZombieAnimationSystem;
@@ -585,7 +579,7 @@ public class GameScreen extends BaseScreen {
                     startGameAfterSelection();
                     break;
                 }
-
+                AudioManager.getInstance().playMusic("assets/sounds/ChooseYourSeeds.mp3");
                 PlantSelectionMenuTable plantSelection =
                     new PlantSelectionMenuTable(
                         game,
@@ -808,8 +802,9 @@ public class GameScreen extends BaseScreen {
     }
 
     public void startGameAfterSelection() {
+        AudioManager.getInstance().playMusic("assets/sounds/wholeLevel.mp3");
         zombieLevelPreview.clear();
-
+git
         plantSlotsBar.remove();
         plantSlotsBar.setOnRemoveRequested(null);
 
