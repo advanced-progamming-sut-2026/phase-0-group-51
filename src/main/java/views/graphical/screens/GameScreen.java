@@ -804,7 +804,6 @@ public class GameScreen extends BaseScreen {
     public void startGameAfterSelection() {
         AudioManager.getInstance().playMusic("assets/sounds/wholeLevel.mp3");
         zombieLevelPreview.clear();
-git
         plantSlotsBar.remove();
         plantSlotsBar.setOnRemoveRequested(null);
 
