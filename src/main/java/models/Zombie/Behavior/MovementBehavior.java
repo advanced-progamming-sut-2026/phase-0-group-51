@@ -35,6 +35,11 @@ public class MovementBehavior implements PersistableBehavior {
     private boolean skipEatingThisTick = false; // FLY_OVER (dodo)
     private boolean pianoSpeedApplied = false;  // PIANO_CRUSH
 
+    // Endpoints of the most recent FLY_OVER leap, so the view can play the
+    // dodo flight arc synced with the fly animation instead of snapping.
+    private float lastJumpFromX;
+    private float lastJumpToX;
+
     public MovementBehavior(MovementType type) {
         this(type, 0, Collections.emptyList());
     }
@@ -66,7 +71,11 @@ public class MovementBehavior implements PersistableBehavior {
                 Plant ahead = board.findNearestPlantInRange(lane, col, 1);
                 if (ahead != null && isFlyOverTarget(ahead)) {
                     skipEatingThisTick = true;
-                    zombie.setX(Math.max(0f, ahead.getPosX() - 1));
+                    float fromX = zombie.getX();
+                    float toX = Math.max(0f, ahead.getPosX() - 1);
+                    lastJumpFromX = fromX;
+                    lastJumpToX = toX;
+                    zombie.setX(toX);
                 }
             }
             case UNDERGROUND -> {
