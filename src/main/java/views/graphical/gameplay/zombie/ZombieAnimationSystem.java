@@ -3702,7 +3702,6 @@ public final class ZombieAnimationSystem {
                         )
                     );
                 } catch (RuntimeException ignored) {
-                    // Keep the pianist body's death duration.
                 }
             }
         }
@@ -3712,9 +3711,6 @@ public final class ZombieAnimationSystem {
                 visual.cabinet.clip("death");
 
             if (cabinetDeath != null) {
-                // Treat ZombieArcade + cabinet as one death sequence. Even if
-                // the living update hid the cabinet on the final model tick,
-                // make the prop visible again so its own death clip is shown.
                 visual.cabinet.actor.setVisible(true);
                 visual.cabinet.actor.setColor(
                     1f, 1f, 1f, 1f
