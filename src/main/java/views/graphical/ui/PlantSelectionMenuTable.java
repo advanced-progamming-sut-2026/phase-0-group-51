@@ -4,6 +4,7 @@ import Data.database.PlantBoostRepository;
 import Data.database.PlantRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -23,13 +24,17 @@ import models.User;
 import models.games.Game;
 import models.games.LevelType;
 import models.games.darkAges.LockedPlantsMode;
+import network.client.ClientPlantOwnershipState;
+import network.protocol.plants.PlantOwnershipResponse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public final class PlantSelectionMenuTable extends Table {
 
@@ -59,6 +64,7 @@ public final class PlantSelectionMenuTable extends Table {
     private Map<Integer, Integer> seedPackets = Map.of();
 
     private Table lockedModeLayer;
+    private boolean ownershipRequestInFlight;
 
     public PlantSelectionMenuTable(PvzGame game, PlantSlotsBar plantSlotsBar, Runnable onSelectionComplete) {
         if (game == null) {
@@ -359,7 +365,7 @@ public final class PlantSelectionMenuTable extends Table {
             return;
         }
 
-        unlockedPlants = PlantRepository.loadUnlockedPlants(user.getId());
+        unlockedPlants = ClientPlantOwnershipState.snapshot();
         plantLevels = PlantRepository.loadPlantLevels(user.getId());
         seedPackets = PlantRepository.loadSeedPackets(user.getId());
     }
@@ -485,6 +491,11 @@ public final class PlantSelectionMenuTable extends Table {
             return;
         }
 
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            requestPlantOwnership();
+            return;
+        }
+
         refreshPlantData();
 
         List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
@@ -576,6 +587,108 @@ public final class PlantSelectionMenuTable extends Table {
                 column++;
             }
         }
+    }
+
+    private void requestPlantOwnership() {
+        if (ownershipRequestInFlight) {
+            return;
+        }
+
+        ownershipRequestInFlight = true;
+        cardsGrid.clearChildren();
+        cardsGrid.add(
+                new Label(
+                        "LOADING PLANT OWNERSHIP...",
+                        game.getSkin()
+                )
+        ).padTop(40f);
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored -> sendPlantOwnershipRequest()
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishPlantOwnershipRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<PlantOwnershipResponse>
+    sendPlantOwnershipRequest() {
+        try {
+            return game.getNetworkManager()
+                    .getPlantOwnershipClientService()
+                    .getOwnership();
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+
+    private void finishPlantOwnershipRequest(
+            PlantOwnershipResponse response,
+            Throwable throwable
+    ) {
+        ownershipRequestInFlight = false;
+
+        if (throwable != null) {
+            showOwnershipLoadFailure(
+                    "Could not load plant ownership: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            showOwnershipLoadFailure(
+                    response == null
+                            ? "Could not load plant ownership."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientPlantOwnershipState.replaceWith(
+                response.getUnlockedPlantIds()
+        );
+
+        showPlants();
+    }
+
+    private void showOwnershipLoadFailure(String message) {
+        cardsGrid.clearChildren();
+        Label label = new Label(
+                "COULD NOT LOAD PLANTS",
+                game.getSkin()
+        );
+        label.setColor(Color.RED);
+        cardsGrid.add(label).padTop(40f);
+        game.notifyError(message);
+    }
+
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future =
+                new CompletableFuture<>();
+        future.completeExceptionally(throwable);
+        return future;
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
     }
 
     private boolean isForbiddenForPlantWhatYouGet(PlantData plant) {

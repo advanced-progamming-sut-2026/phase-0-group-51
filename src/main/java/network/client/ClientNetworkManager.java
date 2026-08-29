@@ -1,6 +1,8 @@
 package network.client;
 
 import network.client.service.AccountClientService;
+import network.client.service.PlantOwnershipClientService;
+import network.client.service.GameplayAccountClientService;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -16,6 +18,8 @@ public final class ClientNetworkManager implements Closeable {
 
     private NetworkClient networkClient;
     private AccountClientService accountClientService;
+    private PlantOwnershipClientService plantOwnershipClientService;
+    private GameplayAccountClientService gameplayAccountClientService;
 
     public ClientNetworkManager() {
         this(
@@ -70,6 +74,10 @@ public final class ClientNetworkManager implements Closeable {
         networkClient = newClient;
         accountClientService =
                 new AccountClientService(newClient);
+        plantOwnershipClientService =
+                new PlantOwnershipClientService(newClient);
+        gameplayAccountClientService =
+                new GameplayAccountClientService(newClient);
     }
 
     public synchronized boolean isConnected() {
@@ -87,6 +95,30 @@ public final class ClientNetworkManager implements Closeable {
         }
 
         return accountClientService;
+    }
+
+    public synchronized PlantOwnershipClientService
+    getPlantOwnershipClientService() {
+        if (!isConnected()
+                || plantOwnershipClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+
+        return plantOwnershipClientService;
+    }
+
+    public synchronized GameplayAccountClientService
+    getGameplayAccountClientService() {
+        if (!isConnected()
+                || gameplayAccountClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+
+        return gameplayAccountClientService;
     }
 
     public synchronized NetworkClient getNetworkClient() {
@@ -111,6 +143,8 @@ public final class ClientNetworkManager implements Closeable {
 
         networkClient = null;
         accountClientService = null;
+        plantOwnershipClientService = null;
+        gameplayAccountClientService = null;
     }
 
     private static int readPort() {

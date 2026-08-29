@@ -29,6 +29,7 @@ import models.games.ancientEgypt.Grave;
 import models.greenHouse.FlowerPot;
 import models.items.DroppedLoot;
 import models.items.Mower;
+import network.protocol.gameplay.LootCollectResponse;
 import models.quests.QuestService;
 import models.sun.Sun;
 
@@ -1162,6 +1163,106 @@ public class GamingController {
         QuestService.getInstance().recordSunCollected(
             App.getInstance().getLoggedInUser(), collectedAmount);
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
+    }
+
+    public Result applyServerCollectedLoot(
+        DroppedLoot loot,
+        LootCollectResponse response
+    ) {
+        GameState state = activeState();
+        if (state == null) {
+            return failure("No active game found.\n");
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return failure("You must be logged in to collect loot.\n");
+        }
+
+        if (loot == null) {
+            return failure("No loot found.\n");
+        }
+
+        if (response == null || !response.isSuccess()) {
+            return failure(
+                response == null
+                    ? "Loot could not be saved; it remains on the ground.\n"
+                    : response.getMessage() + "\n"
+            );
+        }
+
+        if (response.getType() != loot.getType()) {
+            return failure("The server returned the wrong loot type.\n");
+        }
+
+        int previousTotal = currentLootTotal(
+            user,
+            loot.getType()
+        );
+
+        String reward = switch (loot.getType()) {
+            case COIN -> {
+                user.setCoins(response.getTotal());
+                int collected = Math.max(
+                    0,
+                    response.getTotal() - previousTotal
+                );
+                yield "Collected " + collected
+                    + " coins; you have "
+                    + response.getTotal()
+                    + " coins now.\n";
+            }
+            case GEM -> {
+                user.setGems(response.getTotal());
+                int collected = Math.max(
+                    0,
+                    response.getTotal() - previousTotal
+                );
+                yield "Collected " + collected
+                    + " gem; you have "
+                    + response.getTotal()
+                    + " gems now.\n";
+            }
+            case PLANT_FOOD -> {
+                state.addPlantFood();
+                user.setPlantFoodNum(response.getTotal());
+                yield "Collected 1 plant food; you have "
+                    + state.getPlantFoodCount()
+                    + " plant foods now.\n";
+            }
+            case POT -> {
+                if (user.getGreenHouse() != null) {
+                    FlowerPot pot =
+                        user.getGreenHouse().getPot(
+                            response.getUnlockedRow(),
+                            response.getUnlockedColumn()
+                        );
+
+                    if (pot != null) {
+                        pot.setUnlocked(true);
+                    }
+                }
+
+                yield "Collected a pot; greenhouse pot ("
+                    + response.getUnlockedColumn()
+                    + ", "
+                    + response.getUnlockedRow()
+                    + ") was unlocked on the server.\n";
+            }
+        };
+
+        /*
+         * The server has already committed the reward. Remove the local
+         * board pickup if it still exists. If it expired while the network
+         * request was in flight, balances still stay synchronized.
+         */
+        if (state.getBoard()
+                .getActiveLoots()
+                .contains(loot)) {
+            state.getBoard().collectLoot(loot);
+        }
+
+        return success(reward);
     }
 
     public Result collectLoot(DroppedLoot loot) {

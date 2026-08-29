@@ -20,12 +20,18 @@ public final class ClientAuthState {
 
         User user = toUser(profile);
 
+        ClientPlantOwnershipState.clear();
+        ClientAdventureProgressState.clear();
+
         App app = App.getInstance();
         app.setLoggedInUser(user);
         app.setCurrentMenu(Menu.MAIN_MENU);
     }
 
     public static void clear() {
+        ClientPlantOwnershipState.clear();
+        ClientAdventureProgressState.clear();
+
         App app = App.getInstance();
 
         app.setLoggedInUser(null);

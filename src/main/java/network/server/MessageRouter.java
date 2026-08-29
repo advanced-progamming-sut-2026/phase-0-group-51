@@ -4,6 +4,8 @@ import network.protocol.MessageType;
 import network.protocol.NetworkMessage;
 import network.server.service.AuthService;
 import network.server.service.ProfileService;
+import network.server.service.PlantOwnershipService;
+import network.server.service.GameplayAccountService;
 
 public class MessageRouter {
     private final AuthService authService =
@@ -11,6 +13,12 @@ public class MessageRouter {
 
     private final ProfileService profileService =
             new ProfileService();
+
+    private final PlantOwnershipService plantOwnershipService =
+            new PlantOwnershipService();
+
+    private final GameplayAccountService gameplayAccountService =
+            new GameplayAccountService();
 
     public NetworkMessage route(
             ClientConnection connection,
@@ -98,6 +106,46 @@ public class MessageRouter {
         if (message.getType()
                 == MessageType.PROFILE_PASSWORD_CHANGE_REQUEST) {
             return profileService.handlePasswordChange(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PLANT_OWNERSHIP_GET_REQUEST) {
+            return plantOwnershipService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.GAMEPLAY_LOOT_COLLECT_REQUEST) {
+            return gameplayAccountService.handleCollectLoot(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.ADVENTURE_LOSS_REQUEST) {
+            return gameplayAccountService.handleAdventureLoss(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.ADVENTURE_PROGRESS_GET_REQUEST) {
+            return gameplayAccountService.handleAdventureProgressGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.ADVENTURE_WIN_REQUEST) {
+            return gameplayAccountService.handleAdventureWin(
                     connection,
                     message
             );
