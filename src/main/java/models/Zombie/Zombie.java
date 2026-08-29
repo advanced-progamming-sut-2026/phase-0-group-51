@@ -1,7 +1,6 @@
 package models.Zombie;
 
 import Data.database.GreenHouseRepository;
-import Data.database.UserRepository;
 import lombok.Getter;
 import lombok.Setter;
 import models.App;
@@ -495,7 +494,17 @@ public class Zombie {
     }
 
     public Zombie copy() {
-        int difficultyLevel = App.getInstance().getLoggedInUser().getDifficultyLevel();
+        return copy(resolveDifficultyLevel());
+    }
+
+    // Server-authoritative copy: the difficulty is supplied explicitly so an
+    // online match produces identical zombies for both players and never
+    // depends on any client's personal difficulty setting. Difficulty 3 is
+    // neutral (multipliers become 1.0), i.e. the template's own stats.
+    public Zombie copy(int difficultyLevel) {
+        if (difficultyLevel <= 0) {
+            difficultyLevel = 3;
+        }
         float increaseMultiplier = difficultyLevel / 3.0f;
         float decreaseMultiplier = 3.0f / difficultyLevel;
         Zombie z = new Zombie(alias,
@@ -508,6 +517,15 @@ public class Zombie {
             z.addBehavior(behavior.copy());
         }
         return z;
+    }
+
+    private static int resolveDifficultyLevel() {
+        App app = App.getInstance();
+        User user = app == null ? null : app.getLoggedInUser();
+        if (user == null || user.getDifficultyLevel() <= 0) {
+            return 3;
+        }
+        return user.getDifficultyLevel();
     }
 
     public void freezeInIce() {

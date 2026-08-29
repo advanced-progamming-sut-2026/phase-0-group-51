@@ -33,6 +33,9 @@ public class ZombieWaveManager {
 
     private static final String FLAG_ALIAS = "ZombieFlag";
 
+    private static final String DARK_KING_ALIAS = "ZombieDarkKing";
+    private static final float DARK_KING_STAND_INSET = 0.5f;
+
     private static final int SANDSTORM_TRANSPORT_TICKS = 10;
     private static final int SNOWSTORM_TRANSPORT_TICKS = 10;
 
@@ -194,9 +197,6 @@ public class ZombieWaveManager {
                 )
             );
 
-        // Shuffle once per level. This avoids always guaranteeing the same
-        // zombie types in the same early waves while remaining deterministic
-        // when a seeded Random is supplied.
         Collections.shuffle(
             uniqueCoverage,
             this.random
@@ -811,6 +811,9 @@ public class ZombieWaveManager {
                     + movedColumns
                     + " columns forward.\n"
             );
+        }
+        if (DARK_KING_ALIAS.equals(zombie.getAlias())) {
+            x = Math.max(0f, spawnColumn - DARK_KING_STAND_INSET);
         }
 
         zombie.setGlowing(

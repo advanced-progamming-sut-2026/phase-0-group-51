@@ -220,7 +220,7 @@ public class ZombieBehaviorFactory {
         behaviors.add(new DamageReactionBehavior(
             DamageReactionBehavior.DamageReactionType.NEWSPAPER_RAGE,
             (float) data.path("EnragedSpeedScale").asDouble(3.0),
-            (float) data.path("EnragedDamageScale").asDouble(2.0)
+            (float) data.path("EnragedDamageScale").asDouble(1.7)
         ));
     }
 

@@ -113,6 +113,9 @@ public final class ZombieAnimationSystem {
     private static final float ARM_DROP_GRAVITY = 650f;
     private static final float ARM_DROP_LIFETIME = 1.5f;
 
+    private static final float DODO_JUMP_HEIGHT_TILES = 0.6f;
+    private static final float DODO_JUMP_FALLBACK_DURATION = 0.5f;
+
     private static final String DARK_KNIGHT_CROWN_ARMOR =
         "CrownDefault@ArmorTypes";
     private static final String DARK_KNIGHT_SHOULDER_ARMOR =
@@ -1146,6 +1149,13 @@ public final class ZombieAnimationSystem {
             PLANT_FOOD_OUTLINE_AMPLITUDE,
             PLANT_FOOD_OUTLINE_PULSE_SPEED
         );
+
+        if (visual.dodoJumping) {
+            visual.dodoJumpElapsed += Math.max(0f, delta);
+            if (visual.dodoJumpElapsed >= visual.dodoJumpDuration) {
+                visual.dodoJumping = false;
+            }
+        }
 
         updatePosition(
             zombie,
@@ -3247,6 +3257,10 @@ public final class ZombieAnimationSystem {
                     "fly_loop",
                     "fly_end"
                 );
+                visual.dodoJumping = true;
+                visual.dodoJumpFromX = movement.getLastJumpFromX();
+                visual.dodoJumpElapsed = 0f;
+                visual.dodoJumpDuration = dodoFlyDuration(visual);
             }
             visual.lastDodoFly = dodoFly;
         }
@@ -3452,12 +3466,30 @@ public final class ZombieAnimationSystem {
     ) {
         PamAnimationActor actor = visual.actor;
 
-        float renderX =
-            visual.previousModelX
-                + (
-                visual.currentModelX
-                    - visual.previousModelX
-            ) * partialTick;
+        float renderX;
+        float arcLift = 0f;
+
+        if (visual.dodoJumping && visual.dodoJumpDuration > 0f) {
+            float t = clamp(
+                visual.dodoJumpElapsed / visual.dodoJumpDuration,
+                0f,
+                1f
+            );
+            renderX =
+                visual.dodoJumpFromX
+                    + (visual.currentModelX - visual.dodoJumpFromX) * t;
+            arcLift =
+                (float) Math.sin(Math.PI * t)
+                    * DODO_JUMP_HEIGHT_TILES
+                    * boardTransform.tileHeight();
+        } else {
+            renderX =
+                visual.previousModelX
+                    + (
+                    visual.currentModelX
+                        - visual.previousModelX
+                ) * partialTick;
+        }
 
         float x =
             boardTransform.getArea().x()
@@ -3467,7 +3499,8 @@ public final class ZombieAnimationSystem {
         float y =
             boardTransform.tileY(zombie.getLane())
                 + boardTransform.tileHeight()
-                * 0.5f;
+                * 0.5f
+                + arcLift;
 
         if (isSnorkelSubmerged(zombie)) {
             y -= boardTransform.tileHeight()
@@ -3669,7 +3702,6 @@ public final class ZombieAnimationSystem {
                         )
                     );
                 } catch (RuntimeException ignored) {
-                    // Keep the pianist body's death duration.
                 }
             }
         }
@@ -3679,9 +3711,6 @@ public final class ZombieAnimationSystem {
                 visual.cabinet.clip("death");
 
             if (cabinetDeath != null) {
-                // Treat ZombieArcade + cabinet as one death sequence. Even if
-                // the living update hid the cabinet on the final model tick,
-                // make the prop visible again so its own death clip is shown.
                 visual.cabinet.actor.setVisible(true);
                 visual.cabinet.actor.setColor(
                     1f, 1f, 1f, 1f
@@ -3712,6 +3741,23 @@ public final class ZombieAnimationSystem {
                 visual.cabinet.actor.setVisible(false);
             }
         }
+    }
+
+    private float dodoFlyDuration(ZombieVisual visual) {
+        String pam = visual.animations.getPamPath();
+        float total = 0f;
+        for (String clip : new String[] {
+            "fly_start", "fly_loop", "fly_end"
+        }) {
+            try {
+                total += pamPlayer.clipDurationSeconds(pam, clip);
+            } catch (RuntimeException ignored) {
+                // Missing clip: fall back to a fixed duration below.
+            }
+        }
+        return total > 0.01f
+            ? total
+            : DODO_JUMP_FALLBACK_DURATION;
     }
 
     private static float clamp(
@@ -3872,6 +3918,10 @@ public final class ZombieAnimationSystem {
         private int lastTransformCooldown;
         private boolean lastDynamiteExploded;
         private boolean lastDodoFly;
+        private boolean dodoJumping;
+        private float dodoJumpFromX;
+        private float dodoJumpElapsed;
+        private float dodoJumpDuration;
         private boolean lastLaserStealing;
         private String armorVisualSignature;
         private boolean darkKnightVisual;
