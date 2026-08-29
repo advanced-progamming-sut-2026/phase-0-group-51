@@ -13,6 +13,7 @@ import models.enums.Menu;
 import models.games.Game;
 import models.games.LevelType;
 import models.games.ScoringGame;
+import network.client.ClientPlantOwnershipState;
 
 import java.util.Comparator;
 import java.util.List;
@@ -53,9 +54,14 @@ public class PlantSelectionController {
             return new Result(true, forcedPlants.toString(), null);
         }
 
-        Set<Integer> unlockedPlantIds = PlantRepository.loadUnlockedPlants(
-            App.getInstance().getLoggedInUser().getId()
-        );
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            return new Result(
+                    false,
+                    "Plant ownership has not been loaded yet.",
+                    null
+            );
+        }
+        Set<Integer> unlockedPlantIds = ClientPlantOwnershipState.snapshot();
         StringBuilder result = new StringBuilder();
 
         unlockedPlantIds.stream()
@@ -100,9 +106,23 @@ public class PlantSelectionController {
                 plant.name() + " is locked in Family Lock mode. Only "
                     + allowedName + " is available from the " + plant.category() + " family.", null);
         }
-        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            return new Result(
+                    false,
+                    "Plant ownership has not been loaded yet.",
+                    null
+            );
+        }
+
+        Set<Integer> unlocked =
+                ClientPlantOwnershipState.snapshot();
+
         if (!unlocked.contains(plant.id())) {
-            return new Result(false, "Plant is locked.", null);
+            return new Result(
+                    false,
+                    "Plant is locked.",
+                    null
+            );
         }
         List<PlantData> selected = game.getSelectedPlantsForThisGame();
         if (selected.contains(plant)) {
@@ -196,9 +216,23 @@ public class PlantSelectionController {
         if (plant == null) {
             return new Result(false, "Plant does not exist.", null);
         }
-        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(App.getInstance().getLoggedInUser().getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            return new Result(
+                    false,
+                    "Plant ownership has not been loaded yet.",
+                    null
+            );
+        }
+
+        Set<Integer> unlocked =
+                ClientPlantOwnershipState.snapshot();
+
         if (!unlocked.contains(plant.id())) {
-            return new Result(false, "Plant is locked.", null);
+            return new Result(
+                    false,
+                    "Plant is locked.",
+                    null
+            );
         }
         if (App.getInstance().getLoggedInUser().getGems()<2) {
             return new Result(false, "Not enough gems.", null);

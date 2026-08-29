@@ -1,7 +1,6 @@
 package views.graphical.ui;
 
-import Data.database.PlantBoostRepository;
-import Data.database.PlantRepository;
+import network.client.ClientShopState;
 import Data.loader.PlantData;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -152,14 +151,13 @@ public final class PlantSlotsBar extends Table {
         gameplayPlantGroup.clear();
         gameplayCardsByPlantId.clear();
 
-        User user = App.loggedInUser;
-        Map<Integer, Integer> plantLevels = user == null ? Map.of() : PlantRepository.loadPlantLevels(user.getId());
+        Map<Integer, Integer> plantLevels = ClientShopState.isLoaded() ? ClientShopState.plantLevels() : Map.of();
 
         for (int i = 0; i < MAX_SLOTS; i++) {
             PlantData plant = slots[i];
 
             if (plant != null) {
-                add(createPlantSlot(plant, i, user, plantLevels))
+                add(createPlantSlot(plant, i, plantLevels))
                     .size(SLOT_WIDTH, SLOT_HEIGHT)
                     .padBottom(2f)
                     .row();
@@ -171,18 +169,46 @@ public final class PlantSlotsBar extends Table {
             }
         }
 
+        refreshBoostVisuals();
+
         if (mode == Mode.GAMEPLAY) {
             refreshGameplayAvailability();
         }
     }
 
+    private void refreshBoostVisuals() {
+        if (!ClientShopState.isLoaded()) {
+            return;
+        }
+
+        for (PlantData plant : slots) {
+            if (plant == null) {
+                continue;
+            }
+
+            PlantCard card =
+                    gameplayCardsByPlantId.get(
+                            plant.id()
+                    );
+
+            if (card == null) {
+                continue;
+            }
+
+            card.setBoosted(
+                    ClientShopState.hasBoost(
+                            plant.id()
+                    )
+            );
+        }
+    }
+
     private PlantCard createPlantSlot(
-        PlantData plant,
-        int slotIndex,
-        User user,
-        Map<Integer, Integer> plantLevels
+            PlantData plant,
+            int slotIndex,
+            Map<Integer, Integer> plantLevels
     ) {
-        boolean boosted = user != null && PlantBoostRepository.hasBoost(user.getId(), plant.id());
+        boolean boosted = ClientShopState.isLoaded() && ClientShopState.hasBoost(plant.id());
         int level = plantLevels.getOrDefault(plant.id(), 1);
 
         PlantCard card = new PlantCard(
@@ -190,6 +216,8 @@ public final class PlantSlotsBar extends Table {
             new PlantCard.ViewData(plant, true, boosted, level, 0, 1, true, false),
             SLOT_SCALE
         );
+
+        gameplayCardsByPlantId.put(plant.id(), card);
 
         Game currentGame = App.getInstance().getCurrentGame();
         boolean forcedSlot = currentGame != null && currentGame.isForcedLockedPlant(plant) && mode == Mode.SELECTION;
@@ -212,7 +240,7 @@ public final class PlantSlotsBar extends Table {
             }
         } else if (mode == Mode.GAMEPLAY) {
             gameplayPlantGroup.add(card);
-            gameplayCardsByPlantId.put(plant.id(), card);
+            //gameplayCardsByPlantId.put(plant.id(), card);
 
             if (plant.equals(selectedPlant)) {
                 card.setChecked(true);
@@ -242,6 +270,7 @@ public final class PlantSlotsBar extends Table {
     @Override
     public void act(float delta) {
         super.act(delta);
+        refreshBoostVisuals();
         if (mode == Mode.GAMEPLAY) {
             refreshGameplayAvailability();
         }

@@ -359,10 +359,10 @@ public final class PlantCard extends Button {
 
     private void refreshVisualState() {
         String backgroundAsset;
-        if (isChecked() || hovered) {
-            backgroundAsset = SELECTED_BACKGROUND;
-        } else if (boosted) {
+        if (boosted) {
             backgroundAsset = BOOST_BACKGROUND;
+        } else if (isChecked() || hovered) {
+            backgroundAsset = SELECTED_BACKGROUND;
         } else {
             backgroundAsset = READY_BACKGROUND;
         }

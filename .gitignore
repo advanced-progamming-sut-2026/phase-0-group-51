@@ -18,6 +18,7 @@ local.properties
 
 # Local database
 pvz_database.db
+pvz_server.db
 
 # PVZ asset files
 assets/pvz2/

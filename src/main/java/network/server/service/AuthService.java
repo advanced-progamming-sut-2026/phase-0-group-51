@@ -12,10 +12,21 @@ import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 import network.protocol.auth.*;
 import network.server.ClientConnection;
+import models.enums.SecurityQuestions;
+import network.protocol.auth.ForgotPasswordAnswerRequest;
+import network.protocol.auth.ForgotPasswordAnswerResponse;
+import network.protocol.auth.ForgotPasswordStartRequest;
+import network.protocol.auth.ForgotPasswordStartResponse;
+import network.protocol.auth.PasswordResetRequest;
+import network.protocol.auth.PasswordResetResponse;
+import Data.database.AuthSessionRepository;
 
 public class AuthService {
     private final UserRepository userRepository =
             new UserRepository();
+    private final AuthSessionRepository
+            authSessionRepository =
+            new AuthSessionRepository();
 
     private final NetworkJsonCodec codec =
             new NetworkJsonCodec();
@@ -49,6 +60,298 @@ public class AuthService {
                     "Invalid registration payload."
             );
         }
+    }
+
+    public NetworkMessage handleForgotPasswordStart(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        try {
+            ForgotPasswordStartRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            ForgotPasswordStartRequest.class
+                    );
+
+            ForgotPasswordStartResponse response =
+                    startPasswordRecovery(
+                            connection,
+                            request
+                    );
+
+            return new NetworkMessage(
+                    MessageType.FORGOT_PASSWORD_START_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid password recovery request."
+            );
+        }
+    }
+    private ForgotPasswordStartResponse
+    startPasswordRecovery(
+            ClientConnection connection,
+            ForgotPasswordStartRequest request
+    ) {
+        connection.getSession()
+                .clearPasswordRecovery();
+
+        if (request == null
+                || request.getUsername() == null
+                || request.getUsername().isBlank()) {
+            return new ForgotPasswordStartResponse(
+                    false,
+                    "Please enter your username.",
+                    null
+            );
+        }
+
+        if (request.getEmail() == null
+                || request.getEmail().isBlank()) {
+            return new ForgotPasswordStartResponse(
+                    false,
+                    "Please enter your email.",
+                    null
+            );
+        }
+
+        String username =
+                request.getUsername().trim();
+
+        String email =
+                request.getEmail().trim();
+
+        User user =
+                userRepository.getUserByUsername(username);
+
+        if (user == null) {
+            return new ForgotPasswordStartResponse(
+                    false,
+                    "Username does not exist.",
+                    null
+            );
+        }
+
+        if (!user.getEmail().equals(email)) {
+            return new ForgotPasswordStartResponse(
+                    false,
+                    "Email is incorrect.",
+                    null
+            );
+        }
+
+        connection.getSession()
+                .beginPasswordRecovery(
+                        user.getId(),
+                        user.getUsername()
+                );
+
+        String question =
+                SecurityQuestions.getQuestion(
+                        user.getSecurityQuestion()
+                );
+
+        return new ForgotPasswordStartResponse(
+                true,
+                "Please answer your security question.",
+                question
+        );
+    }
+    public NetworkMessage handleForgotPasswordAnswer(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        try {
+            ForgotPasswordAnswerRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            ForgotPasswordAnswerRequest.class
+                    );
+
+            ForgotPasswordAnswerResponse response =
+                    verifyPasswordRecoveryAnswer(
+                            connection,
+                            request
+                    );
+
+            return new NetworkMessage(
+                    MessageType.FORGOT_PASSWORD_ANSWER_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid security answer request."
+            );
+        }
+    }
+    private ForgotPasswordAnswerResponse
+    verifyPasswordRecoveryAnswer(
+            ClientConnection connection,
+            ForgotPasswordAnswerRequest request
+    ) {
+        if (!connection.getSession()
+                .hasPasswordRecovery()) {
+            return new ForgotPasswordAnswerResponse(
+                    false,
+                    "No password recovery request is active."
+            );
+        }
+
+        if (request == null
+                || request.getAnswer() == null
+                || request.getAnswer().isBlank()) {
+            return new ForgotPasswordAnswerResponse(
+                    false,
+                    "Please enter your security answer."
+            );
+        }
+
+        User user =
+                userRepository.getUserByUsername(
+                        connection.getSession()
+                                .getRecoveryUsername()
+                );
+
+        if (user == null) {
+            connection.getSession()
+                    .clearPasswordRecovery();
+
+            return new ForgotPasswordAnswerResponse(
+                    false,
+                    "Account no longer exists."
+            );
+        }
+
+        if (!user.getAnswer().equalsIgnoreCase(
+                request.getAnswer().trim()
+        )) {
+            return new ForgotPasswordAnswerResponse(
+                    false,
+                    "Security answer is incorrect."
+            );
+        }
+
+        connection.getSession()
+                .verifyPasswordRecovery();
+
+        return new ForgotPasswordAnswerResponse(
+                true,
+                "Security answer accepted."
+        );
+    }
+    public NetworkMessage handlePasswordReset(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        try {
+            PasswordResetRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            PasswordResetRequest.class
+                    );
+
+            PasswordResetResponse response =
+                    resetPassword(
+                            connection,
+                            request
+                    );
+
+            return new NetworkMessage(
+                    MessageType.PASSWORD_RESET_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid password reset request."
+            );
+        }
+    }
+    private PasswordResetResponse resetPassword(
+            ClientConnection connection,
+            PasswordResetRequest request
+    ) {
+        if (!connection.getSession()
+                .canResetPassword()) {
+            return new PasswordResetResponse(
+                    false,
+                    "Security answer must be verified first."
+            );
+        }
+
+        if (request == null
+                || request.getNewPassword() == null) {
+            return new PasswordResetResponse(
+                    false,
+                    "Please enter your new password."
+            );
+        }
+
+        String newPassword =
+                request.getNewPassword();
+
+        SignUpValidation validation =
+                new SignUpValidation();
+
+        if (!validation.isPasswordValid(newPassword)) {
+            return new PasswordResetResponse(
+                    false,
+                    "Password contains invalid characters."
+            );
+        }
+
+        if (!validation.isPasswordStrong(newPassword)) {
+            return new PasswordResetResponse(
+                    false,
+                    weakPasswordMessage(
+                            newPassword,
+                            validation
+                    )
+            );
+        }
+
+        String hash =
+                HashUtil.hashPassword(newPassword);
+
+        String username =
+                connection.getSession()
+                        .getRecoveryUsername();
+
+        boolean updated =
+                userRepository.updatePassword(
+                        username,
+                        hash
+                );
+
+        if (!updated) {
+            return new PasswordResetResponse(
+                    false,
+                    "Password could not be saved."
+            );
+        }
+        Integer recoveryUserId =
+                connection.getSession()
+                        .getRecoveryUserId();
+
+        if (recoveryUserId != null) {
+            authSessionRepository.deleteAllForUser(
+                    recoveryUserId
+            );
+        }
+
+        connection.getSession()
+                .clearPasswordRecovery();
+
+        return new PasswordResetResponse(
+                true,
+                "Password changed successfully."
+        );
     }
 
     public NetworkMessage handleLogin(
@@ -125,15 +428,137 @@ public class AuthService {
                 PlantRegistry.getStarterPlantIds()
         );
 
+        String rawToken = null;
+        String tokenHash = null;
+
+        if (request.isRememberMe()) {
+            rawToken =
+                    AuthTokenUtil.generateToken();
+
+            tokenHash =
+                    AuthTokenUtil.hashToken(rawToken);
+
+            boolean saved =
+                    authSessionRepository.saveToken(
+                            user.getId(),
+                            tokenHash
+                    );
+
+            if (!saved) {
+                return loginFailure(
+                        "Could not create persistent login session."
+                );
+            }
+        }
+
         connection.getSession().authenticate(
                 user.getId(),
-                user.getUsername()
+                user.getUsername(),
+                tokenHash
         );
 
         return new LoginResponse(
                 true,
                 "Login successful.",
-                UserProfileDto.fromUser(user)
+                UserProfileDto.fromUser(user),
+                rawToken
+        );
+    }
+    public NetworkMessage handleResumeSession(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        if (message.getPayload() == null) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Session token is required."
+            );
+        }
+
+        try {
+            ResumeSessionRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            ResumeSessionRequest.class
+                    );
+
+            LoginResponse response =
+                    resumeSession(
+                            connection,
+                            request
+                    );
+
+            return new NetworkMessage(
+                    MessageType.RESUME_SESSION_RESPONSE,
+                    message.getRequestId(),
+                    codec.encodePayload(response)
+            );
+
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid session resume request."
+            );
+        }
+    }
+    private LoginResponse resumeSession(
+            ClientConnection connection,
+            ResumeSessionRequest request
+    ) {
+        if (connection.getSession().isAuthenticated()) {
+            return loginFailure(
+                    "This connection is already logged in."
+            );
+        }
+
+        if (request == null
+                || request.getToken() == null
+                || request.getToken().isBlank()) {
+            return loginFailure(
+                    "Saved session token is required."
+            );
+        }
+
+        String tokenHash =
+                AuthTokenUtil.hashToken(
+                        request.getToken()
+                );
+
+        String username =
+                authSessionRepository
+                        .findUsernameByTokenHash(tokenHash);
+
+        if (username == null) {
+            return loginFailure(
+                    "Saved login session is invalid."
+            );
+        }
+
+        User user =
+                userRepository.getUserByUsername(username);
+
+        if (user == null) {
+            authSessionRepository
+                    .deleteToken(tokenHash);
+
+            return loginFailure(
+                    "Saved account no longer exists."
+            );
+        }
+
+        authSessionRepository.touch(tokenHash);
+
+        connection.getSession().authenticate(
+                user.getId(),
+                user.getUsername(),
+                tokenHash
+        );
+
+        return new LoginResponse(
+                true,
+                "Session restored.",
+                UserProfileDto.fromUser(user),
+                null
         );
     }
 
@@ -193,6 +618,14 @@ public class AuthService {
                     false,
                     "This connection is not logged in."
             );
+        }
+        String tokenHash =
+                connection.getSession()
+                        .getPersistentTokenHash();
+
+        if (tokenHash != null) {
+            authSessionRepository
+                    .deleteToken(tokenHash);
         }
 
         connection.getSession().clear();

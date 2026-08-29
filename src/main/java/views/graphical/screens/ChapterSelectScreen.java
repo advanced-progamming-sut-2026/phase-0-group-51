@@ -17,9 +17,11 @@ import graphics.PvzGame;
 import models.games.ChapterTheme;
 import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.ui.SettingsPopup;
-import models.App;
-import models.User;
-import Data.database.ProgressRepository;
+import network.client.ClientAdventureProgressState;
+import network.protocol.gameplay.AdventureProgressResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 import java.util.List;
 import java.util.Arrays;
@@ -41,6 +43,10 @@ public class ChapterSelectScreen extends BaseScreen {
     private static final String CHILI_ON  = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_ICON_SMALL";
     private static final String CHILI_OFF = "IMAGE_UI_PENNY_PURSUITS_COMMON_EASY_HOLLOW_ICON_SMALL";
 
+    private int progressChapter = 1;
+    private int progressLevel = 1;
+    private boolean progressRefreshRequested;
+
     private String islandRegion(ChapterTheme chapter) {
         switch (chapter) {
             case ANCIENT_EGYPT:   return "IMAGE_UI_UNIVERSE_WORLDS_EGYPT";
@@ -55,6 +61,7 @@ public class ChapterSelectScreen extends BaseScreen {
 
     public ChapterSelectScreen(PvzGame game) {
         super(game);
+        loadCachedProgress();
         buildUi();
     }
 
@@ -114,12 +121,7 @@ public class ChapterSelectScreen extends BaseScreen {
 
 
     private Table buildCenterIsland(final ChapterTheme chapter) {
-        // خواندن پیشرفت واقعی کاربر از دیتابیس
-        User user = App.getInstance().getLoggedInUser();
-        int[] progress = {1, 1}; // حالت پیش‌فرض
-        if (user != null) {
-            progress = new ProgressRepository().getCurrentProgress(user.getId());
-        }
+        int[] progress = {progressChapter, progressLevel};
 
         int chapterIdx = Arrays.asList(CHAPTERS).indexOf(chapter) + 1;
         boolean isUnlocked = (chapterIdx <= progress[0]);
@@ -215,12 +217,7 @@ public class ChapterSelectScreen extends BaseScreen {
 
         Actor island = islandImage(chapter, w, h);
 
-        // خواندن وضعیت قفل برای جزیره‌های عقبی
-        User user = App.getInstance().getLoggedInUser();
-        int[] progress = {1, 1};
-        if (user != null) {
-            progress = new ProgressRepository().getCurrentProgress(user.getId());
-        }
+        int[] progress = {progressChapter, progressLevel};
         int chapterIdx = Arrays.asList(CHAPTERS).indexOf(chapter) + 1;
         boolean isUnlocked = (chapterIdx <= progress[0]);
 
@@ -420,9 +417,94 @@ public class ChapterSelectScreen extends BaseScreen {
     }
 
 
+    private void loadCachedProgress() {
+        if (!ClientAdventureProgressState.isLoaded()) {
+            return;
+        }
+        progressChapter =
+                ClientAdventureProgressState.getCurrentChapter();
+        progressLevel =
+                ClientAdventureProgressState.getCurrentLevel();
+    }
+
+    private void refreshProgressFromServer() {
+        if (progressRefreshRequested) {
+            return;
+        }
+        progressRefreshRequested = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestAdventureProgress())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishProgressRefresh(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<AdventureProgressResponse>
+    requestAdventureProgress() {
+        try {
+            return game.getNetworkManager()
+                    .getGameplayAccountClientService()
+                    .getAdventureProgress();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishProgressRefresh(
+            AdventureProgressResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not load Adventure progress: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Adventure progress could not be loaded."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientAdventureProgressState.replaceWith(
+                response.getCurrentChapter(),
+                response.getCurrentLevel()
+        );
+
+        progressChapter = response.getCurrentChapter();
+        progressLevel = response.getCurrentLevel();
+        rebuildContent();
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
+    }
+
+
     @Override
     public void show() {
         super.show();
+        refreshProgressFromServer();
         game.showHud(0, 0, true, () -> game.showScreen(new MainMenuScreen(game)));
         if (stage != null) {
             stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);

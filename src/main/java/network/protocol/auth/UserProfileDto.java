@@ -2,6 +2,8 @@ package network.protocol.auth;
 
 import models.User;
 
+import java.util.List;
+
 public class UserProfileDto {
     private int id;
     private String username;
@@ -24,6 +26,8 @@ public class UserProfileDto {
 
     private int questDailyNum;
     private int questNonDailyNum;
+
+    private List<Integer> unlockedPlantIds;
 
     public UserProfileDto() {
     }
@@ -78,6 +82,16 @@ public class UserProfileDto {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public List<Integer> getUnlockedPlantIds() {
+        return unlockedPlantIds;
+    }
+
+    public void setUnlockedPlantIds(
+            List<Integer> unlockedPlantIds
+    ) {
+        this.unlockedPlantIds = unlockedPlantIds;
     }
 
     public String getGender() {
