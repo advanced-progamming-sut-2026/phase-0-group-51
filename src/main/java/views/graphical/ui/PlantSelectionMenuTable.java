@@ -25,7 +25,9 @@ import models.games.Game;
 import models.games.LevelType;
 import models.games.darkAges.LockedPlantsMode;
 import network.client.ClientPlantOwnershipState;
+import network.client.ClientShopState;
 import network.protocol.plants.PlantOwnershipResponse;
+import network.protocol.shop.ShopResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,6 +67,9 @@ public final class PlantSelectionMenuTable extends Table {
 
     private Table lockedModeLayer;
     private boolean ownershipRequestInFlight;
+    private boolean plantStateRequestInFlight;
+    private boolean plantStateLoadedForView;
+    private boolean gameStartRequestInFlight;
 
     public PlantSelectionMenuTable(PvzGame game, PlantSlotsBar plantSlotsBar, Runnable onSelectionComplete) {
         if (game == null) {
@@ -128,14 +133,17 @@ public final class PlantSelectionMenuTable extends Table {
         letsRockButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                if (gameStartRequestInFlight) {
+                    return;
+                }
+
                 Result result = controller.startGame();
                 if (!result.success()) {
                     game.notifyError(result.message());
                     return;
                 }
-                if (onSelectionComplete != null) {
-                    onSelectionComplete.run();
-                }
+
+                claimStoredPlantFoodAndFinishStart();
             }
         });
 
@@ -358,16 +366,16 @@ public final class PlantSelectionMenuTable extends Table {
 
     private void refreshPlantData() {
         User user = App.loggedInUser;
-        if (user == null) {
+        if (user == null || !ClientShopState.isLoaded()) {
             unlockedPlants = Set.of();
             plantLevels = Map.of();
             seedPackets = Map.of();
             return;
         }
 
-        unlockedPlants = ClientPlantOwnershipState.snapshot();
-        plantLevels = PlantRepository.loadPlantLevels(user.getId());
-        seedPackets = PlantRepository.loadSeedPackets(user.getId());
+        unlockedPlants = ClientShopState.unlockedPlantIds();
+        plantLevels = ClientShopState.plantLevels();
+        seedPackets = ClientShopState.seedPackets();
     }
 
     private void loadExistingSelectedPlants() {
@@ -421,9 +429,8 @@ public final class PlantSelectionMenuTable extends Table {
     }
 
     private PlantCard.ViewData createViewData(PlantData plant) {
-        User user = App.loggedInUser;
         boolean unlocked = unlockedPlants.contains(plant.id());
-        boolean boosted = user != null && unlocked && PlantBoostRepository.hasBoost(user.getId(), plant.id());
+        boolean boosted = unlocked && ClientShopState.hasBoost(plant.id());
         int level = plantLevels.getOrDefault(plant.id(), 1);
         int packets = seedPackets.getOrDefault(plant.id(), 0);
         int requiredPackets = requiredSeedPackets(plant, level);
@@ -491,8 +498,8 @@ public final class PlantSelectionMenuTable extends Table {
             return;
         }
 
-        if (!ClientPlantOwnershipState.isLoaded()) {
-            requestPlantOwnership();
+        if (!plantStateLoadedForView) {
+            requestPlantState();
             return;
         }
 
@@ -587,6 +594,73 @@ public final class PlantSelectionMenuTable extends Table {
                 column++;
             }
         }
+    }
+
+    private void requestPlantState() {
+        if (plantStateRequestInFlight) {
+            return;
+        }
+
+        plantStateRequestInFlight = true;
+        cardsGrid.clearChildren();
+        cardsGrid.add(
+                new Label(
+                        "LOADING PLANT DATA...",
+                        game.getSkin()
+                )
+        ).padTop(40f);
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendPlantStateRequest())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishPlantStateRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<ShopResponse>
+    sendPlantStateRequest() {
+        try {
+            return game.getNetworkManager()
+                    .getShopClientService()
+                    .getShop();
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+
+    private void finishPlantStateRequest(
+            ShopResponse response,
+            Throwable throwable
+    ) {
+        plantStateRequestInFlight = false;
+
+        if (throwable != null) {
+            showOwnershipLoadFailure(
+                    "Could not load plant data: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            showOwnershipLoadFailure(
+                    response == null
+                            ? "Could not load plant data."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientShopState.apply(response);
+        plantStateLoadedForView = true;
+        showPlants();
     }
 
     private void requestPlantOwnership() {
@@ -775,14 +849,14 @@ public final class PlantSelectionMenuTable extends Table {
         upgradeButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                handlePlantManagementResult(collectionController.upgrade(plant.name()));
+                requestPlantUpgrade(plant);
             }
         });
 
         boostButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                handlePlantManagementResult(controller.boostPlant(plant.name()));
+                requestPlantBoost(plant);
             }
         });
 
@@ -794,6 +868,138 @@ public final class PlantSelectionMenuTable extends Table {
             .padLeft(15f)
             .padTop(5f)
             .padBottom(10f);
+    }
+
+    private void requestPlantUpgrade(PlantData plant) {
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .upgradePlant(plant.id());
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishPlantManagementRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private void requestPlantBoost(PlantData plant) {
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .buyBoost(plant.id());
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishPlantManagementRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private void finishPlantManagementRequest(
+            ShopResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                    "Plant update failed: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Plant update failed."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientShopState.apply(response);
+        game.notifyInfo(response.getMessage());
+        refreshPlantData();
+        loadExistingSelectedPlants();
+        showPlants();
+        buildPreviewPlaceholder();
+    }
+
+    private void claimStoredPlantFoodAndFinishStart() {
+        gameStartRequestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .claimStoredPlantFood();
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishGameStartClaim(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private void finishGameStartClaim(
+            ShopResponse response,
+            Throwable throwable
+    ) {
+        gameStartRequestInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Stored Plant Food could not be loaded: "
+                            + rootMessage(throwable)
+            );
+        } else if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Stored Plant Food could not be loaded."
+                            : response.getMessage()
+            );
+        } else {
+            ClientShopState.apply(response);
+            Game currentGame = App.getInstance().getCurrentGame();
+            if (currentGame != null) {
+                currentGame.applyClaimedPlantFoodForGameplay(
+                        response.getClaimedPlantFood()
+                );
+            }
+        }
+
+        if (onSelectionComplete != null) {
+            onSelectionComplete.run();
+        }
     }
 
     private void handlePlantManagementResult(Result result) {

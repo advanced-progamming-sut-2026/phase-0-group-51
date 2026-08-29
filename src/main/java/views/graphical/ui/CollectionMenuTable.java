@@ -20,7 +20,9 @@ import models.App;
 import models.User;
 import models.Zombie.Zombie;
 import network.client.ClientPlantOwnershipState;
+import network.client.ClientShopState;
 import network.protocol.plants.PlantOwnershipResponse;
+import network.protocol.shop.ShopResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,6 +49,8 @@ public final class CollectionMenuTable extends Table {
     private OwnershipFilter selectedOwnership = OwnershipFilter.ALL;
     private UpgradeFilter selectedUpgrade = UpgradeFilter.ALL;
     private boolean ownershipRequestInFlight;
+    private boolean plantStateRequestInFlight;
+    private boolean plantStateLoadedForView;
 
     private enum OwnershipFilter {
         ALL("ALL"),
@@ -236,19 +240,19 @@ public final class CollectionMenuTable extends Table {
             return;
         }
 
-        if (!ClientPlantOwnershipState.isLoaded()) {
-            requestPlantOwnership();
+        if (!plantStateLoadedForView) {
+            requestPlantState();
             return;
         }
 
         Set<Integer> unlockedPlants =
-                ClientPlantOwnershipState.snapshot();
+                ClientShopState.unlockedPlantIds();
 
         Map<Integer, Integer> plantLevels =
-                PlantRepository.loadPlantLevels(user.getId());
+                ClientShopState.plantLevels();
 
         Map<Integer, Integer> seedPackets =
-                PlantRepository.loadSeedPackets(user.getId());
+                ClientShopState.seedPackets();
 
         List<PlantData> plants = new ArrayList<>(PlantRegistry.getAll());
 
@@ -298,8 +302,7 @@ public final class CollectionMenuTable extends Table {
 
             boolean boosted =
                     unlocked
-                            && PlantBoostRepository.hasBoost(
-                            user.getId(),
+                            && ClientShopState.hasBoost(
                             plant.id()
                     );
 
@@ -356,6 +359,73 @@ public final class CollectionMenuTable extends Table {
             }
         }
     }
+    private void requestPlantState() {
+        if (plantStateRequestInFlight) {
+            return;
+        }
+
+        plantStateRequestInFlight = true;
+        cardsGrid.clearChildren();
+        cardsGrid.add(
+                new Label(
+                        "LOADING PLANT DATA...",
+                        game.getSkin()
+                )
+        ).padTop(60f);
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendPlantStateRequest())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishPlantStateRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<ShopResponse>
+    sendPlantStateRequest() {
+        try {
+            return game.getNetworkManager()
+                    .getShopClientService()
+                    .getShop();
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+
+    private void finishPlantStateRequest(
+            ShopResponse response,
+            Throwable throwable
+    ) {
+        plantStateRequestInFlight = false;
+
+        if (throwable != null) {
+            showOwnershipLoadFailure(
+                    "Could not load plant data: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            showOwnershipLoadFailure(
+                    response == null
+                            ? "Could not load plant data."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientShopState.apply(response);
+        plantStateLoadedForView = true;
+        showPlants();
+    }
+
     private void requestPlantOwnership() {
         if (ownershipRequestInFlight) {
             return;

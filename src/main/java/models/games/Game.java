@@ -1,8 +1,6 @@
 package models.games;
 
 
-import Data.database.PlantRepository;
-import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
@@ -21,6 +19,7 @@ import models.games.bigWaveBeach.BigWaveBeachFeature;
 import models.games.darkAges.LockedPlantsMode;
 import models.games.frostbite.FrostbiteCavesFeature;
 import models.sun.SkySunSpawner;
+import network.client.ClientPlantOwnershipState;
 
 import java.util.*;
 
@@ -51,7 +50,6 @@ public class Game{
         if (gameState == null || gameState.getZombieWaveManager() == null) {
             return;
         }
-        claimPurchasedPlantFoodForGameplay();
         if (isPlantWhatYouGetLevel()) {
             zombieWavesManuallyStarted = false;
             gameState.logEvent(
@@ -143,7 +141,13 @@ public class Game{
             );
         }
 
-        Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            throw new IllegalStateException(
+                "Plant ownership has not been loaded yet."
+            );
+        }
+
+        Set<Integer> unlockedIds = ClientPlantOwnershipState.snapshot();
         List<PlantData> unlockedPlants = unlockedIds.stream()
             .map(PlantRegistry::getById).filter(Objects::nonNull).filter(plant -> !plant.tags().contains(PlantTag.WATER)).filter(plant -> plant.id() != 58 && plant.id() != 59)
             .sorted(Comparator.comparingInt(PlantData::id))
@@ -281,35 +285,23 @@ public class Game{
         initializeConveyorBeltLevel(level);
     }
 
-    private void claimPurchasedPlantFoodForGameplay() {
+    public void applyClaimedPlantFoodForGameplay(int storedPlantFood) {
         if (purchasedPlantFoodClaimedForCurrentGame || gameState == null) {
             return;
         }
 
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            purchasedPlantFoodClaimedForCurrentGame = true;
-            return;
-        }
-
-        int storedPlantFood = new UserRepository().claimStoredPlantFood(user.getId());
-        if (storedPlantFood < 0) {
-            gameState.logEvent("Stored Plant Food could not be loaded.\n");
-            return;
-        }
-
+        int claimed = Math.max(0, Math.min(3, storedPlantFood));
         int startingPlantFood = Math.min(
             3,
-            Math.max(0, gameState.getPlantFoodCount()) + storedPlantFood
+            Math.max(0, gameState.getPlantFoodCount()) + claimed
         );
 
         gameState.setPlantFoodCount(startingPlantFood);
-        user.setPlantFoodNum(0);
         purchasedPlantFoodClaimedForCurrentGame = true;
 
-        if (storedPlantFood > 0) {
+        if (claimed > 0) {
             gameState.logEvent(
-                "Loaded " + storedPlantFood
+                "Loaded " + claimed
                     + " purchased Plant Food into this game.\n"
             );
         }
@@ -332,7 +324,13 @@ public class Game{
             );
         }
 
-        Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            throw new IllegalStateException(
+                "Plant ownership has not been loaded yet."
+            );
+        }
+
+        Set<Integer> unlockedIds = ClientPlantOwnershipState.snapshot();
         List<PlantData> plants = unlockedIds.stream()
             .map(PlantRegistry::getById)
             .filter(java.util.Objects::nonNull)

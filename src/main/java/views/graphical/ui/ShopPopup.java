@@ -1,5 +1,6 @@
 package views.graphical.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -12,34 +13,31 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
-import controllers.ShopMenuController;
 import graphics.PvzGame;
 import models.App;
-import models.Result;
 import models.User;
-import models.shop.DailyOffer;
-import models.shop.Shop;
-import models.shop.ShopItem;
 import models.shop.ShopItemType;
 import models.shop.Currency;
-import views.graphical.screens.GreenHouseScreen;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
-import Data.database.PlantRepository;
-import Data.database.PlantBoostRepository;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Group;
 
+import network.client.ClientShopState;
+import network.protocol.shop.ShopDailyOfferDto;
+import network.protocol.shop.ShopItemDto;
+import network.protocol.shop.ShopPlantStateDto;
+import network.protocol.shop.ShopResponse;
+
+import java.io.IOException;
 import java.time.LocalTime;
-import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.List;
-import java.util.Set;
 
 public class ShopPopup extends BorderedPanel {
 
     private final PvzGame game;
-    private final ShopMenuController shopController;
     private Table itemsTable;
     private final Drawable shadowOverlay;
     private final Runnable onPurchaseChanged;
@@ -47,6 +45,7 @@ public class ShopPopup extends BorderedPanel {
     private Table fakeHudOverlay;
     private Label fakeCoinLabel;
     private Label fakeGemLabel;
+    private boolean requestInFlight;
 
     public ShopPopup(PvzGame game) {
         this(game, null);
@@ -56,7 +55,6 @@ public class ShopPopup extends BorderedPanel {
         super(game, Color.valueOf("A0522D"));
         this.game = game;
         this.onPurchaseChanged = onPurchaseChanged;
-        this.shopController = new ShopMenuController(new Shop());
         this.shadowOverlay = game.getSkin().newDrawable(
             "white_pixel",
             new Color(0, 0, 0, 0.75f)
@@ -64,6 +62,7 @@ public class ShopPopup extends BorderedPanel {
 
         buildFakeHud();
         buildUi();
+        loadShopFromServer();
     }
 
     private void buildUi() {
@@ -401,49 +400,53 @@ public class ShopPopup extends BorderedPanel {
 
     private void populateShopItems() {
         itemsTable.clearChildren();
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) return;
+
+        if (!ClientShopState.isLoaded()) {
+            Label loading = createLabel("LOADING SHOP...", Color.WHITE);
+            itemsTable.add(loading).pad(40f);
+            return;
+        }
 
         int itemCount = 0;
+        ShopDailyOfferDto dailyOffer = ClientShopState.getDailyOffer();
 
-        DailyOffer dailyOffer = shopController.getDailyOfferRepository().getOrCreateDailyOffer(user.getId());
         if (dailyOffer != null) {
             String plantName = "Unknown Plant";
-            PlantData pd = PlantRegistry.get(dailyOffer.getPlantId());
+            PlantData pd = PlantRegistry.getById(dailyOffer.getPlantId());
             if (pd != null) {
                 plantName = pd.name();
             }
 
             String dailyTitle = "Daily Special\n(" + plantName + ")";
             String remainingTime = calculateRemainingTime();
-            Actor itemIcon = createItemIcon(ShopItemType.DAILY_OFFER, dailyOffer.getPlantId());
+            Actor itemIcon = createItemIcon(
+                    ShopItemType.DAILY_OFFER,
+                    dailyOffer.getPlantId()
+            );
             Actor qtyBadge = createQtyBadge(10, false);
 
             Table dailyCard = buildItemCard(
-                dailyTitle,
-                dailyOffer.getFinalPrice(),
-                Currency.COIN,
-                qtyBadge,
-                dailyOffer.isPurchased(),
-                this::handleDailyOfferPurchase,
-                "IMAGE_UI_STORE_GACHA_PINATA_INNER_PLANT_BG",
-                itemIcon,
-                true,
-                dailyOffer.getBasePrice(),
-                remainingTime
+                    dailyTitle,
+                    dailyOffer.getFinalPrice(),
+                    Currency.COIN,
+                    qtyBadge,
+                    dailyOffer.isPurchased(),
+                    this::handleDailyOfferPurchase,
+                    "IMAGE_UI_STORE_GACHA_PINATA_INNER_PLANT_BG",
+                    itemIcon,
+                    true,
+                    dailyOffer.getBasePrice(),
+                    remainingTime
             );
             itemsTable.add(dailyCard).pad(8).width(210).height(310);
             itemCount++;
         }
 
-        List<ShopItem> catalogue = shopController.getShop().getCatalogue();
-        for (int i = 0; i < catalogue.size(); i++) {
+        List<ShopItemDto> catalogue = ClientShopState.getCatalogue();
+        for (ShopItemDto item : catalogue) {
             if (itemCount > 0 && itemCount % 3 == 0) {
                 itemsTable.row();
             }
-
-            ShopItem item = catalogue.get(i);
-            int itemId = i + 1;
 
             String displayName = item.getName();
             boolean isCoinConv = false;
@@ -458,20 +461,23 @@ public class ShopPopup extends BorderedPanel {
             }
 
             Actor itemIcon = createItemIcon(item.getType(), null);
-            Actor qtyBadge = createQtyBadge(item.getAmountPerPurchase(), isCoinConv);
+            Actor qtyBadge = createQtyBadge(
+                    item.getAmountPerPurchase(),
+                    isCoinConv
+            );
 
             Table itemCard = buildItemCard(
-                displayName,
-                item.getBasePrice(),
-                item.getCurrency(),
-                qtyBadge,
-                false,
-                () -> handlePermanentItemPurchase(item, itemId),
-                "IMAGE_UI_STORE_GACHA_PINATA_PLANT_CARD_EPIC_BG",
-                itemIcon,
-                false,
-                null,
-                null
+                    displayName,
+                    item.getBasePrice(),
+                    item.getCurrency(),
+                    qtyBadge,
+                    false,
+                    () -> handlePermanentItemPurchase(item),
+                    "IMAGE_UI_STORE_GACHA_PINATA_PLANT_CARD_EPIC_BG",
+                    itemIcon,
+                    false,
+                    null,
+                    null
             );
             itemsTable.add(itemCard).pad(8).width(210).height(310);
             itemCount++;
@@ -541,43 +547,189 @@ public class ShopPopup extends BorderedPanel {
         return l;
     }
 
-    private void handlePurchaseResult(Result result, Runnable onSuccess) {
-        if (result.success()) {
-            String message = result.message();
+    private void handleDailyOfferPurchase() {
+        showConfirmationDialog(
+                "Purchase Confirmation",
+                "Purchase today's Daily Offer?",
+                this::submitDailyOfferPurchase
+        );
+    }
+
+    private void handlePermanentItemPurchase(ShopItemDto item) {
+        if (item.isRequiresPlantType()) {
+            showPlantSelectionDialog(item);
+            return;
+        }
+
+        showConfirmationDialog(
+                "Purchase Confirmation",
+                "Purchase " + item.getName() + "?",
+                () -> submitPermanentPurchase(
+                        item.getId(),
+                        null
+                )
+        );
+    }
+
+    private void loadShopFromServer() {
+        if (requestInFlight) {
+            return;
+        }
+        requestInFlight = true;
+        populateShopItems();
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestShop())
+                .whenComplete((response, throwable) ->
+                        Gdx.app.postRunnable(() ->
+                                finishShopRequest(
+                                        response,
+                                        throwable,
+                                        false,
+                                        false
+                                )
+                        )
+                );
+    }
+
+    private void submitPermanentPurchase(
+            int itemId,
+            Integer selectedPlantId
+    ) {
+        if (requestInFlight) {
+            return;
+        }
+        requestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestPurchase(
+                        itemId,
+                        selectedPlantId
+                ))
+                .whenComplete((response, throwable) ->
+                        Gdx.app.postRunnable(() ->
+                                finishShopRequest(
+                                        response,
+                                        throwable,
+                                        true,
+                                        true
+                                )
+                        )
+                );
+    }
+
+    private void submitDailyOfferPurchase() {
+        if (requestInFlight) {
+            return;
+        }
+        requestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestDailyPurchase())
+                .whenComplete((response, throwable) ->
+                        Gdx.app.postRunnable(() ->
+                                finishShopRequest(
+                                        response,
+                                        throwable,
+                                        true,
+                                        true
+                                )
+                        )
+                );
+    }
+
+    private CompletableFuture<ShopResponse> requestShop() {
+        try {
+            return game.getNetworkManager()
+                    .getShopClientService()
+                    .getShop();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private CompletableFuture<ShopResponse> requestPurchase(
+            int itemId,
+            Integer selectedPlantId
+    ) {
+        try {
+            return game.getNetworkManager()
+                    .getShopClientService()
+                    .purchase(
+                            itemId,
+                            1,
+                            selectedPlantId
+                    );
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private CompletableFuture<ShopResponse> requestDailyPurchase() {
+        try {
+            return game.getNetworkManager()
+                    .getShopClientService()
+                    .buyDailyOffer();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishShopRequest(
+            ShopResponse response,
+            Throwable throwable,
+            boolean showSuccess,
+            boolean notifyPurchaseChanged
+    ) {
+        requestInFlight = false;
+
+        if (throwable != null) {
+            showPopup(
+                    "Error",
+                    "Could not contact the server: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null) {
+            showPopup("Error", "The server returned no shop response.");
+            return;
+        }
+
+        if (!response.isSuccess()) {
+            showPopup("Error", response.getMessage());
+            return;
+        }
+
+        ClientShopState.apply(response);
+        updateTopBar();
+        populateShopItems();
+
+        if (showSuccess) {
+            String message = response.getMessage();
             if (message == null || message.isBlank()) {
                 message = "Purchase completed successfully!";
             }
             showPopup("Success", message);
-            onSuccess.run();
-            if (onPurchaseChanged != null) {
-                onPurchaseChanged.run();
-            }
-        } else {
-            showPopup("Error", result.message());
+        }
+
+        if (notifyPurchaseChanged && onPurchaseChanged != null) {
+            onPurchaseChanged.run();
         }
     }
 
-    private void handleDailyOfferPurchase() {
-        showConfirmationDialog("Purchase Confirmation", "Purchase today's Daily Offer?", () -> {
-            Result result = shopController.buyDailyOffer();
-            handlePurchaseResult(result, () -> {
-                updateTopBar();
-                populateShopItems();
-            });
-        });
-    }
-
-    private void handlePermanentItemPurchase(ShopItem item, int itemId) {
-        if (item.isRequiresPlantType()) {
-            showPlantSelectionDialog(item, itemId);
-        } else {
-            showConfirmationDialog("Purchase Confirmation", "Purchase " + item.getName() + "?", () -> {
-                Result result = shopController.shopBuy(String.valueOf(itemId), "1", null);
-                handlePurchaseResult(result, () -> {
-                    updateTopBar();
-                });
-            });
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
         }
+        return current.getMessage() == null
+                ? current.getClass().getSimpleName()
+                : current.getMessage();
     }
 
     private void showCustomPopup(String title, Actor content, String yesText, String noText, Runnable onYes, Runnable onNo) {
@@ -641,11 +793,15 @@ public class ShopPopup extends BorderedPanel {
         };
     }
 
-    private void showPlantSelectionDialog(ShopItem item, int itemId) {
+    private void showPlantSelectionDialog(ShopItemDto item) {
+        final Integer[] selectedPlantId = {null};
         final String[] selectedPlantName = {null};
         Table contentTable = new Table();
 
-        Label msg = createLabel("Select a plant for this Seed Packet:", Color.WHITE);
+        Label msg = createLabel(
+                "Select a plant for this Seed Packet:",
+                Color.WHITE
+        );
         msg.setFontScale(0.8f);
         contentTable.add(msg).padBottom(15).row();
 
@@ -653,67 +809,74 @@ public class ShopPopup extends BorderedPanel {
         cardsGrid.top().left();
         cardsGrid.defaults().expandX().top().pad(8f);
 
-        User user = App.getInstance().getLoggedInUser();
-        if (user != null) {
-            Set<Integer> unlockedPlantIds = PlantRepository.loadUnlockedPlants(user.getId());
-            Map<Integer, Integer> plantLevels = PlantRepository.loadPlantLevels(user.getId());
-            Map<Integer, Integer> seedPackets = PlantRepository.loadSeedPackets(user.getId());
+        ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
+        plantGroup.setMinCheckCount(0);
+        plantGroup.setMaxCheckCount(1);
+        plantGroup.setUncheckLast(true);
 
-            ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
-            plantGroup.setMinCheckCount(0);
-            plantGroup.setMaxCheckCount(1);
-            plantGroup.setUncheckLast(true);
+        int column = 0;
+        int columnsPerRow = 4;
 
-            int column = 0;
-            int columnsPerRow = 4;
-
-            for (Integer plantId : unlockedPlantIds) {
-                PlantData pd = PlantRegistry.get(plantId);
-                if (pd != null) {
-                    boolean isBoosted = PlantBoostRepository.hasBoost(user.getId(), plantId);
-                    int level = plantLevels.getOrDefault(plantId, 1);
-                    int packets = seedPackets.getOrDefault(plantId, 0);
-                    int required = requiredSeedPackets(pd, level);
-
-                    PlantCard.ViewData viewData = new PlantCard.ViewData(
-                        pd, true, isBoosted, level, packets, required, true
-                    );
-
-                    PlantCard card = new PlantCard(game, viewData);
-                    card.hideProgressBar();
-
-                    plantGroup.add(card);
-
-                    card.addListener(new ChangeListener() {
-                        @Override
-                        public void changed(ChangeEvent event, Actor actor) {
-                            if (card.isChecked()) {
-                                selectedPlantName[0] = pd.name();
-                            }
-                        }
-                    });
-
-                    cardsGrid.add(card);
-
-                    column++;
-                    if (column >= columnsPerRow) {
-                        cardsGrid.row();
-                        column = 0;
-                    }
-                }
+        for (ShopPlantStateDto state : ClientShopState.getPlants()) {
+            PlantData pd = PlantRegistry.getById(state.getPlantId());
+            if (pd == null) {
+                continue;
             }
 
-            if (column != 0) {
-                while (column < columnsPerRow) {
-                    cardsGrid.add().expandX();
-                    column++;
+            int required = requiredSeedPackets(
+                    pd,
+                    state.getLevel()
+            );
+
+            PlantCard.ViewData viewData = new PlantCard.ViewData(
+                    pd,
+                    true,
+                    state.isBoosted(),
+                    state.getLevel(),
+                    state.getSeedPackets(),
+                    required,
+                    true
+            );
+
+            PlantCard card = new PlantCard(game, viewData);
+            card.hideProgressBar();
+            plantGroup.add(card);
+
+            card.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (card.isChecked()) {
+                        selectedPlantId[0] = pd.id();
+                        selectedPlantName[0] = pd.name();
+                    }
                 }
+            });
+
+            cardsGrid.add(card);
+            column++;
+            if (column >= columnsPerRow) {
+                cardsGrid.row();
+                column = 0;
+            }
+        }
+
+        if (column != 0) {
+            while (column < columnsPerRow) {
+                cardsGrid.add().expandX();
+                column++;
             }
         }
 
         ScrollPane.ScrollPaneStyle spStyle = new ScrollPane.ScrollPaneStyle();
-        if (game.getSkin().has("default", ScrollPane.ScrollPaneStyle.class)) {
-            spStyle = new ScrollPane.ScrollPaneStyle(game.getSkin().get(ScrollPane.ScrollPaneStyle.class));
+        if (game.getSkin().has(
+                "default",
+                ScrollPane.ScrollPaneStyle.class
+        )) {
+            spStyle = new ScrollPane.ScrollPaneStyle(
+                    game.getSkin().get(
+                            ScrollPane.ScrollPaneStyle.class
+                    )
+            );
         }
         spStyle.background = null;
 
@@ -721,20 +884,39 @@ public class ShopPopup extends BorderedPanel {
         scrollPane.setFadeScrollBars(false);
         scrollPane.setOverscroll(false, false);
         scrollPane.setScrollingDisabled(true, false);
-        contentTable.add(scrollPane).width(560).height(260).padTop(5);
+        contentTable.add(scrollPane)
+                .width(560)
+                .height(260)
+                .padTop(5);
 
-        showCustomPopup("Select Plant", contentTable, "Continue", "Cancel", () -> {
-            if (selectedPlantName[0] != null && !selectedPlantName[0].trim().isEmpty()) {
-                showConfirmationDialog("Purchase Confirmation", "Purchase " + item.getName() + " for " + selectedPlantName[0] + "?", () -> {
-                    Result result = shopController.shopBuy(String.valueOf(itemId), "1", selectedPlantName[0]);
-                    handlePurchaseResult(result, () -> {
-                        updateTopBar();
-                    });
-                });
-            } else {
-                showPopup("Error", "Please select a plant from the board.");
-            }
-        }, null);
+        showCustomPopup(
+                "Select Plant",
+                contentTable,
+                "Continue",
+                "Cancel",
+                () -> {
+                    if (selectedPlantId[0] == null) {
+                        showPopup(
+                                "Error",
+                                "Please select a plant from the board."
+                        );
+                        return;
+                    }
+
+                    showConfirmationDialog(
+                            "Purchase Confirmation",
+                            "Purchase " + item.getName()
+                                    + " for "
+                                    + selectedPlantName[0]
+                                    + "?",
+                            () -> submitPermanentPurchase(
+                                    item.getId(),
+                                    selectedPlantId[0]
+                            )
+                    );
+                },
+                null
+        );
     }
 
     private void showConfirmationDialog(String title, String message, Runnable onConfirm) {

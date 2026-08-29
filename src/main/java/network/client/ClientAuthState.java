@@ -22,6 +22,8 @@ public final class ClientAuthState {
 
         ClientPlantOwnershipState.clear();
         ClientAdventureProgressState.clear();
+        ClientGreenHouseState.clear();
+        ClientShopState.clear();
 
         App app = App.getInstance();
         app.setLoggedInUser(user);
@@ -31,6 +33,8 @@ public final class ClientAuthState {
     public static void clear() {
         ClientPlantOwnershipState.clear();
         ClientAdventureProgressState.clear();
+        ClientGreenHouseState.clear();
+        ClientShopState.clear();
 
         App app = App.getInstance();
 

@@ -192,6 +192,17 @@ public class GameplayAccountService {
 
         LootType type = request.getType();
 
+        if (type == LootType.PLANT_FOOD) {
+            return new LootCollectResponse(
+                    true,
+                    "Plant Food collected for the current game.",
+                    type,
+                    0,
+                    0,
+                    0
+            );
+        }
+
         UserRepository.LootResult result =
                 userRepository.applyZombieLoot(
                         userId,

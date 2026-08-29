@@ -186,7 +186,7 @@ public class GameScreen extends BaseScreen {
     private final ZombieLevelPreview zombieLevelPreview;
 
 
-    private final GamingController gamingController = new GamingController();
+    private final GamingController gamingController;
 
     private float gameTickAccumulator;
     private int renderInterpolationModelTick = Integer.MIN_VALUE;
@@ -236,6 +236,9 @@ public class GameScreen extends BaseScreen {
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
+        this.gamingController = new GamingController(
+            game.getNetworkManager()
+        );
         this.theme = theme;
         this.currentLevel = theme.getLevels().stream()
             .filter(l -> l.levelNumber() == levelNumber)

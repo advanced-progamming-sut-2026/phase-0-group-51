@@ -1,6 +1,5 @@
 package views.graphical.screens;
 
-import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import com.badlogic.gdx.Gdx;
@@ -22,14 +21,19 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import controllers.GreenHouseMenuController;
 import graphics.PvzGame;
-import models.Result;
+import models.App;
+import models.User;
 import models.greenHouse.FlowerPot;
 import models.greenHouse.GreenHouse;
+import network.client.ClientGreenHouseState;
+import network.protocol.greenhouse.GreenHouseResponse;
 import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.ShopPopup;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 public class GreenHouseScreen extends BaseScreen {
     // Project-local image path. Change this only if GreenHouseBG.png is stored elsewhere.
@@ -70,6 +74,11 @@ public class GreenHouseScreen extends BaseScreen {
     private Texture backgroundTexture;
     private Label potCountLabel;
     private float timerRefreshAccumulator;
+    private boolean requestInFlight;
+
+    private enum GreenHouseAction {
+        LOAD, PLANT, GROW, COLLECT
+    }
 
     public GreenHouseScreen(PvzGame game) {
         super(game);
@@ -189,14 +198,44 @@ public class GreenHouseScreen extends BaseScreen {
     private void buildGrowingSlot(Group slot, FlowerPot pot, int row, int column) {
         addPotVisual(slot, true);
         addPlantAnimation(slot, pot);
-        Label timer = borderedLabel(formatRemainingTime(pot.getRemainingTime()));
+        Label timer = borderedLabel(
+                formatRemainingTime(
+                        pot.getRemainingTime()
+                )
+        );
+
         timer.setAlignment(Align.center);
-        timer.setBounds(10f, -12f, 140f, 28f);
-        timerLabels[row - 1][column - 1] = timer;
+
+        timer.setBounds(
+                10f,
+                38f,
+                140f,
+                28f
+        );
+
+        timerLabels[row - 1][column - 1] =
+                timer;
+
         slot.addActor(timer);
-        int gemsNeeded = Math.toIntExact(pot.getCeilRemainingHours());
-        TextButton growButton = createActionButton("GROW  " + gemsNeeded + " GEMS");
-        growButton.setBounds(5f, -48f, 150f, 34f);
+
+        int gemsNeeded =
+                Math.toIntExact(
+                        pot.getCeilRemainingHours()
+                );
+
+        TextButton growButton =
+                createActionButton(
+                        "GROW "
+                                + gemsNeeded
+                                + " GEMS"
+                );
+
+        growButton.setBounds(
+                5f,
+                0f,
+                150f,
+                34f
+        );
         growButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -222,11 +261,21 @@ public class GreenHouseScreen extends BaseScreen {
         Label readyLabel = borderedLabel("READY!");
         readyLabel.setColor(Color.GREEN);
         readyLabel.setAlignment(Align.center);
-        readyLabel.setBounds(20f, -10f, 120f, 28f);
+        readyLabel.setBounds(
+                20f,
+                38f,
+                120f,
+                28f
+        );
         slot.addActor(readyLabel);
 
         TextButton collectButton = createActionButton("COLLECT");
-        collectButton.setBounds(20f, -46f, 120f, 34f);
+        collectButton.setBounds(
+                20f,
+                0f,
+                120f,
+                34f
+        );
         collectButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -236,37 +285,128 @@ public class GreenHouseScreen extends BaseScreen {
         slot.addActor(collectButton);
     }
     private void handlePlant(int row, int column) {
-        Result result = controller.plantPot(String.valueOf(column), String.valueOf(row));
-        showResult(result);
-        if (result.success()) {
-            refreshSlot(row, column);
-        }
+        performServerAction(
+                GreenHouseAction.PLANT,
+                row,
+                column
+        );
     }
+
     private void handleGrow(int row, int column) {
-        Result result = controller.growPlant(String.valueOf(column), String.valueOf(row));
-        showResult(result);
-        if (result.success()) {
-            refreshSlot(row, column);
-            refreshHudCurrencies();
-        }
+        performServerAction(
+                GreenHouseAction.GROW,
+                row,
+                column
+        );
     }
 
     private void handleCollect(int row, int column) {
-        Result result = controller.collectPlant(String.valueOf(column), String.valueOf(row));
-        if (!result.success()) {
-            game.notifyError(result.message());
+        performServerAction(
+                GreenHouseAction.COLLECT,
+                row,
+                column
+        );
+    }
+
+    private void loadGreenHouseFromServer() {
+        performServerAction(
+                GreenHouseAction.LOAD,
+                0,
+                0
+        );
+    }
+
+    private void performServerAction(
+            GreenHouseAction action,
+            int row,
+            int column
+    ) {
+        if (requestInFlight) {
             return;
         }
-        showHarvestPopup(result.message());
-        refreshSlot(row, column);
-        refreshHudCurrencies();
-    }
-    private void showResult(Result result) {
-        if (result.success()) {
-            game.notifyInfo(result.message());
-        } else {
-            game.notifyError(result.message());
+
+        requestInFlight = true;
+        if (action == GreenHouseAction.LOAD) {
+            potCountLabel.setText("...");
         }
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestAction(
+                        action,
+                        row,
+                        column
+                ))
+                .whenComplete((response, throwable) ->
+                        Gdx.app.postRunnable(() -> {
+                            requestInFlight = false;
+
+                            if (throwable != null) {
+                                game.notifyError(
+                                        "Could not contact the server: "
+                                                + rootMessage(throwable)
+                                );
+                                refreshGreenHouse();
+                                return;
+                            }
+
+                            ClientGreenHouseState.apply(response);
+                            refreshGreenHouse();
+
+                            if (response == null) {
+                                game.notifyError(
+                                        "The server returned no greenhouse response."
+                                );
+                                return;
+                            }
+
+                            if (!response.isSuccess()) {
+                                game.notifyError(response.getMessage());
+                                return;
+                            }
+
+                            if (action == GreenHouseAction.COLLECT) {
+                                showHarvestPopup(response.getMessage());
+                            } else if (action != GreenHouseAction.LOAD) {
+                                game.notifyInfo(response.getMessage());
+                            }
+                        })
+                );
+    }
+
+    private CompletableFuture<GreenHouseResponse> requestAction(
+            GreenHouseAction action,
+            int row,
+            int column
+    ) {
+        try {
+            return switch (action) {
+                case LOAD -> game.getNetworkManager()
+                        .getGreenHouseClientService()
+                        .getGreenHouse();
+                case PLANT -> game.getNetworkManager()
+                        .getGreenHouseClientService()
+                        .plant(row, column);
+                case GROW -> game.getNetworkManager()
+                        .getGreenHouseClientService()
+                        .grow(row, column);
+                case COLLECT -> game.getNetworkManager()
+                        .getGreenHouseClientService()
+                        .collect(row, column);
+            };
+        } catch (IOException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current.getMessage() == null
+                ? current.getClass().getSimpleName()
+                : current.getMessage();
     }
     private void addPotVisual(Group slot, boolean growing) {
         Image potImage = createImage(growing ? POT_GROWING : POT);
@@ -378,13 +518,16 @@ public class GreenHouseScreen extends BaseScreen {
     }
 
     private void refreshHudCurrencies() {
-        UserRepository.CurrencyBalance balance = controller.getCurrencyBalance();
-        if (balance != null) {
-            game.updateCurrencies(balance.coins(), balance.gems());
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {
+            game.updateCurrencies(
+                    user.getCoins(),
+                    user.getGems()
+            );
         }
     }
     private void openShop() {
-        ShopPopup shopPopup = new ShopPopup(game, this::refreshGreenHouse);
+        ShopPopup shopPopup = new ShopPopup(game, this::loadGreenHouseFromServer);
         shopPopup.pack();
         shopPopup.setPosition(
                 (stage.getWidth() - shopPopup.getWidth()) / 2f,
@@ -481,6 +624,7 @@ public class GreenHouseScreen extends BaseScreen {
         super.show();
         game.showHud(0, 0, true, () -> game.showScreen(new MainMenuScreen(game)));
         refreshHudCurrencies();
+        loadGreenHouseFromServer();
         AudioManager.getInstance().playMusic("assets/sounds/GreenHouse.mp3");
     }
 

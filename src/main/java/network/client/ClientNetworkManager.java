@@ -3,6 +3,8 @@ package network.client;
 import network.client.service.AccountClientService;
 import network.client.service.PlantOwnershipClientService;
 import network.client.service.GameplayAccountClientService;
+import network.client.service.GreenHouseClientService;
+import network.client.service.ShopClientService;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -20,6 +22,8 @@ public final class ClientNetworkManager implements Closeable {
     private AccountClientService accountClientService;
     private PlantOwnershipClientService plantOwnershipClientService;
     private GameplayAccountClientService gameplayAccountClientService;
+    private GreenHouseClientService greenHouseClientService;
+    private ShopClientService shopClientService;
 
     public ClientNetworkManager() {
         this(
@@ -78,6 +82,10 @@ public final class ClientNetworkManager implements Closeable {
                 new PlantOwnershipClientService(newClient);
         gameplayAccountClientService =
                 new GameplayAccountClientService(newClient);
+        greenHouseClientService =
+                new GreenHouseClientService(newClient);
+        shopClientService =
+                new ShopClientService(newClient);
     }
 
     public synchronized boolean isConnected() {
@@ -121,6 +129,27 @@ public final class ClientNetworkManager implements Closeable {
         return gameplayAccountClientService;
     }
 
+    public synchronized GreenHouseClientService
+    getGreenHouseClientService() {
+        if (!isConnected()
+                || greenHouseClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+
+        return greenHouseClientService;
+    }
+
+    public synchronized ShopClientService getShopClientService() {
+        if (!isConnected() || shopClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return shopClientService;
+    }
+
     public synchronized NetworkClient getNetworkClient() {
         if (!isConnected()) {
             throw new IllegalStateException(
@@ -145,6 +174,8 @@ public final class ClientNetworkManager implements Closeable {
         accountClientService = null;
         plantOwnershipClientService = null;
         gameplayAccountClientService = null;
+        greenHouseClientService = null;
+        shopClientService = null;
     }
 
     private static int readPort() {

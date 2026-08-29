@@ -247,13 +247,13 @@ public final class GameplayAccountClientMain {
                 );
 
         require(
-                second.getTotal()
-                        == first.getTotal() + 1,
-                "Plant Food loot must increment plant_food_num."
+                first.getTotal() == 0
+                        && second.getTotal() == 0,
+                "Zombie Plant Food must stay in the current game, not the stored account bank."
         );
 
         System.out.println(
-                "[PASS] Plant Food uses its own server balance"
+                "[PASS] Zombie Plant Food stays in the current game only"
         );
     }
 

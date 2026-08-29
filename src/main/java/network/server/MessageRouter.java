@@ -6,6 +6,8 @@ import network.server.service.AuthService;
 import network.server.service.ProfileService;
 import network.server.service.PlantOwnershipService;
 import network.server.service.GameplayAccountService;
+import network.server.service.GreenHouseService;
+import network.server.service.ShopService;
 
 public class MessageRouter {
     private final AuthService authService =
@@ -19,6 +21,12 @@ public class MessageRouter {
 
     private final GameplayAccountService gameplayAccountService =
             new GameplayAccountService();
+
+    private final GreenHouseService greenHouseService =
+            new GreenHouseService();
+
+    private final ShopService shopService =
+            new ShopService();
 
     public NetworkMessage route(
             ClientConnection connection,
@@ -146,6 +154,103 @@ public class MessageRouter {
         if (message.getType()
                 == MessageType.ADVENTURE_WIN_REQUEST) {
             return gameplayAccountService.handleAdventureWin(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.GREENHOUSE_GET_REQUEST) {
+            return greenHouseService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.GREENHOUSE_PLANT_REQUEST) {
+            return greenHouseService.handlePlant(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.GREENHOUSE_GROW_REQUEST) {
+            return greenHouseService.handleGrow(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.GREENHOUSE_COLLECT_REQUEST) {
+            return greenHouseService.handleCollect(
+                    connection,
+                    message
+            );
+        }
+
+
+        if (message.getType()
+                == MessageType.SHOP_GET_REQUEST) {
+            return shopService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.SHOP_PURCHASE_REQUEST) {
+            return shopService.handlePurchase(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.SHOP_DAILY_PURCHASE_REQUEST) {
+            return shopService.handleDailyPurchase(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.COLLECTION_PLANT_PURCHASE_REQUEST) {
+            return shopService.handleCollectionPlantPurchase(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PLANT_UPGRADE_REQUEST) {
+            return shopService.handlePlantUpgrade(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PLANT_BOOST_REQUEST) {
+            return shopService.handlePlantBoost(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PLANT_BOOST_CONSUME_REQUEST) {
+            return shopService.handlePlantBoostConsume(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PLANT_FOOD_CLAIM_REQUEST) {
+            return shopService.handlePlantFoodClaim(
                     connection,
                     message
             );

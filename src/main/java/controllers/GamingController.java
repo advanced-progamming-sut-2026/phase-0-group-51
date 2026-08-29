@@ -1,12 +1,12 @@
 package controllers;
 
 import Data.database.GreenHouseRepository;
-import Data.database.PlantBoostRepository;
 import Data.database.PlantRepository;
 import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import Data.loader.ZombieRegistry;
+import com.badlogic.gdx.Gdx;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
@@ -29,16 +29,22 @@ import models.games.ancientEgypt.Grave;
 import models.greenHouse.FlowerPot;
 import models.items.DroppedLoot;
 import models.items.Mower;
+import network.client.ClientGreenHouseState;
+import network.client.ClientNetworkManager;
+import network.client.ClientShopState;
+import network.protocol.shop.ShopResponse;
 import network.protocol.gameplay.LootCollectResponse;
 import models.quests.QuestService;
 import models.sun.Sun;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class GamingController {
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
@@ -47,6 +53,16 @@ public class GamingController {
     private static final int IMITATER_ID = 56;
     private static final int HOT_POTATO_ID = 59;
     private static final int GRAVE_BUSTER_ID = 60;
+
+    private final ClientNetworkManager networkManager;
+
+    public GamingController() {
+        this(null);
+    }
+
+    public GamingController(ClientNetworkManager networkManager) {
+        this.networkManager = networkManager;
+    }
 
     private Result success(String message) {
         return new Result(true, message, null);
@@ -414,15 +430,8 @@ public class GamingController {
     }
 
     private Plant createImitaterCopyForUser(PlantData target) {
-        User user = App.getInstance().getLoggedInUser();
-        int imitaterLevel = user == null
-            ? 1
-            : PlantRepository.loadPlantLevels(user.getId())
-              .getOrDefault(IMITATER_ID, 1);
-        int targetLevel = user == null
-            ? 1
-            : PlantRepository.loadPlantLevels(user.getId())
-              .getOrDefault(target.id(), 1);
+        int imitaterLevel = ClientShopState.plantLevel(IMITATER_ID);
+        int targetLevel = ClientShopState.plantLevel(target.id());
         return Modifier.createImitaterCopy(
             target,
             targetLevel,
@@ -525,8 +534,11 @@ public class GamingController {
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
-        return success("Grave Buster started eating the grave at ("
-            + x + ", " + y + ").\n");
+        return success(
+            "Grave Buster started eating the grave at ("
+                + x + ", " + y + ").\n"
+                + activateStoredBoost(selected, plant, state)
+        );
     }
 
     private Result placePumpkin(
@@ -550,7 +562,10 @@ public class GamingController {
         } catch (IllegalArgumentException | IllegalStateException exception) {
             return failure(exception.getMessage() + ".\n");
         }
-        return success("Pumpkin covered the plant at (" + x + ", " + y + ").\n");
+        return success(
+            "Pumpkin covered the plant at (" + x + ", " + y + ").\n"
+                + activateStoredBoost(selected, pumpkin, state)
+        );
     }
 
     private Result placeSpecialInstantPlant(
@@ -615,21 +630,11 @@ public class GamingController {
         }
         String message = selected.name()
             + " stacked at (" + x + ", " + y + ").\n";
-        User user = App.getInstance().getLoggedInUser();
-        if (user != null
-            && PlantBoostRepository.hasBoost(
-            user.getId(),
-            selected.id()
-        )) {
-            existing.feed(state);
-            PlantBoostRepository.consumeBoost(
-                user.getId(),
-                selected.id()
-            );
-            message += "The stored boost for "
-                + selected.name()
-                + " was activated on the stacked plant.\n";
-        }
+        message += activateStoredBoost(
+            selected,
+            existing,
+            state
+        );
         return success(message);
     }
 
@@ -662,26 +667,104 @@ public class GamingController {
         Plant plant,
         GameState state
     ) {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null || !PlantBoostRepository.hasBoost(user.getId(), selected.id())) {
+        if (!ClientShopState.hasBoost(selected.id())) {
             return "";
         }
+
         boolean plantStillExists = !plant.isMarkedForRemoval()
             && state.getBoard().getTileForPlant(plant) != null;
         if (!plantStillExists) {
             return "The stored boost was kept because "
                 + selected.name() + " is an instant-use plant.\n";
         }
-        plant.feed(state);
-        PlantBoostRepository.consumeBoost(user.getId(), selected.id());
-        return "The stored boost for " + selected.name() + " was activated.\n";
+
+        if (networkManager == null) {
+            return "A stored boost exists for "
+                + selected.name()
+                + ", but a server connection is required to consume it.\n";
+        }
+
+        consumeStoredBoostAsync(
+            selected,
+            plant,
+            state
+        );
+
+        return "Stored boost activation requested for "
+            + selected.name() + ".\n";
+    }
+
+    private void consumeStoredBoostAsync(
+        PlantData selected,
+        Plant plant,
+        GameState state
+    ) {
+        networkManager.ensureConnectedAsync()
+            .thenCompose(ignored -> sendConsumeBoost(selected.id()))
+            .whenComplete((response, throwable) -> {
+                if (throwable != null
+                    || response == null
+                    || !response.isSuccess()) {
+                    state.logEvent(
+                        "Stored boost for "
+                            + selected.name()
+                            + " could not be consumed from the server.\n"
+                    );
+                    return;
+                }
+
+                Runnable applyBoost = () -> {
+                    ClientShopState.apply(response);
+
+                    boolean stillExists = !plant.isMarkedForRemoval()
+                        && !plant.isDead()
+                        && state.getBoard().getTileForPlant(plant) != null;
+
+                    if (!stillExists || plant.isOnPlantFood()) {
+                        return;
+                    }
+
+                    plant.feed(state);
+                    state.logEvent(
+                        "The stored boost for "
+                            + selected.name()
+                            + " was activated.\n"
+                    );
+                };
+
+                if (Gdx.app != null) {
+                    Gdx.app.postRunnable(applyBoost);
+                } else {
+                    applyBoost.run();
+                }
+            });
+    }
+
+    private CompletableFuture<ShopResponse> sendConsumeBoost(
+        int plantId
+    ) {
+        try {
+            return networkManager
+                .getShopClientService()
+                .consumeBoost(plantId);
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+
+    private static <T> CompletableFuture<T> failedFuture(
+        Throwable throwable
+    ) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        future.completeExceptionally(throwable);
+        return future;
     }
 
     private Plant createPlantForCurrentUser(PlantData selected) {
-        User user = App.getInstance().getLoggedInUser();
-        int level = user == null ? 1 : PlantRepository.loadPlantLevels(user.getId())
-                                       .getOrDefault(selected.id(), 1);
-        return PlantFactory.create(selected, level);
+        return PlantFactory.create(
+            selected,
+            ClientShopState.plantLevel(selected.id())
+        );
     }
 
     private Result createAndPlacePlant(
@@ -915,10 +998,7 @@ public class GamingController {
             return showConveyor();
         }
         GameState state = game.getGameState();
-        User user = App.getInstance().getLoggedInUser();
-        Map<Integer, Integer> levels = user == null
-            ? Map.of()
-            : PlantRepository.loadPlantLevels(user.getId());
+        Map<Integer, Integer> levels = ClientShopState.plantLevels();
 
         StringBuilder output = new StringBuilder("===== PLANT STATUS =====\n\n");
         for (PlantData data : game.getSelectedPlantsForThisGame()) {
@@ -1195,6 +1275,13 @@ public class GamingController {
             return failure("The server returned the wrong loot type.\n");
         }
 
+        if (loot.getType() == LootType.PLANT_FOOD
+            && state.getPlantFoodCount() >= 3) {
+            return failure(
+                "You already have the maximum of 3 plant foods.\n"
+            );
+        }
+
         int previousTotal = currentLootTotal(
             user,
             loot.getType()
@@ -1225,23 +1312,15 @@ public class GamingController {
             }
             case PLANT_FOOD -> {
                 state.addPlantFood();
-                user.setPlantFoodNum(response.getTotal());
                 yield "Collected 1 plant food; you have "
                     + state.getPlantFoodCount()
                     + " plant foods now.\n";
             }
             case POT -> {
-                if (user.getGreenHouse() != null) {
-                    FlowerPot pot =
-                        user.getGreenHouse().getPot(
-                            response.getUnlockedRow(),
-                            response.getUnlockedColumn()
-                        );
-
-                    if (pot != null) {
-                        pot.setUnlocked(true);
-                    }
-                }
+                ClientGreenHouseState.unlockPot(
+                    response.getUnlockedRow(),
+                    response.getUnlockedColumn()
+                );
 
                 yield "Collected a pot; greenhouse pot ("
                     + response.getUnlockedColumn()
@@ -1278,6 +1357,20 @@ public class GamingController {
 
         if (loot == null) {
             return failure("No loot found.\n");
+        }
+
+        if (loot.getType() == LootType.PLANT_FOOD) {
+            if (!state.addPlantFood()) {
+                return failure(
+                    "You already have the maximum of 3 plant foods.\n"
+                );
+            }
+            state.getBoard().collectLoot(loot);
+            return success(
+                "Collected 1 plant food; you have "
+                    + state.getPlantFoodCount()
+                    + " plant foods now.\n"
+            );
         }
 
         int previousTotal = currentLootTotal(user, loot.getType());
@@ -1324,6 +1417,20 @@ public class GamingController {
 
         if (loot == null) {
             return failure("No loot found at given coordinates.\n");
+        }
+
+        if (loot.getType() == LootType.PLANT_FOOD) {
+            if (!state.addPlantFood()) {
+                return failure(
+                    "You already have the maximum of 3 plant foods.\n"
+                );
+            }
+            state.getBoard().collectLoot(loot);
+            return success(
+                "Collected 1 plant food; you have "
+                    + state.getPlantFoodCount()
+                    + " plant foods now.\n"
+            );
         }
 
         int previousTotal = currentLootTotal(user, loot.getType());
@@ -1397,10 +1504,9 @@ public class GamingController {
         if (state != null) {
             state.addPlantFood();
         }
-        user.setPlantFoodNum(user.getPlantFoodNum() + 1);
         int inGameCount = state != null
             ? state.getPlantFoodCount()
-            : user.getPlantFoodNum();
+            : 0;
         return "Collected 1 plant food; you have "
             + inGameCount
             + " plant foods now.\n";
