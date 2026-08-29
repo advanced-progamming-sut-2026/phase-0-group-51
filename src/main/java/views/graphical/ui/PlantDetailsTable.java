@@ -1,5 +1,6 @@
 package views.graphical.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -13,6 +14,11 @@ import controllers.CollectionMenuController;
 import Data.loader.PlantRegistry;
 import graphics.PvzGame;
 import models.Result;
+import network.client.ClientShopState;
+import network.protocol.shop.ShopResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 public final class PlantDetailsTable extends Table {
 
@@ -617,12 +623,7 @@ public final class PlantDetailsTable extends Table {
                                 ChangeEvent event,
                                 Actor actor
                         ) {
-                            handleCollectionAction(
-                                    controller.purchase(
-                                            data.plant().name()
-                                    ),
-                                    onBack
-                            );
+                            requestCollectionPlantPurchase(onBack);
                         }
                     }
             );
@@ -686,12 +687,7 @@ public final class PlantDetailsTable extends Table {
                             ChangeEvent event,
                             Actor actor
                     ) {
-                        handleCollectionAction(
-                                controller.upgrade(
-                                        data.plant().name()
-                                ),
-                                onBack
-                        );
+                        requestPlantUpgrade(onBack);
                     }
                 }
         );
@@ -711,6 +707,109 @@ public final class PlantDetailsTable extends Table {
                 .padTop(4f);
 
         return actionArea;
+    }
+
+    private void requestCollectionPlantPurchase(
+            Runnable onBack
+    ) {
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .purchaseCollectionPlant(
+                                        data.plant().id()
+                                );
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishServerPlantAction(
+                                                response,
+                                                throwable,
+                                                onBack
+                                        )
+                                )
+                );
+    }
+
+    private void requestPlantUpgrade(
+            Runnable onBack
+    ) {
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .upgradePlant(
+                                        data.plant().id()
+                                );
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishServerPlantAction(
+                                                response,
+                                                throwable,
+                                                onBack
+                                        )
+                                )
+                );
+    }
+
+    private void finishServerPlantAction(
+            ShopResponse response,
+            Throwable throwable,
+            Runnable onBack
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                    "Plant update failed: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Plant update failed."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientShopState.apply(response);
+        game.notifyInfo(response.getMessage());
+        remove();
+        onBack.run();
+    }
+
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        future.completeExceptionally(throwable);
+        return future;
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
     }
 
     private void handleCollectionAction(

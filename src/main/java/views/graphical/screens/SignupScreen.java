@@ -18,9 +18,19 @@ import models.App;
 import models.Result;
 import models.enums.Menu;
 import models.enums.SecurityQuestions;
+import network.client.ClientSessionTokenStore;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.ForgotPassPopup;
 import views.graphical.ui.NotificationOverlay;
+import network.client.ClientAuthState;
+import network.client.service.AccountClientService;
+import network.protocol.auth.LoginRequest;
+import network.protocol.auth.LoginResponse;
+import network.protocol.auth.RegisterRequest;
+import network.protocol.auth.RegisterResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 public class SignupScreen extends BaseScreen{
     private static final float PANEL_WIDTH = 950f;
@@ -32,14 +42,13 @@ public class SignupScreen extends BaseScreen{
     private Stack root;
     private Texture backgroundTexture;
     private static final String TEXT_FIELD = "IMAGE_UI_SEASONS_UNCOMPRESSED_PVZ2_SEASONS_UIASSET_PRIZE_WINDOW_UPPER_UNLOCKED";
-    private final SignUpMenuController controller = new SignUpMenuController();
-    private final LoginMenuController loginController = new LoginMenuController();
     private TextField usernameField;
     private TextField passwordField;
     private TextField confirmPasswordField;
     private TextField nicknameField;
     private TextField emailField;
     private TextField genderField;
+    private boolean signupInFlight;
     private TextField answerField;
     private TextField confirmAnswerField;
     private SelectBox<SecurityQuestions> securityQuestionBox;
@@ -300,39 +309,12 @@ public class SignupScreen extends BaseScreen{
         return createTextBox("Confirm your security answer...", false
         );}
     private void handleSignup() {
-        String username = usernameField.getText().trim();
-        String password = passwordField.getText();
-        String confirmPassword = confirmPasswordField.getText();
-        String nickname = nicknameField.getText().trim();
-        String email = emailField.getText().trim();
-        String gender = genderField.getText().trim();
-        String answer = answerField.getText().trim();
-        String confirmAnswer = confirmAnswerField.getText().trim();
-        if (!isSuccessful(controller.setUsername(username))) {
+        if (signupInFlight) {
             return;
         }
 
-        if (!isSuccessful(controller.setPassword(password))) {
-            return;
-        }
-
-        if (!isSuccessful(controller.setPasswordConfirm(confirmPassword, password))) {
-            return;
-        }
-
-        if (!isSuccessful(controller.setNickname(nickname))) {
-            return;
-        }
-
-        if (!isSuccessful(controller.setEmail(email))) {
-            return;
-        }
-
-        if (!isSuccessful(controller.setGender(gender))) {
-            return;
-        }
-
-        SecurityQuestions selectedQuestion = securityQuestionBox.getSelected();
+        SecurityQuestions selectedQuestion =
+                securityQuestionBox.getSelected();
 
         if (selectedQuestion == SecurityQuestions.SELECT) {
             notificationOverlay.showError(
@@ -341,32 +323,241 @@ public class SignupScreen extends BaseScreen{
             return;
         }
 
-        Result result = controller.setQuestion(String.valueOf(selectedQuestion.getNum()), answer, confirmAnswer);
-        if (!result.success()) {
-            notificationOverlay.showError(result.message());
-            return;
-        }
-        notificationOverlay.showInfo(result.message());
-        clearForm();
-        Result loginResult = loginController.login(username, password, false);
-        if (!loginResult.success()) {
-            notificationOverlay.showError(
-                    "Registration was successful, but automatic login failed: " + loginResult.message());
-            return;
-        }
-        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
-        game.showScreen(new MainMenuScreen(game));
+        RegisterRequest request =
+                buildRegisterRequest(
+                        selectedQuestion
+                );
 
+        signupInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored -> sendRegistration(request)
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishRegistration(
+                                                request,
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
     }
-    private boolean isSuccessful(Result result) {
-        if (!result.success()) {
+//    private void handleSignup() {
+//        String username = usernameField.getText().trim();
+//        String password = passwordField.getText();
+//        String confirmPassword = confirmPasswordField.getText();
+//        String nickname = nicknameField.getText().trim();
+//        String email = emailField.getText().trim();
+//        String gender = genderField.getText().trim();
+//        String answer = answerField.getText().trim();
+//        String confirmAnswer = confirmAnswerField.getText().trim();
+//        if (!isSuccessful(controller.setUsername(username))) {
+//            return;
+//        }
+//
+//        if (!isSuccessful(controller.setPassword(password))) {
+//            return;
+//        }
+//
+//        if (!isSuccessful(controller.setPasswordConfirm(confirmPassword, password))) {
+//            return;
+//        }
+//
+//        if (!isSuccessful(controller.setNickname(nickname))) {
+//            return;
+//        }
+//
+//        if (!isSuccessful(controller.setEmail(email))) {
+//            return;
+//        }
+//
+//        if (!isSuccessful(controller.setGender(gender))) {
+//            return;
+//        }
+//
+//        SecurityQuestions selectedQuestion = securityQuestionBox.getSelected();
+//
+//        if (selectedQuestion == SecurityQuestions.SELECT) {
+//            notificationOverlay.showError(
+//                    "Please select a security question."
+//            );
+//            return;
+//        }
+//
+//        Result result = controller.setQuestion(String.valueOf(selectedQuestion.getNum()), answer, confirmAnswer);
+//        if (!result.success()) {
+//            notificationOverlay.showError(result.message());
+//            return;
+//        }
+//        notificationOverlay.showInfo(result.message());
+//        clearForm();
+//        Result loginResult = loginController.login(username, password, false);
+//        if (!loginResult.success()) {
+//            notificationOverlay.showError(
+//                    "Registration was successful, but automatic login failed: " + loginResult.message());
+//            return;
+//        }
+//        App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
+//        game.showScreen(new MainMenuScreen(game));
+//
+//    }
+    private RegisterRequest buildRegisterRequest(
+            SecurityQuestions question
+    ) {
+        return new RegisterRequest(
+                usernameField.getText().trim(),
+
+                passwordField.getText(),
+                confirmPasswordField.getText(),
+
+                nicknameField.getText().trim(),
+                emailField.getText().trim(),
+                genderField.getText().trim(),
+
+                question.getNum(),
+
+                answerField.getText().trim(),
+                confirmAnswerField.getText().trim()
+        );
+    }
+    private CompletableFuture<RegisterResponse>
+    sendRegistration(
+            RegisterRequest request
+    ) {
+        try {
+            return game.getNetworkManager()
+                    .getAccountClientService()
+                    .register(request);
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+    private void finishRegistration(
+            RegisterRequest request,
+            RegisterResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            signupInFlight = false;
+
             notificationOverlay.showError(
-                    result.message()
+                    "Could not connect to server: "
+                            + rootMessage(throwable)
             );
-            return false;
+
+            return;
         }
 
-        return true;
+        if (response == null || !response.isSuccess()) {
+            signupInFlight = false;
+
+            notificationOverlay.showError(
+                    response == null
+                            ? "Registration failed."
+                            : response.getMessage()
+            );
+
+            return;
+        }
+
+        startAutomaticLogin(request);
+    }
+    private void startAutomaticLogin(
+            RegisterRequest request
+    ) {
+        LoginRequest loginRequest =
+                new LoginRequest(
+                        request.getUsername(),
+                        request.getPassword()
+                );
+
+        try {
+            game.getNetworkManager()
+                    .getAccountClientService()
+                    .login(loginRequest)
+                    .whenComplete(
+                            (response, throwable) ->
+                                    Gdx.app.postRunnable(
+                                            () -> finishAutomaticLogin(
+                                                    response,
+                                                    throwable
+                                            )
+                                    )
+                    );
+        } catch (IOException | RuntimeException exception) {
+            finishAutomaticLogin(
+                    null,
+                    exception
+            );
+        }
+    }
+    private void finishAutomaticLogin(
+            LoginResponse response,
+            Throwable throwable
+    ) {
+        signupInFlight = false;
+
+        if (throwable != null) {
+            notificationOverlay.showError(
+                    "Registration succeeded, but login failed: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            notificationOverlay.showError(
+                    "Registration succeeded, but login failed: "
+                            + (
+                            response == null
+                                    ? "Unknown error."
+                                    : response.getMessage()
+                    )
+            );
+            return;
+        }
+        ClientSessionTokenStore.clear();
+
+        ClientAuthState.applyLogin(
+                response.getUser()
+        );
+
+        clearForm();
+
+        game.showScreen(
+                new MainMenuScreen(game)
+        );
+    }
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future =
+                new CompletableFuture<>();
+
+        future.completeExceptionally(throwable);
+
+        return future;
+    }
+    private static String rootMessage(
+            Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+
+        if (message == null || message.isBlank()) {
+            return current.getClass().getSimpleName();
+        }
+
+        return message;
     }
     private TextButton createSignupButton() {
         TextButton button = new TextButton("Sign Up", game.getSkin(), "green");

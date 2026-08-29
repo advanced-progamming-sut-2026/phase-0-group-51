@@ -25,7 +25,14 @@ import views.graphical.screens.BootScreen;
 import views.graphical.screens.FirstScreen;
 import views.graphical.ui.GlobalUiLayer;
 import pvz.libpvz.pam.PamPlayer;
+import network.client.ClientNetworkManager;
+import network.client.ClientAuthState;
+import network.client.ClientSessionTokenStore;
+import network.protocol.auth.LoginResponse;
+import views.graphical.screens.MainMenuScreen;
 
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +52,8 @@ public final class PvzGame extends Game {
     private GlobalUiLayer globalUiLayer;
     private TextureBank textureBank;
     private PamPlayer pamPlayer;
+
+    private ClientNetworkManager networkManager;
     @Override
     public void create() {
         batch = new SpriteBatch();
@@ -63,6 +72,7 @@ public final class PvzGame extends Game {
             );
         }
         App.getInstance();
+        networkManager = new ClientNetworkManager();
 
         textureBank = new TextureBank("768", assetsFolder);
         pamPlayer = new PamPlayer(textureBank, assetsFolder);
@@ -76,9 +86,141 @@ public final class PvzGame extends Game {
         );
 
         Gdx.input.setInputProcessor(
-            inputMultiplexer
+                inputMultiplexer
         );
-        showFirstMenu();
+
+        startInitialScreen();
+    }
+    private void startInitialScreen() {
+        String savedToken =
+                ClientSessionTokenStore.load();
+
+        if (savedToken == null) {
+            showFirstMenu();
+            return;
+        }
+
+        showScreen(
+                new BootScreen(this)
+        );
+
+        restoreSavedSession(savedToken);
+    }
+    private void restoreSavedSession(
+            String token
+    ) {
+        networkManager
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored ->
+                                sendResumeSession(token)
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () ->
+                                                finishSessionRestore(
+                                                        response,
+                                                        throwable
+                                                )
+                                )
+                );
+    }
+    private CompletableFuture<LoginResponse>
+    sendResumeSession(
+            String token
+    ) {
+        try {
+            return networkManager
+                    .getAccountClientService()
+                    .resumeSession(token);
+
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+    private void finishSessionRestore(
+            LoginResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            /*
+             * Important:
+             * A network failure does NOT mean that the token
+             * is invalid.
+             *
+             * Keep the saved token so it can be retried later.
+             */
+            showFirstMenu();
+
+            notifyError(
+                    "Could not restore saved login: "
+                            + rootMessage(throwable)
+            );
+
+            return;
+        }
+
+        if (response == null
+                || !response.isSuccess()) {
+
+            /*
+             * The server was reachable and specifically
+             * rejected the token.
+             *
+             * Therefore it really is invalid.
+             */
+            ClientSessionTokenStore.clear();
+
+            showFirstMenu();
+
+            notifyInfo(
+                    response == null
+                            ? "Saved login session is no longer valid."
+                            : response.getMessage()
+            );
+
+            return;
+        }
+
+        ClientAuthState.applyLogin(
+                response.getUser()
+        );
+
+        showScreen(
+                new MainMenuScreen(this)
+        );
+    }
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future =
+                new CompletableFuture<>();
+
+        future.completeExceptionally(throwable);
+
+        return future;
+    }
+    private static String rootMessage(
+            Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message =
+                current.getMessage();
+
+        if (message == null
+                || message.isBlank()) {
+            return current
+                    .getClass()
+                    .getSimpleName();
+        }
+
+        return message;
     }
 
     public void showScreen(BaseScreen nextScreen) {
@@ -255,6 +397,11 @@ public final class PvzGame extends Game {
     @Override
     public void dispose() {
         Screen currentScreen = getScreen();
+
+        if (networkManager != null) {
+            networkManager.close();
+            networkManager = null;
+        }
 
         if (currentScreen != null) {
             currentScreen.dispose();

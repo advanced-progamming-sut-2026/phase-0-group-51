@@ -17,9 +17,11 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 import models.games.ChapterTheme;
-import models.App;
-import models.User;
-import Data.database.ProgressRepository;
+import network.client.ClientAdventureProgressState;
+import network.protocol.gameplay.AdventureProgressResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import views.graphical.gameplay.manager.AudioManager;
 
 public class ChapterMapScreen extends BaseScreen {
@@ -32,7 +34,8 @@ public class ChapterMapScreen extends BaseScreen {
     private static final float MAP_WIDTH = 2000f;
     private static final float MAP_HEIGHT = PvzGame.VIRTUAL_HEIGHT;
 
-    private int currentActiveLevel = 2;
+    private int currentActiveLevel = 1;
+    private boolean progressRefreshRequested;
 
     private static class NodeConfig {
         float islandScale;
@@ -60,26 +63,45 @@ public class ChapterMapScreen extends BaseScreen {
     public ChapterMapScreen(PvzGame game, ChapterTheme chapter) {
         super(game);
         this.chapter = chapter;
-        User user = App.getInstance().getLoggedInUser();
-        int[] progress = {1, 1};
-        if (user != null) {
-            progress = new ProgressRepository().getCurrentProgress(user.getId());
+
+        if (ClientAdventureProgressState.isLoaded()) {
+            applyProgress(
+                    ClientAdventureProgressState.getCurrentChapter(),
+                    ClientAdventureProgressState.getCurrentLevel()
+            );
+        } else {
+            applyProgress(1, 1);
         }
 
-        int chapterIndex = 1;
-        if (chapter == ChapterTheme.FROSTBITE_CAVES) chapterIndex = 2;
-        else if (chapter == ChapterTheme.BIG_WAVE_BEACH) chapterIndex = 3;
-        else if (chapter == ChapterTheme.DARK_AGES) chapterIndex = 4;
-
-       if (chapterIndex < progress[0]) {
-           currentActiveLevel = 999;
-       } else if (chapterIndex == progress[0]) {
-           currentActiveLevel = progress[1];
-        } else {
-           currentActiveLevel = 0;
-      }
-        currentActiveLevel = 999;
         buildUi();
+    }
+
+    private void applyProgress(
+            int progressChapter,
+            int progressLevel
+    ) {
+        int chapterIndex = chapterIndex();
+
+        if (chapterIndex < progressChapter) {
+            currentActiveLevel = 999;
+        } else if (chapterIndex == progressChapter) {
+            currentActiveLevel = progressLevel;
+        } else {
+            currentActiveLevel = 0;
+        }
+    }
+
+    private int chapterIndex() {
+        if (chapter == ChapterTheme.FROSTBITE_CAVES) {
+            return 2;
+        }
+        if (chapter == ChapterTheme.BIG_WAVE_BEACH) {
+            return 3;
+        }
+        if (chapter == ChapterTheme.DARK_AGES) {
+            return 4;
+        }
+        return 1;
     }
 
     private void buildUi() {
@@ -408,9 +430,92 @@ public class ChapterMapScreen extends BaseScreen {
         }
     }
 
+    private void refreshProgressFromServer() {
+        if (progressRefreshRequested) {
+            return;
+        }
+        progressRefreshRequested = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestAdventureProgress())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishProgressRefresh(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<AdventureProgressResponse>
+    requestAdventureProgress() {
+        try {
+            return game.getNetworkManager()
+                    .getGameplayAccountClientService()
+                    .getAdventureProgress();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishProgressRefresh(
+            AdventureProgressResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not load Adventure progress: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Adventure progress could not be loaded."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientAdventureProgressState.replaceWith(
+                response.getCurrentChapter(),
+                response.getCurrentLevel()
+        );
+
+        int oldActiveLevel = currentActiveLevel;
+        applyProgress(
+                response.getCurrentChapter(),
+                response.getCurrentLevel()
+        );
+
+        if (oldActiveLevel != currentActiveLevel) {
+            game.showScreen(
+                    new ChapterMapScreen(game, chapter)
+            );
+        }
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
+    }
+
+
     @Override
     public void show() {
         super.show();
+        refreshProgressFromServer();
         game.showHud(0, 0, true, () -> game.showScreen(new ChapterSelectScreen(game)));
 
         if (stage != null) {

@@ -44,6 +44,12 @@ import models.enums.LootType;
 import models.items.DroppedLoot;
 import models.games.ZombieWaveManager;
 import models.sun.Sun;
+import models.User;
+import network.client.ClientPlantOwnershipState;
+import network.client.ClientAdventureProgressState;
+import network.protocol.gameplay.AdventureLossResponse;
+import network.protocol.gameplay.AdventureWinResponse;
+import network.protocol.gameplay.LootCollectResponse;
 
 
 import views.graphical.gameplay.actors.PlantActor;
@@ -68,10 +74,15 @@ import views.graphical.dialogue.NpcDialogueSequence;
 import views.graphical.ui.*;
 import views.graphical.ui.conveyorBelt.ConveyorBeltActor;
 
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 public class GameScreen extends BaseScreen {
 
@@ -170,13 +181,21 @@ public class GameScreen extends BaseScreen {
     private final ZombieLevelPreview zombieLevelPreview;
 
 
-    private final GamingController gamingController = new GamingController();
+    private final GamingController gamingController;
 
     private float gameTickAccumulator;
     private int renderInterpolationModelTick = Integer.MIN_VALUE;
     private float renderInterpolationElapsed;
     private float renderInterpolationDuration = 0.1f;
     private boolean gameEndShown;
+
+    private final Set<DroppedLoot> lootCollectionsInFlight =
+        Collections.newSetFromMap(
+            new IdentityHashMap<>()
+        );
+
+    private boolean adventureLossRequestStarted;
+    private boolean adventureWinRequestStarted;
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
@@ -212,6 +231,9 @@ public class GameScreen extends BaseScreen {
 
     public GameScreen(PvzGame game, ChapterTheme theme, int levelNumber) {
         super(game);
+        this.gamingController = new GamingController(
+            game.getNetworkManager()
+        );
         this.theme = theme;
         this.currentLevel = theme.getLevels().stream()
             .filter(l -> l.levelNumber() == levelNumber)
@@ -1768,6 +1790,13 @@ public class GameScreen extends BaseScreen {
         }
 
         gameEndShown = true;
+
+        if (currentGame.getGameState().isWon()) {
+            recordAdventureWinOnServer(currentGame);
+        } else {
+            recordAdventureLossOnServer();
+        }
+
         overlayMode = OverlayMode.GAME_END;
         gameTickAccumulator = 0f;
         resetRenderTickInterpolation();
@@ -2058,15 +2087,7 @@ public class GameScreen extends BaseScreen {
                         + loot.getLane()
                 );
 
-                Result result =
-                    gamingController.collectLoot(
-                        loot
-                    );
-
-                if (!result.success()) {
-                    game.notifyError(result.message());
-                }
-
+                collectLootFromServer(loot);
                 return;
             }
         }
@@ -2120,6 +2141,282 @@ public class GameScreen extends BaseScreen {
         }
 
         clearCurrentPlantSelection();
+    }
+
+    private void collectLootFromServer(
+        DroppedLoot loot
+    ) {
+        if (loot == null
+            || !loot.isActive()
+            || !lootCollectionsInFlight.add(loot)) {
+            return;
+        }
+
+        game.getNetworkManager()
+            .ensureConnectedAsync()
+            .thenCompose(
+                ignored -> sendLootCollection(loot)
+            )
+            .whenComplete(
+                (response, throwable) ->
+                    Gdx.app.postRunnable(
+                        () -> finishLootCollection(
+                            loot,
+                            response,
+                            throwable
+                        )
+                    )
+            );
+    }
+
+    private CompletableFuture<LootCollectResponse>
+    sendLootCollection(
+        DroppedLoot loot
+    ) {
+        try {
+            return game.getNetworkManager()
+                .getGameplayAccountClientService()
+                .collectLoot(
+                    loot.getType()
+                );
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(
+                exception
+            );
+        }
+    }
+
+    private void finishLootCollection(
+        DroppedLoot loot,
+        LootCollectResponse response,
+        Throwable throwable
+    ) {
+        lootCollectionsInFlight.remove(loot);
+
+        if (throwable != null) {
+            game.notifyError(
+                "Could not save loot on server: "
+                    + rootMessage(throwable)
+            );
+            return;
+        }
+
+        Result result =
+            gamingController.applyServerCollectedLoot(
+                loot,
+                response
+            );
+
+        if (!result.success()) {
+            game.notifyError(result.message());
+            return;
+        }
+
+        User user =
+            App.getInstance().getLoggedInUser();
+
+        if (user != null) {
+            game.updateCurrencies(
+                user.getCoins(),
+                user.getGems()
+            );
+        }
+    }
+
+    private void recordAdventureWinOnServer(
+        Game currentGame
+    ) {
+        if (adventureWinRequestStarted
+            || currentGame == null) {
+            return;
+        }
+
+        adventureWinRequestStarted = true;
+
+        int completedChapter =
+            currentGame.getCurrentChapterIndex() + 1;
+        int completedLevel =
+            currentGame.getCurrentLevelIndex() + 1;
+
+        game.getNetworkManager()
+            .ensureConnectedAsync()
+            .thenCompose(
+                ignored -> sendAdventureWin(
+                    completedChapter,
+                    completedLevel
+                )
+            )
+            .whenComplete(
+                (response, throwable) ->
+                    Gdx.app.postRunnable(
+                        () -> finishAdventureWinRecord(
+                            response,
+                            throwable
+                        )
+                    )
+            );
+    }
+
+    private CompletableFuture<AdventureWinResponse>
+    sendAdventureWin(
+        int completedChapter,
+        int completedLevel
+    ) {
+        try {
+            return game.getNetworkManager()
+                .getGameplayAccountClientService()
+                .recordAdventureWin(
+                    completedChapter,
+                    completedLevel
+                );
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(
+                exception
+            );
+        }
+    }
+
+    private void finishAdventureWinRecord(
+        AdventureWinResponse response,
+        Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                "Could not record Adventure win on server: "
+                    + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null
+            || !response.isSuccess()) {
+            game.notifyError(
+                response == null
+                    ? "Adventure win could not be recorded."
+                    : response.getMessage()
+            );
+            return;
+        }
+
+        User user =
+            App.getInstance().getLoggedInUser();
+
+        if (user != null) {
+            user.setGamesPlayed(
+                response.getGamesPlayed()
+            );
+            user.setLastWonGame(
+                response.getLastWonGame()
+            );
+        }
+
+        ClientPlantOwnershipState.replaceWith(
+            response.getUnlockedPlantIds()
+        );
+
+        ClientAdventureProgressState.replaceWith(
+            response.getCurrentChapter(),
+            response.getCurrentLevel()
+        );
+
+        if (!response
+                .getNewlyUnlockedPlantIds()
+                .isEmpty()) {
+            game.notifyInfo(
+                response
+                    .getNewlyUnlockedPlantIds()
+                    .size()
+                    + " new plant(s) unlocked."
+            );
+        }
+    }
+
+    private void recordAdventureLossOnServer() {
+        if (adventureLossRequestStarted) {
+            return;
+        }
+
+        adventureLossRequestStarted = true;
+
+        game.getNetworkManager()
+            .ensureConnectedAsync()
+            .thenCompose(
+                ignored ->
+                    sendAdventureLoss()
+            )
+            .whenComplete(
+                (response, throwable) ->
+                    Gdx.app.postRunnable(
+                        () -> finishAdventureLossRecord(
+                            response,
+                            throwable
+                        )
+                    )
+            );
+    }
+
+    private CompletableFuture<AdventureLossResponse>
+    sendAdventureLoss() {
+        try {
+            return game.getNetworkManager()
+                .getGameplayAccountClientService()
+                .recordAdventureLoss();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(
+                exception
+            );
+        }
+    }
+
+    private void finishAdventureLossRecord(
+        AdventureLossResponse response,
+        Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                "Could not record Adventure loss on server: "
+                    + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null
+            || !response.isSuccess()) {
+            game.notifyError(
+                response == null
+                    ? "Adventure loss could not be recorded."
+                    : response.getMessage()
+            );
+            return;
+        }
+
+        User user =
+            App.getInstance().getLoggedInUser();
+
+        if (user != null) {
+            user.setGamesPlayed(
+                response.getGamesPlayed()
+            );
+        }
+    }
+
+    private static String rootMessage(
+        Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+
+        if (message == null
+            || message.isBlank()) {
+            return current.getClass().getSimpleName();
+        }
+
+        return message;
     }
 
     private DroppedLoot findLootAt(

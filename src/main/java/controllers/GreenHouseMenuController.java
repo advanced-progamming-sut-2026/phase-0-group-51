@@ -14,6 +14,7 @@ import models.greenHouse.GreenHousePlantHelper;
 import models.Result;
 import models.User;
 import models.enums.Menu;
+import network.client.ClientGreenHouseState;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,24 +27,18 @@ public class GreenHouseMenuController  {
     private final GreenHouseMenuValidation validation;
     private final UserRepository userRepository = new UserRepository();
     public FlowerPot getPot(int row, int column) {
-        User user = currentUser();
-        if (user == null || user.getGreenHouse() == null) {
-            return null;
-        }
-        return user.getGreenHouse().getPot(row, column);
+        return ClientGreenHouseState.getPot(row, column);
     }
     public UserRepository.CurrencyBalance getCurrencyBalance() {
         User user = currentUser();
         if (user == null) {
             return null;
         }
-        UserRepository.CurrencyBalance balance = userRepository.getCurrencyBalance(user.getId());
-        if (balance != null) {
-            user.setCoins(balance.coins());
-            user.setGems(balance.gems());
-        }
 
-        return balance;
+        return new UserRepository.CurrencyBalance(
+                user.getCoins(),
+                user.getGems()
+        );
     }
     public GreenHouseMenuController(){
         this.validation = new GreenHouseMenuValidation();
@@ -65,7 +60,7 @@ public class GreenHouseMenuController  {
         if (user == null) {
             return loginRequired();
         }
-        GreenHouse greenHouse = user.getGreenHouse();
+        GreenHouse greenHouse = ClientGreenHouseState.getGreenHouse();
         if (greenHouse == null) {
             return new Result(false, "Your greenhouse could not be loaded.\n", null);
         }

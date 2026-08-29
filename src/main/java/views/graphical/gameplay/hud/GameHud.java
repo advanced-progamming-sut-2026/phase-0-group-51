@@ -1,7 +1,6 @@
 package views.graphical.gameplay.hud;
 
 
-import Data.database.UserRepository;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -19,7 +18,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import controllers.GamingController;
-import controllers.GameMenuController;
 import graphics.PvzGame;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,6 +33,12 @@ import models.games.specialLevelConfig.TimedBattleConfig;
 import views.graphical.ui.BorderedPanel;
 import views.graphical.ui.GameSettings;
 import views.graphical.ui.PlantSlotsBar;
+import models.enums.LootType;
+import network.protocol.gameplay.LootCollectResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
 @Getter
 @Setter
 public class GameHud extends Table {
@@ -109,9 +113,7 @@ public class GameHud extends Table {
     private Runnable onSpeedRequested;
 
     private final GamingController gamingController = new GamingController();
-    private final GameMenuController gameMenuController =
-        new GameMenuController();
-    private final UserRepository userRepository = new UserRepository();
+    private boolean currencyCheatInFlight;
 
     private Label sunLabel;
     private Label coinLabel;
@@ -580,28 +582,209 @@ public class GameHud extends Table {
     }
 
     private void runCurrencyCheat(
-        int amount,
-        String kind
+            int amount,
+            String kind
     ) {
         if (!GameSettings.debugMode) {
             return;
         }
 
-        if (App.getInstance().getLoggedInUser() == null) {
+        User user =
+                App.getInstance().getLoggedInUser();
+
+        if (user == null) {
             game.notifyError(
-                "You must be logged in to use debug currency controls."
+                    "You must be logged in to use debug currency controls."
             );
             return;
         }
 
-        Result result =
-            gameMenuController.cheatAdd(
-                amount,
-                kind
+        if (currencyCheatInFlight) {
+            return;
+        }
+
+        LootType type;
+        int requestCount;
+
+        if ("coin".equalsIgnoreCase(kind)) {
+
+            type = LootType.COIN;
+
+            /*
+             * Server COIN loot adds 50 coins.
+             *
+             * Gameplay cheat is +1000:
+             * 1000 / 50 = 20 requests.
+             */
+            requestCount =
+                    Math.max(
+                            1,
+                            amount / 50
+                    );
+
+        } else if (
+                "diamond".equalsIgnoreCase(kind)
+                        || "gem".equalsIgnoreCase(kind)
+        ) {
+
+            type = LootType.GEM;
+
+            /*
+             * Server GEM loot adds 1 gem.
+             */
+            requestCount =
+                    Math.max(
+                            1,
+                            amount
+                    );
+
+        } else {
+            game.notifyError(
+                    "Unknown debug currency type."
+            );
+            return;
+        }
+
+        currencyCheatInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored ->
+                                runServerCurrencyCheat(
+                                        type,
+                                        requestCount
+                                )
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () ->
+                                                finishCurrencyCheat(
+                                                        type,
+                                                        amount,
+                                                        response,
+                                                        throwable
+                                                )
+                                )
+                );
+    }
+    private CompletableFuture<LootCollectResponse>
+    runServerCurrencyCheat(
+            LootType type,
+            int requestCount
+    ) {
+        CompletableFuture<LootCollectResponse> future =
+                CompletableFuture.completedFuture(
+                        null
+                );
+
+        for (int i = 0; i < requestCount; i++) {
+
+            future =
+                    future.thenCompose(
+                            ignored -> {
+                                try {
+                                    return game
+                                            .getNetworkManager()
+                                            .getGameplayAccountClientService()
+                                            .collectLoot(type);
+
+                                } catch (IOException exception) {
+                                    return CompletableFuture.failedFuture(
+                                            exception
+                                    );
+                                }
+                            }
+                    );
+        }
+
+        return future;
+    }
+    private void finishCurrencyCheat(
+            LootType type,
+            int requestedAmount,
+            LootCollectResponse response,
+            Throwable throwable
+    ) {
+        currencyCheatInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Debug currency could not be added: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null) {
+            game.notifyError(
+                    "Server returned no currency response."
+            );
+            return;
+        }
+
+        if (!response.isSuccess()) {
+            game.notifyError(
+                    response.getMessage()
+            );
+            return;
+        }
+
+        User user =
+                App.getInstance().getLoggedInUser();
+
+        if (user == null) {
+            return;
+        }
+
+        if (type == LootType.COIN) {
+
+            user.setCoins(
+                    response.getTotal()
             );
 
-        showResult(result);
+            game.notifyInfo(
+                    "CHEAT: "
+                            + requestedAmount
+                            + " coins added."
+            );
+
+        } else if (type == LootType.GEM) {
+
+            user.setGems(
+                    response.getTotal()
+            );
+
+            game.notifyInfo(
+                    "CHEAT: "
+                            + requestedAmount
+                            + " gems added."
+            );
+        }
+
         refreshCurrencies();
+    }
+    private String rootMessage(
+            Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message =
+                current.getMessage();
+
+        if (message == null
+                || message.isBlank()) {
+            return current
+                    .getClass()
+                    .getSimpleName();
+        }
+
+        return message;
     }
 
     private void refreshDebugControls() {
@@ -1657,8 +1840,9 @@ public class GameHud extends Table {
 
 
     private void refreshCurrencies() {
-        User user = App.getInstance().getLoggedInUser();
-
+        User user =
+                App.getInstance()
+                        .getLoggedInUser();
 
         if (user == null) {
             gemLabel.setText("0");
@@ -1666,19 +1850,18 @@ public class GameHud extends Table {
             return;
         }
 
-
-        UserRepository.CurrencyBalance balance = userRepository.getCurrencyBalance(user.getId());
-
-        if (balance == null) {
-            return;
-        }
-
         coinLabel.setText(
-            balance.coins()
+                String.format(
+                        "%,d",
+                        user.getCoins()
+                )
         );
 
         gemLabel.setText(
-            balance.gems()
+                String.format(
+                        "%,d",
+                        user.getGems()
+                )
         );
     }
 

@@ -1,10 +1,6 @@
 package models.games;
 
 
-import Data.database.NewsRepository;
-import Data.database.PlantRepository;
-import Data.database.ProgressRepository;
-import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
@@ -22,8 +18,8 @@ import models.games.ancientEgypt.Grave;
 import models.games.bigWaveBeach.BigWaveBeachFeature;
 import models.games.darkAges.LockedPlantsMode;
 import models.games.frostbite.FrostbiteCavesFeature;
-import models.quests.QuestService;
 import models.sun.SkySunSpawner;
+import network.client.ClientPlantOwnershipState;
 
 import java.util.*;
 
@@ -54,7 +50,6 @@ public class Game{
         if (gameState == null || gameState.getZombieWaveManager() == null) {
             return;
         }
-        claimPurchasedPlantFoodForGameplay();
         if (isPlantWhatYouGetLevel()) {
             zombieWavesManuallyStarted = false;
             gameState.logEvent(
@@ -146,7 +141,13 @@ public class Game{
             );
         }
 
-        Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            throw new IllegalStateException(
+                "Plant ownership has not been loaded yet."
+            );
+        }
+
+        Set<Integer> unlockedIds = ClientPlantOwnershipState.snapshot();
         List<PlantData> unlockedPlants = unlockedIds.stream()
             .map(PlantRegistry::getById).filter(Objects::nonNull).filter(plant -> !plant.tags().contains(PlantTag.WATER)).filter(plant -> plant.id() != 58 && plant.id() != 59)
             .sorted(Comparator.comparingInt(PlantData::id))
@@ -284,35 +285,23 @@ public class Game{
         initializeConveyorBeltLevel(level);
     }
 
-    private void claimPurchasedPlantFoodForGameplay() {
+    public void applyClaimedPlantFoodForGameplay(int storedPlantFood) {
         if (purchasedPlantFoodClaimedForCurrentGame || gameState == null) {
             return;
         }
 
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            purchasedPlantFoodClaimedForCurrentGame = true;
-            return;
-        }
-
-        int storedPlantFood = new UserRepository().claimStoredPlantFood(user.getId());
-        if (storedPlantFood < 0) {
-            gameState.logEvent("Stored Plant Food could not be loaded.\n");
-            return;
-        }
-
+        int claimed = Math.max(0, Math.min(3, storedPlantFood));
         int startingPlantFood = Math.min(
             3,
-            Math.max(0, gameState.getPlantFoodCount()) + storedPlantFood
+            Math.max(0, gameState.getPlantFoodCount()) + claimed
         );
 
         gameState.setPlantFoodCount(startingPlantFood);
-        user.setPlantFoodNum(0);
         purchasedPlantFoodClaimedForCurrentGame = true;
 
-        if (storedPlantFood > 0) {
+        if (claimed > 0) {
             gameState.logEvent(
-                "Loaded " + storedPlantFood
+                "Loaded " + claimed
                     + " purchased Plant Food into this game.\n"
             );
         }
@@ -335,7 +324,13 @@ public class Game{
             );
         }
 
-        Set<Integer> unlockedIds = PlantRepository.loadUnlockedPlants(user.getId());
+        if (!ClientPlantOwnershipState.isLoaded()) {
+            throw new IllegalStateException(
+                "Plant ownership has not been loaded yet."
+            );
+        }
+
+        Set<Integer> unlockedIds = ClientPlantOwnershipState.snapshot();
         List<PlantData> plants = unlockedIds.stream()
             .map(PlantRegistry::getById)
             .filter(java.util.Objects::nonNull)
@@ -556,8 +551,14 @@ public class Game{
                 "Dear humanz, zis is not done yet; "
                     + "we will come back to eat your brainz, humanz.\n"
             );
-            evaluateQuestRun(true);
-            saveProgressInDatabase();
+            /*
+             * Phase 3: Adventure win persistence is server-owned.
+             * GameScreen observes this finished win state and records the
+             * result asynchronously through GameplayAccountClientService.
+             *
+             * Quest persistence is intentionally not written to the old
+             * client database here. It will be migrated separately.
+             */
         }
 
     }
@@ -565,23 +566,15 @@ public class Game{
     private void finishAsLoss() {
         gameState.setFinished(true);
         gameState.setWon(false);
-        evaluateQuestRun(false);
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            return;
-        }
-        int gamesPlayed = new UserRepository().recordAdventureLoss(user.getId());
-        if (gamesPlayed < 0) {
-            gameState.logEvent("The played-game counter could not be saved.\n");
-            return;}
-        user.setGamesPlayed(gamesPlayed);
-    }
 
-    private void evaluateQuestRun(boolean won) {
-        User user = App.getInstance().getLoggedInUser();
-        int difficulty = user == null ? 3 : user.getDifficultyLevel();
-        QuestService.getInstance().evaluateAdventureRun(
-            user, gameState, gameState.getChapterTheme(), difficulty, won);
+        /*
+         * Phase 3: account persistence is server-owned.
+         * GameScreen records the Adventure loss asynchronously after
+         * observing the finished loss state.
+         *
+         * Quest persistence is intentionally not written to the old
+         * client database here. It will be migrated separately.
+         */
     }
 
     public void forward(int requestedTicks){
@@ -598,72 +591,7 @@ public class Game{
             onTick();
         }
     }
-    private void saveProgressInDatabase() {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) return;
-        int completedChapter = currentChapterIndex + 1;
-        int completedLevel = currentLevelIndex + 1;
-        Integer candidateChapter = null;
-        Integer candidateLevel = null;
-        ChapterTheme currentTheme = chapters.get(currentChapterIndex);
-        if (currentLevelIndex + 1 < currentTheme.getLevels().size()) {
-            candidateChapter = completedChapter;
-            candidateLevel = completedLevel + 1;
-        } else if (currentChapterIndex + 1 < chapters.size()) {
-            candidateChapter = completedChapter + 1;
-            candidateLevel = 1;
-        }
-        ProgressRepository progressRepository = new ProgressRepository();
-        ProgressRepository.AdventureWinResult result =
-            progressRepository.recordAdventureWin(
-                user.getId(), completedChapter, completedLevel, candidateChapter, candidateLevel);
-        if (!result.saved()) {
-            gameState.logEvent("Adventure progress could not be saved.\n");
-            return;
-        }
-        user.setGamesPlayed(result.gamesPlayed());
-        user.setLastWonGame("Chapter " + completedChapter + " Level " + completedLevel);
-        unlockPlantsAndAnnounce(user, PlantRegistry.getLevelRewardPlantIds(currentTheme, completedLevel));
-        if (!result.progressAdvanced()) {
-            return;
-        }
-        NewsRepository newsRepository = new NewsRepository();
-        ChapterTheme unlockedTheme = chapters.get(result.newChapter() - 1);
-        if (result.newChapter() > result.oldChapter()) {
-            unlockPlantsAndAnnounce(
-                user,
-                PlantRegistry.getChapterPlantIds(unlockedTheme)
-            );
-            newsRepository.createNewsForUser(
-                user.getId(),
-                "New chapter unlocked: " + unlockedTheme.getName() + ". Level 1 is now available."
-            );
-        } else {
-            newsRepository.createNewsForUser(
-                user.getId(),
-                "New level unlocked: "
-                    + unlockedTheme.getName() + " Level " + result.newLevel() + "."
-            );
-        }
-    }
 
-    private void unlockPlantsAndAnnounce(User user, List<Integer> plantIds) {
-        Set<Integer> newlyUnlocked = PlantRepository.unlockPlantsAndReturnNew(
-            user.getId(),
-            plantIds
-        );
-        if (newlyUnlocked.isEmpty()) {
-            return;
-        }
-        NewsRepository newsRepository = new NewsRepository();
-        for (int plantId : newlyUnlocked) {
-            PlantData plant = PlantRegistry.getById(plantId);
-            String plantName = plant == null
-                ? "Plant #" + plantId
-                : plant.name();
-            String message = "New plant unlocked: " + plantName + ".";
-            newsRepository.createNewsForUser(user.getId(), message);
-            gameState.logEvent(message + "\n");
-        }
-    }
+
+
 }

@@ -11,10 +11,18 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import controllers.LoginMenuController;
 import graphics.PvzGame;
 import models.Result;
+import com.badlogic.gdx.Gdx;
+import network.client.service.AccountClientService;
+import network.protocol.auth.ForgotPasswordAnswerRequest;
+import network.protocol.auth.ForgotPasswordStartRequest;
+import network.protocol.auth.ForgotPasswordStartResponse;
+import network.protocol.auth.PasswordResetRequest;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 public class ForgotPassPopup extends BorderedPanel{
     PvzGame game;
-    private final LoginMenuController controller = new LoginMenuController();
     private NotificationOverlay notificationOverlay;
     TextField usernameF,emailF,answerF,newPassF;
     private final Runnable closeAction;
@@ -79,16 +87,93 @@ public class ForgotPassPopup extends BorderedPanel{
 
         focus(usernameF);
     }
-    private void handleForgotPass(){
-        String username = usernameF.getText().trim();
-        String email = emailF.getText();
-        Result result = controller.forgetPassword(username,email);
-        if (!result.success()) {
-            notificationOverlay.showError(result.message());
+    private void handleForgotPass() {
+        String username =
+                usernameF.getText().trim();
+
+        String email =
+                emailF.getText().trim();
+
+        if (username.isEmpty()) {
+            notificationOverlay.showError(
+                    "Please enter your username."
+            );
             return;
         }
-        questionLabel.setText(result.message());
-        showAnswerStep();
+
+        if (email.isEmpty()) {
+            notificationOverlay.showError(
+                    "Please enter your email."
+            );
+            return;
+        }
+
+        ForgotPasswordStartRequest request =
+                new ForgotPasswordStartRequest(
+                        username,
+                        email
+                );
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored ->
+                                sendPasswordRecoveryStart(request)
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(() -> {
+                                    if (throwable != null) {
+                                        notificationOverlay.showError(
+                                                "Could not connect to server: "
+                                                        + rootMessage(throwable)
+                                        );
+                                        return;
+                                    }
+
+                                    if (response == null
+                                            || !response.isSuccess()) {
+                                        notificationOverlay.showError(
+                                                response == null
+                                                        ? "Password recovery failed."
+                                                        : response.getMessage()
+                                        );
+                                        return;
+                                    }
+
+                                    questionLabel.setText(
+                                            response.getSecurityQuestion()
+                                    );
+
+                                    showAnswerStep();
+                                })
+                );
+    }
+    private CompletableFuture<ForgotPasswordStartResponse>
+    sendPasswordRecoveryStart(
+            ForgotPasswordStartRequest request
+    ) {
+        try {
+            AccountClientService service =
+                    game.getNetworkManager()
+                            .getAccountClientService();
+
+            return service.startPasswordRecovery(
+                    request
+            );
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
+    }
+    private static <T> CompletableFuture<T> failedFuture(
+            Throwable throwable
+    ) {
+        CompletableFuture<T> future =
+                new CompletableFuture<>();
+
+        future.completeExceptionally(throwable);
+
+        return future;
     }
     private void showAnswerStep() {
         content.clearChildren();
@@ -108,28 +193,98 @@ public class ForgotPassPopup extends BorderedPanel{
 
         focus(answerF);
     }
-    private void handleAnswer(){
-        String answer = answerF.getText();
-        Result result = controller.answerQuestion(answer);
-        if (!result.success()) {
-            notificationOverlay.showError(result.message());
-            answerF.selectAll();
-            focus(answerF);
-            return;
+    private void handleAnswer() {
+        ForgotPasswordAnswerRequest request =
+                new ForgotPasswordAnswerRequest(
+                        answerF.getText()
+                );
+
+        try {
+            game.getNetworkManager()
+                    .getAccountClientService()
+                    .answerSecurityQuestion(request)
+                    .whenComplete(
+                            (response, throwable) ->
+                                    Gdx.app.postRunnable(() -> {
+                                        if (throwable != null) {
+                                            notificationOverlay.showError(
+                                                    rootMessage(throwable)
+                                            );
+                                            return;
+                                        }
+
+                                        if (!response.isSuccess()) {
+                                            notificationOverlay.showError(
+                                                    response.getMessage()
+                                            );
+                                            return;
+                                        }
+
+                                        showNewPasswordStep();
+                                    })
+                    );
+        } catch (IOException | RuntimeException exception) {
+            notificationOverlay.showError(
+                    rootMessage(exception)
+            );
         }
-        showNewPasswordStep();
     }
-    private void handleChangePass(){
-        String newPass = newPassF.getText();
-        Result result = controller.setNewPassword(newPass);
-        if (!result.success()) {
-            notificationOverlay.showError(result.message());
-            newPassF.selectAll();
-            focus(newPassF);
-            return;
+    private void handleChangePass() {
+        PasswordResetRequest request =
+                new PasswordResetRequest(
+                        newPassF.getText()
+                );
+
+        try {
+            game.getNetworkManager()
+                    .getAccountClientService()
+                    .resetPassword(request)
+                    .whenComplete(
+                            (response, throwable) ->
+                                    Gdx.app.postRunnable(() -> {
+                                        if (throwable != null) {
+                                            notificationOverlay.showError(
+                                                    rootMessage(throwable)
+                                            );
+                                            return;
+                                        }
+
+                                        if (!response.isSuccess()) {
+                                            notificationOverlay.showError(
+                                                    response.getMessage()
+                                            );
+                                            return;
+                                        }
+
+                                        notificationOverlay.showInfo(
+                                                response.getMessage()
+                                        );
+
+                                        close();
+                                    })
+                    );
+        } catch (IOException | RuntimeException exception) {
+            notificationOverlay.showError(
+                    rootMessage(exception)
+            );
         }
-        notificationOverlay.showInfo(result.message());
-        close();
+    }
+    private static String rootMessage(
+            Throwable throwable
+    ) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+
+        if (message == null || message.isBlank()) {
+            return current.getClass().getSimpleName();
+        }
+
+        return message;
     }
     private void showNewPasswordStep() {
         content.clearChildren();

@@ -13,10 +13,17 @@ public class UserRepository {
     private static final String ADD_LOOT_GEMS_SQL = """
             UPDATE users SET gems = COALESCE(gems, 0) + 1 WHERE id = ?
             """;
+    private static final String ADD_LOOT_PLANT_FOOD_SQL = """
+            UPDATE users
+            SET plant_food_num = COALESCE(plant_food_num, 0) + 1
+            WHERE id = ?
+            """;
     private static final String READ_LOOT_COINS_SQL =
             "SELECT coins AS total FROM users WHERE id = ?";
     private static final String READ_LOOT_GEMS_SQL =
             "SELECT gems AS total FROM users WHERE id = ?";
+    private static final String READ_LOOT_PLANT_FOOD_SQL =
+            "SELECT plant_food_num AS total FROM users WHERE id = ?";
     private static final String FIND_LOCKED_POT_SQL = """
             SELECT row, "column"
             FROM greenhouse_pots
@@ -177,6 +184,47 @@ public class UserRepository {
             exception.printStackTrace();
         }
         return null;
+    }
+
+    public User getUserById(int userId) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return readUser(resultSet);
+                }
+            }
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean updateProfile(
+            int userId,
+            String username,
+            String nickname,
+            String email
+    ) {
+        String sql = """
+                UPDATE users
+                SET username = ?, nickname = ?, email = ?
+                WHERE id = ?
+                """;
+
+        try (Connection connection = DataBaseManager.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, username);
+            statement.setString(2, nickname);
+            statement.setString(3, email);
+            statement.setInt(4, userId);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException exception) {
+            exception.printStackTrace();
+            return false;
+        }
     }
 
     public boolean setStayLoggedIn(int userId, boolean stayLoggedIn) {
@@ -440,7 +488,7 @@ public class UserRepository {
             int userId,
             LootType lootType
     ) throws SQLException {
-                if (lootType == LootType.POT) {
+        if (lootType == LootType.POT) {
             return applyPotLoot(connection, userId);
         }
         return applyCurrencyLoot(connection, userId, lootType);
@@ -536,15 +584,24 @@ public class UserRepository {
             int userId,
             LootType lootType
     ) throws SQLException {
-        String sql = lootType == LootType.COIN
-                ? ADD_LOOT_COINS_SQL
-                : ADD_LOOT_GEMS_SQL;
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setInt(1, userId);
-                    if (statement.executeUpdate() != 1) {
-                        throw new SQLException("Could not save the zombie loot.");
-                    }
-                }
+        String sql = switch (lootType) {
+            case COIN -> ADD_LOOT_COINS_SQL;
+            case GEM -> ADD_LOOT_GEMS_SQL;
+            case PLANT_FOOD -> ADD_LOOT_PLANT_FOOD_SQL;
+            case POT -> throw new IllegalArgumentException(
+                    "POT loot uses the greenhouse path."
+            );
+        };
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            if (statement.executeUpdate() != 1) {
+                throw new SQLException(
+                        "Could not save the zombie loot."
+                );
+            }
+        }
     }
 
     private int readLootBalance(
@@ -552,18 +609,28 @@ public class UserRepository {
             int userId,
             LootType lootType
     ) throws SQLException {
-        String sql = lootType == LootType.COIN
-                ? READ_LOOT_COINS_SQL
-                : READ_LOOT_GEMS_SQL;
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setInt(1, userId);
-                    try (ResultSet resultSet = statement.executeQuery()) {
-                        if (!resultSet.next()) {
-                            throw new SQLException("Could not read the updated loot balance.");
-                        }
-                return resultSet.getInt("total");
-                    }
+        String sql = switch (lootType) {
+            case COIN -> READ_LOOT_COINS_SQL;
+            case GEM -> READ_LOOT_GEMS_SQL;
+            case PLANT_FOOD -> READ_LOOT_PLANT_FOOD_SQL;
+            case POT -> throw new IllegalArgumentException(
+                    "POT loot uses the greenhouse path."
+            );
+        };
+
+        try (PreparedStatement statement =
+                     connection.prepareStatement(sql)) {
+            statement.setInt(1, userId);
+            try (ResultSet resultSet =
+                         statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new SQLException(
+                            "Could not read the updated loot balance."
+                    );
                 }
+                return resultSet.getInt("total");
+            }
+        }
     }
 
     private LootResult lootFailure() {
