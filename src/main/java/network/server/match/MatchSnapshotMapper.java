@@ -16,7 +16,6 @@ import network.protocol.match.ZombieNetState;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public final class MatchSnapshotMapper {
 
     public MatchSnapshot toSnapshot(
@@ -73,7 +72,7 @@ public final class MatchSnapshotMapper {
 
         List<BrainNetState> brains = new ArrayList<>();
         for (Brain brain : game.getBrains()) {
-            // Brain rows are 1-based; the wire protocol uses 0-based lanes.
+
             brains.add(new BrainNetState(brain.getRow() - 1, brain.isEaten()));
         }
 

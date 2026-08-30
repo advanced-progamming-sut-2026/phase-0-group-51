@@ -3,7 +3,6 @@ package network.server.match;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-
 public final class EntityIdRegistry {
 
     private final Map<Object, Integer> ids = new IdentityHashMap<>();

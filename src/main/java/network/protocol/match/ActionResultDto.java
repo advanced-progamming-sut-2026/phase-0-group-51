@@ -1,4 +1,5 @@
 package network.protocol.match;
+
 public class ActionResultDto {
 
     private String clientActionId;

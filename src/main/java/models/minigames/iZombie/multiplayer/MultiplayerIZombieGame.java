@@ -13,7 +13,6 @@ import models.games.Game;
 import models.games.GameState;
 import models.minigames.MinigameStage;
 import models.minigames.MinigameType;
-import models.minigames.iZombie.multiplayer.MatchRole;
 import models.minigames.vaseBreaker.Brain;
 
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-
 
 public class MultiplayerIZombieGame extends Game {
 
@@ -102,12 +100,13 @@ public class MultiplayerIZombieGame extends Game {
 
         plantSun = START_SUN;
         zombieSun = START_SUN;
+
     }
 
     @Override
     public void start() {
-    }
 
+    }
 
     @Override
     public void onTick() {
@@ -339,8 +338,6 @@ public class MultiplayerIZombieGame extends Game {
     public MinigameStage getStage() {
         return stage;
     }
-
-    // -------------------------------------------------------------- helpers
 
     private static void requireRole(MatchRole actual, MatchRole required) {
         if (actual != required) {

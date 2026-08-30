@@ -1,6 +1,5 @@
 package network.protocol.match;
 
-
 public class ZombieNetState {
 
     private int entityId;

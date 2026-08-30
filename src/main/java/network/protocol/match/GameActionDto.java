@@ -1,4 +1,5 @@
 package network.protocol.match;
+
 public class GameActionDto {
 
     private GameActionType type;
@@ -11,11 +12,11 @@ public class GameActionDto {
     }
 
     public GameActionDto(
-        GameActionType type,
-        String entityName,
-        int row,
-        int column,
-        String clientActionId
+            GameActionType type,
+            String entityName,
+            int row,
+            int column,
+            String clientActionId
     ) {
         this.type = type;
         this.entityName = entityName;
