@@ -47,10 +47,12 @@ import models.sun.Sun;
 import models.User;
 import network.client.ClientPlantOwnershipState;
 import network.client.ClientAdventureProgressState;
+import network.client.ClientNewsState;
 import network.client.ClientQuestState;
 import network.protocol.gameplay.AdventureLossResponse;
 import network.protocol.gameplay.AdventureWinResponse;
 import network.protocol.gameplay.LootCollectResponse;
+import network.protocol.news.NewsResponse;
 import network.protocol.quests.QuestResponse;
 import network.protocol.quests.QuestRunSummary;
 
@@ -196,6 +198,11 @@ public class GameScreen extends BaseScreen {
         Collections.newSetFromMap(
             new IdentityHashMap<>()
         );
+
+    private final Deque<String> zombieDiscoveryQueue =
+        new ArrayDeque<>();
+    private boolean zombieDiscoveryRequestInFlight;
+    private float zombieDiscoveryRetryDelay;
 
     private boolean adventureLossRequestStarted;
     private boolean adventureWinRequestStarted;
@@ -1538,6 +1545,7 @@ public class GameScreen extends BaseScreen {
         updateGameplayTicks(delta);
         updateSpecialConveyor(delta);
         processGameplayNotices();
+        processZombieDiscoveries(delta);
         updateRenderTickInterpolation(delta);
         updateWaveNotice();
         checkGameEnd();
@@ -2152,6 +2160,110 @@ public class GameScreen extends BaseScreen {
         }
 
         clearCurrentPlantSelection();
+    }
+
+    private void processZombieDiscoveries(float delta) {
+        Game currentGame = App.getInstance().getCurrentGame();
+        if (currentGame == null || currentGame.getGameState() == null) {
+            return;
+        }
+
+        for (String alias :
+                currentGame.getGameState().consumeZombieDiscoveries()) {
+            if (alias == null || alias.isBlank()) {
+                continue;
+            }
+
+            if (ClientNewsState.isZombieDiscovered(alias)
+                    || containsIgnoreCase(zombieDiscoveryQueue, alias)) {
+                continue;
+            }
+
+            zombieDiscoveryQueue.addLast(alias);
+        }
+
+        if (zombieDiscoveryRetryDelay > 0f) {
+            zombieDiscoveryRetryDelay = Math.max(
+                    0f,
+                    zombieDiscoveryRetryDelay - Math.max(0f, delta)
+            );
+            return;
+        }
+
+        if (zombieDiscoveryRequestInFlight
+                || zombieDiscoveryQueue.isEmpty()) {
+            return;
+        }
+
+        String alias = zombieDiscoveryQueue.peekFirst();
+        zombieDiscoveryRequestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendZombieDiscovery(alias))
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishZombieDiscovery(
+                                                alias,
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<NewsResponse> sendZombieDiscovery(
+            String alias
+    ) {
+        try {
+            return game.getNetworkManager()
+                    .getNewsClientService()
+                    .discoverZombie(alias);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishZombieDiscovery(
+            String alias,
+            NewsResponse response,
+            Throwable throwable
+    ) {
+        zombieDiscoveryRequestInFlight = false;
+
+        if (throwable != null
+                || response == null
+                || !response.isSuccess()) {
+            zombieDiscoveryRetryDelay = 3f;
+            return;
+        }
+
+        ClientNewsState.apply(response);
+
+        String first = zombieDiscoveryQueue.peekFirst();
+        if (first != null && first.equalsIgnoreCase(alias)) {
+            zombieDiscoveryQueue.removeFirst();
+        } else {
+            zombieDiscoveryQueue.removeIf(
+                    value -> value.equalsIgnoreCase(alias)
+            );
+        }
+    }
+
+    private boolean containsIgnoreCase(
+            Deque<String> values,
+            String candidate
+    ) {
+        if (candidate == null) {
+            return false;
+        }
+        for (String value : values) {
+            if (value != null && value.equalsIgnoreCase(candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void collectLootFromServer(

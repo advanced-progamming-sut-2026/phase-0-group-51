@@ -1,5 +1,6 @@
 package views.graphical.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -14,14 +15,16 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
-import controllers.SettingMenuController;
 import models.App;
-import models.Result;
 import models.User;
+import network.protocol.profile.ProfileResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import views.graphical.gameplay.manager.AudioManager;
 
 public class SettingsPopup extends BorderedPanel {
-    private final SettingMenuController controller;
+    private boolean difficultyRequestInFlight;
     private int currentDifficulty;
     private final PvzGame game;
 
@@ -35,7 +38,6 @@ public class SettingsPopup extends BorderedPanel {
     public SettingsPopup(PvzGame game) {
         super(game, com.badlogic.gdx.graphics.Color.valueOf("A0522D"));
         this.game = game;
-        this.controller = new SettingMenuController();
         User user = App.getInstance().getLoggedInUser();
         this.currentDifficulty = user == null ? 3 : user.getDifficultyLevel();
         shadowOverlay = game.getSkin().newDrawable("white_pixel", new Color(0, 0, 0, 0.75f));
@@ -204,21 +206,104 @@ public class SettingsPopup extends BorderedPanel {
             chili.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    Result result = controller.changeDifficulty(String.valueOf(level));
-
-                    if (!result.success()) {
-                        game.notifyError(result.message());
-                        return;
-                    }
-
-                    currentDifficulty = level;
-                    rebuildChilis();
-                    game.notifyInfo(result.message());}
+                    requestDifficultyChange(level);
+                }
             });
 
             chilis.add(chili).size(26f).padLeft(4f);
         }
     }
+    private void requestDifficultyChange(int level) {
+        if (difficultyRequestInFlight) {
+            return;
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            game.notifyError("You must be logged in to change difficulty.");
+            return;
+        }
+
+        difficultyRequestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendDifficultyUpdate(level))
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishDifficultyUpdate(
+                                                level,
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<ProfileResponse> sendDifficultyUpdate(
+            int level
+    ) {
+        try {
+            return game.getNetworkManager()
+                    .getProfileClientService()
+                    .updateDifficulty(level);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishDifficultyUpdate(
+            int requestedLevel,
+            ProfileResponse response,
+            Throwable throwable
+    ) {
+        difficultyRequestInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not save difficulty on server: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Difficulty update failed."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        int savedLevel = requestedLevel;
+        if (response.getProfile() != null) {
+            savedLevel = response.getProfile().getDifficultyLevel();
+        }
+
+        currentDifficulty = savedLevel;
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {
+            user.setDifficultyLevel(savedLevel);
+        }
+
+        rebuildChilis();
+        game.notifyInfo(response.getMessage());
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
+    }
+
     private Drawable safeRegion(String id) {
         try {
             TextureRegion r = game.getTextureBank().region(id);

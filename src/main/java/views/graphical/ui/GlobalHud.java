@@ -10,7 +10,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
-import controllers.NewsMenuController;
 import graphics.PvzGame;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -22,7 +21,9 @@ import models.games.ScoringGame;
 import views.graphical.ui.ShopPopup;
 import com.badlogic.gdx.Gdx;
 import models.enums.LootType;
+import network.client.ClientNewsState;
 import network.protocol.gameplay.LootCollectResponse;
+import network.protocol.news.NewsResponse;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -59,13 +60,13 @@ public final class GlobalHud extends Table {
     private static final String SHOP_CLICKED = "IMAGE_UI_HUD_WORLDMAP_BUTTONS_HUD_STORE_SELECTED";
     private static final String MEOW_POINT = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER";
     private static final String MEOW_POINT_SELECTED = "IMAGE_UI_EMPOWERMINTS_HUD_MENUS_MINT_CURRENCY_COUNTER_DOWN";
-    private final NewsMenuController newsController = new NewsMenuController();
     private Label unreadNewsLabel;
     private Table unreadNews;
     private Texture unreadBadgeTexture;
     private newsPopup newsPopup;
     private float newsRefreshTimer = 0f;
-    private static final float NEWS_REFRESH = 0.5f;
+    private static final float NEWS_REFRESH = 5f;
+    private boolean newsRequestInFlight;
 
     public GlobalHud(PvzGame game, Skin skin) {
         this.game = game;
@@ -779,15 +780,74 @@ public final class GlobalHud extends Table {
         }
     }
     private void refreshUnreadNews() {
-        if (unreadNews == null || unreadNewsLabel == null) {return;}
-        int unreadCount = newsController.getUnreadNewsCount();
+        updateUnreadNewsBadge();
+        requestNewsState();
+    }
+
+    private void updateUnreadNewsBadge() {
+        if (unreadNews == null || unreadNewsLabel == null) {
+            return;
+        }
+
+        int unreadCount = ClientNewsState.isLoaded()
+                ? ClientNewsState.unreadCount()
+                : 0;
+
         if (unreadCount <= 0) {
             unreadNews.setVisible(false);
             return;
         }
+
         unreadNewsLabel.setText(
                 unreadCount > 99 ? "99+" : String.valueOf(unreadCount)
         );
         unreadNews.setVisible(true);
+    }
+
+    private void requestNewsState() {
+        if (newsRequestInFlight
+                || App.getInstance().getLoggedInUser() == null) {
+            return;
+        }
+
+        newsRequestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendNewsRequest())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishNewsRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<NewsResponse> sendNewsRequest() {
+        try {
+            return game.getNetworkManager()
+                    .getNewsClientService()
+                    .getNews();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishNewsRequest(
+            NewsResponse response,
+            Throwable throwable
+    ) {
+        newsRequestInFlight = false;
+
+        if (throwable == null
+                && response != null
+                && response.isSuccess()) {
+            ClientNewsState.apply(response);
+        }
+
+        updateUnreadNewsBadge();
     }
 }

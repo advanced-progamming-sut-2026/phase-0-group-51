@@ -147,6 +147,18 @@ public class ShopService {
         );
     }
 
+    public NetworkMessage handleDebugPlantUnlock(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        return handlePlantAction(
+                connection,
+                message,
+                MessageType.PLANT_DEBUG_UNLOCK_RESPONSE,
+                this::debugUnlockPlant
+        );
+    }
+
     public NetworkMessage handlePlantFoodClaim(
             ClientConnection connection,
             NetworkMessage message
@@ -292,6 +304,51 @@ public class ShopService {
         );
     }
 
+
+    private ShopResponse debugUnlockPlant(
+            ClientConnection connection,
+            int plantId
+    ) {
+        Integer userId = authenticatedUserId(connection);
+        if (userId == null) {
+            return failure("You must log in first.");
+        }
+
+        PlantData plant = PlantRegistry.getById(plantId);
+        if (plant == null) {
+            return snapshot(userId, false, "Plant not found.");
+        }
+
+        Set<Integer> unlocked = PlantRepository.loadUnlockedPlants(userId);
+        if (unlocked.contains(plantId)) {
+            return snapshot(
+                    userId,
+                    true,
+                    plant.name() + " is already unlocked for testing."
+            );
+        }
+
+        PlantRepository.unlockPlant(userId, plantId);
+
+        if (!PlantRepository.loadUnlockedPlants(userId).contains(plantId)) {
+            return snapshot(
+                    userId,
+                    false,
+                    "Testing unlock could not be saved."
+            );
+        }
+
+        newsRepository.createNewsForUser(
+                userId,
+                "Testing unlock: " + plant.name() + "."
+        );
+
+        return snapshot(
+                userId,
+                true,
+                "CHEAT: " + plant.name() + " was unlocked for testing."
+        );
+    }
 
     private ShopResponse purchaseCollectionPlant(
             ClientConnection connection,

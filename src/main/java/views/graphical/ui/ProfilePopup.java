@@ -883,6 +883,7 @@ public class ProfilePopup extends BorderedPanel {
         user.setCoins(profile.getCoins());
         user.setGems(profile.getGems());
         user.setMostMeowPoint(profile.getMostMeowPoint());
+        user.setDifficultyLevel(profile.getDifficultyLevel());
     }
 
     private void refreshPopupSize() {

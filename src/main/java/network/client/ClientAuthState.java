@@ -26,6 +26,7 @@ public final class ClientAuthState {
         ClientShopState.clear();
         ClientQuestState.clear();
         ClientMinigameState.clear();
+        ClientNewsState.clear();
 
         App app = App.getInstance();
         app.setLoggedInUser(user);
@@ -39,6 +40,7 @@ public final class ClientAuthState {
         ClientShopState.clear();
         ClientQuestState.clear();
         ClientMinigameState.clear();
+        ClientNewsState.clear();
 
         App app = App.getInstance();
 
