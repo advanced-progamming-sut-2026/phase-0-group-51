@@ -106,22 +106,13 @@ public class MessageRouter {
                             message
                     );
 
-            if (!connection
-                    .getSession()
-                    .isAuthenticated()) {
-
-                String username =
-                        connectionRegistry.unregister(
-                                connection
-                        );
-
-
+            if (!connection.getSession().isAuthenticated()) {
+                String username = connectionRegistry.unregister(connection);
+                if (!connectionRegistry.isOnline(username)) {
+                    handleDisconnect(username);
+                }
                 if (username != null) {
-
-                    System.out.println(
-                            "[PRESENCE] "
-                                    + username
-                                    + " logged out"
+                    System.out.println("[PRESENCE] " + username + " logged out"
                     );
                 }
             }
@@ -321,11 +312,57 @@ public class MessageRouter {
             );
         }
 
+        if (message.getType()
+                == MessageType.MATCHMAKING_QUEUE_REQUEST) {
+
+            return matchmakingService.handleQueueRequest(
+                    connection,
+                    message
+            );
+        }
+
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_QUEUE_LEAVE_REQUEST) {
+
+            return matchmakingService.handleQueueLeave(
+                    connection,
+                    message
+            );
+        }
+
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_INVITE_REQUEST) {
+
+            return matchmakingService.handleInviteRequest(
+                    connection,
+                    message
+            );
+        }
+
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_INVITE_DECISION) {
+
+            return matchmakingService.handleInviteDecision(
+                    connection,
+                    message
+            );
+        }
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
                         + message.getType()
         );
+    }
+    public void handleDisconnect(String username) {
+
+        if (username == null || username.isBlank()) {
+            return;
+        }
+        matchmakingService.handleDisconnect(username);
+        reactionService.handleDisconnect(username);
     }
     private void registerAuthenticatedConnection(
             ClientConnection connection

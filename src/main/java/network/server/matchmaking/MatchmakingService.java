@@ -82,6 +82,7 @@ public final class MatchmakingService {
         if (!states.isIdle(username)) {
 
             return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
                     message.getRequestId(),
                     false,
                     "You are already busy.",
@@ -99,6 +100,7 @@ public final class MatchmakingService {
             );
 
             return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
                     message.getRequestId(),
                     false,
                     "You are already waiting in the queue.",
@@ -154,6 +156,7 @@ public final class MatchmakingService {
 
 
             return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
                     message.getRequestId(),
                     true,
                     "Waiting for an opponent...",
@@ -184,6 +187,7 @@ public final class MatchmakingService {
             states.clear(opponent);
 
             return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
                     message.getRequestId(),
                     false,
                     "Could not start the match.",
@@ -193,6 +197,7 @@ public final class MatchmakingService {
 
 
         return queueResponse(
+                MessageType.MATCHMAKING_QUEUE_RESPONSE,
                 message.getRequestId(),
                 true,
                 "Opponent found.",
@@ -223,6 +228,7 @@ public final class MatchmakingService {
                 != MatchmakingState.QUEUED) {
 
             return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_LEAVE_RESPONSE,
                     message.getRequestId(),
                     false,
                     "You are not in the matchmaking queue.",
@@ -236,6 +242,7 @@ public final class MatchmakingService {
 
 
         return queueResponse(
+                MessageType.MATCHMAKING_QUEUE_LEAVE_RESPONSE,
                 message.getRequestId(),
                 true,
                 "You left the matchmaking queue.",
@@ -821,6 +828,7 @@ public final class MatchmakingService {
 
 
     private NetworkMessage queueResponse(
+            MessageType responseType,
             String requestId,
             boolean success,
             String text,
@@ -830,9 +838,7 @@ public final class MatchmakingService {
         try {
 
             return new NetworkMessage(
-                    success
-                            ? MessageType.MATCHMAKING_QUEUE_RESPONSE
-                            : MessageType.MATCHMAKING_QUEUE_RESPONSE,
+                    responseType,
                     requestId,
                     codec.encodePayload(
                             new QueueResponse(
@@ -943,10 +949,7 @@ public final class MatchmakingService {
 
             return true;
 
-        } catch (
-                IOException
-                | JsonProcessingException exception
-        ) {
+        } catch (IOException exception) {
 
             System.err.println(
                     "Could not send server push "

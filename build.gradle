@@ -118,6 +118,10 @@ tasks.register('runServer', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'network.server.ServerMain'
 
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+
     workingDir = rootDir
     standardInput = System.in
 }

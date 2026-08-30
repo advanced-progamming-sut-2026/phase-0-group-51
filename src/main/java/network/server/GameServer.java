@@ -70,26 +70,17 @@ public class GameServer implements Closeable {
         String username = connectionRegistry.unregister(connection);
 
         if (connections.remove(connection)) {
-            System.out.println(
-                    "Client disconnected: "
-                            + connection.getRemoteAddress()
-            );
+            System.out.println("Client disconnected: " + connection.getRemoteAddress());
         }
 
 
         if (username != null) {
-            System.out.println(
-                    "[PRESENCE] connection removed for "
-                            + username
-            );
+            System.out.println("[PRESENCE] connection removed for " + username);
 
 
             if (!connectionRegistry.isOnline(username)) {
-                System.out.println(
-                        "[PRESENCE] "
-                                + username
-                                + " is now OFFLINE"
-                );
+                messageRouter.handleDisconnect(username);
+                System.out.println("[PRESENCE] " + username + " is now OFFLINE");
             }
         }
     }
