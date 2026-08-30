@@ -1,37 +1,45 @@
 package controllers;
 
-import Data.database.NewsRepository;
 import models.App;
 import models.Result;
 import models.User;
 import models.enums.Menu;
 import models.items.News;
+import network.client.ClientNewsState;
+import network.protocol.news.NewsItemDto;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NewsMenuController {
-    private final NewsRepository repository = new NewsRepository();
     public Result showUnreadNews() {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
-            return new Result(false, "You must log in before viewing news.\n", null
+            return new Result(
+                    false,
+                    "You must log in before viewing news.\n",
+                    null
             );
         }
-        List<News> newsList = repository.getNewsForUser(user.getId());
+
+        if (!ClientNewsState.isLoaded()) {
+            return new Result(
+                    false,
+                    "News has not been loaded from the server yet.\n",
+                    null
+            );
+        }
+
         StringBuilder output = new StringBuilder();
         int index = 1;
-        for (News news : newsList) {
-            if (news.isRead()) {
+        for (NewsItemDto item : ClientNewsState.news()) {
+            if (item.isRead()) {
                 continue;
             }
             output.append(index++)
                     .append(". ")
-                    .append(news.getMessage())
+                    .append(item.getMessage())
                     .append('\n');
-            repository.markAsRead(
-                    user.getId(),
-                    news.getId()
-            );
         }
 
         if (index == 1) {
@@ -41,6 +49,7 @@ public class NewsMenuController {
                     null
             );
         }
+
         return new Result(true, output.toString(), null);
     }
 
@@ -48,18 +57,33 @@ public class NewsMenuController {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
             return new Result(
-                    false, "You must log in before viewing news.\n", null);
-        }
-        List<News> newsList = repository.getNewsForUser(user.getId());
-        if (newsList.isEmpty()) {
-            return new Result(
-                    false, "No news at the moment.\n", null
+                    false,
+                    "You must log in before viewing news.\n",
+                    null
             );
         }
+
+        if (!ClientNewsState.isLoaded()) {
+            return new Result(
+                    false,
+                    "News has not been loaded from the server yet.\n",
+                    null
+            );
+        }
+
+        List<NewsItemDto> newsList = ClientNewsState.news();
+        if (newsList.isEmpty()) {
+            return new Result(
+                    false,
+                    "No news at the moment.\n",
+                    null
+            );
+        }
+
         StringBuilder output = new StringBuilder();
         int index = 1;
-        for (News news : newsList) {
-            String status = news.isRead()
+        for (NewsItemDto item : newsList) {
+            String status = item.isRead()
                     ? "[READ]"
                     : "[UNREAD]";
 
@@ -67,45 +91,48 @@ public class NewsMenuController {
                     .append(". ")
                     .append(status)
                     .append(' ')
-                    .append(news.getMessage())
+                    .append(item.getMessage())
                     .append('\n');
-            if (!news.isRead()) {
-                repository.markAsRead(user.getId(), news.getId());
-            }
         }
+
         return new Result(true, output.toString(), null);
     }
 
     public Result showCurrentMenu() {
-        return new Result(true, "You are now in the news menu.\n", null
+        return new Result(
+                true,
+                "You are now in the news menu.\n",
+                null
         );
     }
+
     public void exitMenu() {
         App.getInstance().setCurrentMenu(Menu.MAIN_MENU);
     }
+
     public int getUnreadNewsCount() {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            return 0;
-        }
-        return repository.countUnreadNews(
-                user.getId()
-        );
+        return ClientNewsState.isLoaded()
+                ? ClientNewsState.unreadCount()
+                : 0;
     }
+
     public List<News> openAllNews() {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
+        if (!ClientNewsState.isLoaded()) {
             return List.of();
         }
-        List<News> newsList = repository.getNewsForUser(user.getId());
-        for (News news : newsList) {
-            if (!news.isRead()) {
-                boolean marked = repository.markAsRead(user.getId(), news.getId());
-                if (marked) {
-                    news.setRead(true);
-                }
-            }
+
+        List<News> result = new ArrayList<>();
+        for (NewsItemDto item : ClientNewsState.news()) {
+            result.add(
+                    new News(
+                            item.getId(),
+                            0,
+                            item.getMessage(),
+                            item.getCreatedAt(),
+                            item.isRead()
+                    )
+            );
         }
-        return newsList;
+        return result;
     }
 }

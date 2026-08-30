@@ -102,6 +102,16 @@ public class ShopClientService {
         );
     }
 
+    public CompletableFuture<ShopResponse> debugUnlockPlant(
+            int plantId
+    ) throws IOException {
+        return sendPlantAction(
+                MessageType.PLANT_DEBUG_UNLOCK_REQUEST,
+                MessageType.PLANT_DEBUG_UNLOCK_RESPONSE,
+                plantId
+        );
+    }
+
     public CompletableFuture<ShopResponse> claimStoredPlantFood()
             throws IOException {
         return send(

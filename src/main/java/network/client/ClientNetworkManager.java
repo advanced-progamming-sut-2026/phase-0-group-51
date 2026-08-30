@@ -1,12 +1,15 @@
 package network.client;
 
 import network.client.service.AccountClientService;
+import network.client.service.ProfileClientService;
+import network.client.service.NewsClientService;
 import network.client.service.PlantOwnershipClientService;
 import network.client.service.GameplayAccountClientService;
 import network.client.service.GreenHouseClientService;
 import network.client.service.ShopClientService;
 import network.client.service.QuestClientService;
 import network.client.service.MinigameClientService;
+import network.client.service.LeaderboardClientService;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -22,12 +25,15 @@ public final class ClientNetworkManager implements Closeable {
 
     private NetworkClient networkClient;
     private AccountClientService accountClientService;
+    private ProfileClientService profileClientService;
+    private NewsClientService newsClientService;
     private PlantOwnershipClientService plantOwnershipClientService;
     private GameplayAccountClientService gameplayAccountClientService;
     private GreenHouseClientService greenHouseClientService;
     private ShopClientService shopClientService;
     private QuestClientService questClientService;
     private MinigameClientService minigameClientService;
+    private LeaderboardClientService leaderboardClientService;
 
     public ClientNetworkManager() {
         this(
@@ -82,6 +88,10 @@ public final class ClientNetworkManager implements Closeable {
         networkClient = newClient;
         accountClientService =
                 new AccountClientService(newClient);
+        profileClientService =
+                new ProfileClientService(newClient);
+        newsClientService =
+                new NewsClientService(newClient);
         plantOwnershipClientService =
                 new PlantOwnershipClientService(newClient);
         gameplayAccountClientService =
@@ -94,6 +104,8 @@ public final class ClientNetworkManager implements Closeable {
                 new QuestClientService(newClient);
         minigameClientService =
                 new MinigameClientService(newClient);
+        leaderboardClientService =
+                new LeaderboardClientService(newClient);
     }
 
     public synchronized boolean isConnected() {
@@ -111,6 +123,24 @@ public final class ClientNetworkManager implements Closeable {
         }
 
         return accountClientService;
+    }
+
+    public synchronized ProfileClientService getProfileClientService() {
+        if (!isConnected() || profileClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return profileClientService;
+    }
+
+    public synchronized NewsClientService getNewsClientService() {
+        if (!isConnected() || newsClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return newsClientService;
     }
 
     public synchronized PlantOwnershipClientService
@@ -176,6 +206,16 @@ public final class ClientNetworkManager implements Closeable {
         return minigameClientService;
     }
 
+    public synchronized LeaderboardClientService
+    getLeaderboardClientService() {
+        if (!isConnected() || leaderboardClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return leaderboardClientService;
+    }
+
     public synchronized NetworkClient getNetworkClient() {
         if (!isConnected()) {
             throw new IllegalStateException(
@@ -198,12 +238,15 @@ public final class ClientNetworkManager implements Closeable {
 
         networkClient = null;
         accountClientService = null;
+        profileClientService = null;
+        newsClientService = null;
         plantOwnershipClientService = null;
         gameplayAccountClientService = null;
         greenHouseClientService = null;
         shopClientService = null;
         questClientService = null;
         minigameClientService = null;
+        leaderboardClientService = null;
     }
 
     private static int readPort() {

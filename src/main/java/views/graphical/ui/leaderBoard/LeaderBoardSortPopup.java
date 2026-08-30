@@ -16,7 +16,7 @@ public class LeaderBoardSortPopup extends BorderedPanel {
         content.defaults()
                 .pad(8);
 
-        content.add(label(game, "SORT BY"))
+        content.add(label(game, "SORT BY - SELECT AGAIN TO REVERSE"))
                 .center()
                 .row();
 
@@ -40,7 +40,7 @@ public class LeaderBoardSortPopup extends BorderedPanel {
         addOption(
                 game,
                 content,
-                "QUESTS",
+                "DAILY QUESTS",
                 2,
                 onSelected
         );
@@ -48,8 +48,16 @@ public class LeaderBoardSortPopup extends BorderedPanel {
         addOption(
                 game,
                 content,
-                "LAST PROGRESS",
+                "NON-DAILY QUESTS",
                 3,
+                onSelected
+        );
+
+        addOption(
+                game,
+                content,
+                "LAST PROGRESS",
+                4,
                 onSelected
         );
 

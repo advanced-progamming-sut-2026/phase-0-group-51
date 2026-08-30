@@ -66,6 +66,27 @@ public class NewsRepository {
         }
     }
 
+        public boolean markAllAsRead(int userId) {
+            String sql = """
+                UPDATE user_news
+                SET is_read = 1
+                WHERE user_id = ?
+                  AND is_read = 0
+                """;
+
+            try (Connection connection = DataBaseManager.getConnection();
+                 PreparedStatement statement = connection.prepareStatement(sql)) {
+
+                statement.setInt(1, userId);
+                statement.executeUpdate();
+                return true;
+
+            } catch (SQLException exception) {
+                exception.printStackTrace();
+                return false;
+            }
+        }
+
         public boolean markAsRead(int userId, int newsId) {
             String sql = """
                 UPDATE user_news

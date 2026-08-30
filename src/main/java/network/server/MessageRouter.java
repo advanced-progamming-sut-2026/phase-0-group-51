@@ -36,6 +36,12 @@ public class MessageRouter {
     private final MinigameAccountService minigameAccountService =
             new MinigameAccountService();
 
+    private final LeaderboardService leaderboardService =
+            new LeaderboardService();
+
+    private final NewsService newsService =
+            new NewsService();
+
     private final ConnectionRegistry connectionRegistry;
 
     private final RandomQueue randomQueue =
@@ -211,6 +217,14 @@ public class MessageRouter {
         }
 
         if (message.getType()
+                == MessageType.PROFILE_DIFFICULTY_UPDATE_REQUEST) {
+            return profileService.handleDifficultyUpdate(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
                 == MessageType.PLANT_OWNERSHIP_GET_REQUEST) {
             return plantOwnershipService.handleGet(
                     connection,
@@ -346,6 +360,38 @@ public class MessageRouter {
             );
         }
 
+        if (message.getType()
+                == MessageType.PLANT_DEBUG_UNLOCK_REQUEST) {
+            return shopService.handleDebugPlantUnlock(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.NEWS_GET_REQUEST) {
+            return newsService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.NEWS_MARK_ALL_READ_REQUEST) {
+            return newsService.handleMarkAllRead(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.ZOMBIE_DISCOVER_REQUEST) {
+            return newsService.handleZombieDiscover(
+                    connection,
+                    message
+            );
+        }
+
         // Quest routes from HEAD.
         if (message.getType()
                 == MessageType.QUEST_GET_REQUEST) {
@@ -399,6 +445,14 @@ public class MessageRouter {
         if (message.getType()
                 == MessageType.SCORING_RESULT_REQUEST) {
             return minigameAccountService.handleScoringResult(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.LEADERBOARD_GET_REQUEST) {
+            return leaderboardService.handleGet(
                     connection,
                     message
             );

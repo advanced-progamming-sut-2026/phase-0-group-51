@@ -1,8 +1,5 @@
 package views.graphical.ui;
 
-import Data.database.NewsRepository;
-import Data.database.PlantBoostRepository;
-import Data.database.PlantRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import Data.loader.ZombieRegistry;
@@ -20,9 +17,11 @@ import models.App;
 import models.User;
 import models.Zombie.Zombie;
 import network.client.ClientPlantOwnershipState;
+import network.client.ClientNewsState;
 import network.client.ClientShopState;
 import network.protocol.plants.PlantOwnershipResponse;
 import network.protocol.shop.ShopResponse;
+import network.protocol.news.NewsResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,6 +50,7 @@ public final class CollectionMenuTable extends Table {
     private boolean ownershipRequestInFlight;
     private boolean plantStateRequestInFlight;
     private boolean plantStateLoadedForView;
+    private boolean newsStateRequestInFlight;
 
     private enum OwnershipFilter {
         ALL("ALL"),
@@ -1090,14 +1090,18 @@ public final class CollectionMenuTable extends Table {
             return;
         }
 
-        NewsRepository newsRepository =
-                new NewsRepository();
+        if (!ClientNewsState.isLoaded()) {
+            Label loading = new Label(
+                    "Loading zombie discoveries...",
+                    game.getSkin()
+            );
+            cardsGrid.add(loading).pad(20f);
+            requestNewsState();
+            return;
+        }
 
         Set<String> discoveredZombies =
-                newsRepository
-                        .getDiscoveredZombieAliases(
-                                user.getId()
-                        );
+                ClientNewsState.discoveredZombieAliases();
 
         List<Zombie> zombies =
                 new ArrayList<>(
@@ -1225,6 +1229,65 @@ public final class CollectionMenuTable extends Table {
         }
 
         return false;
+    }
+
+    private void requestNewsState() {
+        if (newsStateRequestInFlight
+                || App.loggedInUser == null) {
+            return;
+        }
+
+        newsStateRequestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendNewsStateRequest())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishNewsStateRequest(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<NewsResponse> sendNewsStateRequest() {
+        try {
+            return game.getNetworkManager()
+                    .getNewsClientService()
+                    .getNews();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishNewsStateRequest(
+            NewsResponse response,
+            Throwable throwable
+    ) {
+        newsStateRequestInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not load zombie discoveries: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Could not load zombie discoveries."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientNewsState.apply(response);
+        showZombies();
     }
 
     private Drawable drawable(String assetId) {
