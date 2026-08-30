@@ -2,14 +2,14 @@ package network.server;
 
 import network.protocol.MessageType;
 import network.protocol.NetworkMessage;
-import network.server.service.AuthService;
-import network.server.service.ProfileService;
-import network.server.service.PlantOwnershipService;
-import network.server.service.GameplayAccountService;
-import network.server.service.GreenHouseService;
-import network.server.service.ShopService;
-import network.server.service.QuestAccountService;
-import network.server.service.MinigameAccountService;
+import network.server.matchmaking.InviteManager;
+import network.server.matchmaking.MatchmakingService;
+import network.server.matchmaking.MatchmakingStateRegistry;
+import network.server.matchmaking.RandomQueue;
+import network.server.presence.ConnectionRegistry;
+import network.server.service.*;
+
+import java.util.Objects;
 
 public class MessageRouter {
     private final AuthService authService =
@@ -36,6 +36,54 @@ public class MessageRouter {
     private final MinigameAccountService minigameAccountService =
             new MinigameAccountService();
 
+    private final ConnectionRegistry connectionRegistry;
+
+    private final RandomQueue randomQueue =
+            new RandomQueue();
+
+    private final InviteManager inviteManager =
+            new InviteManager();
+
+    private final MatchmakingStateRegistry matchmakingStates =
+            new MatchmakingStateRegistry();
+
+    private final MatchmakingService matchmakingService;
+
+    private final ReactionService reactionService;
+
+    /**
+     * Keeps compatibility with the pre-matchmaking code path that used
+     * new MessageRouter(). New server code should prefer injecting the
+     * shared ConnectionRegistry through the other constructor.
+     */
+    public MessageRouter() {
+        this(new ConnectionRegistry());
+    }
+
+    public MessageRouter(
+            ConnectionRegistry connectionRegistry
+    ) {
+        this.connectionRegistry =
+                Objects.requireNonNull(
+                        connectionRegistry,
+                        "connectionRegistry cannot be null"
+                );
+
+        this.matchmakingService =
+                new MatchmakingService(
+                        connectionRegistry,
+                        randomQueue,
+                        inviteManager,
+                        matchmakingStates
+                );
+
+        this.reactionService =
+                new ReactionService(
+                        connectionRegistry
+                        // active match directory بعداً
+                );
+    }
+
     public NetworkMessage route(
             ClientConnection connection,
             NetworkMessage message
@@ -58,20 +106,49 @@ public class MessageRouter {
                 == MessageType.REGISTER_REQUEST) {
             return authService.handleRegister(message);
         }
+
         if (message.getType()
                 == MessageType.LOGIN_REQUEST) {
-            return authService.handleLogin(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response =
+                    authService.handleLogin(
+                            connection,
+                            message
+                    );
+
+            registerAuthenticatedConnection(connection);
+            return response;
         }
+
         if (message.getType()
                 == MessageType.LOGOUT_REQUEST) {
-            return authService.handleLogout(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response =
+                    authService.handleLogout(
+                            connection,
+                            message
+                    );
+
+            if (!connection.getSession().isAuthenticated()) {
+                String username =
+                        connectionRegistry.unregister(connection);
+
+                if (!connectionRegistry.isOnline(username)) {
+                    handleDisconnect(username);
+                }
+
+                if (username != null) {
+                    System.out.println(
+                            "[PRESENCE] "
+                                    + username
+                                    + " logged out"
+                    );
+                }
+            }
+
+            return response;
         }
+
         if (message.getType()
                 == MessageType.FORGOT_PASSWORD_START_REQUEST) {
             return authService.handleForgotPasswordStart(
@@ -95,12 +172,18 @@ public class MessageRouter {
                     message
             );
         }
+
         if (message.getType()
                 == MessageType.RESUME_SESSION_REQUEST) {
-            return authService.handleResumeSession(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response =
+                    authService.handleResumeSession(
+                            connection,
+                            message
+                    );
+
+            registerAuthenticatedConnection(connection);
+            return response;
         }
 
         if (message.getType()
@@ -199,7 +282,6 @@ public class MessageRouter {
             );
         }
 
-
         if (message.getType()
                 == MessageType.SHOP_GET_REQUEST) {
             return shopService.handleGet(
@@ -264,6 +346,7 @@ public class MessageRouter {
             );
         }
 
+        // Quest routes from HEAD.
         if (message.getType()
                 == MessageType.QUEST_GET_REQUEST) {
             return questAccountService.handleGet(
@@ -296,6 +379,7 @@ public class MessageRouter {
             );
         }
 
+        // Minigame/account-stat routes from HEAD.
         if (message.getType()
                 == MessageType.MINIGAME_PROGRESS_GET_REQUEST) {
             return minigameAccountService.handleGet(
@@ -320,10 +404,83 @@ public class MessageRouter {
             );
         }
 
+        // Matchmaking routes from origin/main.
+        if (message.getType()
+                == MessageType.MATCHMAKING_QUEUE_REQUEST) {
+            return matchmakingService.handleQueueRequest(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_QUEUE_LEAVE_REQUEST) {
+            return matchmakingService.handleQueueLeave(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_INVITE_REQUEST) {
+            return matchmakingService.handleInviteRequest(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MATCHMAKING_INVITE_DECISION) {
+            return matchmakingService.handleInviteDecision(
+                    connection,
+                    message
+            );
+        }
+
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
                         + message.getType()
+        );
+    }
+
+    public void handleDisconnect(String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        matchmakingService.handleDisconnect(username);
+        reactionService.handleDisconnect(username);
+    }
+
+    private void registerAuthenticatedConnection(
+            ClientConnection connection
+    ) {
+        if (connection == null
+                || connection.getSession() == null
+                || !connection.getSession().isAuthenticated()) {
+            return;
+        }
+
+        String username =
+                connection.getSession().getUsername();
+
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+        connectionRegistry.register(
+                username,
+                connection
+        );
+
+        System.out.println(
+                "[PRESENCE] "
+                        + username
+                        + " is ONLINE"
+                        + " | online users = "
+                        + connectionRegistry
+                        .getOnlineUserCount()
         );
     }
 }

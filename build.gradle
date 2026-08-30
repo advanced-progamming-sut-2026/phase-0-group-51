@@ -109,3 +109,19 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21
 }
+tasks.register('runServer', JavaExec) {
+    group = 'application'
+    description = 'Runs the PvZ network server'
+
+    dependsOn classes
+
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'network.server.ServerMain'
+
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+
+    workingDir = rootDir
+    standardInput = System.in
+}
