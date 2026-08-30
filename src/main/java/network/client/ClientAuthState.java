@@ -24,6 +24,8 @@ public final class ClientAuthState {
         ClientAdventureProgressState.clear();
         ClientGreenHouseState.clear();
         ClientShopState.clear();
+        ClientQuestState.clear();
+        ClientMinigameState.clear();
 
         App app = App.getInstance();
         app.setLoggedInUser(user);
@@ -35,6 +37,8 @@ public final class ClientAuthState {
         ClientAdventureProgressState.clear();
         ClientGreenHouseState.clear();
         ClientShopState.clear();
+        ClientQuestState.clear();
+        ClientMinigameState.clear();
 
         App app = App.getInstance();
 

@@ -1,7 +1,5 @@
 package views.graphical.screens.minigamesScreen;
 
-import Data.database.MinigameProgressRepository;
-
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -24,10 +22,12 @@ import com.badlogic.gdx.utils.Scaling;
 
 import graphics.PvzGame;
 
-import models.App;
-import models.Result;
-import models.User;
 import models.minigames.MinigameType;
+import network.client.ClientMinigameState;
+import network.protocol.minigame.MinigameProgressResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 import views.graphical.gameplay.manager.AudioManager;
 import views.graphical.screens.BaseScreen;
@@ -49,7 +49,6 @@ public class minigames extends BaseScreen {
 
     private static final float ICON_SCALE = 0.72f;
     private final MinigameType minigameType;
-    private final MinigameProgressRepository progressRepository = new MinigameProgressRepository();
 
     private ScrollPane mapScroll;
     private Group mapContainer;
@@ -59,6 +58,8 @@ public class minigames extends BaseScreen {
 
     private int highestUnlockedStage = 1;
     private int highestCompletedStage = 0;
+    private boolean progressReady;
+    private boolean disposed;
 
     public minigames(PvzGame game, MinigameType minigameType) {
         super(game);
@@ -68,15 +69,100 @@ public class minigames extends BaseScreen {
     }
 
     private void loadProgress() {
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
+        applyCachedProgress();
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> requestProgress())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishProgressLoad(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<MinigameProgressResponse> requestProgress() {
+        try {
+            return game.getNetworkManager()
+                    .getMinigameClientService()
+                    .getProgress();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishProgressLoad(
+            MinigameProgressResponse response,
+            Throwable throwable
+    ) {
+        if (disposed) {
+            return;
+        }
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not load minigame progress from server: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "Minigame progress could not be loaded."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        ClientMinigameState.apply(response);
+        applyCachedProgress();
+        rebuildUi();
+    }
+
+    private void applyCachedProgress() {
+        progressReady = ClientMinigameState.isLoaded();
+        if (!progressReady) {
             highestUnlockedStage = 1;
             highestCompletedStage = 0;
             return;
         }
-        MinigameProgressRepository.Progress progress = progressRepository.getProgress(user.getId(), minigameType);
-        highestUnlockedStage = progress.highestUnlockedStage();
-        highestCompletedStage = progress.highestCompletedStage();
+
+        highestUnlockedStage =
+                ClientMinigameState.highestUnlockedStage(minigameType);
+        highestCompletedStage =
+                ClientMinigameState.highestCompletedStage(minigameType);
+    }
+
+    private void rebuildUi() {
+        if (mapScroll != null) {
+            mapScroll.remove();
+            mapScroll = null;
+        }
+        if (backgroundTexture != null) {
+            backgroundTexture.dispose();
+            backgroundTexture = null;
+        }
+        if (worldTexture != null) {
+            worldTexture.dispose();
+            worldTexture = null;
+        }
+        buildUi();
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
     }
 
     private void buildUi() {
@@ -343,8 +429,8 @@ public class minigames extends BaseScreen {
         );
 
 
-        if (stageNumber
-                <= highestUnlockedStage) {
+        if (progressReady
+                && stageNumber <= highestUnlockedStage) {
 
             group.setTouchable(
                     Touchable.enabled
@@ -704,6 +790,7 @@ public class minigames extends BaseScreen {
 
     @Override
     public void dispose() {
+        disposed = true;
 
         if (backgroundTexture != null) {
             backgroundTexture.dispose();

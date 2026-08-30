@@ -32,9 +32,10 @@ import models.items.Mower;
 import network.client.ClientGreenHouseState;
 import network.client.ClientNetworkManager;
 import network.client.ClientShopState;
+import network.client.ClientQuestState;
 import network.protocol.shop.ShopResponse;
 import network.protocol.gameplay.LootCollectResponse;
-import models.quests.QuestService;
+import network.protocol.quests.QuestResponse;
 import models.sun.Sun;
 
 import java.io.IOException;
@@ -1240,9 +1241,43 @@ public class GamingController {
             return failure("Sun has expired or was already collected.\n");
         }
         int collectedAmount = Math.max(0, state.getSun() - sunBeforeCollection);
-        QuestService.getInstance().recordSunCollected(
-            App.getInstance().getLoggedInUser(), collectedAmount);
+        recordSunQuestProgressAsync(collectedAmount);
         return success("Sun collected successfully; you have " + state.getSun() + " suns now.\n");
+    }
+
+    private void recordSunQuestProgressAsync(int amount) {
+        if (amount <= 0 || networkManager == null) {
+            return;
+        }
+
+        networkManager.ensureConnectedAsync()
+            .thenCompose(ignored -> sendSunQuestProgress(amount))
+            .whenComplete((response, throwable) -> {
+                if (throwable != null || response == null) {
+                    return;
+                }
+
+                Runnable apply = () ->
+                    ClientQuestState.apply(response, false);
+
+                if (Gdx.app != null) {
+                    Gdx.app.postRunnable(apply);
+                } else {
+                    apply.run();
+                }
+            });
+    }
+
+    private CompletableFuture<QuestResponse> sendSunQuestProgress(
+        int amount
+    ) {
+        try {
+            return networkManager
+                .getQuestClientService()
+                .recordSunCollected(amount);
+        } catch (IOException | RuntimeException exception) {
+            return failedFuture(exception);
+        }
     }
 
     public Result applyServerCollectedLoot(

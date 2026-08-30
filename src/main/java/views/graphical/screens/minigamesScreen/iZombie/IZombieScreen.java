@@ -79,7 +79,7 @@ public class IZombieScreen extends BaseMinigameScreen {
     public IZombieScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
         this.stageNumber = stageNumber;
-        controller = new IZombieController();
+        controller = new IZombieController(game.getNetworkManager());
         Result result = controller.startStage(stageNumber);
         if (!result.success()) {
             throw new IllegalStateException(result.message());
