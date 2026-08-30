@@ -1,5 +1,8 @@
 package network.server;
 
+import lombok.Getter;
+import network.server.presence.ConnectionRegistry;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,19 +11,22 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
+@Getter
 public class GameServer implements Closeable {
     public static final int DEFAULT_PORT = 5050;
 
     private final int port;
-    private final MessageRouter messageRouter = new MessageRouter();
+    private final ConnectionRegistry connectionRegistry;
     private final ExecutorService clientExecutor = Executors.newCachedThreadPool();
     private final Set<ClientConnection> connections = ConcurrentHashMap.newKeySet();
     private volatile boolean running;
     private ServerSocket serverSocket;
+    private final MessageRouter messageRouter;
 
     public GameServer(int port) {
         this.port = port;
+        this.connectionRegistry = new ConnectionRegistry();
+        this.messageRouter = new MessageRouter(connectionRegistry);
     }
 
     public void start() throws IOException {
@@ -57,8 +63,25 @@ public class GameServer implements Closeable {
     }
 
     private void removeConnection(ClientConnection connection) {
-        if (connection != null && connections.remove(connection)) {
+        if (connection == null) {
+            return;
+        }
+
+        String username = connectionRegistry.unregister(connection);
+
+        if (connections.remove(connection)) {
             System.out.println("Client disconnected: " + connection.getRemoteAddress());
+        }
+
+
+        if (username != null) {
+            System.out.println("[PRESENCE] connection removed for " + username);
+
+
+            if (!connectionRegistry.isOnline(username)) {
+                messageRouter.handleDisconnect(username);
+                System.out.println("[PRESENCE] " + username + " is now OFFLINE");
+            }
         }
     }
 
@@ -71,9 +94,12 @@ public class GameServer implements Closeable {
         running = false;
         closeServerSocket();
         for (ClientConnection connection : connections) {
+            connectionRegistry.unregister(connection);
             connection.close();
         }
+
         connections.clear();
+        connectionRegistry.clear();
         clientExecutor.shutdownNow();
     }
 
