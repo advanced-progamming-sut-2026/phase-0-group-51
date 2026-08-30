@@ -5,6 +5,8 @@ import network.client.service.PlantOwnershipClientService;
 import network.client.service.GameplayAccountClientService;
 import network.client.service.GreenHouseClientService;
 import network.client.service.ShopClientService;
+import network.client.service.QuestClientService;
+import network.client.service.MinigameClientService;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -24,6 +26,8 @@ public final class ClientNetworkManager implements Closeable {
     private GameplayAccountClientService gameplayAccountClientService;
     private GreenHouseClientService greenHouseClientService;
     private ShopClientService shopClientService;
+    private QuestClientService questClientService;
+    private MinigameClientService minigameClientService;
 
     public ClientNetworkManager() {
         this(
@@ -86,6 +90,10 @@ public final class ClientNetworkManager implements Closeable {
                 new GreenHouseClientService(newClient);
         shopClientService =
                 new ShopClientService(newClient);
+        questClientService =
+                new QuestClientService(newClient);
+        minigameClientService =
+                new MinigameClientService(newClient);
     }
 
     public synchronized boolean isConnected() {
@@ -150,6 +158,24 @@ public final class ClientNetworkManager implements Closeable {
         return shopClientService;
     }
 
+    public synchronized QuestClientService getQuestClientService() {
+        if (!isConnected() || questClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return questClientService;
+    }
+
+    public synchronized MinigameClientService getMinigameClientService() {
+        if (!isConnected() || minigameClientService == null) {
+            throw new IllegalStateException(
+                    "Client is not connected to server."
+            );
+        }
+        return minigameClientService;
+    }
+
     public synchronized NetworkClient getNetworkClient() {
         if (!isConnected()) {
             throw new IllegalStateException(
@@ -176,6 +202,8 @@ public final class ClientNetworkManager implements Closeable {
         gameplayAccountClientService = null;
         greenHouseClientService = null;
         shopClientService = null;
+        questClientService = null;
+        minigameClientService = null;
     }
 
     private static int readPort() {

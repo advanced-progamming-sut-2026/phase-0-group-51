@@ -9,6 +9,8 @@ import Data.loader.PlantRegistry;
 import models.User;
 import models.games.ChapterTheme;
 import models.games.GameState;
+import models.games.TimeOfTheDay;
+import network.protocol.quests.QuestRunSummary;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -164,6 +166,220 @@ public final class QuestService {
             }
         }
     }
+    public void evaluateAdventureRun(
+            User user,
+            QuestRunSummary summary
+    ) {
+        if (user == null || summary == null || summary.getChapter() == null
+                || summary.getChapter() == ChapterTheme.MINIGAME) {
+            return;
+        }
+
+        initializeForUser(user.getId());
+
+        for (Quest quest : repository.getAllQuests()) {
+            UserQuest assignment = repository.getUserQuest(
+                    user.getId(),
+                    quest.getId()
+            ).orElse(null);
+
+            if (!canProgress(assignment)) {
+                continue;
+            }
+
+            if (quest.getEventType()
+                    == QuestEventType.MAX_DIFFICULTY_WIN_STREAK) {
+                int next = summary.isWon()
+                        && summary.getDifficultyLevel() == 5
+                        ? assignment.getProgress() + 1
+                        : 0;
+
+                boolean newlyCompleted = repository.setProgress(
+                        user.getId(),
+                        quest.getId(),
+                        next,
+                        quest.getType()
+                );
+
+                if (newlyCompleted) {
+                    incrementQuestCounter(user, quest.getType());
+                }
+                continue;
+            }
+
+            int amount = evaluate(
+                    quest,
+                    assignment,
+                    summary
+            );
+
+            if (amount > 0) {
+                boolean newlyCompleted = repository.addProgress(
+                        user.getId(),
+                        quest.getId(),
+                        amount,
+                        quest.getType()
+                );
+
+                if (newlyCompleted) {
+                    incrementQuestCounter(user, quest.getType());
+                }
+            }
+        }
+    }
+
+    private int evaluate(
+            Quest quest,
+            UserQuest assignment,
+            QuestRunSummary summary
+    ) {
+        String parameter = assignment.getParameter();
+        int target = assignment.getTargetAmount();
+
+        return switch (quest.getEventType()) {
+            case SUN_COLLECTED -> 0;
+            case CHAPTER_ZOMBIE_KILLS ->
+                    parameterMatchesChapter(parameter, summary.getChapter())
+                            ? summary.getTotalKills()
+                            : 0;
+            case PLANT_ONLY_KILLS ->
+                    summary.getNonPlantKills() == 0
+                            ? Math.min(target, summary.getPlantKills())
+                            : 0;
+            case SPECIFIC_PLANT_KILLS ->
+                    summary.getNonPlantKills() == 0
+                            && summary.getPlantKills() > 0
+                            && summary.getKillsByPlantName()
+                            .getOrDefault(normalizeQuestKey(parameter), 0)
+                            == summary.getPlantKills()
+                            ? Math.min(
+                            target,
+                            summary.getKillsByPlantName()
+                                    .getOrDefault(normalizeQuestKey(parameter), 0)
+                    )
+                            : 0;
+            case WIN_MAX_PLANTS_LOST ->
+                    summary.isWon()
+                            && summary.getPlantsLost()
+                            <= intParameter(parameter, 0)
+                            ? target
+                            : 0;
+            case WIN_EXACT_SUN ->
+                    summary.isWon()
+                            && summary.getSun()
+                            == intParameter(parameter, 0)
+                            ? target
+                            : 0;
+            case FAST_KILLS ->
+                    fastKills(
+                            summary,
+                            intParameter(parameter, 30)
+                    ) >= target
+                            ? target
+                            : 0;
+            case EXPLOSIVE_PLANTS_USED ->
+                    summary.getExplosivePlantsUsed() >= target
+                            ? target
+                            : 0;
+            case FINISH_SYMMETRIC ->
+                    summary.isWon() && summary.isSymmetric()
+                            ? target
+                            : 0;
+            case ONLY_FAMILY_KILLS ->
+                    summary.getNonPlantKills() == 0
+                            && summary.getPlantKills() > 0
+                            && summary.getKillsByFamily()
+                            .getOrDefault(normalizeQuestKey(parameter), 0)
+                            == summary.getPlantKills()
+                            ? target
+                            : 0;
+            case WIN_WITHOUT_FAMILY ->
+                    summary.isWon()
+                            && !summary.getUsedFamilies()
+                            .contains(normalizeQuestKey(parameter))
+                            ? target
+                            : 0;
+            case WIN_DAY_WITH_NIGHT_PLANTS ->
+                    summary.isWon()
+                            && summary.getChapter().getTimeOfTheDay()
+                            == TimeOfTheDay.DAY
+                            && summary.isUsedOnlyNightPlants()
+                            ? target
+                            : 0;
+            case MAX_DIFFICULTY_WIN_STREAK -> 0;
+            case FIRST_COLUMN_KILLS_NO_MOWER ->
+                    summary.getFirstColumnKillsWithoutMower() >= target
+                            ? target
+                            : 0;
+            case WIN_ASYMMETRIC_EXCEPT_MIDDLE ->
+                    summary.isWon() && summary.isAsymmetricExceptMiddle()
+                            ? target
+                            : 0;
+            case WIN_ONLY_SUN_PRODUCERS_EXACT_COUNT -> {
+                int required = intParameter(parameter, 3);
+                yield summary.isWon()
+                        && summary.getPlantsPlaced() == required
+                        && summary.getSunProducerPlantsUsed() == required
+                        && summary.isUsedOnlySunProducers()
+                        ? target
+                        : 0;
+            }
+            case WIN_EMPTY_COLUMN ->
+                    summary.isWon()
+                            && !summary.getUsedColumns()
+                            .contains(intParameter(parameter, 1))
+                            ? target
+                            : 0;
+            case WIN_EMPTY_ROW ->
+                    summary.isWon()
+                            && !summary.getUsedRows()
+                            .contains(intParameter(parameter, 1))
+                            ? target
+                            : 0;
+            case WIN_EMPTY_CROSS -> {
+                int[] cross = crossParameter(parameter);
+                yield summary.isWon()
+                        && !summary.getUsedRows().contains(cross[0])
+                        && !summary.getUsedColumns().contains(cross[1])
+                        ? target
+                        : 0;
+            }
+            case MOWER_KILLS ->
+                    Math.min(target, summary.getMowerKills());
+        };
+    }
+
+    private int fastKills(
+            QuestRunSummary summary,
+            int seconds
+    ) {
+        if (summary.getFirstWaveStartTick() < 0
+                || seconds <= 0
+                || summary.getTicksPerSecond() <= 0) {
+            return 0;
+        }
+
+        int deadline = summary.getFirstWaveStartTick()
+                + seconds * summary.getTicksPerSecond();
+        int count = 0;
+        for (int tick : summary.getKillTicks()) {
+            if (tick < deadline) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private String normalizeQuestKey(String value) {
+        return value == null
+                ? ""
+                : value.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace("-", "")
+                .replace("_", "")
+                .replace(" ", "");
+    }
+
     private void incrementQuestCounter(User user, QuestType questType) {
         if (questType == QuestType.DAILY) {
             user.setQuestDailyNum(user.getQuestDailyNum() + 1);

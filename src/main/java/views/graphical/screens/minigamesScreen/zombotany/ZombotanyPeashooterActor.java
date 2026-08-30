@@ -52,97 +52,57 @@ public class ZombotanyPeashooterActor extends Actor {
 
     public ZombotanyPeashooterActor(
             Zombie model,
-            Texture spriteSheet,
+            Texture walkSpriteSheet,
+            Texture shootSpriteSheet,
             BoardTransform transform
     ) {
         this.zombieModel = model;
         this.boardTransform = transform;
 
-
-        if (spriteSheet == null) {
-
+        if (walkSpriteSheet == null) {
             throw new IllegalArgumentException(
-                "spriteSheet cannot be null"
+                    "walkSpriteSheet cannot be null"
+            );
+        }
+        if (shootSpriteSheet == null) {
+            throw new IllegalArgumentException(
+                    "shootSpriteSheet cannot be null"
             );
         }
 
+        TextureRegion[][] walkSheetFrames =
+                TextureRegion.split(
+                        walkSpriteSheet,
+                        FRAME_WIDTH,
+                        FRAME_HEIGHT
+                );
+        TextureRegion[][] shootSheetFrames =
+                TextureRegion.split(
+                        shootSpriteSheet,
+                        FRAME_WIDTH,
+                        FRAME_HEIGHT
+                );
 
-        /*
-         * =====================================================
-         * Texture Filtering
-         * =====================================================
-         *
-         * این قسمت برای جلوگیری از دیده شدن
-         * پیکسل‌های Frame کناری مهم است.
-         *
-         * Animation خودش Filter ندارد؛
-         * Filter روی Texture قرار می‌گیرد.
-         */
-        spriteSheet.setFilter(
-                Texture.TextureFilter.Nearest,
-                Texture.TextureFilter.Nearest
-        );
-
-
-        spriteSheet.setWrap(
-            Texture.TextureWrap.ClampToEdge,
-            Texture.TextureWrap.ClampToEdge
-        );
-
-
-        /*
-         * =====================================================
-         * Split Sprite Sheet
-         * =====================================================
-         */
-        TextureRegion[][] frames =
-            TextureRegion.split(
-                    spriteSheet,
-
-                    FRAME_WIDTH,
-                    FRAME_HEIGHT
-            );
-
-
-        /*
-         * بررسی امنیتی
-         */
-        if (
-            frames.length < 2
-                || frames[0].length < 8
-                || frames[1].length < 7
-        ) {
-
+        if (walkSheetFrames.length < 1
+                || walkSheetFrames[0].length < WALK_FRAME_COUNT) {
             throw new IllegalArgumentException(
-                "Invalid Zombotany Peashooter sprite sheet. "
-                    + "Expected 8x2 frames of 181x543."
+                    "Invalid Zombotany Peashooter walk sprite sheet. "
+                            + "Expected at least 8 frames of 181x543."
+            );
+        }
+        if (shootSheetFrames.length < 1
+                || shootSheetFrames[0].length < EAT_FRAME_COUNT) {
+            throw new IllegalArgumentException(
+                    "Invalid Zombotany Peashooter shoot sprite sheet. "
+                            + "Expected at least 7 frames of 181x543."
             );
         }
 
-
-        /*
-         * =====================================================
-         * WALK
-         * =====================================================
-         *
-         * Row 0:
-         *
-         * [0][1][2][3][4][5][6][7]
-         */
         TextureRegion[] walkFrames =
-            new TextureRegion[
-                WALK_FRAME_COUNT
-            ];
+                new TextureRegion[WALK_FRAME_COUNT];
 
-
-        for (
-            int i = 0;
-            i < WALK_FRAME_COUNT;
-            i++
-        ) {
-
-            walkFrames[i] =
-                frames[0][i];
+        for (int i = 0; i < WALK_FRAME_COUNT; i++) {
+            walkFrames[i] = walkSheetFrames[0][i];
         }
 
 
@@ -181,7 +141,7 @@ public class ZombotanyPeashooterActor extends Actor {
         ) {
 
             eatFrames[i] =
-                frames[1][i];
+                shootSheetFrames[0][i];
         }
 
 

@@ -1,8 +1,6 @@
 package controllers;
 
-import Data.database.PlantBoostRepository;
 import Data.database.PlantRepository;
-import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import models.App;
@@ -23,10 +21,6 @@ public class PlantSelectionController {
     private static final int IMITATER_ID = 56;
     private static final String IMITATER_PREFIX = "Imitater:";
 
-    private final UserRepository userRepository;
-    public PlantSelectionController() {
-        this.userRepository = new UserRepository();
-    }
     public Result showAllPlants(){
         Game game = App.getInstance().getCurrentGame();
         StringBuilder result = new StringBuilder();
@@ -211,40 +205,14 @@ public class PlantSelectionController {
         );
     }
 
-    public Result boostPlant(String plantType){
-        PlantData plant = PlantRegistry.getByName(plantType);
-        if (plant == null) {
-            return new Result(false, "Plant does not exist.", null);
-        }
-        if (!ClientPlantOwnershipState.isLoaded()) {
-            return new Result(
-                    false,
-                    "Plant ownership has not been loaded yet.",
-                    null
-            );
-        }
-
-        Set<Integer> unlocked =
-                ClientPlantOwnershipState.snapshot();
-
-        if (!unlocked.contains(plant.id())) {
-            return new Result(
-                    false,
-                    "Plant is locked.",
-                    null
-            );
-        }
-        if (App.getInstance().getLoggedInUser().getGems()<2) {
-            return new Result(false, "Not enough gems.", null);
-        }
-        if (PlantBoostRepository.hasBoost(App.getInstance().getLoggedInUser().getId(), plant.id())) {
-            return new Result(false, "This plant already has a stored boost.", null);
-        }
-        App.getInstance().getLoggedInUser().setGems(App.getInstance().getLoggedInUser().getGems() - 2);
-        userRepository.updateStats(App.getInstance().getLoggedInUser());
-        PlantBoostRepository.addBoost(App.getInstance().getLoggedInUser().getId(), plant.id());
-        return new Result(true, "Plant boosted successfully.", null);
+    public Result boostPlant(String plantType) {
+        return new Result(
+                false,
+                "Plant boosts are server-backed. Use the graphical Plant Selection boost button.\n",
+                null
+        );
     }
+
     public Result startGame(){
         Game currentGame = App.getInstance().getCurrentGame();
         if (currentGame == null) {

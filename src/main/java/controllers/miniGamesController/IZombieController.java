@@ -1,6 +1,7 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import network.client.ClientNetworkManager;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
@@ -21,8 +22,16 @@ import java.util.List;
 import java.util.Map;
 
 public class IZombieController extends GamingController {
-    private final MinigameProgressService progressService =
-        new MinigameProgressService();
+    public IZombieController() {
+        this(null);
+    }
+
+    public IZombieController(ClientNetworkManager networkManager) {
+        super(networkManager);
+        this.progressService = new MinigameProgressService(networkManager);
+    }
+
+    private final MinigameProgressService progressService;
 
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(MinigameType.IZOMBIE, stageNumber);

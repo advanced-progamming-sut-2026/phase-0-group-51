@@ -1,6 +1,7 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import network.client.ClientNetworkManager;
 import models.App;
 import models.Board.Board;
 import models.Board.Tile;
@@ -19,7 +20,16 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class BeghouledController extends GamingController {
-    private final MinigameProgressService progressService = new MinigameProgressService();
+    public BeghouledController() {
+        this(null);
+    }
+
+    public BeghouledController(ClientNetworkManager networkManager) {
+        super(networkManager);
+        this.progressService = new MinigameProgressService(networkManager);
+    }
+
+    private final MinigameProgressService progressService;
     private boolean graphicalResultRecorded;
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(MinigameType.BEGHOULDED, stageNumber);

@@ -47,9 +47,12 @@ import models.sun.Sun;
 import models.User;
 import network.client.ClientPlantOwnershipState;
 import network.client.ClientAdventureProgressState;
+import network.client.ClientQuestState;
 import network.protocol.gameplay.AdventureLossResponse;
 import network.protocol.gameplay.AdventureWinResponse;
 import network.protocol.gameplay.LootCollectResponse;
+import network.protocol.quests.QuestResponse;
+import network.protocol.quests.QuestRunSummary;
 
 
 import views.graphical.gameplay.actors.PlantActor;
@@ -196,6 +199,7 @@ public class GameScreen extends BaseScreen {
 
     private boolean adventureLossRequestStarted;
     private boolean adventureWinRequestStarted;
+    private boolean questRunRequestStarted;
 
     private PlantActor placementPreview;
     private PlantViewManager plantViewManager;
@@ -1192,11 +1196,17 @@ public class GameScreen extends BaseScreen {
             return;
         }
 
-        boolean collected = currentGame.getGameState().getBoard().collectSun(sun, currentGame.getGameState());
+        GameState state = currentGame.getGameState();
+        int sunBefore = state.getSun();
+        boolean collected = state.getBoard().collectSun(sun, state);
 
         if (!collected) {
             game.notifyError("Sun has expired or was already collected.");
+            return;
         }
+
+        int collectedAmount = Math.max(0, state.getSun() - sunBefore);
+        recordSunQuestProgressOnServer(collectedAmount);
     }
 
     private void showStartObjectives() {
@@ -1796,6 +1806,7 @@ public class GameScreen extends BaseScreen {
         } else {
             recordAdventureLossOnServer();
         }
+        recordQuestRunOnServer(currentGame);
 
         overlayMode = OverlayMode.GAME_END;
         gameTickAccumulator = 0f;
@@ -2221,6 +2232,109 @@ public class GameScreen extends BaseScreen {
                 user.getGems()
             );
         }
+    }
+
+    private void recordSunQuestProgressOnServer(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+
+        game.getNetworkManager()
+            .ensureConnectedAsync()
+            .thenCompose(ignored -> sendSunQuestProgress(amount))
+            .whenComplete(
+                (response, throwable) ->
+                    Gdx.app.postRunnable(
+                        () -> {
+                            if (throwable == null && response != null) {
+                                ClientQuestState.apply(response, false);
+                            }
+                        }
+                    )
+            );
+    }
+
+    private CompletableFuture<QuestResponse> sendSunQuestProgress(
+        int amount
+    ) {
+        try {
+            return game.getNetworkManager()
+                .getQuestClientService()
+                .recordSunCollected(amount);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void recordQuestRunOnServer(Game currentGame) {
+        if (questRunRequestStarted
+            || currentGame == null
+            || currentGame.getGameState() == null) {
+            return;
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user == null) {
+            return;
+        }
+
+        questRunRequestStarted = true;
+
+        QuestRunSummary summary = QuestRunSummary.from(
+            currentGame.getGameState(),
+            theme,
+            user.getDifficultyLevel(),
+            currentGame.getGameState().isWon()
+        );
+
+        game.getNetworkManager()
+            .ensureConnectedAsync()
+            .thenCompose(ignored -> sendQuestRun(summary))
+            .whenComplete(
+                (response, throwable) ->
+                    Gdx.app.postRunnable(
+                        () -> finishQuestRunRecord(
+                            response,
+                            throwable
+                        )
+                    )
+            );
+    }
+
+    private CompletableFuture<QuestResponse> sendQuestRun(
+        QuestRunSummary summary
+    ) {
+        try {
+            return game.getNetworkManager()
+                .getQuestClientService()
+                .recordAdventureRun(summary);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishQuestRunRecord(
+        QuestResponse response,
+        Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                "Could not record quest progress on server: "
+                    + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                response == null
+                    ? "Quest progress could not be recorded."
+                    : response.getMessage()
+            );
+            return;
+        }
+
+        ClientQuestState.apply(response, false);
     }
 
     private void recordAdventureWinOnServer(

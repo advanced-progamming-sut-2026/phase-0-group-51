@@ -69,7 +69,7 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
 
         this.stageNumber = stageNumber;
-        this.controller = new WallnutBowlingController();
+        this.controller = new WallnutBowlingController(game.getNetworkManager());
 
         Result result = controller.startStage(stageNumber);
         if (!result.success()) {

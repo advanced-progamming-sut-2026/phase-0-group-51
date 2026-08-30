@@ -8,6 +8,8 @@ import network.server.service.PlantOwnershipService;
 import network.server.service.GameplayAccountService;
 import network.server.service.GreenHouseService;
 import network.server.service.ShopService;
+import network.server.service.QuestAccountService;
+import network.server.service.MinigameAccountService;
 
 public class MessageRouter {
     private final AuthService authService =
@@ -27,6 +29,12 @@ public class MessageRouter {
 
     private final ShopService shopService =
             new ShopService();
+
+    private final QuestAccountService questAccountService =
+            new QuestAccountService();
+
+    private final MinigameAccountService minigameAccountService =
+            new MinigameAccountService();
 
     public NetworkMessage route(
             ClientConnection connection,
@@ -251,6 +259,62 @@ public class MessageRouter {
         if (message.getType()
                 == MessageType.PLANT_FOOD_CLAIM_REQUEST) {
             return shopService.handlePlantFoodClaim(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_GET_REQUEST) {
+            return questAccountService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_CLAIM_REQUEST) {
+            return questAccountService.handleClaim(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_SUN_PROGRESS_REQUEST) {
+            return questAccountService.handleSunProgress(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_RUN_RECORD_REQUEST) {
+            return questAccountService.handleRunRecord(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MINIGAME_PROGRESS_GET_REQUEST) {
+            return minigameAccountService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MINIGAME_COMPLETE_REQUEST) {
+            return minigameAccountService.handleComplete(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.SCORING_RESULT_REQUEST) {
+            return minigameAccountService.handleScoringResult(
                     connection,
                     message
             );

@@ -1,0 +1,2241 @@
+diff --git a/src/main/java/controllers/GameMenuController.java b/src/main/java/controllers/GameMenuController.java
+index 7f73192..64dc38a 100644
+--- a/src/main/java/controllers/GameMenuController.java
++++ b/src/main/java/controllers/GameMenuController.java
+@@ -3,7 +3,6 @@ package controllers;
+ import Data.database.NewsRepository;
+ import Data.database.PlantRepository;
+ import Data.database.ProgressRepository;
+-import Data.database.UserRepository;
+ import Data.loader.PlantData;
+ import Data.loader.PlantRegistry;
+ import models.App;
+@@ -292,23 +291,11 @@ public class GameMenuController {
+     }
+ 
+     public Result cheatAdd(int amount, String kind) {
+-        if(amount <= 0){
+-            return new Result(false, "Please enter a positive amount." , null);
+-        } else if (kind.equalsIgnoreCase("coin")) {
+-            User user = App.loggedInUser;
+-            user.setCoins(user.getCoins() + amount);
+-            UserRepository userRepository = new UserRepository();
+-            userRepository.updateStats(user);
+-            return new Result(true, "Successfully added coins." , null);
+-        } else if (kind.equalsIgnoreCase("diamond")) {
+-            User user = App.loggedInUser;
+-            user.setGems(user.getGems() + amount);
+-            UserRepository userRepository = new UserRepository();
+-            userRepository.updateStats(user);
+-            return new Result(true, "Successfully added gems." , null);
+-        } else{
+-            return new Result(false, "You can only add coin or diamond please specify." , null);
+-        }
++        return new Result(
++                false,
++                "Account currency cheats are server-backed. Use the graphical debug controls.\n",
++                null
++        );
+     }
+ 
+     public Result handleEnterMenu(String menuName) {
+diff --git a/src/main/java/controllers/PlantSelectionController.java b/src/main/java/controllers/PlantSelectionController.java
+index 8fc100d..de376bf 100644
+--- a/src/main/java/controllers/PlantSelectionController.java
++++ b/src/main/java/controllers/PlantSelectionController.java
+@@ -1,8 +1,6 @@
+ package controllers;
+ 
+-import Data.database.PlantBoostRepository;
+ import Data.database.PlantRepository;
+-import Data.database.UserRepository;
+ import Data.loader.PlantData;
+ import Data.loader.PlantRegistry;
+ import models.App;
+@@ -23,10 +21,6 @@ public class PlantSelectionController {
+     private static final int IMITATER_ID = 56;
+     private static final String IMITATER_PREFIX = "Imitater:";
+ 
+-    private final UserRepository userRepository;
+-    public PlantSelectionController() {
+-        this.userRepository = new UserRepository();
+-    }
+     public Result showAllPlants(){
+         Game game = App.getInstance().getCurrentGame();
+         StringBuilder result = new StringBuilder();
+@@ -211,40 +205,14 @@ public class PlantSelectionController {
+         );
+     }
+ 
+-    public Result boostPlant(String plantType){
+-        PlantData plant = PlantRegistry.getByName(plantType);
+-        if (plant == null) {
+-            return new Result(false, "Plant does not exist.", null);
+-        }
+-        if (!ClientPlantOwnershipState.isLoaded()) {
+-            return new Result(
+-                    false,
+-                    "Plant ownership has not been loaded yet.",
+-                    null
+-            );
+-        }
+-
+-        Set<Integer> unlocked =
+-                ClientPlantOwnershipState.snapshot();
+-
+-        if (!unlocked.contains(plant.id())) {
+-            return new Result(
+-                    false,
+-                    "Plant is locked.",
+-                    null
+-            );
+-        }
+-        if (App.getInstance().getLoggedInUser().getGems()<2) {
+-            return new Result(false, "Not enough gems.", null);
+-        }
+-        if (PlantBoostRepository.hasBoost(App.getInstance().getLoggedInUser().getId(), plant.id())) {
+-            return new Result(false, "This plant already has a stored boost.", null);
+-        }
+-        App.getInstance().getLoggedInUser().setGems(App.getInstance().getLoggedInUser().getGems() - 2);
+-        userRepository.updateStats(App.getInstance().getLoggedInUser());
+-        PlantBoostRepository.addBoost(App.getInstance().getLoggedInUser().getId(), plant.id());
+-        return new Result(true, "Plant boosted successfully.", null);
++    public Result boostPlant(String plantType) {
++        return new Result(
++                false,
++                "Plant boosts are server-backed. Use the graphical Plant Selection boost button.\n",
++                null
++        );
+     }
++
+     public Result startGame(){
+         Game currentGame = App.getInstance().getCurrentGame();
+         if (currentGame == null) {
+diff --git a/src/main/java/controllers/miniGamesController/BeghouledController.java b/src/main/java/controllers/miniGamesController/BeghouledController.java
+index 9d41f23..7467397 100644
+--- a/src/main/java/controllers/miniGamesController/BeghouledController.java
++++ b/src/main/java/controllers/miniGamesController/BeghouledController.java
+@@ -1,6 +1,7 @@
+ package controllers.miniGamesController;
+ 
+ import controllers.GamingController;
++import network.client.ClientNetworkManager;
+ import models.App;
+ import models.Board.Board;
+ import models.Board.Tile;
+@@ -19,7 +20,16 @@ import java.util.Map;
+ import java.util.TreeMap;
+ 
+ public class BeghouledController extends GamingController {
+-    private final MinigameProgressService progressService = new MinigameProgressService();
++    public BeghouledController() {
++        this(null);
++    }
++
++    public BeghouledController(ClientNetworkManager networkManager) {
++        super(networkManager);
++        this.progressService = new MinigameProgressService(networkManager);
++    }
++
++    private final MinigameProgressService progressService;
+     private boolean graphicalResultRecorded;
+     public Result startStage(int stageNumber) {
+         Result access = progressService.checkStageAccess(MinigameType.BEGHOULDED, stageNumber);
+diff --git a/src/main/java/controllers/miniGamesController/IZombieController.java b/src/main/java/controllers/miniGamesController/IZombieController.java
+index bb3e959..7f3d4e4 100644
+--- a/src/main/java/controllers/miniGamesController/IZombieController.java
++++ b/src/main/java/controllers/miniGamesController/IZombieController.java
+@@ -1,6 +1,7 @@
+ package controllers.miniGamesController;
+ 
+ import controllers.GamingController;
++import network.client.ClientNetworkManager;
+ import models.App;
+ import models.Board.Board;
+ import models.Board.Tile;
+@@ -21,8 +22,16 @@ import java.util.List;
+ import java.util.Map;
+ 
+ public class IZombieController extends GamingController {
+-    private final MinigameProgressService progressService =
+-        new MinigameProgressService();
++    public IZombieController() {
++        this(null);
++    }
++
++    public IZombieController(ClientNetworkManager networkManager) {
++        super(networkManager);
++        this.progressService = new MinigameProgressService(networkManager);
++    }
++
++    private final MinigameProgressService progressService;
+ 
+     public Result startStage(int stageNumber) {
+         Result access = progressService.checkStageAccess(MinigameType.IZOMBIE, stageNumber);
+diff --git a/src/main/java/controllers/miniGamesController/MinigameProgressService.java b/src/main/java/controllers/miniGamesController/MinigameProgressService.java
+index 91f9206..d4502fc 100644
+--- a/src/main/java/controllers/miniGamesController/MinigameProgressService.java
++++ b/src/main/java/controllers/miniGamesController/MinigameProgressService.java
+@@ -1,106 +1,167 @@
+ package controllers.miniGamesController;
+ 
+-import Data.database.MinigameProgressRepository;
+-import Data.database.NewsRepository;
+-import Data.database.UserRepository;
+ import models.App;
+ import models.Result;
+ import models.User;
+ import models.minigames.MinigameType;
++import network.client.ClientMinigameState;
++import network.client.ClientNetworkManager;
++import network.protocol.minigame.MinigameProgressResponse;
+ 
+-public class MinigameProgressService {
++import java.io.IOException;
++import java.util.concurrent.CompletableFuture;
+ 
+-        private final MinigameProgressRepository progressRepository = new MinigameProgressRepository();
+-        private final NewsRepository newsRepository = new NewsRepository();
+-        private final UserRepository userRepository = new UserRepository();
++public class MinigameProgressService {
++    private final ClientNetworkManager networkManager;
+ 
+-        public Result checkStageAccess(MinigameType type, int stageNumber) {
+-            if (stageNumber < 1 || stageNumber > 3) {
+-                return new Result(false, type.getDisplayName() + " stage must be 1, 2, or 3.\n", null
+-                );
+-            }
++    public MinigameProgressService() {
++        this(null);
++    }
+ 
+-            User user = App.getInstance().getLoggedInUser();
+-            if (user == null) {
+-                return new Result(
+-                        false, "You must log in before starting a minigame.\n", null
+-                );
+-            }
++    public MinigameProgressService(
++            ClientNetworkManager networkManager
++    ) {
++        this.networkManager = networkManager;
++    }
+ 
+-            if (!progressRepository.isStageUnlocked(user.getId(), type, stageNumber)) {
+-                return new Result(
+-                        false,
+-                        type.getDisplayName() + " stage " + stageNumber + " is locked.\n"
+-                                + "Complete stage " + (stageNumber - 1) + " first.\n",
+-                        null
+-                );
+-            }
++    public Result checkStageAccess(
++            MinigameType type,
++            int stageNumber
++    ) {
++        if (type == null) {
++            return new Result(false, "Minigame type is required.\n", null);
++        }
++        if (stageNumber < 1 || stageNumber > 3) {
++            return new Result(
++                    false,
++                    type.getDisplayName()
++                            + " stage must be 1, 2, or 3.\n",
++                    null
++            );
++        }
+ 
+-            return new Result(true, "", null);
++        User user = App.getInstance().getLoggedInUser();
++        if (user == null) {
++            return new Result(
++                    false,
++                    "You must log in before starting a minigame.\n",
++                    null
++            );
+         }
+ 
+-        public String recordWin(MinigameType type, int stageNumber) {
+-            User user = App.getInstance().getLoggedInUser();
+-            if (user == null) {
+-                return "Minigame progress was not saved because no user is logged in.\n";
+-            }
++        if (!ClientMinigameState.isLoaded()) {
++            return new Result(
++                    false,
++                    "Minigame progress is still loading from the server.\n",
++                    null
++            );
++        }
+ 
+-            MinigameProgressRepository.Completion completion =
+-                    progressRepository.completeStage(user.getId(), type, stageNumber);
++        if (!ClientMinigameState.isStageUnlocked(type, stageNumber)) {
++            return new Result(
++                    false,
++                    type.getDisplayName()
++                            + " stage " + stageNumber + " is locked.\n"
++                            + "Complete stage " + (stageNumber - 1)
++                            + " first.\n",
++                    null
++            );
++        }
+ 
+-            if (!completion.saved()) {
+-                return "Minigame progress could not be saved.\n";
+-            }
++        return new Result(true, "", null);
++    }
+ 
+-            StringBuilder message = new StringBuilder();
++    public String recordWin(
++            MinigameType type,
++            int stageNumber
++    ) {
++        if (networkManager == null) {
++            return "Minigame progress requires the server-backed graphical client.\n";
++        }
+ 
+-            if (completion.newlyUnlockedStage() > 0) {
+-                int unlockedStage = completion.newlyUnlockedStage();
+-                String news = "New " + type.getDisplayName()
+-                        + " stage unlocked: Stage " + unlockedStage + ".";
+-                newsRepository.createNewsForUser(user.getId(), news);
+-                message.append("Stage ")
+-                        .append(unlockedStage)
+-                        .append(" is now unlocked.\n");
+-            }
++        try {
++            ClientMinigameState.noteLocalWin(type, stageNumber);
++            recordWinAsync(type, stageNumber)
++                    .whenComplete(
++                            (response, throwable) -> {
++                                if (throwable != null
++                                        || response == null
++                                        || !response.isSuccess()) {
++                                    ClientMinigameState.clear();
++                                }
++                            }
++                    );
++            return "Minigame progress is being saved on the server.\n";
++        } catch (RuntimeException exception) {
++            ClientMinigameState.clear();
++            return "Minigame progress could not be sent to the server.\n";
++        }
++    }
+ 
+-            if (completion.minigameNewlyCompleted()) {
+-                user.setMiniGamesPlayed(completion.miniGamesPlayed());
++    public CompletableFuture<MinigameProgressResponse> recordWinAsync(
++            MinigameType type,
++            int stageNumber
++    ) {
++        if (networkManager == null) {
++            return CompletableFuture.failedFuture(
++                    new IllegalStateException(
++                            "Server-backed minigame progress is unavailable."
++                    )
++            );
++        }
+ 
+-                String news = "You completed all three stages of "
+-                        + type.getDisplayName() + ".";
+-                newsRepository.createNewsForUser(user.getId(), news);
+-                message.append(type.getDisplayName())
+-                        .append(" is now fully completed.\n");
+-            }
++        return networkManager.ensureConnectedAsync()
++                .thenCompose(
++                        ignored -> {
++                            try {
++                                return networkManager
++                                        .getMinigameClientService()
++                                        .completeStage(type, stageNumber);
++                            } catch (IOException | RuntimeException exception) {
++                                return CompletableFuture.failedFuture(exception);
++                            }
++                        }
++                )
++                .thenApply(
++                        response -> {
++                            if (response != null && response.isSuccess()) {
++                                ClientMinigameState.apply(response);
++                            }
++                            return response;
++                        }
++                );
++    }
+ 
+-            return message.toString();
++    public String formatStages(
++            int userId,
++            MinigameType type
++    ) {
++        if (!ClientMinigameState.isLoaded()) {
++            return "  Progress is loading from the server.\n";
+         }
+ 
+-        public String formatStages(int userId, MinigameType type) {
+-            MinigameProgressRepository.Progress progress =
+-                    progressRepository.getProgress(userId, type);
+-            StringBuilder output = new StringBuilder();
+-
+-            for (int stage = 1; stage <= 3; stage++) {
+-                String status;
+-                if (stage <= progress.highestCompletedStage()) {
+-                    status = "COMPLETED";
+-                } else if (stage <= progress.highestUnlockedStage()) {
+-                    status = "UNLOCKED";
+-                } else {
+-                    status = "LOCKED";
+-                }
+-
+-                output.append("  Stage ")
+-                        .append(stage)
+-                        .append(" [")
+-                        .append(status)
+-                        .append("]\n");
++        int highestUnlocked =
++                ClientMinigameState.highestUnlockedStage(type);
++        int highestCompleted =
++                ClientMinigameState.highestCompletedStage(type);
++
++        StringBuilder output = new StringBuilder();
++        for (int stage = 1; stage <= 3; stage++) {
++            String status;
++            if (stage <= highestCompleted) {
++                status = "COMPLETED";
++            } else if (stage <= highestUnlocked) {
++                status = "UNLOCKED";
++            } else {
++                status = "LOCKED";
+             }
+ 
+-            return output.toString();
++            output.append("  Stage ")
++                    .append(stage)
++                    .append(" [")
++                    .append(status)
++                    .append("]\n");
+         }
++        return output.toString();
+     }
+-
+-
++}
+diff --git a/src/main/java/controllers/miniGamesController/VaseBreakerController.java b/src/main/java/controllers/miniGamesController/VaseBreakerController.java
+index d9937f8..4495c44 100644
+--- a/src/main/java/controllers/miniGamesController/VaseBreakerController.java
++++ b/src/main/java/controllers/miniGamesController/VaseBreakerController.java
+@@ -1,6 +1,7 @@
+ package controllers.miniGamesController;
+ 
+ import controllers.GamingController;
++import network.client.ClientNetworkManager;
+ import models.Board.Board;
+ import models.Board.Tile;
+ import models.games.GameState;
+@@ -23,9 +24,17 @@ import java.util.List;
+ import java.util.Map;
+ 
+ public class VaseBreakerController extends GamingController {
++    public VaseBreakerController() {
++        this(null);
++    }
++
++    public VaseBreakerController(ClientNetworkManager networkManager) {
++        super(networkManager);
++        this.progressService = new MinigameProgressService(networkManager);
++    }
++
+     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
+-    private final MinigameProgressService progressService =
+-        new MinigameProgressService();
++    private final MinigameProgressService progressService;
+     public Result startStage(int stageNumber) {
+         Result access = progressService.checkStageAccess(  MinigameType.VASEBREAKER, stageNumber);
+         if (!access.success()) {
+diff --git a/src/main/java/controllers/miniGamesController/WallnutBowlingController.java b/src/main/java/controllers/miniGamesController/WallnutBowlingController.java
+index ba92367..0f1aba0 100644
+--- a/src/main/java/controllers/miniGamesController/WallnutBowlingController.java
++++ b/src/main/java/controllers/miniGamesController/WallnutBowlingController.java
+@@ -1,6 +1,7 @@
+ package controllers.miniGamesController;
+ 
+ import controllers.GamingController;
++import network.client.ClientNetworkManager;
+ import models.Board.Board;
+ import models.Board.Tile;
+ import models.games.GameState;
+@@ -23,9 +24,17 @@ import java.util.List;
+ import java.util.stream.Collectors;
+ 
+ public class WallnutBowlingController extends GamingController {
++    public WallnutBowlingController() {
++        this(null);
++    }
++
++    public WallnutBowlingController(ClientNetworkManager networkManager) {
++        super(networkManager);
++        this.progressService = new MinigameProgressService(networkManager);
++    }
++
+     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
+-    private final MinigameProgressService progressService =
+-        new MinigameProgressService();
++    private final MinigameProgressService progressService;
+ 
+     private String safeMessage(RuntimeException exception) {
+         String message = exception.getMessage();
+diff --git a/src/main/java/controllers/miniGamesController/ZombotanyController.java b/src/main/java/controllers/miniGamesController/ZombotanyController.java
+index b1ebb82..4083da4 100644
+--- a/src/main/java/controllers/miniGamesController/ZombotanyController.java
++++ b/src/main/java/controllers/miniGamesController/ZombotanyController.java
+@@ -2,6 +2,7 @@ package controllers.miniGamesController;
+ 
+ import Data.loader.PlantData;
+ import controllers.GamingController;
++import network.client.ClientNetworkManager;
+ import models.App;
+ import models.Plant.Plant;
+ import models.Result;
+@@ -16,8 +17,17 @@ import models.minigames.zombotany.Zombotany;
+ import java.util.List;
+ 
+ public class ZombotanyController extends GamingController {
++    public ZombotanyController() {
++        this(null);
++    }
++
++    public ZombotanyController(ClientNetworkManager networkManager) {
++        super(networkManager);
++        this.progressService = new MinigameProgressService(networkManager);
++    }
++
+ 
+-    private final MinigameProgressService progressService = new MinigameProgressService();
++    private final MinigameProgressService progressService;
+ 
+     public Result startStage(int stageNumber) {
+         Result access = progressService.checkStageAccess(MinigameType.ZOMBOTANY, stageNumber);
+diff --git a/src/main/java/models/games/ScoringGame.java b/src/main/java/models/games/ScoringGame.java
+index 884b883..e995eee 100644
+--- a/src/main/java/models/games/ScoringGame.java
++++ b/src/main/java/models/games/ScoringGame.java
+@@ -1,6 +1,5 @@
+ package models.games;
+ 
+-import Data.database.ScoringRepository;
+ import lombok.Getter;
+ import models.App;
+ import models.Board.Board;
+@@ -18,8 +17,8 @@ import java.util.Random;
+ @Getter
+ public class ScoringGame extends Game{
+     private final ScoreTracker scoreTracker = new ScoreTracker();
+-    private final ScoringRepository scoringRepository = new ScoringRepository();
+     private LocalDate scoringDate;
++    private ScoreBreakdown finalBreakdown;
+     private ScoringSunSpawner scoringSunSpawner;
+ 
+     @Override
+@@ -119,21 +118,7 @@ public class ScoringGame extends Game{
+         state.setFinished(true);
+         state.setWon(won);
+         ScoreBreakdown breakdown = scoreTracker.finish(state, won);
++        finalBreakdown = breakdown;
+         state.logEvent(breakdown.format());
+-        User user = App.getInstance().getLoggedInUser();
+-        if (user == null) {
+-            state.logEvent("The score was not saved because no user is logged in.\n");
+-            return;
+-        }
+-
+-        try {
+-            int dailyBest = scoringRepository.saveDailyBest(user,
+-                    scoringDate, breakdown.total(), won
+-            );
+-            state.logEvent("Today's best MeowPoint: " + dailyBest + "\n");
+-        } catch (IllegalStateException exception) {
+-            state.logEvent("The MeowPoint result could not be saved: "
+-                    + exception.getMessage() + "\n");
+-        }
+     }
+ }
+diff --git a/src/main/java/network/client/ClientAuthState.java b/src/main/java/network/client/ClientAuthState.java
+index 99d42dc..e4e76bc 100644
+--- a/src/main/java/network/client/ClientAuthState.java
++++ b/src/main/java/network/client/ClientAuthState.java
+@@ -25,6 +25,7 @@ public final class ClientAuthState {
+         ClientGreenHouseState.clear();
+         ClientShopState.clear();
+         ClientQuestState.clear();
++        ClientMinigameState.clear();
+ 
+         App app = App.getInstance();
+         app.setLoggedInUser(user);
+@@ -37,6 +38,7 @@ public final class ClientAuthState {
+         ClientGreenHouseState.clear();
+         ClientShopState.clear();
+         ClientQuestState.clear();
++        ClientMinigameState.clear();
+ 
+         App app = App.getInstance();
+ 
+diff --git a/src/main/java/network/client/ClientMinigameState.java b/src/main/java/network/client/ClientMinigameState.java
+new file mode 100644
+index 0000000..9fc298e
+--- /dev/null
++++ b/src/main/java/network/client/ClientMinigameState.java
+@@ -0,0 +1,104 @@
++package network.client;
++
++import models.App;
++import models.User;
++import models.minigames.MinigameType;
++import network.protocol.minigame.MinigameProgressDto;
++import network.protocol.minigame.MinigameProgressResponse;
++
++import java.util.EnumMap;
++import java.util.Map;
++
++public final class ClientMinigameState {
++    private static boolean loaded;
++    private static final Map<MinigameType, MinigameProgressDto> progress =
++            new EnumMap<>(MinigameType.class);
++
++    private ClientMinigameState() {
++    }
++
++    public static synchronized void apply(
++            MinigameProgressResponse response
++    ) {
++        if (response == null || !response.isSuccess()) {
++            return;
++        }
++
++        progress.clear();
++        if (response.getProgress() != null) {
++            for (MinigameProgressDto item : response.getProgress()) {
++                if (item != null && item.getType() != null) {
++                    progress.put(item.getType(), item);
++                }
++            }
++        }
++        loaded = true;
++
++        User user = App.getInstance().getLoggedInUser();
++        if (user != null) {
++            user.setMiniGamesPlayed(response.getMiniGamesPlayed());
++        }
++    }
++
++    public static synchronized boolean isLoaded() {
++        return loaded;
++    }
++
++    public static synchronized int highestUnlockedStage(
++            MinigameType type
++    ) {
++        MinigameProgressDto value = progress.get(type);
++        return value == null ? 1 : Math.max(1, value.getHighestUnlockedStage());
++    }
++
++    public static synchronized int highestCompletedStage(
++            MinigameType type
++    ) {
++        MinigameProgressDto value = progress.get(type);
++        return value == null ? 0 : Math.max(0, value.getHighestCompletedStage());
++    }
++
++    public static synchronized boolean isStageUnlocked(
++            MinigameType type,
++            int stageNumber
++    ) {
++        return loaded
++                && type != null
++                && stageNumber >= 1
++                && stageNumber <= highestUnlockedStage(type);
++    }
++
++    public static synchronized void noteLocalWin(
++            MinigameType type,
++            int stageNumber
++    ) {
++        if (!loaded
++                || type == null
++                || stageNumber < 1
++                || stageNumber > 3) {
++            return;
++        }
++
++        int oldUnlocked = highestUnlockedStage(type);
++        int oldCompleted = highestCompletedStage(type);
++        int newCompleted = Math.max(oldCompleted, stageNumber);
++        int newUnlocked = Math.max(
++                oldUnlocked,
++                stageNumber < 3 ? stageNumber + 1 : stageNumber
++        );
++
++        progress.put(
++                type,
++                new MinigameProgressDto(
++                        type,
++                        newUnlocked,
++                        newCompleted
++                )
++        );
++    }
++
++    public static synchronized void clear() {
++        loaded = false;
++        progress.clear();
++    }
++}
+diff --git a/src/main/java/network/client/ClientNetworkManager.java b/src/main/java/network/client/ClientNetworkManager.java
+index ac16938..a149853 100644
+--- a/src/main/java/network/client/ClientNetworkManager.java
++++ b/src/main/java/network/client/ClientNetworkManager.java
+@@ -6,6 +6,7 @@ import network.client.service.GameplayAccountClientService;
+ import network.client.service.GreenHouseClientService;
+ import network.client.service.ShopClientService;
+ import network.client.service.QuestClientService;
++import network.client.service.MinigameClientService;
+ 
+ import java.io.Closeable;
+ import java.io.IOException;
+@@ -26,6 +27,7 @@ public final class ClientNetworkManager implements Closeable {
+     private GreenHouseClientService greenHouseClientService;
+     private ShopClientService shopClientService;
+     private QuestClientService questClientService;
++    private MinigameClientService minigameClientService;
+ 
+     public ClientNetworkManager() {
+         this(
+@@ -90,6 +92,8 @@ public final class ClientNetworkManager implements Closeable {
+                 new ShopClientService(newClient);
+         questClientService =
+                 new QuestClientService(newClient);
++        minigameClientService =
++                new MinigameClientService(newClient);
+     }
+ 
+     public synchronized boolean isConnected() {
+@@ -163,6 +167,15 @@ public final class ClientNetworkManager implements Closeable {
+         return questClientService;
+     }
+ 
++    public synchronized MinigameClientService getMinigameClientService() {
++        if (!isConnected() || minigameClientService == null) {
++            throw new IllegalStateException(
++                    "Client is not connected to server."
++            );
++        }
++        return minigameClientService;
++    }
++
+     public synchronized NetworkClient getNetworkClient() {
+         if (!isConnected()) {
+             throw new IllegalStateException(
+@@ -190,6 +203,7 @@ public final class ClientNetworkManager implements Closeable {
+         greenHouseClientService = null;
+         shopClientService = null;
+         questClientService = null;
++        minigameClientService = null;
+     }
+ 
+     private static int readPort() {
+diff --git a/src/main/java/network/client/MinigameAccountClientMain.java b/src/main/java/network/client/MinigameAccountClientMain.java
+new file mode 100644
+index 0000000..0d1e8fb
+--- /dev/null
++++ b/src/main/java/network/client/MinigameAccountClientMain.java
+@@ -0,0 +1,278 @@
++package network.client;
++
++import models.minigames.MinigameType;
++import network.client.service.AccountClientService;
++import network.client.service.MinigameClientService;
++import network.protocol.auth.LoginRequest;
++import network.protocol.auth.LoginResponse;
++import network.protocol.auth.RegisterRequest;
++import network.protocol.auth.RegisterResponse;
++import network.protocol.minigame.MinigameProgressDto;
++import network.protocol.minigame.MinigameProgressResponse;
++import network.protocol.minigame.ScoringResultResponse;
++import network.server.GameServer;
++
++import java.util.concurrent.TimeUnit;
++
++public final class MinigameAccountClientMain {
++    private static final String HOST = "127.0.0.1";
++    private static final String PASSWORD = "ValidPass1!";
++
++    private MinigameAccountClientMain() {
++    }
++
++    public static void main(String[] args) {
++        String suffix = String.valueOf(System.currentTimeMillis());
++        String username = "minigame-test-" + suffix;
++        String email = "minigame" + suffix + "@example.com";
++
++        try (NetworkClient client = new NetworkClient()) {
++            client.connect(HOST, GameServer.DEFAULT_PORT);
++
++            AccountClientService accountService =
++                    new AccountClientService(client);
++            MinigameClientService minigameService =
++                    new MinigameClientService(client);
++
++            testUnauthenticatedRejected(minigameService);
++            register(accountService, username, email);
++            login(accountService, username);
++            testInitialProgress(minigameService);
++            testLockedStageRejected(minigameService);
++            testStageUnlockingAndCounter(minigameService);
++            testScoringStats(minigameService);
++
++            System.out.println();
++            System.out.println(
++                    "[PASS] All minigame account tests passed."
++            );
++        } catch (Exception exception) {
++            System.err.println();
++            System.err.println(
++                    "[FAIL] Minigame account test failed: "
++                            + exception.getMessage()
++            );
++            exception.printStackTrace();
++        }
++    }
++
++    private static void testUnauthenticatedRejected(
++            MinigameClientService service
++    ) throws Exception {
++        MinigameProgressResponse response = service.getProgress()
++                .get(5, TimeUnit.SECONDS);
++        require(
++                !response.isSuccess(),
++                "Unauthenticated minigame request must fail."
++        );
++        System.out.println(
++                "[PASS] Unauthenticated minigame request rejected"
++        );
++    }
++
++    private static void register(
++            AccountClientService service,
++            String username,
++            String email
++    ) throws Exception {
++        RegisterResponse response = service.register(
++                new RegisterRequest(
++                        username,
++                        PASSWORD,
++                        PASSWORD,
++                        "Minigame Tester",
++                        email,
++                        "male",
++                        1,
++                        "coffee",
++                        "coffee"
++                )
++        ).get(5, TimeUnit.SECONDS);
++
++        require(
++                response.isSuccess(),
++                "Registration failed: " + response.getMessage()
++        );
++        System.out.println("[PASS] Test account registered");
++    }
++
++    private static void login(
++            AccountClientService service,
++            String username
++    ) throws Exception {
++        LoginResponse response = service.login(
++                new LoginRequest(username, PASSWORD, false)
++        ).get(5, TimeUnit.SECONDS);
++
++        require(
++                response.isSuccess(),
++                "Login failed: " + response.getMessage()
++        );
++        System.out.println("[PASS] Test account logged in");
++    }
++
++    private static void testInitialProgress(
++            MinigameClientService service
++    ) throws Exception {
++        MinigameProgressResponse response = service.getProgress()
++                .get(5, TimeUnit.SECONDS);
++        require(response.isSuccess(), response.getMessage());
++        require(
++                response.getProgress().size()
++                        == MinigameType.values().length,
++                "Server must return every minigame type."
++        );
++        for (MinigameProgressDto item : response.getProgress()) {
++            require(
++                    item.getHighestUnlockedStage() == 1,
++                    item.getType() + " must start with stage 1 unlocked."
++            );
++            require(
++                    item.getHighestCompletedStage() == 0,
++                    item.getType() + " must start with no completed stage."
++            );
++        }
++        require(
++                response.getMiniGamesPlayed() == 0,
++                "New account must start with zero completed minigames."
++        );
++        System.out.println(
++                "[PASS] Initial minigame progress loaded from server"
++        );
++    }
++
++    private static void testLockedStageRejected(
++            MinigameClientService service
++    ) throws Exception {
++        MinigameProgressResponse response = service.completeStage(
++                MinigameType.VASEBREAKER,
++                2
++        ).get(5, TimeUnit.SECONDS);
++        require(
++                !response.isSuccess(),
++                "Server must reject completion of a locked stage."
++        );
++        System.out.println(
++                "[PASS] Locked minigame stage completion rejected"
++        );
++    }
++
++    private static void testStageUnlockingAndCounter(
++            MinigameClientService service
++    ) throws Exception {
++        MinigameProgressResponse stage1 = service.completeStage(
++                MinigameType.VASEBREAKER,
++                1
++        ).get(5, TimeUnit.SECONDS);
++        require(stage1.isSuccess(), stage1.getMessage());
++        require(
++                progress(stage1, MinigameType.VASEBREAKER)
++                        .getHighestUnlockedStage() == 2,
++                "Stage 1 completion must unlock stage 2."
++        );
++
++        MinigameProgressResponse stage2 = service.completeStage(
++                MinigameType.VASEBREAKER,
++                2
++        ).get(5, TimeUnit.SECONDS);
++        require(stage2.isSuccess(), stage2.getMessage());
++        require(
++                progress(stage2, MinigameType.VASEBREAKER)
++                        .getHighestUnlockedStage() == 3,
++                "Stage 2 completion must unlock stage 3."
++        );
++
++        MinigameProgressResponse stage3 = service.completeStage(
++                MinigameType.VASEBREAKER,
++                3
++        ).get(5, TimeUnit.SECONDS);
++        require(stage3.isSuccess(), stage3.getMessage());
++        require(
++                progress(stage3, MinigameType.VASEBREAKER)
++                        .getHighestCompletedStage() == 3,
++                "Stage 3 completion must complete the minigame."
++        );
++        require(
++                stage3.getMiniGamesPlayed() == 1,
++                "Completing all three stages must increment mini_games_played once."
++        );
++
++        MinigameProgressResponse repeated = service.completeStage(
++                MinigameType.VASEBREAKER,
++                3
++        ).get(5, TimeUnit.SECONDS);
++        require(repeated.isSuccess(), repeated.getMessage());
++        require(
++                repeated.getMiniGamesPlayed() == 1,
++                "Repeating stage 3 must not increment mini_games_played again."
++        );
++
++        System.out.println(
++                "[PASS] Stage unlocking and completed-minigame counter are server-backed"
++        );
++    }
++
++    private static void testScoringStats(
++            MinigameClientService service
++    ) throws Exception {
++        ScoringResultResponse first = service.submitScoringResult(
++                1234,
++                true
++        ).get(5, TimeUnit.SECONDS);
++        require(first.isSuccess(), first.getMessage());
++        require(
++                first.getDailyBest() == 1234,
++                "First MeowPoint result must become today's best."
++        );
++        require(
++                first.getMostMeowPoint() == 1234
++                        && first.getMaxPoint() == 1234,
++                "Best score statistics must be stored on the server."
++        );
++
++        int gamesAfterFirst = first.getGamesPlayed();
++
++        ScoringResultResponse lower = service.submitScoringResult(
++                500,
++                false
++        ).get(5, TimeUnit.SECONDS);
++        require(lower.isSuccess(), lower.getMessage());
++        require(
++                lower.getDailyBest() == 1234,
++                "A lower score must not replace today's best."
++        );
++        require(
++                lower.getMostMeowPoint() == 1234
++                        && lower.getMaxPoint() == 1234,
++                "A lower score must not reduce stored best statistics."
++        );
++        require(
++                lower.getGamesPlayed() == gamesAfterFirst + 1,
++                "Each MeowPoint run must increment games_played once."
++        );
++
++        System.out.println(
++                "[PASS] MeowPoint score statistics are server-backed"
++        );
++    }
++
++    private static MinigameProgressDto progress(
++            MinigameProgressResponse response,
++            MinigameType type
++    ) {
++        return response.getProgress().stream()
++                .filter(item -> item != null && item.getType() == type)
++                .findFirst()
++                .orElseThrow(
++                        () -> new IllegalStateException(
++                                "Missing progress for " + type
++                        )
++                );
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) {
++            throw new IllegalStateException(message);
++        }
++    }
++}
+diff --git a/src/main/java/network/client/service/MinigameClientService.java b/src/main/java/network/client/service/MinigameClientService.java
+new file mode 100644
+index 0000000..bfc0043
+--- /dev/null
++++ b/src/main/java/network/client/service/MinigameClientService.java
+@@ -0,0 +1,148 @@
++package network.client.service;
++
++import com.fasterxml.jackson.core.JsonProcessingException;
++import models.minigames.MinigameType;
++import network.client.NetworkClient;
++import network.protocol.MessageType;
++import network.protocol.NetworkJsonCodec;
++import network.protocol.NetworkMessage;
++import network.protocol.minigame.MinigameCompleteRequest;
++import network.protocol.minigame.MinigameProgressResponse;
++import network.protocol.minigame.ScoringResultRequest;
++import network.protocol.minigame.ScoringResultResponse;
++
++import java.io.IOException;
++import java.util.UUID;
++import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.CompletionException;
++
++public class MinigameClientService {
++    private final NetworkClient networkClient;
++    private final NetworkJsonCodec codec = new NetworkJsonCodec();
++
++    public MinigameClientService(NetworkClient networkClient) {
++        this.networkClient = networkClient;
++    }
++
++    public CompletableFuture<MinigameProgressResponse> getProgress()
++            throws IOException {
++        NetworkMessage request = new NetworkMessage(
++                MessageType.MINIGAME_PROGRESS_GET_REQUEST,
++                UUID.randomUUID().toString(),
++                null
++        );
++        return networkClient.sendRequest(request)
++                .thenApply(this::decodeProgressResponse);
++    }
++
++    public CompletableFuture<MinigameProgressResponse> completeStage(
++            MinigameType type,
++            int stageNumber
++    ) throws IOException {
++        try {
++            String payload = codec.encodePayload(
++                    new MinigameCompleteRequest(type, stageNumber)
++            );
++            NetworkMessage request = new NetworkMessage(
++                    MessageType.MINIGAME_COMPLETE_REQUEST,
++                    UUID.randomUUID().toString(),
++                    payload
++            );
++            return networkClient.sendRequest(request)
++                    .thenApply(this::decodeProgressResponse);
++        } catch (JsonProcessingException exception) {
++            return CompletableFuture.failedFuture(exception);
++        }
++    }
++
++    public CompletableFuture<ScoringResultResponse> submitScoringResult(
++            int score,
++            boolean won
++    ) throws IOException {
++        try {
++            String payload = codec.encodePayload(
++                    new ScoringResultRequest(score, won)
++            );
++            NetworkMessage request = new NetworkMessage(
++                    MessageType.SCORING_RESULT_REQUEST,
++                    UUID.randomUUID().toString(),
++                    payload
++            );
++            return networkClient.sendRequest(request)
++                    .thenApply(this::decodeScoringResponse);
++        } catch (JsonProcessingException exception) {
++            return CompletableFuture.failedFuture(exception);
++        }
++    }
++
++    private MinigameProgressResponse decodeProgressResponse(
++            NetworkMessage message
++    ) {
++        if (message == null) {
++            throw new CompletionException(
++                    new IOException("Server returned no minigame response.")
++            );
++        }
++        if (message.getType() == MessageType.ERROR) {
++            return new MinigameProgressResponse(
++                    false,
++                    message.getPayload(),
++                    java.util.List.of(),
++                    0
++            );
++        }
++        if (message.getType() != MessageType.MINIGAME_PROGRESS_GET_RESPONSE
++                && message.getType() != MessageType.MINIGAME_COMPLETE_RESPONSE) {
++            throw new CompletionException(
++                    new IOException(
++                            "Unexpected minigame response type: "
++                                    + message.getType()
++                    )
++            );
++        }
++        try {
++            return codec.decodePayload(
++                    message.getPayload(),
++                    MinigameProgressResponse.class
++            );
++        } catch (JsonProcessingException exception) {
++            throw new CompletionException(exception);
++        }
++    }
++
++    private ScoringResultResponse decodeScoringResponse(
++            NetworkMessage message
++    ) {
++        if (message == null) {
++            throw new CompletionException(
++                    new IOException("Server returned no scoring response.")
++            );
++        }
++        if (message.getType() == MessageType.ERROR) {
++            return new ScoringResultResponse(
++                    false,
++                    message.getPayload(),
++                    0,
++                    0,
++                    0,
++                    0
++            );
++        }
++        if (message.getType() != MessageType.SCORING_RESULT_RESPONSE) {
++            throw new CompletionException(
++                    new IOException(
++                            "Unexpected scoring response type: "
++                                    + message.getType()
++                    )
++            );
++        }
++        try {
++            return codec.decodePayload(
++                    message.getPayload(),
++                    ScoringResultResponse.class
++            );
++        } catch (JsonProcessingException exception) {
++            throw new CompletionException(exception);
++        }
++    }
++}
+diff --git a/src/main/java/network/protocol/MessageType.java b/src/main/java/network/protocol/MessageType.java
+index 22318c8..6fb3714 100644
+--- a/src/main/java/network/protocol/MessageType.java
++++ b/src/main/java/network/protocol/MessageType.java
+@@ -75,5 +75,12 @@ public enum MessageType {
+     QUEST_RUN_RECORD_REQUEST,
+     QUEST_RUN_RECORD_RESPONSE,
+ 
++    MINIGAME_PROGRESS_GET_REQUEST,
++    MINIGAME_PROGRESS_GET_RESPONSE,
++    MINIGAME_COMPLETE_REQUEST,
++    MINIGAME_COMPLETE_RESPONSE,
++    SCORING_RESULT_REQUEST,
++    SCORING_RESULT_RESPONSE,
++
+     ERROR
+ }
+diff --git a/src/main/java/network/protocol/minigame/MinigameCompleteRequest.java b/src/main/java/network/protocol/minigame/MinigameCompleteRequest.java
+new file mode 100644
+index 0000000..25dffb3
+--- /dev/null
++++ b/src/main/java/network/protocol/minigame/MinigameCompleteRequest.java
+@@ -0,0 +1,35 @@
++package network.protocol.minigame;
++
++import models.minigames.MinigameType;
++
++public class MinigameCompleteRequest {
++    private MinigameType type;
++    private int stageNumber;
++
++    public MinigameCompleteRequest() {
++    }
++
++    public MinigameCompleteRequest(
++            MinigameType type,
++            int stageNumber
++    ) {
++        this.type = type;
++        this.stageNumber = stageNumber;
++    }
++
++    public MinigameType getType() {
++        return type;
++    }
++
++    public void setType(MinigameType type) {
++        this.type = type;
++    }
++
++    public int getStageNumber() {
++        return stageNumber;
++    }
++
++    public void setStageNumber(int stageNumber) {
++        this.stageNumber = stageNumber;
++    }
++}
+diff --git a/src/main/java/network/protocol/minigame/MinigameProgressDto.java b/src/main/java/network/protocol/minigame/MinigameProgressDto.java
+new file mode 100644
+index 0000000..7016ff5
+--- /dev/null
++++ b/src/main/java/network/protocol/minigame/MinigameProgressDto.java
+@@ -0,0 +1,46 @@
++package network.protocol.minigame;
++
++import models.minigames.MinigameType;
++
++public class MinigameProgressDto {
++    private MinigameType type;
++    private int highestUnlockedStage;
++    private int highestCompletedStage;
++
++    public MinigameProgressDto() {
++    }
++
++    public MinigameProgressDto(
++            MinigameType type,
++            int highestUnlockedStage,
++            int highestCompletedStage
++    ) {
++        this.type = type;
++        this.highestUnlockedStage = highestUnlockedStage;
++        this.highestCompletedStage = highestCompletedStage;
++    }
++
++    public MinigameType getType() {
++        return type;
++    }
++
++    public void setType(MinigameType type) {
++        this.type = type;
++    }
++
++    public int getHighestUnlockedStage() {
++        return highestUnlockedStage;
++    }
++
++    public void setHighestUnlockedStage(int highestUnlockedStage) {
++        this.highestUnlockedStage = highestUnlockedStage;
++    }
++
++    public int getHighestCompletedStage() {
++        return highestCompletedStage;
++    }
++
++    public void setHighestCompletedStage(int highestCompletedStage) {
++        this.highestCompletedStage = highestCompletedStage;
++    }
++}
+diff --git a/src/main/java/network/protocol/minigame/MinigameProgressResponse.java b/src/main/java/network/protocol/minigame/MinigameProgressResponse.java
+new file mode 100644
+index 0000000..af1ff23
+--- /dev/null
++++ b/src/main/java/network/protocol/minigame/MinigameProgressResponse.java
+@@ -0,0 +1,62 @@
++package network.protocol.minigame;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class MinigameProgressResponse {
++    private boolean success;
++    private String message;
++    private List<MinigameProgressDto> progress = new ArrayList<>();
++    private int miniGamesPlayed;
++
++    public MinigameProgressResponse() {
++    }
++
++    public MinigameProgressResponse(
++            boolean success,
++            String message,
++            List<MinigameProgressDto> progress,
++            int miniGamesPlayed
++    ) {
++        this.success = success;
++        this.message = message;
++        this.progress = progress == null
++                ? new ArrayList<>()
++                : new ArrayList<>(progress);
++        this.miniGamesPlayed = miniGamesPlayed;
++    }
++
++    public boolean isSuccess() {
++        return success;
++    }
++
++    public void setSuccess(boolean success) {
++        this.success = success;
++    }
++
++    public String getMessage() {
++        return message;
++    }
++
++    public void setMessage(String message) {
++        this.message = message;
++    }
++
++    public List<MinigameProgressDto> getProgress() {
++        return progress;
++    }
++
++    public void setProgress(List<MinigameProgressDto> progress) {
++        this.progress = progress == null
++                ? new ArrayList<>()
++                : new ArrayList<>(progress);
++    }
++
++    public int getMiniGamesPlayed() {
++        return miniGamesPlayed;
++    }
++
++    public void setMiniGamesPlayed(int miniGamesPlayed) {
++        this.miniGamesPlayed = miniGamesPlayed;
++    }
++}
+diff --git a/src/main/java/network/protocol/minigame/ScoringResultRequest.java b/src/main/java/network/protocol/minigame/ScoringResultRequest.java
+new file mode 100644
+index 0000000..8ce124b
+--- /dev/null
++++ b/src/main/java/network/protocol/minigame/ScoringResultRequest.java
+@@ -0,0 +1,30 @@
++package network.protocol.minigame;
++
++public class ScoringResultRequest {
++    private int score;
++    private boolean won;
++
++    public ScoringResultRequest() {
++    }
++
++    public ScoringResultRequest(int score, boolean won) {
++        this.score = score;
++        this.won = won;
++    }
++
++    public int getScore() {
++        return score;
++    }
++
++    public void setScore(int score) {
++        this.score = score;
++    }
++
++    public boolean isWon() {
++        return won;
++    }
++
++    public void setWon(boolean won) {
++        this.won = won;
++    }
++}
+diff --git a/src/main/java/network/protocol/minigame/ScoringResultResponse.java b/src/main/java/network/protocol/minigame/ScoringResultResponse.java
+new file mode 100644
+index 0000000..d7aa360
+--- /dev/null
++++ b/src/main/java/network/protocol/minigame/ScoringResultResponse.java
+@@ -0,0 +1,77 @@
++package network.protocol.minigame;
++
++public class ScoringResultResponse {
++    private boolean success;
++    private String message;
++    private int dailyBest;
++    private int mostMeowPoint;
++    private int maxPoint;
++    private int gamesPlayed;
++
++    public ScoringResultResponse() {
++    }
++
++    public ScoringResultResponse(
++            boolean success,
++            String message,
++            int dailyBest,
++            int mostMeowPoint,
++            int maxPoint,
++            int gamesPlayed
++    ) {
++        this.success = success;
++        this.message = message;
++        this.dailyBest = dailyBest;
++        this.mostMeowPoint = mostMeowPoint;
++        this.maxPoint = maxPoint;
++        this.gamesPlayed = gamesPlayed;
++    }
++
++    public boolean isSuccess() {
++        return success;
++    }
++
++    public void setSuccess(boolean success) {
++        this.success = success;
++    }
++
++    public String getMessage() {
++        return message;
++    }
++
++    public void setMessage(String message) {
++        this.message = message;
++    }
++
++    public int getDailyBest() {
++        return dailyBest;
++    }
++
++    public void setDailyBest(int dailyBest) {
++        this.dailyBest = dailyBest;
++    }
++
++    public int getMostMeowPoint() {
++        return mostMeowPoint;
++    }
++
++    public void setMostMeowPoint(int mostMeowPoint) {
++        this.mostMeowPoint = mostMeowPoint;
++    }
++
++    public int getMaxPoint() {
++        return maxPoint;
++    }
++
++    public void setMaxPoint(int maxPoint) {
++        this.maxPoint = maxPoint;
++    }
++
++    public int getGamesPlayed() {
++        return gamesPlayed;
++    }
++
++    public void setGamesPlayed(int gamesPlayed) {
++        this.gamesPlayed = gamesPlayed;
++    }
++}
+diff --git a/src/main/java/network/server/MessageRouter.java b/src/main/java/network/server/MessageRouter.java
+index f531550..e01d361 100644
+--- a/src/main/java/network/server/MessageRouter.java
++++ b/src/main/java/network/server/MessageRouter.java
+@@ -9,6 +9,7 @@ import network.server.service.GameplayAccountService;
+ import network.server.service.GreenHouseService;
+ import network.server.service.ShopService;
+ import network.server.service.QuestAccountService;
++import network.server.service.MinigameAccountService;
+ 
+ public class MessageRouter {
+     private final AuthService authService =
+@@ -32,6 +33,9 @@ public class MessageRouter {
+     private final QuestAccountService questAccountService =
+             new QuestAccountService();
+ 
++    private final MinigameAccountService minigameAccountService =
++            new MinigameAccountService();
++
+     public NetworkMessage route(
+             ClientConnection connection,
+             NetworkMessage message
+@@ -292,6 +296,30 @@ public class MessageRouter {
+             );
+         }
+ 
++        if (message.getType()
++                == MessageType.MINIGAME_PROGRESS_GET_REQUEST) {
++            return minigameAccountService.handleGet(
++                    connection,
++                    message
++            );
++        }
++
++        if (message.getType()
++                == MessageType.MINIGAME_COMPLETE_REQUEST) {
++            return minigameAccountService.handleComplete(
++                    connection,
++                    message
++            );
++        }
++
++        if (message.getType()
++                == MessageType.SCORING_RESULT_REQUEST) {
++            return minigameAccountService.handleScoringResult(
++                    connection,
++                    message
++            );
++        }
++
+         return NetworkMessage.error(
+                 message.getRequestId(),
+                 "Unsupported message type: "
+diff --git a/src/main/java/network/server/service/MinigameAccountService.java b/src/main/java/network/server/service/MinigameAccountService.java
+new file mode 100644
+index 0000000..3275953
+--- /dev/null
++++ b/src/main/java/network/server/service/MinigameAccountService.java
+@@ -0,0 +1,313 @@
++package network.server.service;
++
++import Data.database.MinigameProgressRepository;
++import Data.database.NewsRepository;
++import Data.database.ScoringRepository;
++import Data.database.UserRepository;
++import com.fasterxml.jackson.core.JsonProcessingException;
++import models.User;
++import models.meowPoint.ScoringRules;
++import models.minigames.MinigameType;
++import network.protocol.MessageType;
++import network.protocol.NetworkJsonCodec;
++import network.protocol.NetworkMessage;
++import network.protocol.minigame.MinigameCompleteRequest;
++import network.protocol.minigame.MinigameProgressDto;
++import network.protocol.minigame.MinigameProgressResponse;
++import network.protocol.minigame.ScoringResultRequest;
++import network.protocol.minigame.ScoringResultResponse;
++import network.server.ClientConnection;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class MinigameAccountService {
++    private final MinigameProgressRepository progressRepository =
++            new MinigameProgressRepository();
++    private final NewsRepository newsRepository = new NewsRepository();
++    private final UserRepository userRepository = new UserRepository();
++    private final ScoringRepository scoringRepository = new ScoringRepository();
++    private final NetworkJsonCodec codec = new NetworkJsonCodec();
++
++    public NetworkMessage handleGet(
++            ClientConnection connection,
++            NetworkMessage message
++    ) {
++        Integer userId = authenticatedUserId(connection);
++        MinigameProgressResponse response = userId == null
++                ? progressFailure("You must log in first.")
++                : snapshot(userId, true, "Minigame progress loaded.");
++        return encodeProgress(
++                message.getRequestId(),
++                MessageType.MINIGAME_PROGRESS_GET_RESPONSE,
++                response
++        );
++    }
++
++    public NetworkMessage handleComplete(
++            ClientConnection connection,
++            NetworkMessage message
++    ) {
++        Integer userId = authenticatedUserId(connection);
++        if (userId == null) {
++            return encodeProgress(
++                    message.getRequestId(),
++                    MessageType.MINIGAME_COMPLETE_RESPONSE,
++                    progressFailure("You must log in first.")
++            );
++        }
++        if (message.getPayload() == null) {
++            return NetworkMessage.error(
++                    message.getRequestId(),
++                    "Minigame completion payload is required."
++            );
++        }
++
++        try {
++            MinigameCompleteRequest request = codec.decodePayload(
++                    message.getPayload(),
++                    MinigameCompleteRequest.class
++            );
++            if (request == null || request.getType() == null) {
++                return encodeProgress(
++                        message.getRequestId(),
++                        MessageType.MINIGAME_COMPLETE_RESPONSE,
++                        snapshot(userId, false, "Minigame type is required.")
++                );
++            }
++            if (request.getStageNumber() < 1
++                    || request.getStageNumber() > 3) {
++                return encodeProgress(
++                        message.getRequestId(),
++                        MessageType.MINIGAME_COMPLETE_RESPONSE,
++                        snapshot(userId, false, "Minigame stage must be 1, 2, or 3.")
++                );
++            }
++            if (!progressRepository.isStageUnlocked(
++                    userId,
++                    request.getType(),
++                    request.getStageNumber()
++            )) {
++                return encodeProgress(
++                        message.getRequestId(),
++                        MessageType.MINIGAME_COMPLETE_RESPONSE,
++                        snapshot(userId, false, "That minigame stage is locked.")
++                );
++            }
++
++            MinigameProgressRepository.Completion completion =
++                    progressRepository.completeStage(
++                            userId,
++                            request.getType(),
++                            request.getStageNumber()
++                    );
++            if (!completion.saved()) {
++                return encodeProgress(
++                        message.getRequestId(),
++                        MessageType.MINIGAME_COMPLETE_RESPONSE,
++                        snapshot(userId, false, "Minigame progress could not be saved.")
++                );
++            }
++
++            createProgressNews(userId, request.getType(), completion);
++
++            return encodeProgress(
++                    message.getRequestId(),
++                    MessageType.MINIGAME_COMPLETE_RESPONSE,
++                    snapshot(userId, true, "Minigame progress saved.")
++            );
++        } catch (JsonProcessingException exception) {
++            return NetworkMessage.error(
++                    message.getRequestId(),
++                    "Invalid minigame completion payload."
++            );
++        }
++    }
++
++    public NetworkMessage handleScoringResult(
++            ClientConnection connection,
++            NetworkMessage message
++    ) {
++        Integer userId = authenticatedUserId(connection);
++        if (userId == null) {
++            return encodeScoring(
++                    message.getRequestId(),
++                    scoringFailure("You must log in first.")
++            );
++        }
++        if (message.getPayload() == null) {
++            return NetworkMessage.error(
++                    message.getRequestId(),
++                    "Scoring result payload is required."
++            );
++        }
++
++        try {
++            ScoringResultRequest request = codec.decodePayload(
++                    message.getPayload(),
++                    ScoringResultRequest.class
++            );
++            if (request == null || request.getScore() < 0) {
++                return encodeScoring(
++                        message.getRequestId(),
++                        scoringFailure("MeowPoint score cannot be negative.")
++                );
++            }
++
++            User user = userRepository.getUserById(userId);
++            if (user == null) {
++                return encodeScoring(
++                        message.getRequestId(),
++                        scoringFailure("The logged-in user no longer exists.")
++                );
++            }
++
++            int dailyBest = scoringRepository.saveDailyBest(
++                    user,
++                    ScoringRules.currentDate(),
++                    request.getScore(),
++                    request.isWon()
++            );
++
++            return encodeScoring(
++                    message.getRequestId(),
++                    new ScoringResultResponse(
++                            true,
++                            "MeowPoint result saved.",
++                            dailyBest,
++                            user.getMostMeowPoint(),
++                            user.getMaxPoint(),
++                            user.getGamesPlayed()
++                    )
++            );
++        } catch (JsonProcessingException exception) {
++            return NetworkMessage.error(
++                    message.getRequestId(),
++                    "Invalid scoring result payload."
++            );
++        } catch (IllegalArgumentException | IllegalStateException exception) {
++            return encodeScoring(
++                    message.getRequestId(),
++                    scoringFailure(exception.getMessage())
++            );
++        }
++    }
++
++    private void createProgressNews(
++            int userId,
++            MinigameType type,
++            MinigameProgressRepository.Completion completion
++    ) {
++        if (completion.newlyUnlockedStage() > 0) {
++            newsRepository.createNewsForUser(
++                    userId,
++                    "New " + type.getDisplayName()
++                            + " stage unlocked: Stage "
++                            + completion.newlyUnlockedStage() + "."
++            );
++        }
++        if (completion.minigameNewlyCompleted()) {
++            newsRepository.createNewsForUser(
++                    userId,
++                    "You completed all three stages of "
++                            + type.getDisplayName() + "."
++            );
++        }
++    }
++
++    private MinigameProgressResponse snapshot(
++            int userId,
++            boolean success,
++            String message
++    ) {
++        User user = userRepository.getUserById(userId);
++        if (user == null) {
++            return progressFailure("The logged-in user no longer exists.");
++        }
++
++        List<MinigameProgressDto> values = new ArrayList<>();
++        for (MinigameType type : MinigameType.values()) {
++            MinigameProgressRepository.Progress progress =
++                    progressRepository.getProgress(userId, type);
++            values.add(
++                    new MinigameProgressDto(
++                            type,
++                            progress.highestUnlockedStage(),
++                            progress.highestCompletedStage()
++                    )
++            );
++        }
++
++        return new MinigameProgressResponse(
++                success,
++                message,
++                values,
++                user.getMiniGamesPlayed()
++        );
++    }
++
++    private MinigameProgressResponse progressFailure(String message) {
++        return new MinigameProgressResponse(
++                false,
++                message,
++                List.of(),
++                0
++        );
++    }
++
++    private ScoringResultResponse scoringFailure(String message) {
++        return new ScoringResultResponse(
++                false,
++                message == null ? "Scoring result could not be saved." : message,
++                0,
++                0,
++                0,
++                0
++        );
++    }
++
++    private NetworkMessage encodeProgress(
++            String requestId,
++            MessageType type,
++            MinigameProgressResponse response
++    ) {
++        try {
++            return new NetworkMessage(
++                    type,
++                    requestId,
++                    codec.encodePayload(response)
++            );
++        } catch (JsonProcessingException exception) {
++            return NetworkMessage.error(
++                    requestId,
++                    "Could not create minigame progress response."
++            );
++        }
++    }
++
++    private NetworkMessage encodeScoring(
++            String requestId,
++            ScoringResultResponse response
++    ) {
++        try {
++            return new NetworkMessage(
++                    MessageType.SCORING_RESULT_RESPONSE,
++                    requestId,
++                    codec.encodePayload(response)
++            );
++        } catch (JsonProcessingException exception) {
++            return NetworkMessage.error(
++                    requestId,
++                    "Could not create scoring response."
++            );
++        }
++    }
++
++    private Integer authenticatedUserId(ClientConnection connection) {
++        if (connection == null
++                || !connection.getSession().isAuthenticated()) {
++            return null;
++        }
++        return connection.getSession().getUserId();
++    }
++}
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/beghouled/BeghouledScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/beghouled/BeghouledScreen.java
+index e284962..7d364f7 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/beghouled/BeghouledScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/beghouled/BeghouledScreen.java
+@@ -71,7 +71,7 @@ public class BeghouledScreen extends BaseMinigameScreen {
+     public BeghouledScreen(PvzGame game, int stageNumber) {
+         super(game, BG_LEFT, BG_MID, BG_RIGHT);
+         this.stageNumber = stageNumber;
+-        controller = new BeghouledController();
++        controller = new BeghouledController(game.getNetworkManager());
+         Result result = controller.startStage(stageNumber);
+         if (!result.success()) {
+             throw new IllegalStateException(result.message());
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/iZombie/IZombieScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/iZombie/IZombieScreen.java
+index a34a6e0..af31137 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/iZombie/IZombieScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/iZombie/IZombieScreen.java
+@@ -79,7 +79,7 @@ public class IZombieScreen extends BaseMinigameScreen {
+     public IZombieScreen(PvzGame game, int stageNumber) {
+         super(game, BG_LEFT, BG_MID, BG_RIGHT);
+         this.stageNumber = stageNumber;
+-        controller = new IZombieController();
++        controller = new IZombieController(game.getNetworkManager());
+         Result result = controller.startStage(stageNumber);
+         if (!result.success()) {
+             throw new IllegalStateException(result.message());
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/meowPoint/MeowPointScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/meowPoint/MeowPointScreen.java
+index bf0967a..b27792b 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/meowPoint/MeowPointScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/meowPoint/MeowPointScreen.java
+@@ -29,6 +29,7 @@ import models.meowPoint.ScoreTracker;
+ import models.meowPoint.ScoringRules;
+ import models.meowPoint.ScoringSunSpawner;
+ import models.sun.Sun;
++import network.protocol.minigame.ScoringResultResponse;
+ import views.graphical.gameplay.actors.PlantActor;
+ import views.graphical.gameplay.board.BoardArea;
+ import views.graphical.gameplay.board.BoardTransform;
+@@ -44,16 +45,18 @@ import views.graphical.ui.PlantSelectionMenuTable;
+ import views.graphical.ui.PlantSlotsBar;
+ import views.graphical.ui.StartGameMenuPopup;
+ 
++import java.io.IOException;
+ import java.util.ArrayDeque;
+ import java.util.Deque;
+ import java.util.List;
++import java.util.concurrent.CompletableFuture;
+ 
+ public class MeowPointScreen extends BaseMinigameScreen {
+     private static final String BG_LEFT = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE_LEFT";
+     private static final String BG_MID = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE";
+     private static final String BG_RIGHT = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE_RIGHT";
+ 
+-    private final GamingController gamingController = new GamingController();
++    private final GamingController gamingController;
+     private final ScoringGame scoringGame;
+     private final BoardTransform boardTransform;
+ 
+@@ -71,6 +74,7 @@ public class MeowPointScreen extends BaseMinigameScreen {
+     private PlantSlotsBar selectionSlotsBar;
+ 
+     private boolean gameplayViewsBuilt;
++    private boolean scoringResultRequestStarted;
+     private float renderDelta;
+ 
+     private int lastQuickKillBonus = 0;
+@@ -88,6 +92,7 @@ public class MeowPointScreen extends BaseMinigameScreen {
+     public MeowPointScreen(PvzGame game) {
+         super(game, BG_LEFT, BG_MID, BG_RIGHT);
+ 
++        gamingController = new GamingController(game.getNetworkManager());
+         scoringGame = new ScoringGame();
+         App.getInstance().setCurrentGame(scoringGame);
+ 
+@@ -442,8 +447,8 @@ public class MeowPointScreen extends BaseMinigameScreen {
+             return;
+         }
+ 
+-        var breakdown = scoringGame.getScoreTracker().finish(state, won);
+-
++        ScoreBreakdown breakdown = scoringGame.getScoreTracker().finish(state, won);
++        recordScoringResultOnServer(breakdown, won);
+ 
+         if (breakdown.gardenPreservationBonus() > 0) {
+             queueNotice("GARDEN PRESERVATION!\n(Plants, Mowers & Sun remaining)\n+" + breakdown.gardenPreservationBonus());
+@@ -483,6 +488,92 @@ public class MeowPointScreen extends BaseMinigameScreen {
+         }
+     }
+ 
++    private void recordScoringResultOnServer(
++            ScoreBreakdown breakdown,
++            boolean won
++    ) {
++        if (scoringResultRequestStarted || breakdown == null) {
++            return;
++        }
++        scoringResultRequestStarted = true;
++
++        game.getNetworkManager()
++                .ensureConnectedAsync()
++                .thenCompose(
++                        ignored -> sendScoringResult(
++                                breakdown.total(),
++                                won
++                        )
++                )
++                .whenComplete(
++                        (response, throwable) ->
++                                Gdx.app.postRunnable(
++                                        () -> finishScoringResult(
++                                                response,
++                                                throwable
++                                        )
++                                )
++                );
++    }
++
++    private CompletableFuture<ScoringResultResponse> sendScoringResult(
++            int score,
++            boolean won
++    ) {
++        try {
++            return game.getNetworkManager()
++                    .getMinigameClientService()
++                    .submitScoringResult(score, won);
++        } catch (IOException | RuntimeException exception) {
++            return CompletableFuture.failedFuture(exception);
++        }
++    }
++
++    private void finishScoringResult(
++            ScoringResultResponse response,
++            Throwable throwable
++    ) {
++        if (throwable != null) {
++            game.notifyError(
++                    "Could not save MeowPoint result on server: "
++                            + rootMessage(throwable)
++            );
++            return;
++        }
++
++        if (response == null || !response.isSuccess()) {
++            game.notifyError(
++                    response == null
++                            ? "MeowPoint result could not be saved."
++                            : response.getMessage()
++            );
++            return;
++        }
++
++        User user = App.getInstance().getLoggedInUser();
++        if (user != null) {
++            user.setMostMeowPoint(response.getMostMeowPoint());
++            user.setMaxPoint(response.getMaxPoint());
++            user.setGamesPlayed(response.getGamesPlayed());
++        }
++
++        game.notifyInfo(
++                "Today's best MeowPoint: "
++                        + response.getDailyBest()
++        );
++    }
++
++    private static String rootMessage(Throwable throwable) {
++        Throwable current = throwable;
++        while (current.getCause() != null) {
++            current = current.getCause();
++        }
++        String message = current.getMessage();
++        return message == null || message.isBlank()
++                ? current.getClass().getSimpleName()
++                : message;
++    }
++
+     @Override
+     protected void restartMinigame() {
+         removeModal();
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/minigames.java b/src/main/java/views/graphical/screens/minigamesScreen/minigames.java
+index 149e02b..ddc9a29 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/minigames.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/minigames.java
+@@ -1,7 +1,5 @@
+ package views.graphical.screens.minigamesScreen;
+ 
+-import Data.database.MinigameProgressRepository;
+-
+ import com.badlogic.gdx.Gdx;
+ import com.badlogic.gdx.graphics.Color;
+ import com.badlogic.gdx.graphics.Texture;
+@@ -24,10 +22,12 @@ import com.badlogic.gdx.utils.Scaling;
+ 
+ import graphics.PvzGame;
+ 
+-import models.App;
+-import models.Result;
+-import models.User;
+ import models.minigames.MinigameType;
++import network.client.ClientMinigameState;
++import network.protocol.minigame.MinigameProgressResponse;
++
++import java.io.IOException;
++import java.util.concurrent.CompletableFuture;
+ 
+ import views.graphical.gameplay.manager.AudioManager;
+ import views.graphical.screens.BaseScreen;
+@@ -49,7 +49,6 @@ public class minigames extends BaseScreen {
+ 
+     private static final float ICON_SCALE = 0.72f;
+     private final MinigameType minigameType;
+-    private final MinigameProgressRepository progressRepository = new MinigameProgressRepository();
+ 
+     private ScrollPane mapScroll;
+     private Group mapContainer;
+@@ -59,6 +58,8 @@ public class minigames extends BaseScreen {
+ 
+     private int highestUnlockedStage = 1;
+     private int highestCompletedStage = 0;
++    private boolean progressReady;
++    private boolean disposed;
+ 
+     public minigames(PvzGame game, MinigameType minigameType) {
+         super(game);
+@@ -68,15 +69,100 @@ public class minigames extends BaseScreen {
+     }
+ 
+     private void loadProgress() {
+-        User user = App.getInstance().getLoggedInUser();
+-        if (user == null) {
++        applyCachedProgress();
++
++        game.getNetworkManager()
++                .ensureConnectedAsync()
++                .thenCompose(ignored -> requestProgress())
++                .whenComplete(
++                        (response, throwable) ->
++                                Gdx.app.postRunnable(
++                                        () -> finishProgressLoad(
++                                                response,
++                                                throwable
++                                        )
++                                )
++                );
++    }
++
++    private CompletableFuture<MinigameProgressResponse> requestProgress() {
++        try {
++            return game.getNetworkManager()
++                    .getMinigameClientService()
++                    .getProgress();
++        } catch (IOException | RuntimeException exception) {
++            return CompletableFuture.failedFuture(exception);
++        }
++    }
++
++    private void finishProgressLoad(
++            MinigameProgressResponse response,
++            Throwable throwable
++    ) {
++        if (disposed) {
++            return;
++        }
++        if (throwable != null) {
++            game.notifyError(
++                    "Could not load minigame progress from server: "
++                            + rootMessage(throwable)
++            );
++            return;
++        }
++
++        if (response == null || !response.isSuccess()) {
++            game.notifyError(
++                    response == null
++                            ? "Minigame progress could not be loaded."
++                            : response.getMessage()
++            );
++            return;
++        }
++
++        ClientMinigameState.apply(response);
++        applyCachedProgress();
++        rebuildUi();
++    }
++
++    private void applyCachedProgress() {
++        progressReady = ClientMinigameState.isLoaded();
++        if (!progressReady) {
+             highestUnlockedStage = 1;
+             highestCompletedStage = 0;
+             return;
+         }
+-        MinigameProgressRepository.Progress progress = progressRepository.getProgress(user.getId(), minigameType);
+-        highestUnlockedStage = progress.highestUnlockedStage();
+-        highestCompletedStage = progress.highestCompletedStage();
++
++        highestUnlockedStage =
++                ClientMinigameState.highestUnlockedStage(minigameType);
++        highestCompletedStage =
++                ClientMinigameState.highestCompletedStage(minigameType);
++    }
++
++    private void rebuildUi() {
++        if (mapScroll != null) {
++            mapScroll.remove();
++            mapScroll = null;
++        }
++        if (backgroundTexture != null) {
++            backgroundTexture.dispose();
++            backgroundTexture = null;
++        }
++        if (worldTexture != null) {
++            worldTexture.dispose();
++            worldTexture = null;
++        }
++        buildUi();
++    }
++
++    private static String rootMessage(Throwable throwable) {
++        Throwable current = throwable;
++        while (current.getCause() != null) {
++            current = current.getCause();
++        }
++        String message = current.getMessage();
++        return message == null || message.isBlank()
++                ? current.getClass().getSimpleName()
++                : message;
+     }
+ 
+     private void buildUi() {
+@@ -343,8 +429,8 @@ public class minigames extends BaseScreen {
+         );
+ 
+ 
+-        if (stageNumber
+-                <= highestUnlockedStage) {
++        if (progressReady
++                && stageNumber <= highestUnlockedStage) {
+ 
+             group.setTouchable(
+                     Touchable.enabled
+@@ -704,6 +790,7 @@ public class minigames extends BaseScreen {
+ 
+     @Override
+     public void dispose() {
++        disposed = true;
+ 
+         if (backgroundTexture != null) {
+             backgroundTexture.dispose();
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/vaseBreaker/VaseBreakerScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/vaseBreaker/VaseBreakerScreen.java
+index 8ef2257..0d2f958 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/vaseBreaker/VaseBreakerScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/vaseBreaker/VaseBreakerScreen.java
+@@ -70,7 +70,7 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
+     public VaseBreakerScreen(PvzGame game, int stageNumber) {
+         super(game, BG_LEFT, BG_MID, BG_RIGHT);
+         this.stageNumber = stageNumber;
+-        controller = new VaseBreakerController();
++        controller = new VaseBreakerController(game.getNetworkManager());
+         Result result = controller.startStage(stageNumber);
+ 
+         if (!result.success()) {
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/wallnutBowling/WallnutBowlingScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/wallnutBowling/WallnutBowlingScreen.java
+index d2e9149..b13a020 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/wallnutBowling/WallnutBowlingScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/wallnutBowling/WallnutBowlingScreen.java
+@@ -69,7 +69,7 @@ public class WallnutBowlingScreen extends BaseMinigameScreen {
+         super(game, BG_LEFT, BG_MID, BG_RIGHT);
+ 
+         this.stageNumber = stageNumber;
+-        this.controller = new WallnutBowlingController();
++        this.controller = new WallnutBowlingController(game.getNetworkManager());
+ 
+         Result result = controller.startStage(stageNumber);
+         if (!result.success()) {
+diff --git a/src/main/java/views/graphical/screens/minigamesScreen/zombotany/ZombotanyScreen.java b/src/main/java/views/graphical/screens/minigamesScreen/zombotany/ZombotanyScreen.java
+index 425f34d..2fbfd3c 100644
+--- a/src/main/java/views/graphical/screens/minigamesScreen/zombotany/ZombotanyScreen.java
++++ b/src/main/java/views/graphical/screens/minigamesScreen/zombotany/ZombotanyScreen.java
+@@ -85,7 +85,7 @@ public class ZombotanyScreen extends BaseMinigameScreen {
+         this.stageNumber = stageNumber;
+ 
+         this.controller =
+-                new ZombotanyController();
++                new ZombotanyController(game.getNetworkManager());
+ 
+         BoardArea boardArea =
+                 new BoardArea(
