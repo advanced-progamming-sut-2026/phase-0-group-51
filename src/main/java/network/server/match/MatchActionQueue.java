@@ -14,11 +14,13 @@ public final class MatchActionQueue {
 
     private final ConcurrentLinkedQueue<PendingAction> queue =
         new ConcurrentLinkedQueue<>();
+
     public void submit(MatchRole role, GameActionDto action) {
         Objects.requireNonNull(role, "role");
         Objects.requireNonNull(action, "action");
         queue.add(new PendingAction(role, action));
     }
+
     public List<ActionResultDto> applyAll(MultiplayerIZombieGame game) {
         Objects.requireNonNull(game, "game");
         List<ActionResultDto> results = new ArrayList<>();
@@ -50,6 +52,7 @@ public final class MatchActionQueue {
         }
 
         try {
+
             int x = action.getColumn() + 1;
             int y = action.getRow() + 1;
 
@@ -59,13 +62,14 @@ public final class MatchActionQueue {
                 case PLACE_PLANT ->
                     game.placePlant(pending.role(), action.getEntityName(), x, y);
                 default ->
-                {
-                    return ActionResultDto.rejected(
-                        actionId, action.getType() + " is not supported yet.");
-                }
+                    {
+                        return ActionResultDto.rejected(
+                            actionId, action.getType() + " is not supported yet.");
+                    }
             }
             return ActionResultDto.accepted(actionId);
         } catch (RuntimeException e) {
+
             String reason = e.getMessage() == null ? "Action rejected." : e.getMessage();
             return ActionResultDto.rejected(actionId, reason);
         }
