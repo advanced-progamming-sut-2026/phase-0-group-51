@@ -2,12 +2,14 @@ package network.server;
 
 import network.protocol.MessageType;
 import network.protocol.NetworkMessage;
-import network.server.service.AuthService;
-import network.server.service.ProfileService;
-import network.server.service.PlantOwnershipService;
-import network.server.service.GameplayAccountService;
-import network.server.service.GreenHouseService;
-import network.server.service.ShopService;
+import network.server.matchmaking.InviteManager;
+import network.server.matchmaking.MatchmakingService;
+import network.server.matchmaking.MatchmakingStateRegistry;
+import network.server.matchmaking.RandomQueue;
+import network.server.presence.ConnectionRegistry;
+import network.server.service.*;
+
+import java.util.Objects;
 
 public class MessageRouter {
     private final AuthService authService =
@@ -27,7 +29,45 @@ public class MessageRouter {
 
     private final ShopService shopService =
             new ShopService();
+    private final ConnectionRegistry connectionRegistry;
+    private final RandomQueue randomQueue =
+            new RandomQueue();
 
+    private final InviteManager inviteManager =
+            new InviteManager();
+
+    private final MatchmakingStateRegistry
+            matchmakingStates =
+            new MatchmakingStateRegistry();
+
+    private final MatchmakingService
+            matchmakingService;
+
+    private final ReactionService
+            reactionService;
+    public MessageRouter(
+            ConnectionRegistry connectionRegistry
+    ) {
+
+        this.connectionRegistry =
+                Objects.requireNonNull(
+                        connectionRegistry,
+                        "connectionRegistry cannot be null"
+                );
+        this.matchmakingService =
+                new MatchmakingService(
+                        connectionRegistry,
+                        randomQueue,
+                        inviteManager,
+                        matchmakingStates
+                );
+
+        this.reactionService =
+                new ReactionService(
+                        connectionRegistry
+                        // active match directory بعداً
+                );
+    }
     public NetworkMessage route(
             ClientConnection connection,
             NetworkMessage message
@@ -52,17 +92,42 @@ public class MessageRouter {
         }
         if (message.getType()
                 == MessageType.LOGIN_REQUEST) {
-            return authService.handleLogin(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response = authService.handleLogin(connection, message);
+            registerAuthenticatedConnection(connection);
+            return response;
         }
         if (message.getType()
                 == MessageType.LOGOUT_REQUEST) {
-            return authService.handleLogout(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response =
+                    authService.handleLogout(
+                            connection,
+                            message
+                    );
+
+            if (!connection
+                    .getSession()
+                    .isAuthenticated()) {
+
+                String username =
+                        connectionRegistry.unregister(
+                                connection
+                        );
+
+
+                if (username != null) {
+
+                    System.out.println(
+                            "[PRESENCE] "
+                                    + username
+                                    + " logged out"
+                    );
+                }
+            }
+
+
+            return response;
         }
         if (message.getType()
                 == MessageType.FORGOT_PASSWORD_START_REQUEST) {
@@ -89,10 +154,10 @@ public class MessageRouter {
         }
         if (message.getType()
                 == MessageType.RESUME_SESSION_REQUEST) {
-            return authService.handleResumeSession(
-                    connection,
-                    message
-            );
+
+            NetworkMessage response = authService.handleResumeSession(connection, message);
+            registerAuthenticatedConnection(connection);
+            return response;
         }
 
         if (message.getType()
@@ -260,6 +325,39 @@ public class MessageRouter {
                 message.getRequestId(),
                 "Unsupported message type: "
                         + message.getType()
+        );
+    }
+    private void registerAuthenticatedConnection(
+            ClientConnection connection
+    ) {
+
+        if (connection == null || connection.getSession() == null || !connection.getSession().isAuthenticated()) {
+
+            return;
+        }
+
+
+        String username = connection.getSession().getUsername();
+
+
+        if (username == null || username.isBlank()) {
+            return;
+        }
+
+
+        connectionRegistry.register(
+                username,
+                connection
+        );
+
+
+        System.out.println(
+                "[PRESENCE] "
+                        + username
+                        + " is ONLINE"
+                        + " | online users = "
+                        + connectionRegistry
+                        .getOnlineUserCount()
         );
     }
 }
