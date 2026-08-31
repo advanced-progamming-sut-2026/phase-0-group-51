@@ -61,11 +61,10 @@ public final class MatchActionQueue {
                     game.placeZombie(pending.role(), action.getEntityName(), x, y);
                 case PLACE_PLANT ->
                     game.placePlant(pending.role(), action.getEntityName(), x, y);
-                default ->
-                    {
-                        return ActionResultDto.rejected(
-                            actionId, action.getType() + " is not supported yet.");
-                    }
+                case PLUCK_PLANT ->
+                    game.pluckPlant(pending.role(), x, y);
+                case FEED_PLANT ->
+                    game.feedPlant(pending.role(), x, y);
             }
             return ActionResultDto.accepted(actionId);
         } catch (RuntimeException e) {

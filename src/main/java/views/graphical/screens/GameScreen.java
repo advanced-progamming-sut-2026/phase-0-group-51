@@ -65,6 +65,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.effects.BigWaveBeachWaterAnimationSystem;
 import views.graphical.gameplay.hud.GameHud;
 import views.graphical.gameplay.grave.GraveAnimationSystem;
+import views.graphical.gameplay.grave.NecromancyTileOverlayManager;
 import views.graphical.gameplay.frostbite.IceFloorAnimationSystem;
 import views.graphical.gameplay.frostbite.FrozenZombieIceAnimationSystem;
 import views.graphical.gameplay.effects.SandstormAnimationSystem;
@@ -183,6 +184,7 @@ public class GameScreen extends BaseScreen {
     private final FrozenZombieIceAnimationSystem frozenZombieIceAnimationSystem;
     private final MowerAnimationSystem mowerAnimationSystem;
     private final GraveAnimationSystem graveAnimationSystem;
+    private NecromancyTileOverlayManager necromancyTileOverlayManager;
     private final ZombieLevelPreview zombieLevelPreview;
 
 
@@ -402,9 +404,23 @@ public class GameScreen extends BaseScreen {
             graveAnimationSystem
         );
 
+        necromancyTileOverlayManager = new NecromancyTileOverlayManager(
+            game.getPamPlayer(),
+            boardTransform,
+            theme
+        );
+        worldStage.addActor(necromancyTileOverlayManager);
+        necromancyTileOverlayManager.setZIndex(entityDepthLayer.getZIndex());
+
         if (currentGame.getGameState() != null
             && currentGame.getGameState().getBoard() != null) {
             graveAnimationSystem.sync(
+                currentGame
+                    .getGameState()
+                    .getBoard()
+            );
+
+            necromancyTileOverlayManager.sync(
                 currentGame
                     .getGameState()
                     .getBoard()
@@ -948,6 +964,9 @@ public class GameScreen extends BaseScreen {
 
         graveAnimationSystem.toFront();
         graveAnimationSystem.sync(board);
+        if (necromancyTileOverlayManager != null) {
+            necromancyTileOverlayManager.sync(board);
+        }
 
         if (protectedPlantOverlayManager != null) {
             protectedPlantOverlayManager.sync(
@@ -1659,6 +1678,12 @@ public class GameScreen extends BaseScreen {
             graveAnimationSystem.sync(
                 board
             );
+
+            if (necromancyTileOverlayManager != null) {
+                necromancyTileOverlayManager.sync(
+                    board
+                );
+            }
 
             Collection<Zombie> visualZombies =
                 currentGameForVisuals

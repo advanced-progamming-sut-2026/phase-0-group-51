@@ -869,4 +869,41 @@ public class Board {
         target.setPosX(col);
         to.setPlant(target);
     }
+
+    private static final int NECROMANCY_RIGHT_COLUMNS = 4;
+
+    public java.util.List<Tile> assignNecromancyTiles(int count, java.util.Random random) {
+        java.util.List<Tile> candidates = new java.util.ArrayList<>();
+        int startColumn = Math.max(0, getColumnCount() - NECROMANCY_RIGHT_COLUMNS);
+        for (int lane = 0; lane < getLaneCount(); lane++) {
+            for (int column = startColumn; column < getColumnCount(); column++) {
+                Tile tile = getTile(lane, column);
+                if (tile != null && !tile.isWater()) {
+                    candidates.add(tile);
+                }
+            }
+        }
+        java.util.Collections.shuffle(candidates, random);
+        java.util.List<Tile> chosen = new java.util.ArrayList<>();
+        int limit = Math.min(Math.max(0, count), candidates.size());
+        for (int i = 0; i < limit; i++) {
+            Tile tile = candidates.get(i);
+            tile.setNecromancyTile(true);
+            chosen.add(tile);
+        }
+        return chosen;
+    }
+
+    public java.util.List<Tile> getNecromancyTiles() {
+        java.util.List<Tile> result = new java.util.ArrayList<>();
+        for (int lane = 0; lane < getLaneCount(); lane++) {
+            for (int column = 0; column < getColumnCount(); column++) {
+                Tile tile = getTile(lane, column);
+                if (tile != null && tile.isNecromancyTile()) {
+                    result.add(tile);
+                }
+            }
+        }
+        return result;
+    }
 }

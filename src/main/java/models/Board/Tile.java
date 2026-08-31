@@ -29,6 +29,7 @@ public class Tile {
     private boolean frosted = false;
     private IceFloorDirection iceFloorDirection;
     private Grave grave;
+    private boolean necromancyTile = false;
 
     public static final float TILEWIDTH = 80f;
     public static final float TILEHEIGHT = 70f;
