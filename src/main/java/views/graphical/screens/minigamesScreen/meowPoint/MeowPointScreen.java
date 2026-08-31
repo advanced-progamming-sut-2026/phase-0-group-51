@@ -29,6 +29,7 @@ import models.meowPoint.ScoreTracker;
 import models.meowPoint.ScoringRules;
 import models.meowPoint.ScoringSunSpawner;
 import models.sun.Sun;
+import network.protocol.minigame.ScoringResultResponse;
 import views.graphical.gameplay.actors.PlantActor;
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
@@ -44,16 +45,18 @@ import views.graphical.ui.PlantSelectionMenuTable;
 import views.graphical.ui.PlantSlotsBar;
 import views.graphical.ui.StartGameMenuPopup;
 
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class MeowPointScreen extends BaseMinigameScreen {
     private static final String BG_LEFT = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE_LEFT";
     private static final String BG_MID = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE";
     private static final String BG_RIGHT = "IMAGE_BACKGROUNDS_CARNIVAL_TEXTURE_RIGHT";
 
-    private final GamingController gamingController = new GamingController();
+    private final GamingController gamingController;
     private final ScoringGame scoringGame;
     private final BoardTransform boardTransform;
 
@@ -71,6 +74,7 @@ public class MeowPointScreen extends BaseMinigameScreen {
     private PlantSlotsBar selectionSlotsBar;
 
     private boolean gameplayViewsBuilt;
+    private boolean scoringResultRequestStarted;
     private float renderDelta;
 
     private int lastQuickKillBonus = 0;
@@ -88,6 +92,7 @@ public class MeowPointScreen extends BaseMinigameScreen {
     public MeowPointScreen(PvzGame game) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
 
+        gamingController = new GamingController(game.getNetworkManager());
         scoringGame = new ScoringGame();
         App.getInstance().setCurrentGame(scoringGame);
 
@@ -442,8 +447,8 @@ public class MeowPointScreen extends BaseMinigameScreen {
             return;
         }
 
-        var breakdown = scoringGame.getScoreTracker().finish(state, won);
-
+        ScoreBreakdown breakdown = scoringGame.getScoreTracker().finish(state, won);
+        recordScoringResultOnServer(breakdown, won);
 
         if (breakdown.gardenPreservationBonus() > 0) {
             queueNotice("GARDEN PRESERVATION!\n(Plants, Mowers & Sun remaining)\n+" + breakdown.gardenPreservationBonus());
@@ -481,6 +486,92 @@ public class MeowPointScreen extends BaseMinigameScreen {
             uiStage.addActor(losePopup);
             losePopup.toFront();
         }
+    }
+
+    private void recordScoringResultOnServer(
+            ScoreBreakdown breakdown,
+            boolean won
+    ) {
+        if (scoringResultRequestStarted || breakdown == null) {
+            return;
+        }
+        scoringResultRequestStarted = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(
+                        ignored -> sendScoringResult(
+                                breakdown.total(),
+                                won
+                        )
+                )
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishScoringResult(
+                                                response,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<ScoringResultResponse> sendScoringResult(
+            int score,
+            boolean won
+    ) {
+        try {
+            return game.getNetworkManager()
+                    .getMinigameClientService()
+                    .submitScoringResult(score, won);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishScoringResult(
+            ScoringResultResponse response,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            game.notifyError(
+                    "Could not save MeowPoint result on server: "
+                            + rootMessage(throwable)
+            );
+            return;
+        }
+
+        if (response == null || !response.isSuccess()) {
+            game.notifyError(
+                    response == null
+                            ? "MeowPoint result could not be saved."
+                            : response.getMessage()
+            );
+            return;
+        }
+
+        User user = App.getInstance().getLoggedInUser();
+        if (user != null) {
+            user.setMostMeowPoint(response.getMostMeowPoint());
+            user.setMaxPoint(response.getMaxPoint());
+            user.setGamesPlayed(response.getGamesPlayed());
+        }
+
+        game.notifyInfo(
+                "Today's best MeowPoint: "
+                        + response.getDailyBest()
+        );
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
     }
 
     @Override

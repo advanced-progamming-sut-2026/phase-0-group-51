@@ -1,14 +1,11 @@
 package models.games;
 
-import Data.database.NewsRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import lombok.Getter;
 import lombok.Setter;
-import models.App;
 import models.Plant.Plant;
 import models.Plant.PlantFactory;
-import models.User;
 import models.Zombie.Zombie;
 import models.Board.Board;
 import models.Board.Tile;
@@ -26,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,6 +38,8 @@ public class GameState {
     private final int ticksPerSecond = 10;
     private final Board board;
     private Set<Zombie> zombiesInTheGame = new HashSet<>();
+    private final Set<String> pendingZombieDiscoveries =
+            new LinkedHashSet<>();
     private final Map<Integer, Integer> cooldownUntilTick = new HashMap<>();
     private int sun;
     private int plantFoodCount;
@@ -780,10 +780,22 @@ public class GameState {
         if (zombie == null || !zombiesInTheGame.add(zombie)) {
             return;
         }
-        User user = App.getInstance().getLoggedInUser();
-        if (user != null) {
-            new NewsRepository().discoverZombie(user.getId(), zombie.getAlias());
+
+        String alias = zombie.getAlias();
+        if (alias != null && !alias.isBlank()) {
+            pendingZombieDiscoveries.add(alias);
         }
+    }
+
+    public List<String> consumeZombieDiscoveries() {
+        if (pendingZombieDiscoveries.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> result =
+                new ArrayList<>(pendingZombieDiscoveries);
+        pendingZombieDiscoveries.clear();
+        return result;
     }
     public void removeZombie(Zombie zombie) {
         zombiesInTheGame.remove(zombie);

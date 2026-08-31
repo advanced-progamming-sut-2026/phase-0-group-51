@@ -10,6 +10,7 @@ import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 import network.protocol.profile.ProfileDataDto;
+import network.protocol.profile.ProfileDifficultyUpdateRequest;
 import network.protocol.profile.ProfilePasswordChangeRequest;
 import network.protocol.profile.ProfileResponse;
 import network.protocol.profile.ProfileUpdateRequest;
@@ -67,6 +68,40 @@ public class ProfileService {
             return NetworkMessage.error(
                     message.getRequestId(),
                     "Invalid profile update payload."
+            );
+        }
+    }
+
+    public NetworkMessage handleDifficultyUpdate(
+            ClientConnection connection,
+            NetworkMessage message
+    ) {
+        if (message.getPayload() == null) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Difficulty update payload is required."
+            );
+        }
+
+        try {
+            ProfileDifficultyUpdateRequest request =
+                    codec.decodePayload(
+                            message.getPayload(),
+                            ProfileDifficultyUpdateRequest.class
+                    );
+
+            ProfileResponse response =
+                    updateDifficulty(connection, request);
+
+            return encodeResponse(
+                    MessageType.PROFILE_DIFFICULTY_UPDATE_RESPONSE,
+                    message.getRequestId(),
+                    response
+            );
+        } catch (JsonProcessingException exception) {
+            return NetworkMessage.error(
+                    message.getRequestId(),
+                    "Invalid difficulty update payload."
             );
         }
     }
@@ -192,6 +227,45 @@ public class ProfileService {
 
         return success(
                 "Profile updated successfully.",
+                toProfile(freshUser)
+        );
+    }
+
+    private ProfileResponse updateDifficulty(
+            ClientConnection connection,
+            ProfileDifficultyUpdateRequest request
+    ) {
+        User user = currentUser(connection);
+
+        if (user == null) {
+            return failure("You must log in first.");
+        }
+
+        if (request == null) {
+            return failure("Difficulty level is required.");
+        }
+
+        int difficultyLevel = request.getDifficultyLevel();
+        if (difficultyLevel < 1 || difficultyLevel > 5) {
+            return failure("Difficulty level must be between 1 and 5.");
+        }
+
+        if (!userRepository.updateDifficulty(
+                user.getUsername(),
+                difficultyLevel
+        )) {
+            return failure("Difficulty level could not be saved.");
+        }
+
+        User freshUser = userRepository.getUserById(user.getId());
+        if (freshUser == null) {
+            return failure(
+                    "Difficulty level was saved but the profile could not be reloaded."
+            );
+        }
+
+        return success(
+                "Difficulty level changed successfully.",
                 toProfile(freshUser)
         );
     }

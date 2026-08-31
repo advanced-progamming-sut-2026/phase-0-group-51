@@ -39,8 +39,11 @@ public class ZombotanyScreen extends BaseMinigameScreen {
     private static final String BG_RIGHT =
             "IMAGE_BACKGROUNDS_JOUST_TEXTURE_RIGHT";
 
-    private static final String PEASHOOTER_ZOMBIE_TEXTURE =
-            "assets/zombieP.png";
+    private static final String PEASHOOTER_ZOMBIE_WALK_TEXTURE =
+            "assets/zombieP_walk.png";
+
+    private static final String PEASHOOTER_ZOMBIE_SHOOT_TEXTURE =
+            "assets/zombieP_shoot.png";
 
     private final ZombotanyController controller;
 
@@ -66,7 +69,8 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
     private float renderDelta;
 
-    private Texture peashooterZombieTexture;
+    private Texture peashooterZombieWalkTexture;
+    private Texture peashooterZombieShootTexture;
     private final Map<Zombie, Actor> customZombieActors =
             new HashMap<>();
 
@@ -85,7 +89,7 @@ public class ZombotanyScreen extends BaseMinigameScreen {
         this.stageNumber = stageNumber;
 
         this.controller =
-                new ZombotanyController();
+                new ZombotanyController(game.getNetworkManager());
 
         BoardArea boardArea =
                 new BoardArea(
@@ -107,21 +111,25 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
         gameHud.hideGameHud();
 
-        peashooterZombieTexture =
+        peashooterZombieWalkTexture =
                 new Texture(
                         Gdx.files.internal(
-                                PEASHOOTER_ZOMBIE_TEXTURE
+                                PEASHOOTER_ZOMBIE_WALK_TEXTURE
                         )
                 );
 
-        peashooterZombieTexture.setFilter(
-                Texture.TextureFilter.Nearest,
-                Texture.TextureFilter.Nearest
-        );
+        peashooterZombieShootTexture =
+                new Texture(
+                        Gdx.files.internal(
+                                PEASHOOTER_ZOMBIE_SHOOT_TEXTURE
+                        )
+                );
 
-        peashooterZombieTexture.setWrap(
-                Texture.TextureWrap.ClampToEdge,
-                Texture.TextureWrap.ClampToEdge
+        configurePeashooterTexture(
+                peashooterZombieWalkTexture
+        );
+        configurePeashooterTexture(
+                peashooterZombieShootTexture
         );
 
 
@@ -401,6 +409,19 @@ public class ZombotanyScreen extends BaseMinigameScreen {
     }
 
 
+    private void configurePeashooterTexture(
+            Texture texture
+    ) {
+        texture.setFilter(
+                Texture.TextureFilter.Nearest,
+                Texture.TextureFilter.Nearest
+        );
+        texture.setWrap(
+                Texture.TextureWrap.ClampToEdge,
+                Texture.TextureWrap.ClampToEdge
+        );
+    }
+
     private void syncCustomZombies() {
 
         if (gameModel == null) {
@@ -508,7 +529,8 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
             return new ZombotanyPeashooterActor(
                     zombie,
-                    peashooterZombieTexture,
+                    peashooterZombieWalkTexture,
+                    peashooterZombieShootTexture,
                     boardTransform
             );
         }
@@ -641,6 +663,7 @@ public class ZombotanyScreen extends BaseMinigameScreen {
             boolean won
     ) {
 
+        controller.recordGraphicalResult();
         gameHud.hideGameHud();
 
 
@@ -758,12 +781,17 @@ public class ZombotanyScreen extends BaseMinigameScreen {
          * Texture
          */
         if (
-                peashooterZombieTexture != null
+                peashooterZombieWalkTexture != null
         ) {
+            peashooterZombieWalkTexture.dispose();
+            peashooterZombieWalkTexture = null;
+        }
 
-            peashooterZombieTexture.dispose();
-
-            peashooterZombieTexture = null;
+        if (
+                peashooterZombieShootTexture != null
+        ) {
+            peashooterZombieShootTexture.dispose();
+            peashooterZombieShootTexture = null;
         }
 
 

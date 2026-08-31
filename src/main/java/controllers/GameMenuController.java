@@ -3,7 +3,6 @@ package controllers;
 import Data.database.NewsRepository;
 import Data.database.PlantRepository;
 import Data.database.ProgressRepository;
-import Data.database.UserRepository;
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
 import models.App;
@@ -292,23 +291,11 @@ public class GameMenuController {
     }
 
     public Result cheatAdd(int amount, String kind) {
-        if(amount <= 0){
-            return new Result(false, "Please enter a positive amount." , null);
-        } else if (kind.equalsIgnoreCase("coin")) {
-            User user = App.loggedInUser;
-            user.setCoins(user.getCoins() + amount);
-            UserRepository userRepository = new UserRepository();
-            userRepository.updateStats(user);
-            return new Result(true, "Successfully added coins." , null);
-        } else if (kind.equalsIgnoreCase("diamond")) {
-            User user = App.loggedInUser;
-            user.setGems(user.getGems() + amount);
-            UserRepository userRepository = new UserRepository();
-            userRepository.updateStats(user);
-            return new Result(true, "Successfully added gems." , null);
-        } else{
-            return new Result(false, "You can only add coin or diamond please specify." , null);
-        }
+        return new Result(
+                false,
+                "Account currency cheats are server-backed. Use the graphical debug controls.\n",
+                null
+        );
     }
 
     public Result handleEnterMenu(String menuName) {

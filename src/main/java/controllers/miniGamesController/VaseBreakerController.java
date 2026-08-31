@@ -1,6 +1,7 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import network.client.ClientNetworkManager;
 import models.Board.Board;
 import models.Board.Tile;
 import models.games.GameState;
@@ -23,9 +24,18 @@ import java.util.List;
 import java.util.Map;
 
 public class VaseBreakerController extends GamingController {
+    public VaseBreakerController() {
+        this(null);
+    }
+
+    public VaseBreakerController(ClientNetworkManager networkManager) {
+        super(networkManager);
+        this.progressService = new MinigameProgressService(networkManager);
+    }
+
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
-    private final MinigameProgressService progressService =
-        new MinigameProgressService();
+    private final MinigameProgressService progressService;
+    private boolean winProgressRecorded;
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(  MinigameType.VASEBREAKER, stageNumber);
         if (!access.success()) {
@@ -368,9 +378,7 @@ public class VaseBreakerController extends GamingController {
 
         String ending;
         if (won) {
-            String progressMessage = progressService.recordWin(
-                MinigameType.VASEBREAKER, stageNumber
-            );
+            String progressMessage = recordWinOnce(stageNumber);
             ending =
                 "You completed Vasebreaker stage " + stageNumber
                     + " and returned to the Travel Log.\n"
@@ -379,6 +387,32 @@ public class VaseBreakerController extends GamingController {
             ending = "You lost Vasebreaker stage " + stageNumber + " and returned to the Travel Log.\n";
         }
         return success(message + ending);
+    }
+
+
+    public void recordGraphicalResult() {
+        VaseBreaker game = activeGame();
+
+        if (game == null
+                || game.getGameState() == null
+                || !game.getGameState().isFinished()
+                || !game.getGameState().isWon()) {
+            return;
+        }
+
+        recordWinOnce(game.getStage().getStageNumber());
+    }
+
+    private String recordWinOnce(int stageNumber) {
+        if (winProgressRecorded) {
+            return "";
+        }
+
+        winProgressRecorded = true;
+        return progressService.recordWin(
+                MinigameType.VASEBREAKER,
+                stageNumber
+        );
     }
 
     public Result showMap() {

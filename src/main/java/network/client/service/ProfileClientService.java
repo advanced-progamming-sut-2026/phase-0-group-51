@@ -5,6 +5,7 @@ import network.client.NetworkClient;
 import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
+import network.protocol.profile.ProfileDifficultyUpdateRequest;
 import network.protocol.profile.ProfilePasswordChangeRequest;
 import network.protocol.profile.ProfileResponse;
 import network.protocol.profile.ProfileUpdateRequest;
@@ -62,6 +63,30 @@ public class ProfileClientService {
                         response -> decodeResponse(
                                 response,
                                 MessageType.PROFILE_UPDATE_RESPONSE
+                        )
+                );
+    }
+
+    public CompletableFuture<ProfileResponse> updateDifficulty(
+            int difficultyLevel
+    ) throws IOException {
+        String payload = codec.encodePayload(
+                new ProfileDifficultyUpdateRequest(difficultyLevel)
+        );
+
+        NetworkMessage message =
+                new NetworkMessage(
+                        MessageType.PROFILE_DIFFICULTY_UPDATE_REQUEST,
+                        UUID.randomUUID().toString(),
+                        payload
+                );
+
+        return networkClient
+                .sendRequest(message)
+                .thenApply(
+                        response -> decodeResponse(
+                                response,
+                                MessageType.PROFILE_DIFFICULTY_UPDATE_RESPONSE
                         )
                 );
     }

@@ -1,5 +1,6 @@
 package views.graphical.ui.leaderBoard;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -16,10 +17,7 @@ import graphics.PvzGame;
 import models.App;
 import models.User;
 import models.leaderBoard.LeaderBoard;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 
@@ -46,10 +44,12 @@ public class LeaderBoardPopup extends Table{
     private static final float ROW_WIDTH = 700f;
     private static final float ROW_HEIGHT = 112f;
     private final LeaderboardMenuController controller;
-    private List<LeaderBoard> entriesCache = new ArrayList<>();
+    private final List<LeaderBoard> entriesCache = new ArrayList<>();
+    private final Table leaderboardList = new Table();
     private int sortMode = 0;
-    private String currentSortName = "MAX MEOW POINT";
-    private boolean sortMenuOpen = false;
+    private boolean sortAscending;
+    private String currentSortName = "MAX MEOW POINT DESC";
+    private Label sortLabel;
     private final PvzGame game;
 
 
@@ -59,7 +59,9 @@ public class LeaderBoardPopup extends Table{
         }
 
         this.game = game;
-        this.controller = new LeaderboardMenuController();
+        this.controller = new LeaderboardMenuController(
+                game.getNetworkManager()
+        );
 
         setFillParent(true);
         setTouchable(Touchable.enabled);
@@ -87,6 +89,7 @@ public class LeaderBoardPopup extends Table{
         );
 
         buildUi();
+        loadLeaderboardFromServer();
     }
 
     private void buildUi() {
@@ -107,76 +110,9 @@ public class LeaderBoardPopup extends Table{
                 .top()
                 .row();
 
-        Table list = new Table();
-        list.top();
-
-        list.padTop(
-                12f
-        );
-
-
-        List<LeaderBoard> entries;
-        boolean loadFailed = false;
-        try {
-
-            entries = controller.loadLeaderboardEntries();
-            entriesCache.clear();
-            entriesCache.addAll(entries);
-
-        } catch (
-                IllegalStateException exception
-        ) {
-
-            loadFailed =
-                    true;
-
-            entries =
-                    List.of();
-
-
-            Label error = label(
-                    "Could not load leaderboard",
-                    "medium_outline",
-                    Color.valueOf("7E332B"),
-                    0.70f
-            );
-            error.setWrap(true);
-            error.setAlignment(Align.center);
-            list.add(error)
-                    .width(ROW_WIDTH)
-                    .height(80f)
-                    .center();
-        }
-
-        if (!loadFailed && entries.isEmpty()) {
-            Label empty = label(
-                    "NO REGISTERED PLAYERS",
-                    "medium_outline",
-                    Color.valueOf("6D5B3B"),
-                    0.75f
-            );
-            empty.setAlignment(Align.center);
-            list.add(empty)
-                    .width(ROW_WIDTH)
-                    .height(100f)
-                    .center();
-        } else if (!loadFailed) {
-            String currentUsername = currentUsername();
-
-            for (int i = 0; i < entries.size(); i++) {
-                LeaderBoard entry = entries.get(i);
-                boolean currentUser =
-                        currentUsername != null
-                                && currentUsername.equalsIgnoreCase(entry.username());
-
-                list.add(buildPlayerRow(entry, i + 1, currentUser))
-                        .width(ROW_WIDTH)
-                        .height(ROW_HEIGHT)
-                        .padBottom(5f)
-                        .left()
-                        .row();
-            }
-        }
+        leaderboardList.top();
+        leaderboardList.padTop(12f);
+        showLoadingState();
 
         ScrollPane.ScrollPaneStyle scrollStyle =
                 new ScrollPane.ScrollPaneStyle();
@@ -184,7 +120,7 @@ public class LeaderBoardPopup extends Table{
 
         ScrollPane scrollPane =
                 new ScrollPane(
-                        list,
+                        leaderboardList,
                         scrollStyle
                 );
 
@@ -276,7 +212,7 @@ public class LeaderBoardPopup extends Table{
                         SORT_BUTTON_DOWN
                 );
 
-        Label sortLabel = label(
+        sortLabel = label(
                 currentSortName,
                 "medium_outline",
                 Color.WHITE,
@@ -353,10 +289,14 @@ public class LeaderBoardPopup extends Table{
         LeaderBoardSortPopup popup =
                 new LeaderBoardSortPopup(game,
                         mode -> {
-                            sortMode = mode;
+                            if (sortMode == mode) {
+                                sortAscending = !sortAscending;
+                            } else {
+                                sortMode = mode;
+                                sortAscending = false;
+                            }
                             sortEntries();
-                            clear();
-                            buildUi();
+                            refreshList();
                         }
                 );
 
@@ -835,54 +775,171 @@ public class LeaderBoardPopup extends Table{
     }
 
     private void sortEntries() {
+        String column = sortColumn();
 
-        switch(sortMode){
-
-            case 0:
-                currentSortName = "MAX MEOW POINT";
-
-                entriesCache.sort(
-                        Comparator.comparingInt(
-                                LeaderBoard::highestScore
-                        ).reversed()
+        List<LeaderBoard> sorted =
+                controller.sortLeaderboardEntries(
+                        entriesCache,
+                        column,
+                        sortAscending
                 );
-                break;
 
+        entriesCache.clear();
+        entriesCache.addAll(sorted);
 
-            case 1:
-                currentSortName = "MINIGAMES";
-
-                entriesCache.sort(
-                        Comparator.comparingInt(
-                                LeaderBoard::minigamesCompleted
-                        ).reversed()
-                );
-                break;
-
-
-            case 2:
-                currentSortName = "QUESTS";
-
-                entriesCache.sort(
-                        Comparator.comparingInt(
-                                (LeaderBoard e) ->
-                                        e.dailyQuestsCompleted()
-                                                +
-                                                e.nonDailyQuestsCompleted()
-                        ).reversed()
-                );
-                break;
-
-
-            case 3:
-                currentSortName = "LAST PROGRESS";
-
-                entriesCache.sort(
-                        Comparator.comparingInt(
-                                LeaderBoard::completedChapter
-                        ).reversed()
-                );
-                break;
+        currentSortName = sortLabelText();
+        if (sortLabel != null) {
+            sortLabel.setText(currentSortName);
         }
+    }
+
+    private String sortColumn() {
+        return switch (sortMode) {
+            case 1 -> "minigames";
+            case 2 -> "daily-quests";
+            case 3 -> "non-daily-quests";
+            case 4 -> "progress";
+            default -> "score";
+        };
+    }
+
+    private String sortLabelText() {
+        String name = switch (sortMode) {
+            case 1 -> "MINIGAMES";
+            case 2 -> "DAILY QUESTS";
+            case 3 -> "NON-DAILY QUESTS";
+            case 4 -> "LAST PROGRESS";
+            default -> "MAX MEOW POINT";
+        };
+
+        return name + (sortAscending ? " ASC" : " DESC");
+    }
+
+    private void loadLeaderboardFromServer() {
+        showLoadingState();
+
+        controller.loadLeaderboardEntriesAsync(
+                        sortColumn(),
+                        sortAscending
+                )
+                .whenComplete(
+                        (entries, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishLeaderboardLoad(
+                                                entries,
+                                                throwable
+                                        )
+                                )
+                );
+    }
+
+    private void finishLeaderboardLoad(
+            List<LeaderBoard> entries,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            showLoadError(rootMessage(throwable));
+            return;
+        }
+
+        entriesCache.clear();
+        if (entries != null) {
+            entriesCache.addAll(entries);
+        }
+
+        sortEntries();
+        refreshList();
+    }
+
+    private void showLoadingState() {
+        leaderboardList.clearChildren();
+
+        Label loading = label(
+                "LOADING LEADERBOARD...",
+                "medium_outline",
+                Color.valueOf("6D5B3B"),
+                0.70f
+        );
+        loading.setAlignment(Align.center);
+
+        leaderboardList.add(loading)
+                .width(ROW_WIDTH)
+                .height(100f)
+                .center();
+    }
+
+    private void showLoadError(String message) {
+        leaderboardList.clearChildren();
+
+        Label error = label(
+                "Could not load leaderboard\n"
+                        + (message == null ? "" : message),
+                "medium_outline",
+                Color.valueOf("7E332B"),
+                0.58f
+        );
+        error.setWrap(true);
+        error.setAlignment(Align.center);
+
+        leaderboardList.add(error)
+                .width(ROW_WIDTH)
+                .height(100f)
+                .center();
+    }
+
+    private void refreshList() {
+        leaderboardList.clearChildren();
+
+        if (entriesCache.isEmpty()) {
+            Label empty = label(
+                    "NO REGISTERED PLAYERS",
+                    "medium_outline",
+                    Color.valueOf("6D5B3B"),
+                    0.75f
+            );
+            empty.setAlignment(Align.center);
+            leaderboardList.add(empty)
+                    .width(ROW_WIDTH)
+                    .height(100f)
+                    .center();
+            return;
+        }
+
+        String currentUsername = currentUsername();
+
+        for (int i = 0; i < entriesCache.size(); i++) {
+            LeaderBoard entry = entriesCache.get(i);
+            boolean currentUser = currentUsername != null
+                    && currentUsername.equalsIgnoreCase(
+                    entry.username()
+            );
+
+            leaderboardList.add(
+                            buildPlayerRow(
+                                    entry,
+                                    i + 1,
+                                    currentUser
+                            )
+                    )
+                    .width(ROW_WIDTH)
+                    .height(ROW_HEIGHT)
+                    .padBottom(5f)
+                    .left()
+                    .row();
+        }
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+        if (message == null || message.isBlank()) {
+            return current.getClass().getSimpleName();
+        }
+        return message;
     }
 }

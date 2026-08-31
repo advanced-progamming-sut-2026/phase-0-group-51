@@ -10,7 +10,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
-import controllers.CollectionMenuController;
 import Data.loader.PlantRegistry;
 import graphics.PvzGame;
 import models.Result;
@@ -36,8 +35,6 @@ public final class PlantDetailsTable extends Table {
 
     private final PvzGame game;
     private final PlantCard.ViewData data;
-    private final CollectionMenuController controller =
-            new CollectionMenuController();
 
     public PlantDetailsTable(
             PvzGame game,
@@ -590,12 +587,7 @@ public final class PlantDetailsTable extends Table {
                                         ChangeEvent event,
                                         Actor actor
                                 ) {
-                                    handleCollectionAction(
-                                            controller.unlockForTesting(
-                                                    data.plant().name()
-                                            ),
-                                            onBack
-                                    );
+                                    requestDebugPlantUnlock(onBack);
                                 }
                             }
                     );
@@ -707,6 +699,34 @@ public final class PlantDetailsTable extends Table {
                 .padTop(4f);
 
         return actionArea;
+    }
+
+    private void requestDebugPlantUnlock(
+            Runnable onBack
+    ) {
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> {
+                    try {
+                        return game.getNetworkManager()
+                                .getShopClientService()
+                                .debugUnlockPlant(
+                                        data.plant().id()
+                                );
+                    } catch (IOException | RuntimeException exception) {
+                        return failedFuture(exception);
+                    }
+                })
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishServerPlantAction(
+                                                response,
+                                                throwable,
+                                                onBack
+                                        )
+                                )
+                );
     }
 
     private void requestCollectionPlantPurchase(

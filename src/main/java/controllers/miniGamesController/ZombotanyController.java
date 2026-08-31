@@ -2,6 +2,7 @@ package controllers.miniGamesController;
 
 import Data.loader.PlantData;
 import controllers.GamingController;
+import network.client.ClientNetworkManager;
 import models.App;
 import models.Plant.Plant;
 import models.Result;
@@ -16,8 +17,18 @@ import models.minigames.zombotany.Zombotany;
 import java.util.List;
 
 public class ZombotanyController extends GamingController {
+    public ZombotanyController() {
+        this(null);
+    }
 
-    private final MinigameProgressService progressService = new MinigameProgressService();
+    public ZombotanyController(ClientNetworkManager networkManager) {
+        super(networkManager);
+        this.progressService = new MinigameProgressService(networkManager);
+    }
+
+
+    private final MinigameProgressService progressService;
+    private boolean winProgressRecorded;
 
     public Result startStage(int stageNumber) {
         Result access = progressService.checkStageAccess(MinigameType.ZOMBOTANY, stageNumber);
@@ -185,9 +196,35 @@ public class ZombotanyController extends GamingController {
         }
         App.getInstance().setCurrentMenu(Menu.TRAVELLOG_MENU);
         if (state.isWon()) {
-            return progressService.recordWin(MinigameType.ZOMBOTANY, game.getStageNumber());
+            return recordWinOnce(game.getStageNumber());
         }
         return "";
+    }
+
+
+    public void recordGraphicalResult() {
+        Zombotany game = activeGame();
+
+        if (game == null
+                || game.getGameState() == null
+                || !game.getGameState().isFinished()
+                || !game.getGameState().isWon()) {
+            return;
+        }
+
+        recordWinOnce(game.getStageNumber());
+    }
+
+    private String recordWinOnce(int stageNumber) {
+        if (winProgressRecorded) {
+            return "";
+        }
+
+        winProgressRecorded = true;
+        return progressService.recordWin(
+                MinigameType.ZOMBOTANY,
+                stageNumber
+        );
     }
 
     private Zombotany activeGame() {

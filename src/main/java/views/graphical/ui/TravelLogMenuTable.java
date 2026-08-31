@@ -1,6 +1,6 @@
 package views.graphical.ui;
 
-import Data.database.QuestsRepository;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -16,14 +16,14 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
-import controllers.TravelLogController;
 import graphics.PvzGame;
-import models.App;
-import models.Result;
-import models.User;
-import models.quests.QuestType;
 
-import java.util.List;
+import network.client.ClientQuestState;
+import network.protocol.quests.QuestEntryDto;
+import network.protocol.quests.QuestResponse;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 public final class TravelLogMenuTable extends Table {
     private static final String PANEL_BACKGROUND =
@@ -56,7 +56,7 @@ public final class TravelLogMenuTable extends Table {
     private final PvzGame game;
     private final Table contentList;
 
-    private final TravelLogController controller = new TravelLogController();
+    private boolean requestInFlight;
 
     public TravelLogMenuTable(PvzGame game) {
         if (game == null) {
@@ -208,7 +208,7 @@ public final class TravelLogMenuTable extends Table {
         questsTab.setChecked(true);
         questsLayer.toFront();
         closeLayer.toFront();
-        showQuests();
+        loadQuestsFromServer();
     }
 
     private ImageButton createTabButton(
@@ -236,21 +236,21 @@ public final class TravelLogMenuTable extends Table {
     private void showQuests() {
         contentList.clearChildren();
 
-        for (QuestsRepository.QuestEntry entry
-                : controller.getAllQuestEntries()) {
+        if (!ClientQuestState.isLoaded()) {
+            Label loading = new Label(
+                    requestInFlight ? "LOADING QUESTS..." : "QUESTS ARE NOT LOADED",
+                    game.getSkin()
+            );
+            contentList.add(loading).padTop(50f);
+            return;
+        }
 
-            QuestCard card =
-                    new QuestCard(
-                            game,
-                            entry,
-                            controller.getQuestDescription(
-                                    entry
-                            ),
-                            controller.getQuestRewardText(
-                                    entry
-                            ),
-                            () -> claimQuest(entry)
-                    );
+        for (QuestEntryDto entry : ClientQuestState.getEntries()) {
+            QuestCard card = new QuestCard(
+                    game,
+                    entry,
+                    () -> claimQuest(entry.getQuestId())
+            );
 
             contentList.add(card)
                     .growX()
@@ -262,21 +262,110 @@ public final class TravelLogMenuTable extends Table {
         }
     }
 
-
-    private void claimQuest(
-            QuestsRepository.QuestEntry entry
-    ) {
-        Result result =
-                controller.claimQuest(
-                        entry.quest().getId()
-                );
-
-        if (result.success()) {
-            game.notifyInfo(result.message());
-            showQuests();
-        } else {
-            game.notifyError(result.message());
+    private void loadQuestsFromServer() {
+        if (requestInFlight) {
+            return;
         }
+        requestInFlight = true;
+        showQuests();
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendQuestGet())
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishQuestRequest(
+                                                response,
+                                                throwable,
+                                                false
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<QuestResponse> sendQuestGet() {
+        try {
+            return game.getNetworkManager()
+                    .getQuestClientService()
+                    .getQuests();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void claimQuest(int questId) {
+        if (requestInFlight) {
+            return;
+        }
+        requestInFlight = true;
+
+        game.getNetworkManager()
+                .ensureConnectedAsync()
+                .thenCompose(ignored -> sendQuestClaim(questId))
+                .whenComplete(
+                        (response, throwable) ->
+                                Gdx.app.postRunnable(
+                                        () -> finishQuestRequest(
+                                                response,
+                                                throwable,
+                                                true
+                                        )
+                                )
+                );
+    }
+
+    private CompletableFuture<QuestResponse> sendQuestClaim(int questId) {
+        try {
+            return game.getNetworkManager()
+                    .getQuestClientService()
+                    .claimQuest(questId);
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private void finishQuestRequest(
+            QuestResponse response,
+            Throwable throwable,
+            boolean claimRequest
+    ) {
+        requestInFlight = false;
+
+        if (throwable != null) {
+            game.notifyError(
+                    "Quest request failed: " + rootMessage(throwable)
+            );
+            showQuests();
+            return;
+        }
+
+        if (response == null) {
+            game.notifyError("Server returned no quest response.");
+            showQuests();
+            return;
+        }
+
+        ClientQuestState.apply(response, claimRequest && response.isSuccess());
+
+        if (!response.isSuccess()) {
+            game.notifyError(response.getMessage());
+        } else if (claimRequest) {
+            game.notifyInfo(response.getMessage());
+        }
+
+        showQuests();
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank()
+                ? current.getClass().getSimpleName()
+                : message;
     }
 
     private void showMinigames() {

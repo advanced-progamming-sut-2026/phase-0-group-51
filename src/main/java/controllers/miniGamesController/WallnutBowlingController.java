@@ -1,6 +1,7 @@
 package controllers.miniGamesController;
 
 import controllers.GamingController;
+import network.client.ClientNetworkManager;
 import models.Board.Board;
 import models.Board.Tile;
 import models.games.GameState;
@@ -23,9 +24,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class WallnutBowlingController extends GamingController {
+    public WallnutBowlingController() {
+        this(null);
+    }
+
+    public WallnutBowlingController(ClientNetworkManager networkManager) {
+        super(networkManager);
+        this.progressService = new MinigameProgressService(networkManager);
+    }
+
     private static final DecimalFormat COORDINATE_FORMAT = new DecimalFormat("0.##");
-    private final MinigameProgressService progressService =
-        new MinigameProgressService();
+    private final MinigameProgressService progressService;
 
     private String safeMessage(RuntimeException exception) {
         String message = exception.getMessage();

@@ -24,11 +24,26 @@ public class MessageRouter {
             new GreenHouseService();
     private final ShopService shopService =
             new ShopService();
+
+    private final QuestAccountService questAccountService =
+            new QuestAccountService();
+
+    private final MinigameAccountService minigameAccountService =
+            new MinigameAccountService();
+
+    private final LeaderboardService leaderboardService =
+            new LeaderboardService();
+
+    private final NewsService newsService =
+            new NewsService();
+
     private final ConnectionRegistry connectionRegistry;
+
     private final RandomQueue randomQueue =
             new RandomQueue();
     private final InviteManager inviteManager =
             new InviteManager();
+
     private final MatchmakingStateRegistry
             matchmakingStates =
             new MatchmakingStateRegistry();
@@ -38,15 +53,20 @@ public class MessageRouter {
             reactionService;
     private final MatchNetworkService
             matchNetworkService;
+    public MessageRouter() {
+        this(new ConnectionRegistry());
+    }
+
+
     public MessageRouter(
             ConnectionRegistry connectionRegistry
     ) {
-
         this.connectionRegistry =
                 Objects.requireNonNull(
                         connectionRegistry,
                         "connectionRegistry cannot be null"
                 );
+
         this.matchNetworkService =
                 new MatchNetworkService(
                         connectionRegistry,
@@ -67,6 +87,7 @@ public class MessageRouter {
                         connectionRegistry
                 );
     }
+
     public NetworkMessage route(
             ClientConnection connection,
             NetworkMessage message
@@ -89,13 +110,20 @@ public class MessageRouter {
                 == MessageType.REGISTER_REQUEST) {
             return authService.handleRegister(message);
         }
+
         if (message.getType()
                 == MessageType.LOGIN_REQUEST) {
 
-            NetworkMessage response = authService.handleLogin(connection, message);
+            NetworkMessage response =
+                    authService.handleLogin(
+                            connection,
+                            message
+                    );
+
             registerAuthenticatedConnection(connection);
             return response;
         }
+
         if (message.getType()
                 == MessageType.LOGOUT_REQUEST) {
 
@@ -106,19 +134,25 @@ public class MessageRouter {
                     );
 
             if (!connection.getSession().isAuthenticated()) {
-                String username = connectionRegistry.unregister(connection);
+                String username =
+                        connectionRegistry.unregister(connection);
+
                 if (!connectionRegistry.isOnline(username)) {
                     handleDisconnect(username);
                 }
+
                 if (username != null) {
-                    System.out.println("[PRESENCE] " + username + " logged out"
+                    System.out.println(
+                            "[PRESENCE] "
+                                    + username
+                                    + " logged out"
                     );
                 }
             }
 
-
             return response;
         }
+
         if (message.getType()
                 == MessageType.FORGOT_PASSWORD_START_REQUEST) {
             return authService.handleForgotPasswordStart(
@@ -142,10 +176,16 @@ public class MessageRouter {
                     message
             );
         }
+
         if (message.getType()
                 == MessageType.RESUME_SESSION_REQUEST) {
 
-            NetworkMessage response = authService.handleResumeSession(connection, message);
+            NetworkMessage response =
+                    authService.handleResumeSession(
+                            connection,
+                            message
+                    );
+
             registerAuthenticatedConnection(connection);
             return response;
         }
@@ -169,6 +209,14 @@ public class MessageRouter {
         if (message.getType()
                 == MessageType.PROFILE_PASSWORD_CHANGE_REQUEST) {
             return profileService.handlePasswordChange(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.PROFILE_DIFFICULTY_UPDATE_REQUEST) {
+            return profileService.handleDifficultyUpdate(
                     connection,
                     message
             );
@@ -246,7 +294,6 @@ public class MessageRouter {
             );
         }
 
-
         if (message.getType()
                 == MessageType.SHOP_GET_REQUEST) {
             return shopService.handleGet(
@@ -312,43 +359,136 @@ public class MessageRouter {
         }
 
         if (message.getType()
-                == MessageType.MATCHMAKING_QUEUE_REQUEST) {
+                == MessageType.PLANT_DEBUG_UNLOCK_REQUEST) {
+            return shopService.handleDebugPlantUnlock(
+                    connection,
+                    message
+            );
+        }
 
+        if (message.getType()
+                == MessageType.NEWS_GET_REQUEST) {
+            return newsService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.NEWS_MARK_ALL_READ_REQUEST) {
+            return newsService.handleMarkAllRead(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.ZOMBIE_DISCOVER_REQUEST) {
+            return newsService.handleZombieDiscover(
+                    connection,
+                    message
+            );
+        }
+
+        // Quest routes from HEAD.
+        if (message.getType()
+                == MessageType.QUEST_GET_REQUEST) {
+            return questAccountService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_CLAIM_REQUEST) {
+            return questAccountService.handleClaim(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_SUN_PROGRESS_REQUEST) {
+            return questAccountService.handleSunProgress(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.QUEST_RUN_RECORD_REQUEST) {
+            return questAccountService.handleRunRecord(
+                    connection,
+                    message
+            );
+        }
+
+        // Minigame/account-stat routes from HEAD.
+        if (message.getType()
+                == MessageType.MINIGAME_PROGRESS_GET_REQUEST) {
+            return minigameAccountService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.MINIGAME_COMPLETE_REQUEST) {
+            return minigameAccountService.handleComplete(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.SCORING_RESULT_REQUEST) {
+            return minigameAccountService.handleScoringResult(
+                    connection,
+                    message
+            );
+        }
+
+        if (message.getType()
+                == MessageType.LEADERBOARD_GET_REQUEST) {
+            return leaderboardService.handleGet(
+                    connection,
+                    message
+            );
+        }
+
+        // Matchmaking routes from origin/main.
+        if (message.getType()
+                == MessageType.MATCHMAKING_QUEUE_REQUEST) {
             return matchmakingService.handleQueueRequest(
                     connection,
                     message
             );
         }
 
-
         if (message.getType()
                 == MessageType.MATCHMAKING_QUEUE_LEAVE_REQUEST) {
-
             return matchmakingService.handleQueueLeave(
                     connection,
                     message
             );
         }
 
-
         if (message.getType()
                 == MessageType.MATCHMAKING_INVITE_REQUEST) {
-
             return matchmakingService.handleInviteRequest(
                     connection,
                     message
             );
         }
 
-
         if (message.getType()
                 == MessageType.MATCHMAKING_INVITE_DECISION) {
-
             return matchmakingService.handleInviteDecision(
                     connection,
                     message
             );
         }
+
         if (message.getType()
                 == MessageType.MATCH_ACTION_REQUEST) {
 
@@ -357,12 +497,14 @@ public class MessageRouter {
                     message
             );
         }
+
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
                         + message.getType()
         );
     }
+
     public void handleDisconnect(String username) {
         if (username == null || username.isBlank()) {
             return;
@@ -371,29 +513,27 @@ public class MessageRouter {
         matchmakingService.handleDisconnect(username);
         reactionService.handleDisconnect(username);
     }
+
     private void registerAuthenticatedConnection(
             ClientConnection connection
     ) {
-
-        if (connection == null || connection.getSession() == null || !connection.getSession().isAuthenticated()) {
-
+        if (connection == null
+                || connection.getSession() == null
+                || !connection.getSession().isAuthenticated()) {
             return;
         }
 
-
-        String username = connection.getSession().getUsername();
-
+        String username =
+                connection.getSession().getUsername();
 
         if (username == null || username.isBlank()) {
             return;
         }
 
-
         connectionRegistry.register(
                 username,
                 connection
         );
-
 
         System.out.println(
                 "[PRESENCE] "

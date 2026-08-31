@@ -1,60 +1,79 @@
 package controllers;
 
-import Data.database.QuestsRepository;
 import controllers.miniGamesController.MinigameProgressService;
 import models.App;
 import models.Result;
 import models.User;
 import models.enums.Menu;
 import models.minigames.MinigameType;
-import models.quests.*;
+import models.quests.QuestType;
+import network.client.ClientQuestState;
+import network.protocol.quests.QuestEntryDto;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
 public class TravelLogController {
-    private final QuestService questService = QuestService.getInstance();
-    private final MinigameProgressService minigameProgressService = new MinigameProgressService();
+    private final MinigameProgressService minigameProgressService =
+            new MinigameProgressService();
     private String currentPage = "main";
+
     public Result changePage(String pageName) {
         String normalized = normalize(pageName);
         if (!isValidPage(normalized)) {
-            return failure("Travel Log pages are main, daily, epic, and minigame.\n");
+            return failure(
+                    "Travel Log pages are main, daily, epic, and minigame.\n"
+            );
         }
         currentPage = normalized;
         Result page = showCurrentPage();
         if (!page.success()) {
             return page;
         }
-        return success("Travel Log page changed to " + normalized + ".\n"
-                + page.message());
+        return success(
+                "Travel Log page changed to " + normalized + ".\n"
+                        + page.message()
+        );
     }
 
     public Result showCurrentPage() {
         User user = App.getInstance().getLoggedInUser();
         if (user == null) {
-            return failure("You must log in before viewing the Travel Log.\n");
+            return failure(
+                    "You must log in before viewing the Travel Log.\n"
+            );
         }
         if (currentPage.equals("minigame")) {
             return success(minigamePage(user));
         }
+        if (!ClientQuestState.isLoaded()) {
+            return failure(
+                    "Quest data has not been loaded from the server yet. "
+                            + "Open the graphical Travel Log first.\n"
+            );
+        }
+
         QuestType type = QuestType.fromPageName(currentPage);
-        List<QuestsRepository.QuestEntry> entries = questService.getPage(user, type);
-        return success(formatQuestPage(type, entries));
+        return success(formatQuestPage(
+                type,
+                ClientQuestState.getEntries(type)
+        ));
     }
 
     public Result claimQuest(int questId) {
-        User user = App.getInstance().getLoggedInUser();
-        try {
-            String reward = questService.claimReward(user, questId);
-            return success("Quest " + questId + " claimed: " + reward + ".\n");
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            return failure(exception.getMessage() + "\n");
-        }
+        return failure(
+                "Quest rewards are server-backed. "
+                        + "Claim them from the graphical Travel Log.\n"
+        );
     }
 
     public Result showCurrentMenu() {
-        return success("You are in the Travel Log on the " + currentPage + " page.\n");
+        return success(
+                "You are in the Travel Log on the "
+                        + currentPage + " page.\n"
+        );
     }
 
     public Result exitMenu() {
@@ -63,73 +82,80 @@ public class TravelLogController {
     }
 
     private String formatQuestPage(
-            QuestType type, List<QuestsRepository.QuestEntry> entries
+            QuestType type,
+            List<QuestEntryDto> entries
     ) {
         StringBuilder output = new StringBuilder()
-                .append(type.name()).append(" QUESTS\n");
+                .append(type.name())
+                .append(" QUESTS\n");
         if (entries.isEmpty()) {
             return output.append("No quests are available.\n").toString();
         }
-        for (QuestsRepository.QuestEntry entry : entries) {
-            appendQuest(output, entry.quest(), entry.userQuest());
+        for (QuestEntryDto entry : entries) {
+            output.append('[')
+                    .append(entry.getQuestId())
+                    .append("] ")
+                    .append(entry.getName())
+                    .append(" [")
+                    .append(entry.getPriority())
+                    .append("]\n")
+                    .append("  ")
+                    .append(entry.getDescription())
+                    .append('\n')
+                    .append("  Progress: ")
+                    .append(entry.getProgress())
+                    .append('/')
+                    .append(entry.getTargetAmount())
+                    .append('\n')
+                    .append("  Reward: ")
+                    .append(entry.getRewardText())
+                    .append('\n')
+                    .append("  Status: ")
+                    .append(statusText(entry))
+                    .append("\n\n");
         }
-        output.append("Use: claim quest -i <id>\n");
         return output.toString();
     }
 
-    private void appendQuest(StringBuilder output, Quest quest, UserQuest userQuest) {
-        output.append('[').append(quest.getId()).append("] ")
-                .append(quest.getName()).append(" [")
-                .append(quest.getPriority()).append("]\n")
-                .append("  ").append(questService.resolvedCondition(quest, userQuest)).append('\n')
-                .append("  Progress: ").append(userQuest.getProgress())
-                .append('/').append(userQuest.getTargetAmount()).append('\n')
-                .append("  Reward: ").append(rewardText(quest, userQuest)).append('\n')
-                .append("  Status: ").append(statusText(userQuest)).append("\n\n");
-    }
-
-    private String rewardText(Quest quest, UserQuest userQuest) {
-        if (quest.getRewardType() == QuestRewardType.CURRENCY_COINS) {
-            return userQuest.getRewardAmount() + " coins";
-        }
-        if (quest.getRewardType() == QuestRewardType.CURRENCY_GEMS) {
-            return userQuest.getRewardAmount() + " gems";
-        }
-        String target = quest.getUnlockableId();
-        if (quest.getRewardType() == QuestRewardType.UNLOCKABLE) {
-            return target == null || target.equalsIgnoreCase("any_plant")
-                    ? "unlock one random locked plant" : "unlock " + target;
-        }
-        return userQuest.getRewardAmount() + " seed packets for a random unlocked plant";
-    }
-
-    private String statusText(UserQuest userQuest) {
-        if (userQuest.isClaimed()) {
+    private String statusText(QuestEntryDto entry) {
+        if (entry.isClaimed()) {
             return "CLAIMED";
         }
-        return userQuest.isCompleted() ? "READY TO CLAIM" : "IN PROGRESS";
+        return entry.isCompleted()
+                ? "READY TO CLAIM"
+                : "IN PROGRESS";
     }
 
     private String minigamePage(User user) {
         StringBuilder output = new StringBuilder("MINIGAMES\n");
         appendMinigame(
-                output, user, MinigameType.VASEBREAKER,
+                output,
+                user,
+                MinigameType.VASEBREAKER,
                 "start vasebreaker -s <stage>"
         );
         appendMinigame(
-                output, user, MinigameType.WALLNUT_BOWLING,
+                output,
+                user,
+                MinigameType.WALLNUT_BOWLING,
                 "start wallnut bowling -s <stage>"
         );
         appendMinigame(
-                output, user, MinigameType.IZOMBIE,
+                output,
+                user,
+                MinigameType.IZOMBIE,
                 "start IZombie -s <stage>"
         );
         appendMinigame(
-                output, user, MinigameType.BEGHOULDED,
+                output,
+                user,
+                MinigameType.BEGHOULDED,
                 "start Beghouled -s <stage>"
         );
         appendMinigame(
-                output, user, MinigameType.ZOMBOTANY,
+                output,
+                user,
+                MinigameType.ZOMBOTANY,
                 "start Zombotany -s <stage>"
         );
         return output.toString();
@@ -141,93 +167,51 @@ public class TravelLogController {
             MinigameType type,
             String command
     ) {
-        output.append(type.getDisplayName()).append(":\n")
-                .append(minigameProgressService.formatStages(user.getId(), type))
-                .append("  Use: ").append(command).append("\n\n");
+        output.append(type.getDisplayName())
+                .append(":\n")
+                .append(minigameProgressService.formatStages(
+                        user.getId(),
+                        type
+                ))
+                .append("  Use: ")
+                .append(command)
+                .append("\n\n");
     }
 
     private boolean isValidPage(String page) {
-        return page.equals("main") || page.equals("daily")
-                || page.equals("epic") || page.equals("minigame");
+        return page.equals("main")
+                || page.equals("daily")
+                || page.equals("epic")
+                || page.equals("minigame");
     }
 
     private String normalize(String pageName) {
-        return pageName == null ? "" : pageName.trim().toLowerCase(Locale.ROOT);
+        return pageName == null
+                ? ""
+                : pageName.trim().toLowerCase(Locale.ROOT);
     }
-    public List<QuestsRepository.QuestEntry> getQuestEntries(QuestType type) {
-        User user = App.getInstance().getLoggedInUser();
 
-        if (user == null) {
+    public List<QuestEntryDto> getQuestEntries(QuestType type) {
+        if (!ClientQuestState.isLoaded()) {
             return List.of();
         }
-
-        return questService.getPage(user, type).stream()
-                .filter(this::shouldDisplayQuestCard)
-                .toList();
+        return ClientQuestState.getEntries(type);
     }
 
-    public String getQuestDescription(
-            QuestsRepository.QuestEntry entry
-    ) {
-        return questService.resolvedCondition(
-                entry.quest(),
-                entry.userQuest()
+    public List<QuestEntryDto> getAllQuestEntries() {
+        if (!ClientQuestState.isLoaded()) {
+            return List.of();
+        }
+        List<QuestEntryDto> entries = new ArrayList<>(
+                ClientQuestState.getEntries()
         );
-    }
-    public List<QuestsRepository.QuestEntry> getAllQuestEntries() {
-        User user = App.getInstance().getLoggedInUser();
-
-        if (user == null) {
-            return List.of();
-        }
-
-        List<QuestsRepository.QuestEntry> entries =
-                new java.util.ArrayList<>();
-
-        entries.addAll(getQuestEntries(QuestType.MAIN));
-        entries.addAll(getQuestEntries(QuestType.DAILY));
-        entries.addAll(getQuestEntries(QuestType.EPIC));
-
         entries.sort(
-                java.util.Comparator
-                        .comparingInt(
-                                (QuestsRepository.QuestEntry entry) ->
-                                        entry.quest()
-                                                .getPriority()
-                                                .ordinal()
-                        )
-                        .thenComparingInt(
-                                entry ->
-                                        entry.quest()
-                                                .getId()
-                        )
+                Comparator.comparingInt(
+                        (QuestEntryDto entry) ->
+                                entry.getPriority().ordinal()
+                ).thenComparingInt(QuestEntryDto::getQuestId)
         );
-
         return entries;
-    }
-
-
-    public String getQuestRewardText(
-            QuestsRepository.QuestEntry entry
-    ) {
-        if (entry == null) {
-            return "";
-        }
-
-        return rewardText(
-                entry.quest(),
-                entry.userQuest()
-        );
-    }
-
-    private boolean shouldDisplayQuestCard(
-            QuestsRepository.QuestEntry entry
-    ) {
-        if (!entry.userQuest().isClaimed()) {
-            return true;
-        }
-
-        return entry.quest().getType() == QuestType.DAILY;
     }
 
     private Result success(String message) {

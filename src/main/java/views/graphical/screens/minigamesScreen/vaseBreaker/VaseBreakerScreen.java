@@ -70,7 +70,7 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     public VaseBreakerScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
         this.stageNumber = stageNumber;
-        controller = new VaseBreakerController();
+        controller = new VaseBreakerController(game.getNetworkManager());
         Result result = controller.startStage(stageNumber);
 
         if (!result.success()) {
@@ -549,6 +549,8 @@ public class VaseBreakerScreen extends BaseMinigameScreen {
     }
     @Override
     protected void onGameFinished(boolean won) {
+
+        controller.recordGraphicalResult();
 
         if (packetBar != null) {
             packetBar.setVisible(false);

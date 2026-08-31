@@ -1,6 +1,5 @@
 package models.games;
 
-import Data.database.ScoringRepository;
 import lombok.Getter;
 import models.App;
 import models.Board.Board;
@@ -18,8 +17,8 @@ import java.util.Random;
 @Getter
 public class ScoringGame extends Game{
     private final ScoreTracker scoreTracker = new ScoreTracker();
-    private final ScoringRepository scoringRepository = new ScoringRepository();
     private LocalDate scoringDate;
+    private ScoreBreakdown finalBreakdown;
     private ScoringSunSpawner scoringSunSpawner;
 
     @Override
@@ -119,21 +118,7 @@ public class ScoringGame extends Game{
         state.setFinished(true);
         state.setWon(won);
         ScoreBreakdown breakdown = scoreTracker.finish(state, won);
+        finalBreakdown = breakdown;
         state.logEvent(breakdown.format());
-        User user = App.getInstance().getLoggedInUser();
-        if (user == null) {
-            state.logEvent("The score was not saved because no user is logged in.\n");
-            return;
-        }
-
-        try {
-            int dailyBest = scoringRepository.saveDailyBest(user,
-                    scoringDate, breakdown.total(), won
-            );
-            state.logEvent("Today's best MeowPoint: " + dailyBest + "\n");
-        } catch (IllegalStateException exception) {
-            state.logEvent("The MeowPoint result could not be saved: "
-                    + exception.getMessage() + "\n");
-        }
     }
 }

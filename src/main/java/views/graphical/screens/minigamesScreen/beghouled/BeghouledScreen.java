@@ -71,7 +71,7 @@ public class BeghouledScreen extends BaseMinigameScreen {
     public BeghouledScreen(PvzGame game, int stageNumber) {
         super(game, BG_LEFT, BG_MID, BG_RIGHT);
         this.stageNumber = stageNumber;
-        controller = new BeghouledController();
+        controller = new BeghouledController(game.getNetworkManager());
         Result result = controller.startStage(stageNumber);
         if (!result.success()) {
             throw new IllegalStateException(result.message());

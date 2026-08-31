@@ -1,49 +1,105 @@
 package controllers;
 
-import Data.database.LeaderBoardRepository;
 import models.App;
 import models.Result;
 import models.enums.Menu;
 import models.leaderBoard.LeaderBoard;
+import network.client.ClientNetworkManager;
+import network.protocol.leaderboard.LeaderboardEntryDto;
+import network.protocol.leaderboard.LeaderboardResponse;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class LeaderboardMenuController {
-    private final LeaderBoardRepository repository = new LeaderBoardRepository();
+    private final ClientNetworkManager networkManager;
+
+    public LeaderboardMenuController() {
+        this.networkManager = null;
+    }
+
+    public LeaderboardMenuController(
+            ClientNetworkManager networkManager
+    ) {
+        this.networkManager = networkManager;
+    }
 
     public Result showLeaderboard() {
-        return showLeaderboard("progress", false);
+        return failure(
+                "Leaderboard data is server-backed. "
+                        + "Open the graphical leaderboard.\n"
+        );
     }
 
     public Result showLeaderboard(String column, boolean ascending) {
-        List<LeaderBoard> entries;
-        try {
-            entries = loadLeaderboardEntries(column, ascending);
-        } catch (IllegalStateException | IllegalArgumentException exception) {
-            return failure(exception.getMessage() + "\n");
-        }
-
-        return success(formatLeaderboard(entries, column, ascending));
+        return showLeaderboard();
     }
 
-    public List<LeaderBoard> loadLeaderboardEntries() {
-        return loadLeaderboardEntries("progress", false);
+    public CompletableFuture<List<LeaderBoard>>
+    loadLeaderboardEntriesAsync() {
+        return loadLeaderboardEntriesAsync("score", false);
     }
 
-    public List<LeaderBoard> loadLeaderboardEntries(
+    public CompletableFuture<List<LeaderBoard>>
+    loadLeaderboardEntriesAsync(
             String column,
             boolean ascending
     ) {
-        List<LeaderBoard> entries =
-                new ArrayList<>(repository.getAllEntries());
+        if (networkManager == null) {
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException(
+                            "Leaderboard network manager is unavailable."
+                    )
+            );
+        }
+
+        return networkManager.ensureConnectedAsync()
+                .thenCompose(ignored -> requestLeaderboard())
+                .thenApply(response -> {
+                    if (response == null || !response.isSuccess()) {
+                        throw new CompletionException(
+                                new IllegalStateException(
+                                        response == null
+                                                ? "Leaderboard could not be loaded."
+                                                : response.getMessage()
+                                )
+                        );
+                    }
+
+                    List<LeaderBoard> entries = new ArrayList<>();
+                    for (LeaderboardEntryDto dto : response.getEntries()) {
+                        if (dto != null) {
+                            entries.add(toModel(dto));
+                        }
+                    }
+
+                    return sortLeaderboardEntries(
+                            entries,
+                            column,
+                            ascending
+                    );
+                });
+    }
+
+    public List<LeaderBoard> sortLeaderboardEntries(
+            List<LeaderBoard> values,
+            String column,
+            boolean ascending
+    ) {
+        List<LeaderBoard> entries = values == null
+                ? new ArrayList<>()
+                : new ArrayList<>(values);
 
         Comparator<LeaderBoard> comparator = comparatorFor(column);
         if (!ascending) {
             comparator = comparator.reversed();
         }
+
         comparator = comparator.thenComparing(
                 LeaderBoard::username,
                 String.CASE_INSENSITIVE_ORDER
@@ -61,15 +117,53 @@ public class LeaderboardMenuController {
         return success("You returned to the Main Menu.\n");
     }
 
+    private CompletableFuture<LeaderboardResponse> requestLeaderboard() {
+        try {
+            return networkManager
+                    .getLeaderboardClientService()
+                    .getLeaderboard();
+        } catch (IOException | RuntimeException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
+    }
+
+    private LeaderBoard toModel(LeaderboardEntryDto dto) {
+        String lastCompleted = dto.getLastCompleted();
+        if (lastCompleted == null || lastCompleted.isBlank()) {
+            lastCompleted = "None";
+        }
+
+        return new LeaderBoard(
+                dto.getUsername(),
+                lastCompleted,
+                Math.max(0, dto.getCompletedChapter()),
+                Math.max(0, dto.getCompletedLevel()),
+                Math.max(0, dto.getMinigamesCompleted()),
+                Math.max(0, dto.getDailyQuestsCompleted()),
+                Math.max(0, dto.getNonDailyQuestsCompleted()),
+                Math.max(0, dto.getHighestScore())
+        );
+    }
+
     private Comparator<LeaderBoard> comparatorFor(String column) {
-        return switch (column.toLowerCase(Locale.ROOT)) {
+        String normalized = column == null
+                ? "score"
+                : column.toLowerCase(Locale.ROOT);
+
+        return switch (normalized) {
             case "username" -> Comparator.comparing(
                     LeaderBoard::username,
                     String.CASE_INSENSITIVE_ORDER
             );
-            case "progress" -> Comparator.comparingInt(LeaderBoard::progressRank);
+            case "progress" -> Comparator.comparingInt(
+                    LeaderBoard::progressRank
+            );
             case "minigames" -> Comparator.comparingInt(
                     LeaderBoard::minigamesCompleted
+            );
+            case "quests" -> Comparator.comparingInt(
+                    entry -> entry.dailyQuestsCompleted()
+                            + entry.nonDailyQuestsCompleted()
             );
             case "daily-quests" -> Comparator.comparingInt(
                     LeaderBoard::dailyQuestsCompleted
@@ -77,57 +171,13 @@ public class LeaderboardMenuController {
             case "non-daily-quests" -> Comparator.comparingInt(
                     LeaderBoard::nonDailyQuestsCompleted
             );
-            case "score" -> Comparator.comparingInt(LeaderBoard::highestScore);
+            case "score" -> Comparator.comparingInt(
+                    LeaderBoard::highestScore
+            );
             default -> throw new IllegalArgumentException(
                     "Unknown leaderboard column."
             );
         };
-    }
-
-    private String formatLeaderboard(
-            List<LeaderBoard> entries,
-            String column,
-            boolean ascending
-    ) {
-        StringBuilder output = new StringBuilder();
-        output.append("===== LEADERBOARD =====\n")
-                .append("Sorted by ")
-                .append(column)
-                .append(ascending ? " ascending\n" : " descending\n")
-                .append(String.format(
-                        Locale.US,
-                        "%-4s %-18s %-22s %10s %12s %16s %12s%n",
-                        "Rank",
-                        "Username",
-                        "Last completed",
-                        "Minigames",
-                        "Daily quests",
-                        "Non-daily quests",
-                        "High score"
-                ))
-                .append("--------------------------------------------------------------------\n");
-
-        if (entries.isEmpty()) {
-            output.append("No registered users found.\n");
-            return output.toString();
-        }
-
-        for (int i = 0; i < entries.size(); i++) {
-            LeaderBoard entry = entries.get(i);
-            output.append(String.format(
-                    Locale.US,
-                    "%-4d %-18s %-22s %10d %12d %16d %12d%n",
-                    i + 1,
-                    entry.username(),
-                    entry.lastCompleted(),
-                    entry.minigamesCompleted(),
-                    entry.dailyQuestsCompleted(),
-                    entry.nonDailyQuestsCompleted(),
-                    entry.highestScore()
-            ));
-        }
-
-        return output.toString();
     }
 
     private Result success(String message) {

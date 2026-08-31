@@ -11,6 +11,7 @@ public class ProfileDataDto {
     private int gems;
     private int passedLevels;
     private int mostMeowPoint;
+    private int difficultyLevel;
 
     public ProfileDataDto() {
     }
@@ -23,7 +24,8 @@ public class ProfileDataDto {
             int coins,
             int gems,
             int passedLevels,
-            int mostMeowPoint
+            int mostMeowPoint,
+            int difficultyLevel
     ) {
         this.username = username;
         this.nickname = nickname;
@@ -33,6 +35,7 @@ public class ProfileDataDto {
         this.gems = gems;
         this.passedLevels = passedLevels;
         this.mostMeowPoint = mostMeowPoint;
+        this.difficultyLevel = difficultyLevel;
     }
 
     public static ProfileDataDto fromUser(
@@ -47,7 +50,8 @@ public class ProfileDataDto {
                 user.getCoins(),
                 user.getGems(),
                 passedLevels,
-                user.getMostMeowPoint()
+                user.getMostMeowPoint(),
+                user.getDifficultyLevel()
         );
     }
 
@@ -114,4 +118,12 @@ public class ProfileDataDto {
     public void setMostMeowPoint(int mostMeowPoint) {
         this.mostMeowPoint = mostMeowPoint;
     }
+    public int getDifficultyLevel() {
+        return difficultyLevel;
+    }
+
+    public void setDifficultyLevel(int difficultyLevel) {
+        this.difficultyLevel = difficultyLevel;
+    }
+
 }
