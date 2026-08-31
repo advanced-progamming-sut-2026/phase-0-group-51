@@ -14,37 +14,30 @@ import java.util.Objects;
 public class MessageRouter {
     private final AuthService authService =
             new AuthService();
-
     private final ProfileService profileService =
             new ProfileService();
-
     private final PlantOwnershipService plantOwnershipService =
             new PlantOwnershipService();
-
     private final GameplayAccountService gameplayAccountService =
             new GameplayAccountService();
-
     private final GreenHouseService greenHouseService =
             new GreenHouseService();
-
     private final ShopService shopService =
             new ShopService();
     private final ConnectionRegistry connectionRegistry;
     private final RandomQueue randomQueue =
             new RandomQueue();
-
     private final InviteManager inviteManager =
             new InviteManager();
-
     private final MatchmakingStateRegistry
             matchmakingStates =
             new MatchmakingStateRegistry();
-
     private final MatchmakingService
             matchmakingService;
-
     private final ReactionService
             reactionService;
+    private final MatchNetworkService
+            matchNetworkService;
     public MessageRouter(
             ConnectionRegistry connectionRegistry
     ) {
@@ -54,18 +47,24 @@ public class MessageRouter {
                         connectionRegistry,
                         "connectionRegistry cannot be null"
                 );
+        this.matchNetworkService =
+                new MatchNetworkService(
+                        connectionRegistry,
+                        matchmakingStates
+                );
+
         this.matchmakingService =
                 new MatchmakingService(
                         connectionRegistry,
                         randomQueue,
                         inviteManager,
-                        matchmakingStates
+                        matchmakingStates,
+                        matchNetworkService
                 );
 
         this.reactionService =
                 new ReactionService(
                         connectionRegistry
-                        // active match directory بعداً
                 );
     }
     public NetworkMessage route(
@@ -350,6 +349,14 @@ public class MessageRouter {
                     message
             );
         }
+        if (message.getType()
+                == MessageType.MATCH_ACTION_REQUEST) {
+
+            return matchNetworkService.handleAction(
+                    connection,
+                    message
+            );
+        }
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
@@ -357,10 +364,10 @@ public class MessageRouter {
         );
     }
     public void handleDisconnect(String username) {
-
         if (username == null || username.isBlank()) {
             return;
         }
+        matchNetworkService.handleDisconnect(username);
         matchmakingService.handleDisconnect(username);
         reactionService.handleDisconnect(username);
     }
