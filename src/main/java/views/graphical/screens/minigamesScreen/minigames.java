@@ -34,6 +34,7 @@ import views.graphical.screens.BaseScreen;
 import views.graphical.screens.MainMenuScreen;
 import views.graphical.screens.minigamesScreen.beghouled.BeghouledScreen;
 import views.graphical.screens.minigamesScreen.iZombie.IZombieScreen;
+import views.graphical.screens.minigamesScreen.iZombie.online.OnlineIZombieLobbyScreen;
 import views.graphical.screens.minigamesScreen.vaseBreaker.VaseBreakerScreen;
 import views.graphical.screens.minigamesScreen.wallnutBowling.WallnutBowlingScreen;
 import views.graphical.screens.minigamesScreen.zombotany.ZombotanyScreen;
@@ -703,7 +704,7 @@ public class minigames extends BaseScreen {
                 case VASEBREAKER ->
                         Gdx.app.postRunnable(() -> game.showScreen(new VaseBreakerScreen(game, stageNumber)));
                 case IZOMBIE ->
-                        Gdx.app.postRunnable(() -> game.showScreen(new IZombieScreen(game, stageNumber)));
+                        Gdx.app.postRunnable(() -> game.showScreen(new OnlineIZombieLobbyScreen(game, stageNumber)));
                 case BEGHOULDED ->
                         Gdx.app.postRunnable(() -> game.showScreen(new BeghouledScreen(game, stageNumber)));
                 case WALLNUT_BOWLING ->
