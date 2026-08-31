@@ -13,6 +13,7 @@ import network.protocol.matchmaking.MatchFoundDto;
 import network.protocol.matchmaking.QueueResponse;
 import network.server.ClientConnection;
 import network.server.presence.ConnectionRegistry;
+import network.server.service.MatchNetworkService;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 
 public final class MatchmakingService {
-
+    private final MatchNetworkService matchNetworkService;
     private final ConnectionRegistry connectionRegistry;
     private final RandomQueue randomQueue;
     private final InviteManager inviteManager;
@@ -34,7 +35,8 @@ public final class MatchmakingService {
             ConnectionRegistry connectionRegistry,
             RandomQueue randomQueue,
             InviteManager inviteManager,
-            MatchmakingStateRegistry states
+            MatchmakingStateRegistry states,
+              MatchNetworkService matchNetworkService
     ) {
 
         this.connectionRegistry =
@@ -59,6 +61,11 @@ public final class MatchmakingService {
                 Objects.requireNonNull(
                         states,
                         "states cannot be null"
+                );
+        this.matchNetworkService =
+                Objects.requireNonNull(
+                        matchNetworkService,
+                        "matchNetworkService cannot be null"
                 );
     }
 
@@ -175,7 +182,7 @@ public final class MatchmakingService {
         );
 
         boolean created =
-                createTemporaryMatch(
+                matchNetworkService.createMatch(
                         username,
                         opponent
                 );
@@ -575,7 +582,7 @@ public final class MatchmakingService {
 
 
         boolean created =
-                createTemporaryMatch(
+                matchNetworkService.createMatch(
                         challenger,
                         target
                 );
@@ -717,84 +724,7 @@ public final class MatchmakingService {
     }
 
 
-    private boolean createTemporaryMatch(
-            String firstPlayer,
-            String secondPlayer
-    ) {
 
-        String matchId =
-                UUID.randomUUID()
-                        .toString();
-
-
-        boolean firstIsPlants =
-                Math.random() < 0.5;
-
-
-        String firstRole =
-                firstIsPlants
-                        ? "PLANTS"
-                        : "ZOMBIES";
-
-
-        String secondRole =
-                firstIsPlants
-                        ? "ZOMBIES"
-                        : "PLANTS";
-
-
-        boolean firstSent =
-                sendMatchFound(
-                        firstPlayer,
-                        matchId,
-                        secondPlayer,
-                        firstRole
-                );
-
-
-        boolean secondSent =
-                sendMatchFound(
-                        secondPlayer,
-                        matchId,
-                        firstPlayer,
-                        secondRole
-                );
-
-
-        return firstSent
-                && secondSent;
-    }
-
-
-    private boolean sendMatchFound(
-            String username,
-            String matchId,
-            String opponent,
-            String role
-    ) {
-
-        ClientConnection connection =
-                connectionRegistry
-                        .getConnection(
-                                username
-                        );
-
-
-        if (connection == null) {
-            return false;
-        }
-
-
-        return sendPush(
-                connection,
-                MessageType.MATCHMAKING_MATCH_FOUND,
-                new MatchFoundDto(
-                        matchId,
-                        opponent,
-                        role
-                )
-        );
-    }
 
     private String authenticatedUsername(
             ClientConnection connection

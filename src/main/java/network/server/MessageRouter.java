@@ -14,19 +14,14 @@ import java.util.Objects;
 public class MessageRouter {
     private final AuthService authService =
             new AuthService();
-
     private final ProfileService profileService =
             new ProfileService();
-
     private final PlantOwnershipService plantOwnershipService =
             new PlantOwnershipService();
-
     private final GameplayAccountService gameplayAccountService =
             new GameplayAccountService();
-
     private final GreenHouseService greenHouseService =
             new GreenHouseService();
-
     private final ShopService shopService =
             new ShopService();
 
@@ -46,25 +41,22 @@ public class MessageRouter {
 
     private final RandomQueue randomQueue =
             new RandomQueue();
-
     private final InviteManager inviteManager =
             new InviteManager();
 
-    private final MatchmakingStateRegistry matchmakingStates =
+    private final MatchmakingStateRegistry
+            matchmakingStates =
             new MatchmakingStateRegistry();
-
-    private final MatchmakingService matchmakingService;
-
-    private final ReactionService reactionService;
-
-    /**
-     * Keeps compatibility with the pre-matchmaking code path that used
-     * new MessageRouter(). New server code should prefer injecting the
-     * shared ConnectionRegistry through the other constructor.
-     */
+    private final MatchmakingService
+            matchmakingService;
+    private final ReactionService
+            reactionService;
+    private final MatchNetworkService
+            matchNetworkService;
     public MessageRouter() {
         this(new ConnectionRegistry());
     }
+
 
     public MessageRouter(
             ConnectionRegistry connectionRegistry
@@ -75,18 +67,24 @@ public class MessageRouter {
                         "connectionRegistry cannot be null"
                 );
 
+        this.matchNetworkService =
+                new MatchNetworkService(
+                        connectionRegistry,
+                        matchmakingStates
+                );
+
         this.matchmakingService =
                 new MatchmakingService(
                         connectionRegistry,
                         randomQueue,
                         inviteManager,
-                        matchmakingStates
+                        matchmakingStates,
+                        matchNetworkService
                 );
 
         this.reactionService =
                 new ReactionService(
                         connectionRegistry
-                        // active match directory بعداً
                 );
     }
 
@@ -491,6 +489,15 @@ public class MessageRouter {
             );
         }
 
+        if (message.getType()
+                == MessageType.MATCH_ACTION_REQUEST) {
+
+            return matchNetworkService.handleAction(
+                    connection,
+                    message
+            );
+        }
+
         return NetworkMessage.error(
                 message.getRequestId(),
                 "Unsupported message type: "
@@ -502,7 +509,7 @@ public class MessageRouter {
         if (username == null || username.isBlank()) {
             return;
         }
-
+        matchNetworkService.handleDisconnect(username);
         matchmakingService.handleDisconnect(username);
         reactionService.handleDisconnect(username);
     }
