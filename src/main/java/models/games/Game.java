@@ -410,6 +410,9 @@ public class Game{
         }
         boolean graveSpawnEnabled = theme.getChapterFeatures().contains(ChapterFeature.GRAVE_SPAWN);
         boolean necromancyEnabled = theme.getChapterFeatures().contains(ChapterFeature.NECROMANCY);
+        if (necromancyEnabled) {
+            board.assignNecromancyTiles(5, random);
+        }
         waveManager.setOnWaveStart(waveNumber -> {
             if (graveSpawnEnabled && random.nextInt(100) < 80) {
                 int graveCount = 1 + random.nextInt(4);
@@ -421,7 +424,7 @@ public class Game{
                 }
             }
 
-            if (necromancyEnabled && random.nextInt(100) < 80) {
+            if (necromancyEnabled) {
                 performNecromancy(board, waveManager, waveNumber);
             }
         });
@@ -456,24 +459,19 @@ public class Game{
         return tile;
     }
     private void performNecromancy(Board board, ZombieWaveManager waveManager, int waveNumber) {
-        List<Tile> graveTiles = new ArrayList<>();
-        for (int lane = 0; lane < board.getLaneCount(); lane++) {
-            for (int column = 0; column < board.getColumnCount(); column++) {
-                Tile tile = board.getTile(lane, column);
-                if (tile == null || !tile.hasGrave()) {
-                    continue;
-                }
-                if (board.getZombieInPosition(lane, column) != null) {
-                    continue;
-                }
-                graveTiles.add(tile);
+        List<Tile> eligibleTiles = new ArrayList<>();
+        for (Tile tile : board.getNecromancyTiles()) {
+            if (tile == null || !tile.hasGrave()) {
+                continue;
             }
+            if (board.getZombieInPosition(tile.getLane(), tile.getColumn()) != null) {
+                continue;
+            }
+            eligibleTiles.add(tile);
         }
-        if (graveTiles.isEmpty()) {
+        if (eligibleTiles.isEmpty()) {
             return;
         }
-        Collections.shuffle(graveTiles, random);
-        int zombieCount = Math.min(1 + random.nextInt(3), graveTiles.size());
 
         gameState.emitGameplayNotice(
             GameplayNoticeEvent.necromancy()
@@ -482,9 +480,9 @@ public class Game{
         int noticeLeadTicks =
             gameState.getTicksPerSecond();
 
-        for (int i = 0; i < zombieCount; i++) {
+        for (Tile tile : eligibleTiles) {
             waveManager.scheduleZombieFromGrave(
-                graveTiles.get(i),
+                tile,
                 waveNumber,
                 noticeLeadTicks
             );

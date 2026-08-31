@@ -264,6 +264,60 @@ public class MultiplayerIZombieGame extends Game {
         return plant;
     }
 
+    public Plant pluckPlant(MatchRole role, int x, int y) {
+        requireRole(role, MatchRole.PLANT);
+        ensureRunning();
+
+        GameState state = getGameState();
+        Board board = state.getBoard();
+
+        if (y < 1 || y > board.getLaneCount()) {
+            throw new IllegalArgumentException("Coordinates are outside the map.");
+        }
+        if (x < PLANT_START_COLUMN || x > PLANT_END_COLUMN) {
+            throw new IllegalArgumentException(
+                "Plants only exist between column " + PLANT_START_COLUMN
+                    + " and " + PLANT_END_COLUMN + ".");
+        }
+
+        Tile tile = board.getTileAtUserCoordinates(x - 1, y - 1);
+        if (tile == null || tile.getPlant() == null) {
+            throw new IllegalStateException("There is no plant to remove on that tile.");
+        }
+
+        Plant plant = tile.getPlant();
+        board.removePlant(plant);
+        state.logEvent("Plant removed from (" + x + ", " + y + ").\n");
+        return plant;
+    }
+
+    public Plant feedPlant(MatchRole role, int x, int y) {
+        requireRole(role, MatchRole.PLANT);
+        ensureRunning();
+
+        GameState state = getGameState();
+        Board board = state.getBoard();
+
+        if (y < 1 || y > board.getLaneCount()) {
+            throw new IllegalArgumentException("Coordinates are outside the map.");
+        }
+        if (x < PLANT_START_COLUMN || x > PLANT_END_COLUMN) {
+            throw new IllegalArgumentException(
+                "Plants only exist between column " + PLANT_START_COLUMN
+                    + " and " + PLANT_END_COLUMN + ".");
+        }
+
+        Tile tile = board.getTileAtUserCoordinates(x - 1, y - 1);
+        if (tile == null || tile.getPlant() == null) {
+            throw new IllegalStateException("There is no plant to feed on that tile.");
+        }
+
+        Plant plant = tile.getPlant();
+        plant.feed(state);
+        state.logEvent("Plant fed at (" + x + ", " + y + ").\n");
+        return plant;
+    }
+
     public int getZombieCooldownTicks(String zombieName) {
         String alias = resolveZombieAlias(zombieName);
         if (alias == null) {

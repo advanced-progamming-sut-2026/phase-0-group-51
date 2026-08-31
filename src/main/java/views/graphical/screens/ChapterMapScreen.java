@@ -89,7 +89,9 @@ public class ChapterMapScreen extends BaseScreen {
         } else {
             currentActiveLevel = 0;
         }
+        currentActiveLevel = 999;
     }
+
 
     private int chapterIndex() {
         if (chapter == ChapterTheme.FROSTBITE_CAVES) {
