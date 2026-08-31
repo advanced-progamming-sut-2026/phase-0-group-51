@@ -221,12 +221,17 @@ public class GameScreen extends BaseScreen {
     private static final float EXPLOSION_SHAKE_DURATION = 0.28f;
     private static final float EXPLOSION_SHAKE_MAGNITUDE = 8f;
 
+    private static final float GARGANTUAR_STEP_INTERVAL = 0.6f;
+    private static final float GARGANTUAR_SHAKE_DURATION = 0.18f;
+    private static final float GARGANTUAR_SHAKE_MAGNITUDE = 5f;
+
     private float screenShakeRemaining;
     private float screenShakeDuration;
     private float screenShakeMagnitude;
     private float screenShakeBaseX;
     private float screenShakeBaseY;
     private boolean screenShakeApplied;
+    private float gargantuarStepTimer;
 
     private Image rowHighlight;
     private Image columnHighlight;
@@ -1499,6 +1504,44 @@ public class GameScreen extends BaseScreen {
         );
     }
 
+    private void updateGargantuarFootsteps(
+        float delta,
+        Iterable<Zombie> zombies
+    ) {
+        boolean anyWalking = false;
+        if (zombies != null) {
+            for (Zombie zombie : zombies) {
+                if (zombie != null
+                    && !zombie.isDead()
+                    && !zombie.isFrozen()
+                    && isGargantuar(zombie)) {
+                    anyWalking = true;
+                    break;
+                }
+            }
+        }
+
+        if (!anyWalking) {
+            gargantuarStepTimer = 0f;
+            return;
+        }
+
+        gargantuarStepTimer -= Math.max(0f, delta);
+        if (gargantuarStepTimer <= 0f) {
+            startScreenShake(
+                GARGANTUAR_SHAKE_DURATION,
+                GARGANTUAR_SHAKE_MAGNITUDE
+            );
+            gargantuarStepTimer = GARGANTUAR_STEP_INTERVAL;
+        }
+    }
+
+    private static boolean isGargantuar(Zombie zombie) {
+        String alias = zombie.getAlias();
+        return alias != null
+            && alias.toLowerCase().contains("gargantuar");
+    }
+
     private void applyScreenShake(float delta) {
         screenShakeApplied = false;
 
@@ -1582,6 +1625,10 @@ public class GameScreen extends BaseScreen {
             && overlayMode == OverlayMode.NONE) {
             Game currentGame = App.getInstance().getCurrentGame();
             if (currentGame != null && currentGame.getGameState() != null) {
+                updateGargantuarFootsteps(
+                    gameplayDelta,
+                    currentGame.getGameState().getZombiesInTheGame()
+                );
                 zombieAnimationSystem.update(
                     gameplayDelta,
                     getRenderTickAlpha(),
