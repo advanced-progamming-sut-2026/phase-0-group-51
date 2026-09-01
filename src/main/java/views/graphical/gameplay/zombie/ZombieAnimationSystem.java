@@ -3255,29 +3255,34 @@ public final class ZombieAnimationSystem {
         RangedAttackBehavior ranged =
             zombie.getBehavior(RangedAttackBehavior.class);
         if (ranged != null) {
-            int currentCooldown = ranged.getCooldown();
-            if (currentCooldown > visual.lastRangedCooldown) {
-                switch (ranged.getType()) {
-                    case SNOWBALL ->
-                        enqueueSpecialClip(visual, "throw");
-                    case OCTOPUS_NET -> {
-                        enqueueSpecialClip(visual, "toss");
-                        visual.octopusIdleIndex++;
-                    }
-                    case HOOK_PULL ->
-                        enqueueSpecialSequence(
-                            visual,
-                            "cast",
-                            "cast_loop",
-                            "reel"
-                        );
-                    case LASER_BEAM ->
-                        enqueueSpecialClip(visual, "attack");
-                    default -> {
+            if (ranged.getType()
+                == RangedAttackBehavior.RangedAttackType.SNOWBALL) {
+                if (ranged.consumeSnowballThrow()) {
+                    enqueueSpecialClip(visual, "throw");
+                }
+            } else {
+                int currentCooldown = ranged.getCooldown();
+                if (currentCooldown > visual.lastRangedCooldown) {
+                    switch (ranged.getType()) {
+                        case OCTOPUS_NET -> {
+                            enqueueSpecialClip(visual, "toss");
+                            visual.octopusIdleIndex++;
+                        }
+                        case HOOK_PULL ->
+                            enqueueSpecialSequence(
+                                visual,
+                                "cast",
+                                "cast_loop",
+                                "reel"
+                            );
+                        case LASER_BEAM ->
+                            enqueueSpecialClip(visual, "attack");
+                        default -> {
+                        }
                     }
                 }
+                visual.lastRangedCooldown = currentCooldown;
             }
-            visual.lastRangedCooldown = currentCooldown;
         }
 
         SunStealBehavior sunSteal =

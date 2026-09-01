@@ -1478,9 +1478,10 @@ public class GameScreen extends BaseScreen {
             }
 
             if (event.type() == VisualEffectEvent.Type.PLANT_EXPLOSION) {
+                float intensity = (float) Math.max(0.1, event.intensity());
                 startScreenShake(
-                    EXPLOSION_SHAKE_DURATION,
-                    EXPLOSION_SHAKE_MAGNITUDE
+                    EXPLOSION_SHAKE_DURATION * Math.max(1f, intensity),
+                    EXPLOSION_SHAKE_MAGNITUDE * intensity
                 );
             }
         }

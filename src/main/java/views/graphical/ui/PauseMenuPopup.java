@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
+import views.graphical.gameplay.manager.AudioManager;
 
 public class PauseMenuPopup extends BorderedPanel {
 
@@ -42,11 +43,26 @@ public class PauseMenuPopup extends BorderedPanel {
         Table slidersTable = new Table();
         Label musicLabel = new Label("Music", game.getSkin().get("medium_outline",  Label.LabelStyle.class));
         Slider musicSlider = new Slider(0, 100, 1, false, sliderStyle);
+        musicSlider.setValue(GameSettings.music * 100f);
+        musicSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                GameSettings.music = musicSlider.getValue() / 100f;
+                AudioManager.getInstance().updateMusicVolume();
+            }
+        });
         slidersTable.add(musicLabel).padRight(15).align(Align.right);
         slidersTable.add(musicSlider).width(200).row();
 
         Label sfxLabel = new Label("Sound FX", game.getSkin().get("medium_outline",  Label.LabelStyle.class));
         Slider sfxSlider = new Slider(0, 100, 1, false, sliderStyle);
+        sfxSlider.setValue(GameSettings.soundFx * 100f);
+        sfxSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                GameSettings.soundFx = sfxSlider.getValue() / 100f;
+            }
+        });
         slidersTable.add(sfxLabel).padRight(15).align(Align.right).padTop(10);
         slidersTable.add(sfxSlider).width(200).padTop(10).row();
 

@@ -21,6 +21,7 @@ public class RangedAttackBehavior implements PersistableBehavior {
     private int cooldown;
     private int snowThrowCount;
     private boolean octopusHasTarget;
+    private boolean snowballThrown;
 
     public RangedAttackBehavior(RangedAttackType type, int intervalTicks, int range) {
         this(type, intervalTicks, range, 0);
@@ -155,7 +156,16 @@ public class RangedAttackBehavior implements PersistableBehavior {
             zombie.getLane(), zombie.getColumn(), range);
         if (target != null) {
             target.addFrostLevel(state, "Hunter snowball");
+            snowballThrown = true;
         }
+    }
+
+    public boolean consumeSnowballThrow() {
+        if (!snowballThrown) {
+            return false;
+        }
+        snowballThrown = false;
+        return true;
     }
 
     private void hookPull(Board board, int lane, int col, GameState gs) {
