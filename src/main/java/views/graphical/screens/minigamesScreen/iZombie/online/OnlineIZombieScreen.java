@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 
 import com.badlogic.gdx.scenes.scene2d.ui.*;
@@ -28,8 +30,14 @@ import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 
+import network.protocol.match.ActionResultDto;
+import network.protocol.match.GameActionDto;
 import network.protocol.match.MatchEndedDto;
 import network.protocol.match.MatchSnapshot;
+
+import network.protocol.reaction.ReactionId;
+import network.protocol.reaction.ReactionReceivedDto;
+import network.protocol.reaction.ReactionSendDto;
 
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
@@ -41,28 +49,19 @@ import views.graphical.ui.BorderedPanel;
 import java.util.Objects;
 
 @Getter
-public final class OnlineIZombieScreen
-        extends BaseScreen {
-
+public final class OnlineIZombieScreen extends BaseScreen {
     private static final String BG_LEFT =
             "IMAGE_BACKGROUNDS_SPORTZBALL_TEXTURE_LEFT";
-
     private static final String BG_MID =
             "IMAGE_BACKGROUNDS_SPORTZBALL_TEXTURE";
-
     private static final String BG_RIGHT =
             "IMAGE_BACKGROUNDS_SPORTZBALL_TEXTURE_RIGHT";
     private static final String SUN =
             "IMAGE_UI_HUD_INGAME_SUN";
-
     private static final String SUN_BACKGROUND =
             "IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE";
-    private static final float LOCAL_WORLD_HEIGHT =
-            600f;
-
-    private static final float LOCAL_BOARD_X =
-            533f;
-
+    private static final float LOCAL_WORLD_HEIGHT = 600f;
+    private static final float LOCAL_BOARD_X = 533f;
     private static final float LOCAL_BOARD_Y =
             62f;
 
@@ -91,6 +90,12 @@ public final class OnlineIZombieScreen
 
 
     private RemoteMatchView remoteMatchView;
+
+    private ReactionOverlay reactionOverlay;
+
+    private OnlineIZombieControlPanel actionPanel;
+
+    private Actor boardInputActor;
 
 
     private Label roleLabel;
@@ -312,10 +317,474 @@ public final class OnlineIZombieScreen
         );
 
 
+        root.add(
+                createReactionControls()
+        );
+
+
+        reactionOverlay =
+                new ReactionOverlay(
+                        game
+                );
+
+        root.add(
+                reactionOverlay
+        );
+
+
         stage.addActor(
                 root
         );
+
+        boardInputActor =
+                createBoardInputActor();
+
+        stage.addActor(
+                boardInputActor
+        );
+
+
+        actionPanel =
+                new OnlineIZombieControlPanel(
+                        game,
+                        clientSession,
+                        this::sendGameAction
+                );
+
+        actionPanel.setPosition(
+                12f,
+                80f
+        );
+
+        stage.addActor(
+                actionPanel
+        );
+
+        actionPanel.toFront();
     }
+
+    private Actor createBoardInputActor() {
+
+        Actor actor =
+                new Actor();
+
+
+        actor.setBounds(
+                boardArea.x(),
+                boardArea.y(),
+                boardArea.width(),
+                boardArea.height()
+        );
+
+
+        actor.setTouchable(
+                Touchable.enabled
+        );
+
+
+        actor.addListener(
+                new InputListener() {
+
+                    @Override
+                    public boolean touchDown(
+                            InputEvent event,
+                            float x,
+                            float y,
+                            int pointer,
+                            int button
+                    ) {
+
+                        if (!active
+                                || matchEnded
+                                || !clientSession.isMatchRunning()
+                                || actionPanel == null) {
+
+                            return false;
+                        }
+
+
+                        int column =
+                                (int) Math.floor(
+                                        x
+                                                / boardTransform.tileWidth()
+                                );
+
+
+                        int visualRowFromBottom =
+                                (int) Math.floor(
+                                        y
+                                                / boardTransform.tileHeight()
+                                );
+
+
+                        if (column < 0
+                                || column >= BoardTransform.COLUMNS
+                                || visualRowFromBottom < 0
+                                || visualRowFromBottom >= BoardTransform.ROWS) {
+
+                            return false;
+                        }
+
+
+                        /*
+                         * BoardTransform renders lane 0 at the top, while
+                         * Scene2D local Y grows upward from the bottom.
+                         */
+                        int lane =
+                                BoardTransform.ROWS
+                                        - 1
+                                        - visualRowFromBottom;
+
+
+                        actionPanel.handleTileClick(
+                                lane,
+                                column
+                        );
+
+
+                        return true;
+                    }
+                }
+        );
+
+
+        return actor;
+    }
+
+
+    private void sendGameAction(
+            GameActionDto action
+    ) {
+
+        if (action == null
+                || matchEnded
+                || !clientSession.isMatchRunning()) {
+
+            return;
+        }
+
+
+        try {
+
+            matchClientService
+                    .sendAction(
+                            action
+                    )
+                    .whenComplete(
+                            (result, throwable) ->
+                                    Gdx.app.postRunnable(
+                                            () -> {
+
+                                                if (!active) {
+                                                    return;
+                                                }
+
+
+                                                if (throwable != null) {
+
+                                                    String text =
+                                                            "Action failed: "
+                                                                    + rootMessage(
+                                                                    throwable
+                                                            );
+
+                                                    if (actionPanel != null) {
+                                                        actionPanel.setStatus(
+                                                                text
+                                                        );
+                                                    }
+
+                                                    game.notifyError(
+                                                            text
+                                                    );
+
+                                                    return;
+                                                }
+
+
+                                                handleActionResult(
+                                                        result
+                                                );
+                                            }
+                                    )
+                    );
+
+        } catch (Exception exception) {
+
+            String text =
+                    "Action failed: "
+                            + rootMessage(
+                            exception
+                    );
+
+
+            if (actionPanel != null) {
+                actionPanel.setStatus(
+                        text
+                );
+            }
+
+
+            game.notifyError(
+                    text
+            );
+        }
+    }
+
+
+    private void handleActionResult(
+            ActionResultDto result
+    ) {
+
+        if (result == null) {
+
+            if (actionPanel != null) {
+                actionPanel.setStatus(
+                        "Server returned an empty action result."
+                );
+            }
+
+            return;
+        }
+
+
+        if (!result.isAccepted()) {
+
+            String reason =
+                    result.getReason() == null
+                            || result.getReason().isBlank()
+                            ? "Action rejected by server."
+                            : result.getReason();
+
+
+            if (actionPanel != null) {
+                actionPanel.setStatus(
+                        reason
+                );
+            }
+
+
+            game.notifyError(
+                    reason
+            );
+
+            return;
+        }
+
+
+        if (actionPanel != null) {
+
+            actionPanel.onActionAccepted();
+        }
+    }
+
+
+    private Table createReactionControls() {
+
+        Table layer =
+                new Table();
+
+        layer.setFillParent(
+                true
+        );
+
+        layer.bottom()
+                .right();
+
+
+        Table panel =
+                new Table();
+
+        panel.pad(
+                8f
+        );
+
+        panel.setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        new Color(
+                                0.08f,
+                                0.08f,
+                                0.08f,
+                                0.82f
+                        )
+                )
+        );
+
+
+        addReactionButton(
+                panel,
+                "GOOD LUCK!",
+                ReactionId.GOOD_LUCK
+        );
+
+        addReactionButton(
+                panel,
+                "NICE MOVE!",
+                ReactionId.NICE_MOVE
+        );
+
+        addReactionButton(
+                panel,
+                "OH NO!",
+                ReactionId.OH_NO
+        );
+
+
+        panel.row();
+
+
+        addReactionButton(
+                panel,
+                "\uD83D\uDE42",
+                ReactionId.SMILE
+        );
+
+        addReactionButton(
+                panel,
+                "\uD83D\uDE02",
+                ReactionId.LAUGH
+        );
+
+        addReactionButton(
+                panel,
+                "\uD83D\uDE31",
+                ReactionId.SHOCKED
+        );
+
+
+        layer.add(
+                        panel
+                )
+                .padRight(18f)
+                .padBottom(16f);
+
+
+        return layer;
+    }
+
+
+    private void addReactionButton(
+            Table table,
+            String caption,
+            ReactionId reactionId
+    ) {
+
+        TextButton button =
+                new TextButton(
+                        caption,
+                        game.getSkin(),
+                        "green"
+                );
+
+
+        button.addListener(
+                new ChangeListener() {
+
+                    @Override
+                    public void changed(
+                            ChangeEvent event,
+                            Actor actor
+                    ) {
+
+                        sendReaction(
+                                reactionId
+                        );
+                    }
+                }
+        );
+
+
+        table.add(
+                        button
+                )
+                .width(126f)
+                .height(42f)
+                .pad(3f);
+    }
+
+
+    private void sendReaction(
+            ReactionId reactionId
+    ) {
+
+        if (reactionId == null
+                || matchEnded
+                || !clientSession.isMatchRunning()) {
+
+            return;
+        }
+
+
+        ReactionSendDto dto =
+                new ReactionSendDto(
+                        clientSession.getMatchId(),
+                        reactionId
+                );
+
+
+        try {
+
+            matchClientService
+                    .sendReaction(
+                            dto
+                    )
+                    .whenComplete(
+                            (response, throwable) ->
+                                    Gdx.app.postRunnable(
+                                            () -> {
+
+                                                if (!active) {
+                                                    return;
+                                                }
+
+
+                                                if (throwable != null) {
+
+                                                    game.notifyError(
+                                                            "Could not send reaction: "
+                                                                    + rootMessage(
+                                                                    throwable
+                                                            )
+                                                    );
+
+                                                    return;
+                                                }
+
+
+                                                if (response == null) {
+
+                                                    game.notifyError(
+                                                            "Server returned an empty reaction response."
+                                                    );
+
+                                                    return;
+                                                }
+
+
+                                                if (!response.success()) {
+
+                                                    game.notifyError(
+                                                            response.message() == null
+                                                                    ? "Reaction was rejected by the server."
+                                                                    : response.message()
+                                                    );
+                                                }
+                                            }
+                                    )
+                    );
+
+        } catch (Exception exception) {
+
+            game.notifyError(
+                    "Could not send reaction: "
+                            + rootMessage(
+                            exception
+                    )
+            );
+        }
+    }
+
 
     private Stack createSunBank() {
 
@@ -571,6 +1040,14 @@ public final class OnlineIZombieScreen
                     )
             );
         }
+
+
+        if (actionPanel != null) {
+
+            actionPanel.updateFromSnapshot(
+                    snapshot
+            );
+        }
     }
 
     private void receiveServerEvent(
@@ -631,6 +1108,58 @@ public final class OnlineIZombieScreen
 
 
             if (message.getType()
+                    == MessageType.REACTION_RECEIVED) {
+
+                ReactionReceivedDto reaction =
+                        codec.decodePayload(
+                                message.getPayload(),
+                                ReactionReceivedDto.class
+                        );
+
+
+                if (reaction == null
+                        || reaction.matchId() == null
+                        || !reaction.matchId().equals(
+                        clientSession.getMatchId()
+                )) {
+
+                    return;
+                }
+
+
+                /*
+                 * The server should only forward the opponent's
+                 * reactions. This extra check prevents a malformed
+                 * event from being rendered as a remote reaction.
+                 */
+                String opponent =
+                        clientSession.getOpponentUsername();
+
+
+                if (opponent != null
+                        && reaction.senderUsername() != null
+                        && !opponent.equalsIgnoreCase(
+                        reaction.senderUsername()
+                )) {
+
+                    return;
+                }
+
+
+                if (reactionOverlay != null) {
+
+                    reactionOverlay.showReaction(
+                            reaction.senderUsername(),
+                            reaction.reactionId()
+                    );
+                }
+
+
+                return;
+            }
+
+
+            if (message.getType()
                     == MessageType.MATCH_ENDED) {
 
                 MatchEndedDto ended =
@@ -645,6 +1174,20 @@ public final class OnlineIZombieScreen
                 )) {
 
                     return;
+                }
+
+
+                if (actionPanel != null) {
+                    actionPanel.setDisabled(
+                            true
+                    );
+                }
+
+
+                if (boardInputActor != null) {
+                    boardInputActor.setTouchable(
+                            Touchable.disabled
+                    );
                 }
 
 

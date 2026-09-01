@@ -9,7 +9,6 @@ import network.protocol.matchmaking.InviteDecisionResponse;
 import network.protocol.matchmaking.InviteReceived;
 import network.protocol.matchmaking.InviteRequest;
 import network.protocol.matchmaking.InviteResponse;
-import network.protocol.matchmaking.MatchFoundDto;
 import network.protocol.matchmaking.QueueResponse;
 import network.server.ClientConnection;
 import network.server.presence.ConnectionRegistry;
@@ -17,10 +16,9 @@ import network.server.service.MatchNetworkService;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.UUID;
-
 
 public final class MatchmakingService {
+
     private final MatchNetworkService matchNetworkService;
     private final ConnectionRegistry connectionRegistry;
     private final RandomQueue randomQueue;
@@ -36,7 +34,7 @@ public final class MatchmakingService {
             RandomQueue randomQueue,
             InviteManager inviteManager,
             MatchmakingStateRegistry states,
-              MatchNetworkService matchNetworkService
+            MatchNetworkService matchNetworkService
     ) {
 
         this.connectionRegistry =
@@ -62,12 +60,15 @@ public final class MatchmakingService {
                         states,
                         "states cannot be null"
                 );
+
         this.matchNetworkService =
                 Objects.requireNonNull(
                         matchNetworkService,
                         "matchNetworkService cannot be null"
                 );
     }
+
+
 
     public synchronized NetworkMessage handleQueueRequest(
             ClientConnection connection,
@@ -77,24 +78,11 @@ public final class MatchmakingService {
         String username =
                 authenticatedUsername(connection);
 
-
         if (username == null) {
 
             return NetworkMessage.error(
                     message.getRequestId(),
                     "You must be logged in."
-            );
-        }
-
-        if (!states.isIdle(username)) {
-
-            return queueResponse(
-                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
-                    message.getRequestId(),
-                    false,
-                    "You are already busy.",
-                    states.get(username)
-                            == MatchmakingState.QUEUED
             );
         }
 
@@ -116,51 +104,41 @@ public final class MatchmakingService {
         }
 
 
-        String opponent;
+        if (!states.isIdle(username)) {
 
-        while (true) {
-
-            opponent =
-                    randomQueue.dequeue();
-
-
-            if (opponent == null) {
-                break;
-            }
-
-
-            if (opponent.equalsIgnoreCase(username)) {
-
-                states.clear(opponent);
-                continue;
-            }
-
-            if (!connectionRegistry.isOnline(opponent)) {
-
-                states.clear(opponent);
-                continue;
-            }
-
-
-            if (states.get(opponent)
-                    != MatchmakingState.QUEUED) {
-
-                continue;
-            }
-
-
-            break;
+            return queueResponse(
+                    MessageType.MATCHMAKING_QUEUE_RESPONSE,
+                    message.getRequestId(),
+                    false,
+                    "You are already busy.",
+                    states.isQueued(username)
+            );
         }
+
+
+        String opponent =
+                findWaitingOpponent(username);
 
         if (opponent == null) {
 
-            randomQueue.enqueue(username);
+            boolean added =
+                    randomQueue.enqueue(username);
+
+            if (!added) {
+
+                return queueResponse(
+                        MessageType.MATCHMAKING_QUEUE_RESPONSE,
+                        message.getRequestId(),
+                        false,
+                        "Could not enter the matchmaking queue.",
+                        randomQueue.contains(username)
+                );
+            }
 
             states.set(
                     username,
                     MatchmakingState.QUEUED
             );
-
 
             return queueResponse(
                     MessageType.MATCHMAKING_QUEUE_RESPONSE,
@@ -181,6 +159,7 @@ public final class MatchmakingService {
                 MatchmakingState.IN_MATCH
         );
 
+
         boolean created =
                 matchNetworkService.createMatch(
                         username,
@@ -190,8 +169,10 @@ public final class MatchmakingService {
 
         if (!created) {
 
-            states.clear(username);
-            states.clear(opponent);
+            recoverAfterFailedRandomMatch(
+                    username,
+                    opponent
+            );
 
             return queueResponse(
                     MessageType.MATCHMAKING_QUEUE_RESPONSE,
@@ -201,7 +182,6 @@ public final class MatchmakingService {
                     false
             );
         }
-
 
         return queueResponse(
                 MessageType.MATCHMAKING_QUEUE_RESPONSE,
@@ -221,7 +201,6 @@ public final class MatchmakingService {
         String username =
                 authenticatedUsername(connection);
 
-
         if (username == null) {
 
             return NetworkMessage.error(
@@ -231,8 +210,12 @@ public final class MatchmakingService {
         }
 
 
-        if (states.get(username)
-                != MatchmakingState.QUEUED) {
+        boolean reallyQueued =
+                states.isQueued(username)
+                        || randomQueue.contains(username);
+
+
+        if (!reallyQueued) {
 
             return queueResponse(
                     MessageType.MATCHMAKING_QUEUE_LEAVE_RESPONSE,
@@ -245,6 +228,7 @@ public final class MatchmakingService {
 
 
         randomQueue.remove(username);
+
         states.clear(username);
 
 
@@ -254,6 +238,105 @@ public final class MatchmakingService {
                 true,
                 "You left the matchmaking queue.",
                 false
+        );
+    }
+
+
+    private String findWaitingOpponent(
+            String requester
+    ) {
+
+        while (true) {
+
+            String opponent =
+                    randomQueue.dequeue();
+
+            if (opponent == null) {
+                return null;
+            }
+
+
+            if (opponent.equalsIgnoreCase(requester)) {
+                states.clear(opponent);
+                continue;
+            }
+
+
+            if (!connectionRegistry.isOnline(opponent)) {
+
+                states.clear(opponent);
+
+                continue;
+            }
+
+
+            if (!states.isQueued(opponent)) {
+                continue;
+            }
+
+
+            if (matchNetworkService.isInMatch(opponent)) {
+
+                states.set(
+                        opponent,
+                        MatchmakingState.IN_MATCH
+                );
+
+                continue;
+            }
+
+
+            return opponent;
+        }
+    }
+
+
+    private void recoverAfterFailedRandomMatch(
+            String requester,
+            String opponent
+    ) {
+
+        if (matchNetworkService.isInMatch(requester)) {
+
+            states.set(
+                    requester,
+                    MatchmakingState.IN_MATCH
+            );
+
+        } else {
+
+            states.clear(requester);
+        }
+
+
+        if (matchNetworkService.isInMatch(opponent)) {
+
+            states.set(
+                    opponent,
+                    MatchmakingState.IN_MATCH
+            );
+
+            return;
+        }
+
+
+        if (!connectionRegistry.isOnline(opponent)) {
+
+            states.clear(opponent);
+
+            return;
+        }
+
+
+        if (!randomQueue.contains(opponent)) {
+
+            randomQueue.enqueue(opponent);
+        }
+
+
+        states.set(
+                opponent,
+                MatchmakingState.QUEUED
         );
     }
 
@@ -296,7 +379,6 @@ public final class MatchmakingService {
 
 
         InviteRequest request;
-
 
         try {
 
@@ -341,6 +423,7 @@ public final class MatchmakingService {
             );
         }
 
+
         if (!connectionRegistry.isOnline(target)) {
 
             return inviteResponse(
@@ -357,6 +440,17 @@ public final class MatchmakingService {
                     message.getRequestId(),
                     false,
                     "Target player is busy."
+            );
+        }
+
+
+        if (matchNetworkService.isInMatch(challenger)
+                || matchNetworkService.isInMatch(target)) {
+
+            return inviteResponse(
+                    message.getRequestId(),
+                    false,
+                    "One of the players is already in a match."
             );
         }
 
@@ -397,11 +491,10 @@ public final class MatchmakingService {
 
         if (targetConnection == null) {
 
-            inviteManager.removeUser(challenger);
-
-            states.clear(challenger);
-            states.clear(target);
-
+            clearInviteState(
+                    challenger,
+                    target
+            );
 
             return inviteResponse(
                     message.getRequestId(),
@@ -423,11 +516,10 @@ public final class MatchmakingService {
 
         if (!delivered) {
 
-            inviteManager.removeUser(challenger);
-
-            states.clear(challenger);
-            states.clear(target);
-
+            clearInviteState(
+                    challenger,
+                    target
+            );
 
             return inviteResponse(
                     message.getRequestId(),
@@ -475,7 +567,6 @@ public final class MatchmakingService {
 
         InviteDecision decision;
 
-
         try {
 
             decision =
@@ -511,6 +602,7 @@ public final class MatchmakingService {
                         target
                 );
 
+
         if (challenger == null
                 || !challenger.equals(
                 decision.challengerUsername()
@@ -523,13 +615,30 @@ public final class MatchmakingService {
             );
         }
 
+        if (!states.isInvited(target)
+                || !states.isInviting(challenger)) {
+
+            inviteManager.removeUser(target);
+
+            states.clear(target);
+
+            if (!matchNetworkService.isInMatch(challenger)) {
+                states.clear(challenger);
+            }
+
+            return inviteDecisionResponse(
+                    message.getRequestId(),
+                    false,
+                    "This challenge is no longer active."
+            );
+        }
 
         inviteManager.removeUser(target);
-
 
         if (!decision.accepted()) {
 
             states.clear(target);
+
             states.clear(challenger);
 
 
@@ -559,6 +668,7 @@ public final class MatchmakingService {
         if (!connectionRegistry.isOnline(challenger)) {
 
             states.clear(target);
+
             states.clear(challenger);
 
 
@@ -566,6 +676,22 @@ public final class MatchmakingService {
                     message.getRequestId(),
                     false,
                     "Challenger is no longer online."
+            );
+        }
+
+
+        if (matchNetworkService.isInMatch(challenger)
+                || matchNetworkService.isInMatch(target)) {
+
+            states.clear(target);
+
+            states.clear(challenger);
+
+
+            return inviteDecisionResponse(
+                    message.getRequestId(),
+                    false,
+                    "One of the players is already in another match."
             );
         }
 
@@ -591,7 +717,24 @@ public final class MatchmakingService {
         if (!created) {
 
             states.clear(challenger);
+
             states.clear(target);
+
+
+            ClientConnection challengerConnection =
+                    connectionRegistry.getConnection(
+                            challenger
+                    );
+
+
+            if (challengerConnection != null) {
+
+                sendTextPush(
+                        challengerConnection,
+                        MessageType.MATCHMAKING_INVITE_REJECTED,
+                        "Challenge was accepted, but the match could not be started."
+                );
+            }
 
 
             return inviteDecisionResponse(
@@ -601,11 +744,29 @@ public final class MatchmakingService {
             );
         }
 
-
         return inviteDecisionResponse(
                 message.getRequestId(),
                 true,
                 "Challenge accepted."
+        );
+    }
+
+
+    private void clearInviteState(
+            String challenger,
+            String target
+    ) {
+
+        inviteManager.removeUser(
+                challenger
+        );
+
+        states.clear(
+                challenger
+        );
+
+        states.clear(
+                target
         );
     }
 
@@ -620,19 +781,21 @@ public final class MatchmakingService {
         }
 
 
+        username =
+                username.trim();
+
+
         MatchmakingState state =
                 states.get(username);
-
-
 
         if (state == MatchmakingState.QUEUED) {
 
             randomQueue.remove(username);
+
             states.clear(username);
 
             return;
         }
-
 
         if (state == MatchmakingState.INVITING) {
 
@@ -655,10 +818,9 @@ public final class MatchmakingService {
 
 
                 ClientConnection targetConnection =
-                        connectionRegistry
-                                .getConnection(
-                                        target
-                                );
+                        connectionRegistry.getConnection(
+                                target
+                        );
 
 
                 if (targetConnection != null) {
@@ -674,7 +836,6 @@ public final class MatchmakingService {
 
             return;
         }
-
 
         if (state == MatchmakingState.INVITED) {
 
@@ -697,10 +858,9 @@ public final class MatchmakingService {
 
 
                 ClientConnection challengerConnection =
-                        connectionRegistry
-                                .getConnection(
-                                        challenger
-                                );
+                        connectionRegistry.getConnection(
+                                challenger
+                        );
 
 
                 if (challengerConnection != null) {
@@ -717,13 +877,19 @@ public final class MatchmakingService {
             return;
         }
 
+
         if (state == MatchmakingState.IN_MATCH) {
-
             states.clear(username);
+
+            return;
         }
+
+        randomQueue.remove(username);
+
+        inviteManager.removeUser(username);
+
+        states.clear(username);
     }
-
-
 
 
     private String authenticatedUsername(
@@ -755,7 +921,6 @@ public final class MatchmakingService {
 
         return username.trim();
     }
-
 
     private NetworkMessage queueResponse(
             MessageType responseType,

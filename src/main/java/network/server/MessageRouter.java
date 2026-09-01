@@ -83,9 +83,7 @@ public class MessageRouter {
                 );
 
         this.reactionService =
-                new ReactionService(
-                        connectionRegistry
-                );
+                new ReactionService(connectionRegistry,matchNetworkService);
     }
 
     public NetworkMessage route(
@@ -488,7 +486,14 @@ public class MessageRouter {
                     message
             );
         }
+        if (message.getType()
+                == MessageType.REACTION_SEND_REQUEST) {
 
+            return reactionService.handleSend(
+                    connection,
+                    message
+            );
+        }
         if (message.getType()
                 == MessageType.MATCH_ACTION_REQUEST) {
 
@@ -505,13 +510,30 @@ public class MessageRouter {
         );
     }
 
-    public void handleDisconnect(String username) {
-        if (username == null || username.isBlank()) {
+    public void handleDisconnect(
+            String username
+    ) {
+
+        if (username == null
+                || username.isBlank()) {
+
             return;
         }
-        matchNetworkService.handleDisconnect(username);
-        matchmakingService.handleDisconnect(username);
-        reactionService.handleDisconnect(username);
+
+        username =
+                username.trim();
+
+        matchNetworkService.handleDisconnect(
+                username
+        );
+
+        matchmakingService.handleDisconnect(
+                username
+        );
+
+        reactionService.handleDisconnect(
+                username
+        );
     }
 
     private void registerAuthenticatedConnection(
