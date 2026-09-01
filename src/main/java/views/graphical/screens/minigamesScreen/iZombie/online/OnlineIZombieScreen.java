@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -14,6 +15,8 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
@@ -48,21 +51,6 @@ import views.graphical.ui.BorderedPanel;
 
 import java.util.Objects;
 
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.InputListener;
-
-import network.protocol.match.GameActionDto;
-import network.protocol.match.GameActionType;
-
-import Data.loader.PlantData;
-import Data.loader.PlantRegistry;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @Getter
 public final class OnlineIZombieScreen extends BaseScreen {
@@ -76,6 +64,18 @@ public final class OnlineIZombieScreen extends BaseScreen {
             "IMAGE_UI_HUD_INGAME_SUN";
     private static final String SUN_BACKGROUND =
             "IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE";
+    private static final String SHOVEL =
+            "IMAGE_UI_HUD_INGAME_SHOVEL_BUTTON";
+    private static final String SHOVEL_CLICKED =
+            "IMAGE_UI_HUD_INGAME_SHOVEL_BUTTON_DOWN";
+    private static final String SHOVEL_CURSOR =
+            "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
+    private static final String PLANT_FOOD_BUTTON =
+            "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
+    private static final String PLANT_FOOD_BUTTON_DOWN =
+            "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON_DOWN";
+    private static final float TOOL_CURSOR_ALPHA = 0.58f;
+    private static final float TOOL_CURSOR_SCALE = 0.65f;
     private static final float LOCAL_WORLD_HEIGHT = 600f;
     private static final float LOCAL_BOARD_X = 533f;
     private static final float LOCAL_BOARD_Y =
@@ -130,9 +130,11 @@ public final class OnlineIZombieScreen extends BaseScreen {
 
     private boolean matchEnded;
 
-    private String selectedCardName;
-
-    private Label seedHintLabel;
+    private ImageButton shovelButton;
+    private ImageButton plantFoodButton;
+    private ButtonGroup<ImageButton> plantToolGroup;
+    private Image toolCursorPreview;
+    private final Vector2 toolCursorPosition = new Vector2();
 
 
     public OnlineIZombieScreen(
@@ -280,7 +282,7 @@ public final class OnlineIZombieScreen extends BaseScreen {
         );
 
         matchInfoLayer.top()
-                .right();
+                .center();
 
 
         Table matchInfo =
@@ -328,21 +330,27 @@ public final class OnlineIZombieScreen extends BaseScreen {
         matchInfoLayer.add(
                         matchInfo
                 )
-                .padTop(13f)
-                .padRight(20f);
+                .padTop(13f);
 
 
         root.add(
                 matchInfoLayer
         );
 
-        root.add(
-                createPlacementInputLayer()
-        );
+        actionPanel =
+                new OnlineIZombieControlPanel(
+                        game,
+                        clientSession,
+                        this::sendGameAction
+                );
 
-        root.add(
-                createSeedBankLayer()
-        );
+
+        if (clientSession.isPlantPlayer()) {
+            root.add(
+                    createPlantToolControls()
+            );
+        }
+
 
         root.add(
                 createReactionControls()
@@ -363,6 +371,7 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 root
         );
 
+
         boardInputActor =
                 createBoardInputActor();
 
@@ -371,16 +380,19 @@ public final class OnlineIZombieScreen extends BaseScreen {
         );
 
 
-        actionPanel =
-                new OnlineIZombieControlPanel(
-                        game,
-                        clientSession,
-                        this::sendGameAction
-                );
+        float controlsX =
+                boardArea.x()
+                        - actionPanel.getWidth()
+                        - 12f;
+
+        float controlsY =
+                boardArea.y()
+                        + (boardArea.height()
+                        - actionPanel.getHeight()) / 2f;
 
         actionPanel.setPosition(
-                12f,
-                80f
+                Math.max(8f, controlsX),
+                Math.max(8f, controlsY)
         );
 
         stage.addActor(
@@ -600,9 +612,10 @@ public final class OnlineIZombieScreen extends BaseScreen {
 
 
         if (actionPanel != null) {
-
             actionPanel.onActionAccepted();
         }
+
+        resetPlantToolSelection();
     }
 
 
@@ -622,20 +635,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
         Table panel =
                 new Table();
 
-        panel.pad(
-                8f
-        );
-
-        panel.setBackground(
-                game.getSkin().newDrawable(
-                        "white_pixel",
-                        new Color(
-                                0.08f,
-                                0.08f,
-                                0.08f,
-                                0.82f
-                        )
-                )
+        panel.setTouchable(
+                Touchable.childrenOnly
         );
 
 
@@ -725,8 +726,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
         table.add(
                         button
                 )
-                .width(126f)
-                .height(42f)
+                .width(112f)
+                .height(38f)
                 .pad(3f);
     }
 
@@ -966,6 +967,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
         active =
                 false;
 
+        hideToolCursor();
+
 
         networkClient.setEventListener(
                 null
@@ -982,6 +985,7 @@ public final class OnlineIZombieScreen extends BaseScreen {
     ) {
 
         applyLatestSnapshot();
+        updateToolCursorPosition();
 
 
         super.render(
@@ -1216,6 +1220,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
                             Touchable.disabled
                     );
                 }
+
+                resetPlantToolSelection();
 
 
                 showMatchEndedPopup(
@@ -1610,229 +1616,191 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 : message;
     }
 
-    private Actor createPlacementInputLayer() {
-        Actor layer = new Actor() {
+    private Table createPlantToolControls() {
+
+        Table layer = new Table();
+        layer.setFillParent(true);
+        layer.top().right();
+        layer.setTouchable(Touchable.childrenOnly);
+
+        Table buttons = new Table();
+
+        shovelButton = createHudImageButton(
+                SHOVEL,
+                SHOVEL_CLICKED
+        );
+
+        plantFoodButton = createHudImageButton(
+                PLANT_FOOD_BUTTON,
+                PLANT_FOOD_BUTTON_DOWN
+        );
+
+        plantToolGroup = new ButtonGroup<>();
+        plantToolGroup.setMinCheckCount(0);
+        plantToolGroup.setMaxCheckCount(1);
+        plantToolGroup.setUncheckLast(true);
+        plantToolGroup.add(shovelButton, plantFoodButton);
+
+        shovelButton.addListener(new ClickListener() {
             @Override
-            public Actor hit(float hx, float hy, boolean touchableCheck) {
-                if (touchableCheck && getTouchable() != Touchable.enabled) {
-                    return null;
+            public void clicked(InputEvent event, float x, float y) {
+                if (shovelButton.isChecked()) {
+                    plantFoodButton.setChecked(false);
+                    actionPanel.activatePluckMode();
+                    showToolCursor(SHOVEL_CURSOR);
+                } else {
+                    actionPanel.activatePlaceMode();
+                    hideToolCursor();
                 }
-                BoardArea area = boardTransform.getArea();
-                if (hx < area.x()
-                        || hx > area.x() + area.width()
-                        || hy < area.y()
-                        || hy > area.y() + area.height()) {
-                    return null;
-                }
-                return this;
-            }
-        };
-        layer.setTouchable(Touchable.enabled);
-        layer.addListener(new InputListener() {
-            @Override
-            public boolean touchDown(
-                    InputEvent event,
-                    float tx,
-                    float ty,
-                    int pointer,
-                    int buttonIndex
-            ) {
-                return handleBoardTouch(tx, ty);
             }
         });
+
+        plantFoodButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (plantFoodButton.isChecked()) {
+                    shovelButton.setChecked(false);
+                    actionPanel.activateFeedMode();
+                    showToolCursor(PLANT_FOOD_BUTTON);
+                } else {
+                    actionPanel.activatePlaceMode();
+                    hideToolCursor();
+                }
+            }
+        });
+
+        buttons.add(shovelButton)
+                .size(58f)
+                .padRight(5f);
+
+        buttons.add(plantFoodButton)
+                .size(58f);
+
+        layer.add(buttons)
+                .padTop(8f)
+                .padRight(12f);
+
         return layer;
     }
 
-    private boolean handleBoardTouch(float px, float py) {
-        BoardArea area = boardTransform.getArea();
-        if (px < area.x()
-                || px > area.x() + area.width()
-                || py < area.y()
-                || py > area.y() + area.height()) {
-            return false;
-        }
+    private ImageButton createHudImageButton(
+            String normalId,
+            String pressedId
+    ) {
+        ImageButton.ImageButtonStyle style =
+                new ImageButton.ImageButtonStyle();
 
-        float tileW = area.width() / BoardTransform.COLUMNS;
-        float tileH = area.height() / BoardTransform.ROWS;
+        Drawable normal = requireDrawable(normalId);
+        Drawable pressed = optionalDrawable(pressedId, normal);
 
-        int column = (int) ((px - area.x()) / tileW);
-        int laneFromBottom = (int) ((py - area.y()) / tileH);
-        int lane = (BoardTransform.ROWS - 1) - laneFromBottom;
+        style.imageUp = normal;
+        style.imageDown = pressed;
+        style.imageOver = pressed;
+        style.imageChecked = pressed;
 
-        column = Math.max(0, Math.min(BoardTransform.COLUMNS - 1, column));
-        lane = Math.max(0, Math.min(BoardTransform.ROWS - 1, lane));
-
-        if (selectedCardName == null) {
-            game.notifyError("Select a card first.");
-            return true;
-        }
-
-        sendPlaceAction(lane, column);
-        return true;
+        return new ImageButton(style);
     }
 
-    private void sendPlaceAction(int lane, int column) {
-        if (selectedCardName == null) {
+    private Drawable requireDrawable(String assetId) {
+        TextureRegion region = tryRegion(assetId);
+        if (region == null) {
+            throw new IllegalStateException(
+                    "Missing HUD asset: " + assetId
+            );
+        }
+        return new TextureRegionDrawable(region);
+    }
+
+    private Drawable optionalDrawable(
+            String assetId,
+            Drawable fallback
+    ) {
+        TextureRegion region = tryRegion(assetId);
+        return region == null
+                ? fallback
+                : new TextureRegionDrawable(region);
+    }
+
+    private TextureRegion tryRegion(String assetId) {
+        try {
+            return game.getTextureBank().region(assetId);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private void resetPlantToolSelection() {
+        if (plantToolGroup != null) {
+            plantToolGroup.uncheckAll();
+        }
+
+        if (actionPanel != null && clientSession.isPlantPlayer()) {
+            actionPanel.activatePlaceMode();
+        }
+
+        hideToolCursor();
+    }
+
+    private void showToolCursor(String assetId) {
+        TextureRegion region = tryRegion(assetId);
+        if (region == null) {
             return;
         }
 
-        GameActionType type = isPlantRole()
-                ? GameActionType.PLACE_PLANT
-                : GameActionType.PLACE_ZOMBIE;
+        if (toolCursorPreview == null) {
+            toolCursorPreview = new Image();
+            toolCursorPreview.setTouchable(Touchable.disabled);
+            stage.addActor(toolCursorPreview);
+        }
 
-        GameActionDto action = new GameActionDto(
-                type,
-                selectedCardName,
-                lane,
-                column,
-                UUID.randomUUID().toString()
+        toolCursorPreview.setDrawable(
+                new TextureRegionDrawable(region)
         );
 
-        try {
-            matchClientService.sendAction(action)
-                    .whenComplete((result, error) ->
-                            Gdx.app.postRunnable(() -> {
-                                if (error != null) {
-                                    game.notifyError("Could not send action.");
-                                    return;
-                                }
-                                if (result != null && !result.isAccepted()) {
-                                    String reason = result.getReason();
-                                    game.notifyError(
-                                            reason == null
-                                                    ? "Action rejected."
-                                                    : reason
-                                    );
-                                }
-                            }));
-        } catch (IOException exception) {
-            game.notifyError("Not connected to the server.");
-        }
-    }
-
-    private boolean isPlantRole() {
-        return "PLANT".equalsIgnoreCase(clientSession.getRole());
-    }
-
-    private Table createSeedBankLayer() {
-        Table layer = new Table();
-        layer.setFillParent(true);
-        layer.bottom();
-        layer.setTouchable(Touchable.childrenOnly);
-
-        Table bank = new Table();
-
-        seedHintLabel = new Label(
-                "Select a card, then click a tile",
-                game.getSkin()
+        toolCursorPreview.setSize(
+                region.getRegionWidth() * TOOL_CURSOR_SCALE,
+                region.getRegionHeight() * TOOL_CURSOR_SCALE
         );
 
-        bank.add(seedHintLabel)
-                .padBottom(6f)
-                .row();
+        toolCursorPreview.setColor(
+                1f,
+                1f,
+                1f,
+                TOOL_CURSOR_ALPHA
+        );
 
-        Table cards = new Table();
+        toolCursorPreview.setVisible(true);
+        toolCursorPreview.toFront();
+    }
 
-        for (CardEntry card : rosterForRole()) {
-            TextButton button = new TextButton(
-                    card.name() + "   " + card.cost(),
-                    game.getSkin()
-            );
+    private void hideToolCursor() {
+        if (toolCursorPreview != null) {
+            toolCursorPreview.setVisible(false);
+        }
+    }
 
-            button.addListener(new ChangeListener() {
-                @Override
-                public void changed(ChangeEvent event, Actor actor) {
-                    selectedCardName = card.name();
-                    seedHintLabel.setText("Selected: " + card.name());
-                }
-            });
-
-            cards.add(button)
-                    .width(140f)
-                    .height(52f)
-                    .pad(4f);
+    private void updateToolCursorPosition() {
+        if (toolCursorPreview == null
+                || !toolCursorPreview.isVisible()) {
+            return;
         }
 
-        bank.add(cards);
+        toolCursorPosition.set(
+                Gdx.input.getX(),
+                Gdx.input.getY()
+        );
 
-        layer.add(bank)
-                .padBottom(14f);
+        stage.screenToStageCoordinates(
+                toolCursorPosition
+        );
 
-        return layer;
-    }
+        toolCursorPreview.setPosition(
+                toolCursorPosition.x
+                        - toolCursorPreview.getWidth() / 2f,
+                toolCursorPosition.y
+                        - toolCursorPreview.getHeight() / 2f
+        );
 
-    private List<CardEntry> rosterForRole() {
-        List<CardEntry> cards = new ArrayList<>();
-
-        if (isPlantRole()) {
-            String[] names = {
-                    "Sunflower",
-                    "Peashooter",
-                    "Snow Pea",
-                    "Repeater",
-                    "Wall-nut"
-            };
-
-            for (String name : names) {
-                PlantData data = findPlant(name);
-                if (data != null) {
-                    cards.add(new CardEntry(data.name(), data.cost()));
-                }
-            }
-        } else {
-            for (Map.Entry<String, Integer> entry
-                    : zombieRoster(currentStage()).entrySet()) {
-                cards.add(new CardEntry(entry.getKey(), entry.getValue()));
-            }
-        }
-
-        return cards;
-    }
-
-    private PlantData findPlant(String name) {
-        for (PlantData data : PlantRegistry.getAll()) {
-            if (data.name().equalsIgnoreCase(name)) {
-                return data;
-            }
-        }
-        return null;
-    }
-
-    private int currentStage() {
-        int stage = clientSession.getStageNumber();
-        return (stage >= 1 && stage <= 3) ? stage : 1;
-    }
-
-    private Map<String, Integer> zombieRoster(int stage) {
-        LinkedHashMap<String, Integer> roster = new LinkedHashMap<>();
-
-        switch (stage) {
-            case 2 -> {
-                roster.put("ZombieExplorer", 75);
-                roster.put("ZombieBeachSnorkel", 75);
-                roster.put("ZombieIceAgeHunter", 100);
-                roster.put("ZombieProspector", 125);
-                roster.put("ZombieModernAllStar", 150);
-            }
-            case 3 -> {
-                roster.put("ZombieDefault", 50);
-                roster.put("ZombieBeachOctopus", 125);
-                roster.put("ZombieWizard", 150);
-                roster.put("ZombiePiano", 150);
-                roster.put("ZombieGargantuar", 300);
-            }
-            default -> {
-                roster.put("ZombieImp", 25);
-                roster.put("ZombieDefault", 50);
-                roster.put("ZombieNewspaper", 75);
-                roster.put("ZombieIceAgeDodo", 100);
-                roster.put("ZombieDarkJuggler", 125);
-            }
-        }
-
-        return roster;
-    }
-
-    private record CardEntry(String name, int cost) {
+        toolCursorPreview.toFront();
     }
 }
