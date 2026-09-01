@@ -165,6 +165,12 @@ public final class ZombieAnimationSystem {
     private static final String PIANO_PROP_PAM =
         "768/FULL/ZOMBIE/PIANO/PIANO.PAM";
 
+    private static final String ZOMBOTANY_BODY_PAM =
+        "768/INITIAL/ZOMBIE/ZOMBIE_TUTORIAL/ZOMBIE_TUTORIAL.PAM";
+    private static final float ZOMBOTANY_HEAD_SCALE = 0.55f;
+    private static final float ZOMBOTANY_HEAD_DY_TILES = 0.55f;
+    private static final float ZOMBOTANY_HEAD_DX_TILES = 0.0f;
+
     private static final String ARCADE_CABINET_PROP_PAM =
         "768/FULL/EFFECTS/80S_ARCADE_CABINET/80S_ARCADE_CABINET.PAM";
 
@@ -381,6 +387,9 @@ public final class ZombieAnimationSystem {
             if (visual.cabinet != null) {
                 visual.cabinet.actor.remove();
             }
+            if (visual.plantHead != null) {
+                visual.plantHead.remove();
+            }
             iterator.remove();
         }
 
@@ -399,6 +408,9 @@ public final class ZombieAnimationSystem {
             }
             if (visual.cabinet != null) {
                 visual.cabinet.actor.remove();
+            }
+            if (visual.plantHead != null) {
+                visual.plantHead.remove();
             }
         }
 
@@ -566,6 +578,16 @@ public final class ZombieAnimationSystem {
                 cabinet
             );
 
+            PamAnimationActor plantHead = createPlantHeadActor(alias);
+            if (plantHead != null) {
+                DepthSortedEntityLayer.setDepthPriority(
+                    plantHead,
+                    DepthSortedEntityLayer.ZOMBIE_PRIORITY
+                );
+                entityRenderLayer.addActor(plantHead);
+                visual.plantHead = plantHead;
+            }
+
             initializeExplorerTorchVisual(
                 alias,
                 pamPath,
@@ -614,6 +636,54 @@ public final class ZombieAnimationSystem {
                 );
             }
 
+            return null;
+        }
+    }
+
+    private static boolean isZombotany(String alias) {
+        return alias != null && alias.startsWith("Zombotany");
+    }
+
+    private static String zombotanyPlantPam(String alias) {
+        if (alias == null) {
+            return null;
+        }
+        return switch (alias) {
+            case "ZombotanyPeashooter" -> "768/INITIAL/PLANT/PEASHOOTER/PEASHOOTER.PAM";
+            case "ZombotanyWallnut" -> "768/INITIAL/PLANT/WALLNUT/WALLNUT.PAM";
+            case "ZombotanySquash" -> "768/INITIAL/PLANT/SQUASH/SQUASH.PAM";
+            case "ZombotanyJalapeno" -> "768/INITIAL/PLANT/JALAPENO/JALAPENO.PAM";
+            default -> null;
+        };
+    }
+
+    private PamAnimationActor createPlantHeadActor(String alias) {
+        String pam = zombotanyPlantPam(alias);
+        if (pam == null) {
+            return null;
+        }
+        try {
+            pamPlayer.loadSync(pam);
+            List<String> available = pamPlayer.clips(pam);
+            if (available == null || available.isEmpty()) {
+                return null;
+            }
+            String clip = findClipIgnoreCase(available, "idle");
+            if (clip == null) {
+                clip = available.get(0);
+            }
+            PamAnimationActor headActor = new PamAnimationActor(
+                pamPlayer,
+                pam,
+                clip,
+                true
+            );
+            headActor.setScale(scale * ZOMBOTANY_HEAD_SCALE, scale * ZOMBOTANY_HEAD_SCALE);
+            return headActor;
+        } catch (RuntimeException e) {
+            if (Gdx.app != null) {
+                Gdx.app.error("ZombieAnimation", "Failed to create Zombotany head (" + pam + ")", e);
+            }
             return null;
         }
     }
@@ -738,6 +808,10 @@ public final class ZombieAnimationSystem {
         String alias
     ) {
         Objects.requireNonNull(theme, "theme");
+
+        if (isZombotany(alias)) {
+            return ZOMBOTANY_BODY_PAM;
+        }
 
         if (usesThemedBasicBody(alias)) {
             return switch (theme) {
@@ -3554,6 +3628,14 @@ public final class ZombieAnimationSystem {
             visual.cabinet.actor.setPosition(cabinetX, y);
             visual.cabinet.actor.setScale(scaleX, scale);
         }
+
+        if (visual.plantHead != null) {
+            float hx = x + ZOMBOTANY_HEAD_DX_TILES * boardTransform.tileWidth() * Math.signum(scaleX);
+            float hy = y + ZOMBOTANY_HEAD_DY_TILES * boardTransform.tileHeight();
+            visual.plantHead.setPosition(hx, hy);
+            visual.plantHead.setScale(scaleX * ZOMBOTANY_HEAD_SCALE, scale * ZOMBOTANY_HEAD_SCALE);
+            visual.plantHead.toFront();
+        }
     }
 
     private float calculateWalkPlaybackSpeed(
@@ -3964,6 +4046,8 @@ public final class ZombieAnimationSystem {
         private boolean deathStarted;
         private float deathElapsed;
         private float deathDuration;
+
+        private PamAnimationActor plantHead;
 
         private ZombieVisual(
             PamAnimationActor actor,

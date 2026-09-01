@@ -35,6 +35,9 @@ public final class MowerAnimationSystem {
     private static final String DARK_PAM =
         "768/FULL/MOWERS/MOWER_DARK/MOWER_DARK.PAM";
 
+    private static final String TUTORIAL_PAM =
+        "768/INITIAL/MOWERS/MOWER_TUTORIAL/MOWER_TUTORIAL.PAM";
+
     private static final String IDLE = "idle";
     private static final String TRANSITION = "transition";
     private static final String ATTACK = "attack";
@@ -363,7 +366,7 @@ public final class MowerAnimationSystem {
             case FROSTBITE_CAVES -> ICEAGE_PAM;
             case BIG_WAVE_BEACH -> BEACH_PAM;
             case DARK_AGES -> DARK_PAM;
-            default -> EGYPT_PAM;
+            default -> TUTORIAL_PAM;
         };
     }
 
