@@ -1214,6 +1214,7 @@ public final class ZombieAnimationSystem {
 
         updateColdTint(zombie, actor);
         updateDangerTint(zombie, actor);
+        updateHypnoTint(zombie, actor);
         applySnorkelSubmergedVisual(zombie, actor);
 
         if (zombie.isFrozen() || zombie.isButtered()) {
@@ -2235,10 +2236,6 @@ public final class ZombieAnimationSystem {
             cabinet.lastBodyPushing = false;
             return;
         }
-
-        // Drive the cabinet from the ACTUAL body clip, not from an unrelated
-        // guessed state. This keeps ZombieArcade "push" and cabinet "active"
-        // as one composite animation.
         boolean bodyPushing =
             "push".equalsIgnoreCase(
                 visual.actor.getClip()
@@ -2276,7 +2273,6 @@ public final class ZombieAnimationSystem {
 
         cabinet.lastBodyPushing = bodyPushing;
 
-        // Keep the prop visually synchronized with the zombie body.
         Color bodyColor = visual.actor.getColor();
         cabinet.actor.setColor(
             bodyColor.r,
@@ -2652,6 +2648,26 @@ public final class ZombieAnimationSystem {
     }
 
 
+    private void updateHypnoTint(
+        Zombie zombie,
+        PamAnimationActor actor
+    ) {
+        if (zombie == null || actor == null) {
+            return;
+        }
+        if (zombie.isFrozen() || zombie.isChilled()) {
+            return;
+        }
+        if (zombie.isHypnotized()) {
+            actor.setColor(
+                0.80f,
+                0.58f,
+                0.92f,
+                1.00f
+            );
+        }
+    }
+
     private void updateDangerTint(
         Zombie zombie,
         PamAnimationActor actor
@@ -2659,11 +2675,6 @@ public final class ZombieAnimationSystem {
         if (zombie == null || actor == null) {
             return;
         }
-
-        // Cold-state tint has visual priority over the red danger tint.
-        // updateColdTint() runs immediately before this method, so returning
-        // here preserves the blue Frozen/Chilled color instead of resetting
-        // it to white when danger == 0 or overwriting it with red near danger.
         if (zombie.isFrozen() || zombie.isChilled()) {
             return;
         }
@@ -2872,6 +2883,17 @@ public final class ZombieAnimationSystem {
         if (ZombieType.DARK_JUGGLER.getAlias().equals(alias)) {
             DamageReactionBehavior reaction =
                 zombie.getBehavior(DamageReactionBehavior.class);
+
+            if (zombie.isEating()) {
+                return new BaseAnimation(
+                    clipOrFallback(
+                        visual,
+                        "eat",
+                        EntityAnimationState.EAT
+                    ),
+                    false
+                );
+            }
 
             if (reaction != null && reaction.isSpinning()) {
                 return new BaseAnimation(
@@ -3522,8 +3544,6 @@ public final class ZombieAnimationSystem {
         }
 
         if (visual.cabinet != null) {
-            // Push the cabinet out in front of the zombie, in whichever
-            // direction it's currently facing (mirrors with scaleX).
             float cabinetLeadWorld =
                 ARCADE_CABINET_LEAD_OFFSET_TILES
                     * boardTransform.tileWidth();
