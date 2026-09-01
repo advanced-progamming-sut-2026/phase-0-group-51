@@ -10,6 +10,8 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 
@@ -175,9 +177,7 @@ public final class OnlineIZombieControlPanel
 
 
         entitySelect =
-                new SelectBox<>(
-                        game.getSkin()
-                );
+                createEntitySelectBox();
 
 
         if (clientSession.isZombiePlayer()) {
@@ -351,6 +351,124 @@ public final class OnlineIZombieControlPanel
 
 
         pack();
+    }
+
+
+    private SelectBox<String> createEntitySelectBox() {
+
+        Skin skin =
+                game.getSkin();
+
+
+        com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle listStyle =
+                new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(
+                        skin.get(
+                                "default",
+                                com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle.class
+                        )
+                );
+
+
+        listStyle.font =
+                skin.getFont(
+                        "FBUSV8C5EI_2"
+                );
+
+        listStyle.fontColorSelected =
+                Color.WHITE;
+
+        listStyle.fontColorUnselected =
+                Color.WHITE;
+
+        listStyle.background =
+                skin.getDrawable(
+                        "image_ui_dialog_asset_inner_bkgd_10"
+                );
+
+        listStyle.selection =
+                skin.getDrawable(
+                        "image_ui_generic_greenbutton_10"
+                );
+
+        listStyle.over =
+                skin.getDrawable(
+                        "image_ui_generic_brownbutton_10"
+                );
+
+
+        ScrollPane.ScrollPaneStyle scrollStyle =
+                new ScrollPane.ScrollPaneStyle(
+                        skin.get(
+                                "default",
+                                ScrollPane.ScrollPaneStyle.class
+                        )
+                );
+
+
+        SelectBox.SelectBoxStyle selectStyle =
+                new SelectBox.SelectBoxStyle();
+
+
+        selectStyle.font =
+                skin.getFont(
+                        "FBUSV8C5EI_2"
+                );
+
+        selectStyle.fontColor =
+                Color.WHITE;
+
+        selectStyle.disabledFontColor =
+                Color.GRAY;
+
+
+        selectStyle.background =
+                skin.getDrawable(
+                        "image_ui_generic_brownbutton_10"
+                );
+
+        selectStyle.backgroundOver =
+                skin.getDrawable(
+                        "image_ui_generic_brownbutton_down_10"
+                );
+
+        selectStyle.backgroundOpen =
+                skin.getDrawable(
+                        "image_ui_generic_greenbutton_10"
+                );
+
+        selectStyle.backgroundDisabled =
+                skin.getDrawable(
+                        "image_ui_generic_disabledbutton_10"
+                );
+
+
+        selectStyle.listStyle =
+                listStyle;
+
+        selectStyle.scrollStyle =
+                scrollStyle;
+
+
+        SelectBox<String> selectBox =
+                new SelectBox<>(
+                        selectStyle
+                );
+
+
+        selectBox.setAlignment(
+                Align.center
+        );
+
+        selectBox.getList().setAlignment(
+                Align.center
+        );
+
+        selectBox.setMaxListCount(
+                6
+        );
+
+
+        return selectBox;
     }
 
 
