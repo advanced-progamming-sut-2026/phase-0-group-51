@@ -39,11 +39,15 @@ public final class PlantSlotsBar extends Table {
     private static final float SLOT_SCALE = 0.90f;
     private static final float SLOT_WIDTH = 103.5f;
     private static final float SLOT_HEIGHT = 63f;
+    private static final float SLOT_GAP = 2f;
+    private static final float MAX_BANK_HEIGHT = 455f;
 
     private final PvzGame game;
     private final PlantData[] slots = new PlantData[MAX_SLOTS];
 
     private Mode mode = Mode.SELECTION;
+
+    private float slotDrawScale = SLOT_SCALE;
 
     @Setter
     private Consumer<Integer> onRemoveRequested;
@@ -153,18 +157,39 @@ public final class PlantSlotsBar extends Table {
 
         Map<Integer, Integer> plantLevels = ClientShopState.isLoaded() ? ClientShopState.plantLevels() : Map.of();
 
+        int visibleCount;
+        if (mode == Mode.SELECTION) {
+            visibleCount = MAX_SLOTS;
+        } else {
+            int filled = 0;
+            for (PlantData p : slots) {
+                if (p != null) {
+                    filled++;
+                }
+            }
+            visibleCount = Math.max(1, filled);
+        }
+
+        float fullPerSlot = SLOT_HEIGHT + SLOT_GAP;
+        float perSlot = Math.min(fullPerSlot, MAX_BANK_HEIGHT / visibleCount);
+        float factor = perSlot / fullPerSlot;
+        float slotW = SLOT_WIDTH * factor;
+        float slotH = SLOT_HEIGHT * factor;
+        float gap = SLOT_GAP * factor;
+        slotDrawScale = SLOT_SCALE * factor;
+
         for (int i = 0; i < MAX_SLOTS; i++) {
             PlantData plant = slots[i];
 
             if (plant != null) {
                 add(createPlantSlot(plant, i, plantLevels))
-                    .size(SLOT_WIDTH, SLOT_HEIGHT)
-                    .padBottom(2f)
+                    .size(slotW, slotH)
+                    .padBottom(gap)
                     .row();
             } else if (mode == Mode.SELECTION) {
                 add(createEmptySlot())
-                    .size(SLOT_WIDTH, SLOT_HEIGHT)
-                    .padBottom(2f)
+                    .size(slotW, slotH)
+                    .padBottom(gap)
                     .row();
             }
         }
@@ -214,7 +239,7 @@ public final class PlantSlotsBar extends Table {
         PlantCard card = new PlantCard(
             game,
             new PlantCard.ViewData(plant, true, boosted, level, 0, 1, true, false),
-            SLOT_SCALE
+            slotDrawScale
         );
 
         gameplayCardsByPlantId.put(plant.id(), card);
