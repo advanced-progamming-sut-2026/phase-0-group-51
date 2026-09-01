@@ -1,18 +1,22 @@
 package views.graphical.screens.minigamesScreen.iZombie.online;
 
 import com.badlogic.gdx.Gdx;
+
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Stack;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+
+import com.badlogic.gdx.scenes.scene2d.ui.*;
+
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 
+import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
 
 import lombok.Getter;
@@ -27,7 +31,11 @@ import network.protocol.NetworkMessage;
 import network.protocol.match.MatchEndedDto;
 import network.protocol.match.MatchSnapshot;
 
+import views.graphical.gameplay.board.BoardArea;
+import views.graphical.gameplay.board.BoardTransform;
+
 import views.graphical.screens.BaseScreen;
+
 import views.graphical.ui.BorderedPanel;
 
 import java.util.Objects;
@@ -44,6 +52,25 @@ public final class OnlineIZombieScreen
 
     private static final String BG_RIGHT =
             "IMAGE_BACKGROUNDS_SPORTZBALL_TEXTURE_RIGHT";
+    private static final String SUN =
+            "IMAGE_UI_HUD_INGAME_SUN";
+
+    private static final String SUN_BACKGROUND =
+            "IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE";
+    private static final float LOCAL_WORLD_HEIGHT =
+            600f;
+
+    private static final float LOCAL_BOARD_X =
+            533f;
+
+    private static final float LOCAL_BOARD_Y =
+            62f;
+
+    private static final float LOCAL_BOARD_WIDTH =
+            737f;
+
+    private static final float LOCAL_BOARD_HEIGHT =
+            380f;
 
 
     private final ClientSession clientSession;
@@ -58,6 +85,13 @@ public final class OnlineIZombieScreen
     private final RemoteMatchMirror mirror;
 
 
+    private final BoardArea boardArea;
+
+    private final BoardTransform boardTransform;
+
+
+    private RemoteMatchView remoteMatchView;
+
 
     private Label roleLabel;
 
@@ -67,13 +101,6 @@ public final class OnlineIZombieScreen
 
     private Label sunLabel;
 
-    private Label brainLabel;
-
-    private Label entityLabel;
-
-    private Label tickLabel;
-
-    private Label statusLabel;
 
     private boolean active;
 
@@ -127,13 +154,25 @@ public final class OnlineIZombieScreen
                 );
 
 
+        this.boardArea =
+                createGameplayBoardArea();
+
+
+        this.boardTransform =
+                new BoardTransform(
+                        boardArea
+                );
+
+
         buildUi();
     }
+
 
     private void buildUi() {
 
         Stack root =
                 new Stack();
+
 
         root.setFillParent(
                 true
@@ -142,6 +181,7 @@ public final class OnlineIZombieScreen
         Actor background =
                 createBackground();
 
+
         background.setBounds(
                 0f,
                 0f,
@@ -149,209 +189,126 @@ public final class OnlineIZombieScreen
                 PvzGame.VIRTUAL_HEIGHT
         );
 
+
         background.setTouchable(
                 Touchable.disabled
         );
+
+
         root.add(
                 background
         );
-        Table hudLayer =
-                new Table();
 
-        hudLayer.setFillParent(
-                true
-        );
-
-        hudLayer.top();
-
-
-        BorderedPanel hudPanel =
-                new BorderedPanel(
+        remoteMatchView =
+                new RemoteMatchView(
                         game,
-                        Color.valueOf("7A431D")
+                        boardTransform
                 );
 
 
-        Table hud =
-                hudPanel.getContent();
-
-        hud.clearChildren();
-
-        hud.pad(
-                8f,
-                16f,
-                8f,
-                16f
+        remoteMatchView.setBounds(
+                0f,
+                0f,
+                PvzGame.VIRTUAL_WIDTH,
+                PvzGame.VIRTUAL_HEIGHT
         );
+
+
+        root.add(
+                remoteMatchView
+        );
+
+        Stack sunBank =
+                createSunBank();
+
+
+        Table sunLayer =
+                new Table();
+
+        sunLayer.setFillParent(
+                true
+        );
+
+        sunLayer.top()
+                .left();
+
+
+        sunLayer.add(
+                        sunBank
+                )
+                .width(120f)
+                .height(48f)
+                .padTop(10f)
+                .padLeft(14f);
+
+
+        root.add(
+                sunLayer
+        );
+
+
+        Table matchInfoLayer =
+                new Table();
+
+        matchInfoLayer.setFillParent(
+                true
+        );
+
+        matchInfoLayer.top()
+                .right();
+
+
+        Table matchInfo =
+                new Table();
 
 
         roleLabel =
                 createHudLabel(
-                        "ROLE: "
-                                + clientSession.getRole()
+                        clientSession.isPlantPlayer()
+                                ? "PLANTS"
+                                : "ZOMBIES"
                 );
 
 
         opponentLabel =
                 createHudLabel(
-                        "VS: "
+                        "VS "
                                 + clientSession.getOpponentUsername()
                 );
 
 
         timerLabel =
                 createHudLabel(
-                        "TIME: --"
+                        "--:--"
                 );
 
 
-        sunLabel =
-                createHudLabel(
-                        "SUN: --"
-                );
-
-
-        hud.add(
+        matchInfo.add(
                         roleLabel
                 )
-                .padRight(20f);
+                .padRight(16f);
 
 
-        hud.add(
+        matchInfo.add(
                         opponentLabel
                 )
+                .padRight(16f);
+
+
+        matchInfo.add(
+                timerLabel
+        );
+
+
+        matchInfoLayer.add(
+                        matchInfo
+                )
+                .padTop(13f)
                 .padRight(20f);
 
 
-        hud.add(
-                        timerLabel
-                )
-                .padRight(20f);
-
-
-        hud.add(
-                sunLabel
-        );
-
-
-        hudLayer.add(
-                        hudPanel
-                )
-                .width(850f)
-                .height(80f)
-                .padTop(10f);
-
-
         root.add(
-                hudLayer
-        );
-
-        Table statusLayer =
-                new Table();
-
-        statusLayer.setFillParent(
-                true
-        );
-
-        statusLayer.bottom()
-                .right();
-
-
-        BorderedPanel statusPanel =
-                new BorderedPanel(
-                        game,
-                        Color.valueOf("8F4909")
-                );
-
-
-        Table content =
-                statusPanel.getContent();
-
-        content.clearChildren();
-
-        content.pad(
-                10f,
-                15f,
-                10f,
-                15f
-        );
-
-
-        statusLabel =
-                new Label(
-                        "Waiting for first server snapshot...",
-                        game.getSkin().get(
-                                "medium_outline",
-                                Label.LabelStyle.class
-                        )
-                );
-
-
-        statusLabel.setColor(
-                Color.valueOf("FFE16A")
-        );
-
-        statusLabel.setAlignment(
-                Align.center
-        );
-
-
-        brainLabel =
-                createHudLabel(
-                        "BRAINS: --"
-                );
-
-
-        entityLabel =
-                createHudLabel(
-                        "PLANTS: --   ZOMBIES: --   PROJECTILES: --"
-                );
-
-
-        tickLabel =
-                createHudLabel(
-                        "SERVER TICK: --"
-                );
-
-
-        content.add(
-                        statusLabel
-                )
-                .width(460f)
-                .padBottom(5f)
-                .row();
-
-
-        content.add(
-                        brainLabel
-                )
-                .padBottom(3f)
-                .row();
-
-
-        content.add(
-                        entityLabel
-                )
-                .padBottom(3f)
-                .row();
-
-
-        content.add(
-                tickLabel
-        );
-
-
-        statusLayer.add(
-                        statusPanel
-                )
-                .width(520f)
-                .height(175f)
-                .padRight(12f)
-                .padBottom(12f);
-
-
-        root.add(
-                statusLayer
+                matchInfoLayer
         );
 
 
@@ -360,7 +317,113 @@ public final class OnlineIZombieScreen
         );
     }
 
+    private Stack createSunBank() {
 
+        Stack sunBank =
+                new Stack();
+
+
+        TextureRegion backgroundRegion =
+                game.getTextureBank().region(
+                        SUN_BACKGROUND
+                );
+
+        if (backgroundRegion == null) {
+
+            throw new IllegalStateException(
+                    "Missing HUD asset: "
+                            + SUN_BACKGROUND
+            );
+        }
+
+
+        TextureRegion sunRegion =
+                game.getTextureBank().region(
+                        SUN
+                );
+
+        if (sunRegion == null) {
+
+            throw new IllegalStateException(
+                    "Missing HUD asset: "
+                            + SUN
+            );
+        }
+
+
+        Image sunBackground =
+                new Image(
+                        new TextureRegionDrawable(
+                                backgroundRegion
+                        )
+                );
+
+        sunBackground.setScaling(
+                Scaling.stretch
+        );
+
+
+        Image sunIcon =
+                new Image(
+                        new TextureRegionDrawable(
+                                sunRegion
+                        )
+                );
+
+        sunIcon.setScaling(
+                Scaling.fit
+        );
+
+
+        sunLabel =
+                new Label(
+                        "0",
+                        game.getSkin().get(
+                                "big_outline",
+                                Label.LabelStyle.class
+                        )
+                );
+
+
+        sunLabel.setColor(
+                Color.WHITE
+        );
+
+        sunLabel.setAlignment(
+                Align.center
+        );
+
+
+        Table sunContent =
+                new Table();
+
+
+        sunContent.add(
+                        sunIcon
+                )
+                .size(44f)
+                .padLeft(-9f);
+
+
+        sunContent.add(
+                        sunLabel
+                )
+                .expandX()
+                .center()
+                .padRight(8f);
+
+
+        sunBank.add(
+                sunBackground
+        );
+
+        sunBank.add(
+                sunContent
+        );
+
+
+        return sunBank;
+    }
     private Label createHudLabel(
             String text
     ) {
@@ -394,6 +457,7 @@ public final class OnlineIZombieScreen
 
 
         game.hideHud();
+
         networkClient.setEventListener(
                 this::receiveServerEvent
         );
@@ -407,23 +471,21 @@ public final class OnlineIZombieScreen
                 false;
 
 
-        if (networkClient != null) {
-
-            networkClient.setEventListener(
-                    null
-            );
-        }
+        networkClient.setEventListener(
+                null
+        );
 
 
         super.hide();
     }
+
 
     @Override
     public void render(
             float delta
     ) {
 
-        applyLatestSnapshotToUi();
+        applyLatestSnapshot();
 
 
         super.render(
@@ -431,8 +493,7 @@ public final class OnlineIZombieScreen
         );
     }
 
-
-    private void applyLatestSnapshotToUi() {
+    private void applyLatestSnapshot() {
 
         MatchSnapshot snapshot =
                 mirror.getLatestSnapshot();
@@ -454,16 +515,20 @@ public final class OnlineIZombieScreen
                 snapshot.getTick();
 
 
-        statusLabel.setText(
-                "LIVE - SERVER AUTHORITATIVE"
+        remoteMatchView.sync(
+                snapshot
         );
 
 
-        tickLabel.setText(
-                "SERVER TICK: "
-                        + snapshot.getTick()
+        updateHud(
+                snapshot
         );
+    }
 
+
+    private void updateHud(
+            MatchSnapshot snapshot
+    ) {
 
         int seconds =
                 Math.max(
@@ -483,7 +548,7 @@ public final class OnlineIZombieScreen
 
         timerLabel.setText(
                 String.format(
-                        "TIME: %d:%02d",
+                        "%d:%02d",
                         minutes,
                         remainingSeconds
                 )
@@ -493,68 +558,19 @@ public final class OnlineIZombieScreen
         if (clientSession.isPlantPlayer()) {
 
             sunLabel.setText(
-                    "PLANT SUN: "
-                            + snapshot.getPlantSun()
+                    Integer.toString(
+                            snapshot.getPlantSun()
+                    )
             );
 
         } else {
 
             sunLabel.setText(
-                    "ZOMBIE SUN: "
-                            + snapshot.getZombieSun()
+                    Integer.toString(
+                            snapshot.getZombieSun()
+                    )
             );
         }
-
-        int aliveBrains =
-                0;
-
-
-        if (snapshot.getBrains() != null) {
-
-            for (var brain :
-                    snapshot.getBrains()) {
-
-                if (brain != null
-                        && !brain.isEaten()) {
-
-                    aliveBrains++;
-                }
-            }
-        }
-
-
-        brainLabel.setText(
-                "BRAINS LEFT: "
-                        + aliveBrains
-        );
-
-
-        int plants =
-                snapshot.getPlants() == null
-                        ? 0
-                        : snapshot.getPlants().size();
-
-
-        int zombies =
-                snapshot.getZombies() == null
-                        ? 0
-                        : snapshot.getZombies().size();
-
-
-        int projectiles =
-                snapshot.getProjectiles() == null
-                        ? 0
-                        : snapshot.getProjectiles().size();
-
-
-        entityLabel.setText(
-                "PLANTS: "
-                        + plants
-                        + "   ZOMBIES: "
-                        + zombies
-                        + "   PROJECTILES: "
-                        + projectiles
-        );
     }
 
     private void receiveServerEvent(
@@ -614,7 +630,6 @@ public final class OnlineIZombieScreen
             }
 
 
-
             if (message.getType()
                     == MessageType.MATCH_ENDED) {
 
@@ -649,6 +664,173 @@ public final class OnlineIZombieScreen
         }
     }
 
+    private BoardArea createGameplayBoardArea() {
+
+        TextureRegion left =
+                game.getTextureBank()
+                        .region(
+                                BG_LEFT
+                        );
+
+
+        TextureRegion middle =
+                game.getTextureBank()
+                        .region(
+                                BG_MID
+                        );
+
+
+        float scale =
+                PvzGame.VIRTUAL_HEIGHT
+                        / LOCAL_WORLD_HEIGHT;
+
+
+        float visibleWorldWidth =
+                PvzGame.VIRTUAL_WIDTH
+                        / scale;
+
+
+        float cameraGameplayX =
+                left.getRegionWidth()
+                        + middle.getRegionWidth()
+                        / 2f;
+
+
+        float cameraLeft =
+                cameraGameplayX
+                        - visibleWorldWidth
+                        / 2f;
+
+
+        return new BoardArea(
+                (
+                        LOCAL_BOARD_X
+                                - cameraLeft
+                )
+                        * scale,
+
+                LOCAL_BOARD_Y
+                        * scale,
+
+                LOCAL_BOARD_WIDTH
+                        * scale,
+
+                LOCAL_BOARD_HEIGHT
+                        * scale
+        );
+    }
+
+
+    private Actor createBackground() {
+
+        TextureRegion left =
+                game.getTextureBank()
+                        .region(
+                                BG_LEFT
+                        );
+
+
+        TextureRegion middle =
+                game.getTextureBank()
+                        .region(
+                                BG_MID
+                        );
+
+
+        TextureRegion right =
+                game.getTextureBank()
+                        .region(
+                                BG_RIGHT
+                        );
+
+
+        final float scale =
+                PvzGame.VIRTUAL_HEIGHT
+                        / LOCAL_WORLD_HEIGHT;
+
+
+        final float visibleWorldWidth =
+                PvzGame.VIRTUAL_WIDTH
+                        / scale;
+
+
+        final float cameraGameplayX =
+                left.getRegionWidth()
+                        + middle.getRegionWidth()
+                        / 2f;
+
+
+        final float cameraLeft =
+                cameraGameplayX
+                        - visibleWorldWidth
+                        / 2f;
+
+
+        return new Actor() {
+
+            @Override
+            public void draw(
+                    Batch batch,
+                    float parentAlpha
+            ) {
+
+                float currentX =
+                        -cameraLeft
+                                * scale;
+
+
+                float leftWidth =
+                        left.getRegionWidth()
+                                * scale;
+
+
+                float middleWidth =
+                        middle.getRegionWidth()
+                                * scale;
+
+
+                float rightWidth =
+                        right.getRegionWidth()
+                                * scale;
+
+
+                batch.draw(
+                        left,
+                        currentX,
+                        0f,
+                        leftWidth,
+                        PvzGame.VIRTUAL_HEIGHT
+                );
+
+
+                currentX +=
+                        leftWidth;
+
+
+                batch.draw(
+                        middle,
+                        currentX,
+                        0f,
+                        middleWidth,
+                        PvzGame.VIRTUAL_HEIGHT
+                );
+
+
+                currentX +=
+                        middleWidth;
+
+
+                batch.draw(
+                        right,
+                        currentX,
+                        0f,
+                        rightWidth,
+                        PvzGame.VIRTUAL_HEIGHT
+                );
+            }
+        };
+    }
+
     private void showMatchEndedPopup(
             MatchEndedDto ended
     ) {
@@ -665,9 +847,11 @@ public final class OnlineIZombieScreen
         Table darkLayer =
                 new Table();
 
+
         darkLayer.setFillParent(
                 true
         );
+
 
         darkLayer.setBackground(
                 game.getSkin().newDrawable(
@@ -691,6 +875,7 @@ public final class OnlineIZombieScreen
 
         Table content =
                 popup.getContent();
+
 
         content.clearChildren();
 
@@ -740,6 +925,7 @@ public final class OnlineIZombieScreen
         reason.setWrap(
                 true
         );
+
 
         reason.setAlignment(
                 Align.center
@@ -819,119 +1005,14 @@ public final class OnlineIZombieScreen
         darkLayer.toFront();
     }
 
-    private Actor createBackground() {
 
-        TextureRegion left =
-                game.getTextureBank().region(
-                        BG_LEFT
-                );
-
-        TextureRegion middle =
-                game.getTextureBank().region(
-                        BG_MID
-                );
-
-        TextureRegion right =
-                game.getTextureBank().region(
-                        BG_RIGHT
-                );
-
-
-        return new Actor() {
-
-            @Override
-            public void draw(
-                    Batch batch,
-                    float parentAlpha
-            ) {
-
-                final float originalWorldHeight =
-                        600f;
-
-
-                float scale =
-                        getHeight()
-                                / originalWorldHeight;
-
-                float gameplayCenterWorldX =
-                        left.getRegionWidth()
-                                + middle.getRegionWidth()
-                                / 2f;
-
-                float screenCenterX =
-                        getX()
-                                + getWidth()
-                                / 2f;
-
-
-                float firstX =
-                        screenCenterX
-                                - gameplayCenterWorldX
-                                * scale;
-
-
-                float y =
-                        getY();
-
-
-                float leftWidth =
-                        left.getRegionWidth()
-                                * scale;
-
-
-                float middleWidth =
-                        middle.getRegionWidth()
-                                * scale;
-
-
-                float rightWidth =
-                        right.getRegionWidth()
-                                * scale;
-
-
-                batch.draw(
-                        left,
-                        firstX,
-                        y,
-                        leftWidth,
-                        getHeight()
-                );
-
-
-                float currentX =
-                        firstX
-                                + leftWidth;
-
-
-                batch.draw(
-                        middle,
-                        currentX,
-                        y,
-                        middleWidth,
-                        getHeight()
-                );
-
-
-                currentX +=
-                        middleWidth;
-
-
-                batch.draw(
-                        right,
-                        currentX,
-                        y,
-                        rightWidth,
-                        getHeight()
-                );
-            }
-        };
-    }
 
     private static String rootMessage(
             Throwable throwable
     ) {
 
         if (throwable == null) {
+
             return "Unknown network error.";
         }
 
@@ -953,7 +1034,8 @@ public final class OnlineIZombieScreen
 
         return message == null
                 || message.isBlank()
-                ? current.getClass()
+                ? current
+                .getClass()
                 .getSimpleName()
                 : message;
     }
