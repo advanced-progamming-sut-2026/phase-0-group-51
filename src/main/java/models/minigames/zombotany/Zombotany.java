@@ -14,6 +14,7 @@ import models.Zombie.Zombie;
 import models.games.ChapterTheme;
 import models.games.Game;
 import models.games.GameState;
+import models.sun.SkySunSpawner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,6 +39,7 @@ public class Zombotany extends Game {
 
     private final int stageNumber;
     private final Random random;
+    private SkySunSpawner skySunSpawner;
     private final List<Zombie> templates = new ArrayList<>();
 
     private int totalWaves;
@@ -68,7 +70,7 @@ public class Zombotany extends Game {
         GameState state = new GameState(board, ChapterTheme.MINIGAME, true); // mowers enabled, like a normal level
         state.setSun(START_SUN);
         setGameState(state);
-        setSkySunSpawner(null);
+        this.skySunSpawner = new SkySunSpawner();
         templates.clear();
         buildZombotanyTemplates();
         totalWaves = 2 + stageNumber;
@@ -80,19 +82,19 @@ public class Zombotany extends Game {
     }
 
     private void buildZombotanyTemplates() {
-        Zombie peashooter = new Zombie("ZombotanyPeashooter", 190f, 0.185f, 100f, 100f, 1000);
+        Zombie peashooter = new Zombie("ZombotanyPeashooter", 190f, 0.12f, 100f, 100f, 1000);
         peashooter.addBehavior(new PeashooterZombieBehavior(
             15,
             9,
             20));
         templates.add(peashooter);
-        Zombie wallnut = new Zombie("ZombotanyWallnut", 4000f, 0.185f, 100f, 150f, 600);
+        Zombie wallnut = new Zombie("ZombotanyWallnut", 4000f, 0.12f, 100f, 150f, 600);
         templates.add(wallnut);
-        Zombie jalapeno = new Zombie("ZombotanyJalapeno", 300f, 0.185f, 100f, 150f, 500);
+        Zombie jalapeno = new Zombie("ZombotanyJalapeno", 300f, 0.12f, 100f, 150f, 500);
         jalapeno.addBehavior(new JalapenoZombieBehavior(JALAPENO_FUSE_TICKS));
         templates.add(jalapeno);
 
-        Zombie squash = new Zombie("ZombotanySquash", 240f, 0.6f, 100f, 125f, 500);
+        Zombie squash = new Zombie("ZombotanySquash", 240f, 0.15f, 100f, 125f, 500);
         squash.addBehavior(new SquashZombieBehavior());
         templates.add(squash);
     }
@@ -114,7 +116,9 @@ public class Zombotany extends Game {
             zombie.onTick(state);
         }
         state.getBoard().tickLoots(state);
-        dropSkySun();
+        if (skySunSpawner != null) {
+            skySunSpawner.onTick(state);
+        }
         maybeStartWave();
         state.tickMowers();
         checkZombiesReachedHouse();
@@ -193,17 +197,6 @@ public class Zombotany extends Game {
 
     public List<Zombie> getTemplates() {
         return Collections.unmodifiableList(templates);
-    }
-
-    private void dropSkySun() {
-        GameState state = getGameState();
-        if (state.getTickCounter() < nextSkySunTick) {
-            return;
-        }
-        nextSkySunTick += SKY_SUN_INTERVAL_TICKS;
-        state.setSun(state.getSun() + SKY_SUN_AMOUNT);
-        state.logEvent("The sky dropped " + SKY_SUN_AMOUNT
-            + " sun. Total sun: " + state.getSun() + ".\n");
     }
 
     private void maybeStartWave() {

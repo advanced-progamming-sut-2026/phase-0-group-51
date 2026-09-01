@@ -10,6 +10,7 @@ public class PeashooterZombieBehavior implements ZombieBehavior {
     private final int range;
     private final int damage;
     private int cooldown = 0;
+    private boolean justShot = false;
 
     public PeashooterZombieBehavior(int intervalTicks, int range, int damage) {
         this.intervalTicks = Math.max(1, intervalTicks);
@@ -33,8 +34,17 @@ public class PeashooterZombieBehavior implements ZombieBehavior {
         }
         target.takeDamage(damage, gs);
         cooldown = intervalTicks;
+        justShot = true;
         gs.logEvent(zombie.getAlias() + " shot a pea that hit a plant in lane "
             + (zombie.getLane() + 1) + " for " + damage + " damage.\n");
+    }
+
+    public boolean consumeShot() {
+        if (!justShot) {
+            return false;
+        }
+        justShot = false;
+        return true;
     }
 
     @Override

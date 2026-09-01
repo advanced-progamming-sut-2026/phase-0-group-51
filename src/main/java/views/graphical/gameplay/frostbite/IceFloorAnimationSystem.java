@@ -7,6 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import models.Board.Board;
 import models.Board.Tile;
 import models.games.ChapterTheme;
+import models.games.frostbite.IceFloorDirection;
 import pvz.libpvz.pam.PamPlayer;
 import views.graphical.animation.PamAnimationActor;
 import views.graphical.gameplay.board.BoardTransform;
@@ -18,12 +19,14 @@ import java.util.Objects;
 
 public final class IceFloorAnimationSystem extends Group {
 
-    private static final String ICE_FLOOR_PAM =
-        "768/FULL/EFFECTS/ZOMBONI_TILE_ICE/ZOMBONI_TILE_ICE.PAM";
+    private static final String ICE_FLOOR_UP_PAM =
+        "768/FULL/EFFECTS/TILESLIDER_ICEAGE_UP/TILESLIDER_ICEAGE_UP.PAM";
 
-    // libPVZ uses an empty clip name to mean "play the whole PAM".
-    // Asset Browser may display this state as NO_CLIP, but "NO_CLIP"
-    // is not an actual clip name understood by PamPlayer.
+    private static final String ICE_FLOOR_DOWN_PAM =
+        "768/FULL/EFFECTS/TILESLIDER_ICEAGE_DOWN/TILESLIDER_ICEAGE_DOWN.PAM";
+
+    private static final String IDLE_CLIP = "idle";
+
     private static final String WHOLE_ANIMATION_CLIP = "";
 
 
@@ -39,9 +42,8 @@ public final class IceFloorAnimationSystem extends Group {
     private final Map<Long, PamAnimationActor> visuals =
         new HashMap<>();
 
-    private String resolvedClip;
-    private Rectangle resolvedBounds;
-    private float resolvedScale = 1f;
+    private final Map<String, Rectangle> resolvedBounds = new HashMap<>();
+    private final Map<String, Float> resolvedScale = new HashMap<>();
     private boolean loadAttempted;
 
     public IceFloorAnimationSystem(
@@ -137,7 +139,8 @@ public final class IceFloorAnimationSystem extends Group {
                     actor =
                         createVisual(
                             lane,
-                            column
+                            column,
+                            tile.getIceFloorDirection()
                         );
 
                     if (actor == null) {
@@ -149,11 +152,17 @@ public final class IceFloorAnimationSystem extends Group {
                         actor
                     );
                 }
+                String pamPath =
+                    tile.getIceFloorDirection() == IceFloorDirection.UP
+                        ? ICE_FLOOR_UP_PAM
+                        : ICE_FLOOR_DOWN_PAM;
 
                 positionActor(
                     actor,
                     lane,
-                    column
+                    column,
+                    resolvedBounds.get(pamPath),
+                    resolvedScale.get(pamPath)
                 );
             }
         }
@@ -208,70 +217,54 @@ public final class IceFloorAnimationSystem extends Group {
 
     private void loadPam() {
         loadAttempted = true;
+        loadSinglePam(ICE_FLOOR_UP_PAM);
+        loadSinglePam(ICE_FLOOR_DOWN_PAM);
+    }
 
+    private void loadSinglePam(String pamPath) {
         try {
-            pamPlayer.loadSync(
-                ICE_FLOOR_PAM
-            );
+            pamPlayer.loadSync(pamPath);
 
-            resolvedClip =
-                WHOLE_ANIMATION_CLIP;
-
-            // Important: for PAM files with no named clips, ask for the
-            // bounds of the whole animation rather than bounds("NO_CLIP").
-            resolvedBounds =
-                pamPlayer.bounds(
-                    ICE_FLOOR_PAM
-                );
-
-            if (resolvedBounds == null
-                || resolvedBounds.width <= 0f
-                || resolvedBounds.height <= 0f) {
-                throw new IllegalStateException(
-                    "Ice-floor PAM has invalid whole-animation bounds."
-                );
+            Rectangle bounds = pamPlayer.bounds(pamPath);
+            if (bounds == null || bounds.width <= 0f || bounds.height <= 0f) {
+                throw new IllegalStateException("Invalid PAM bounds: " + pamPath);
             }
 
-            resolvedScale =
-                calculateScale(
-                    resolvedBounds
-                );
+            resolvedBounds.put(pamPath, bounds);
+            resolvedScale.put(pamPath, calculateScale(bounds));
 
             if (Gdx.app != null) {
                 Gdx.app.log(
                     "IceFloorAnimation",
-                    "PAM loaded as whole animation. bounds="
-                        + resolvedBounds
-                        + ", scale="
-                        + resolvedScale
-                        + ", namedClips="
-                        + pamPlayer.clips(
-                        ICE_FLOOR_PAM
-                    )
+                    "Loaded " + pamPath + " clips=" + pamPlayer.clips(pamPath)
                 );
             }
-
         } catch (RuntimeException exception) {
-            resolvedClip = null;
-            resolvedBounds = null;
-
             if (Gdx.app != null) {
                 Gdx.app.error(
                     "IceFloorAnimation",
-                    "Could not load "
-                        + ICE_FLOOR_PAM,
+                    "Could not load " + pamPath,
                     exception
                 );
             }
         }
     }
 
+    private String pamFor(IceFloorDirection direction) {
+        return direction == IceFloorDirection.DOWN
+            ? ICE_FLOOR_DOWN_PAM
+            : ICE_FLOOR_UP_PAM;
+    }
+
     private PamAnimationActor createVisual(
         int lane,
-        int column
+        int column,
+        IceFloorDirection direction
     ) {
-        if (resolvedClip == null
-            || resolvedBounds == null) {
+        String pamPath = pamFor(direction);
+        Rectangle bounds = resolvedBounds.get(pamPath);
+
+        if (bounds == null) {
             return null;
         }
 
@@ -279,40 +272,27 @@ public final class IceFloorAnimationSystem extends Group {
             PamAnimationActor actor =
                 new PamAnimationActor(
                     pamPlayer,
-                    ICE_FLOOR_PAM,
-                    resolvedClip,
+                    pamPath,
+                    IDLE_CLIP,
                     true
                 );
+            actor.setScale(1.5f);
 
-
-            actor.setTouchable(
-                Touchable.disabled
-            );
+            actor.setTouchable(Touchable.disabled);
 
             actor.setScaleX(
-                transform.tileWidth()
-                    * 1.02f
-                    / resolvedBounds.width
+                transform.tileWidth() * 1.02f / bounds.width
             );
 
             actor.setScaleY(
-                transform.tileHeight()
-                    * 0.95f
-                    / resolvedBounds.height
+                transform.tileHeight() * 0.95f / bounds.height
             );
 
-            positionActor(
-                actor,
-                lane,
-                column
-            );
+            positionActor(actor, lane, column, bounds, resolvedScale.get(pamPath));
 
-            addActor(
-                actor
-            );
-
+            addActor(actor);
             actor.restart();
-            forceAllPartsVisible(actor);
+            forceAllPartsVisible(actor, pamPath);
 
             return actor;
 
@@ -320,15 +300,10 @@ public final class IceFloorAnimationSystem extends Group {
             if (Gdx.app != null) {
                 Gdx.app.error(
                     "IceFloorAnimation",
-                    "Could not create ice-floor visual at lane "
-                        + (lane + 1)
-                        + ", column "
-                        + (column + 1)
-                        + ".",
+                    "Could not create ice floor visual.",
                     exception
                 );
             }
-
             return null;
         }
     }
@@ -336,9 +311,11 @@ public final class IceFloorAnimationSystem extends Group {
     private void positionActor(
         PamAnimationActor actor,
         int lane,
-        int column
+        int column,
+        Rectangle resolvedBounds,
+        Float scaleValue
     ) {
-        if (resolvedBounds == null) {
+        if (resolvedBounds == null || scaleValue == null) {
             return;
         }
 
@@ -362,7 +339,7 @@ public final class IceFloorAnimationSystem extends Group {
                     + resolvedBounds.width
                     * 0.5f
             )
-                * resolvedScale;
+                * scaleValue;
 
         float pamCenterY =
             (
@@ -370,7 +347,7 @@ public final class IceFloorAnimationSystem extends Group {
                     + resolvedBounds.height
                     * 0.5f
             )
-                * resolvedScale;
+                * scaleValue;
 
         actor.setPosition(
             tileCenterX
@@ -383,11 +360,12 @@ public final class IceFloorAnimationSystem extends Group {
     }
 
     private void forceAllPartsVisible(
-        PamAnimationActor actor
+        PamAnimationActor actor,
+        String pamPath
     ) {
         try {
             PamPlayer.AnimationPart root =
-                pamPlayer.getParts(ICE_FLOOR_PAM);
+                pamPlayer.getParts(pamPath);
 
             if (root == null) {
                 return;
