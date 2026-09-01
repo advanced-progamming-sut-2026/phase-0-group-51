@@ -133,6 +133,23 @@ public final class OnlineIZombieControlPanel extends Table {
                     PLANT_CARD_SCALE
             );
 
+            /*
+             * IMPORTANT:
+             * PlantCard is added directly to a raw Group below, not to a Table cell.
+             * A raw Group does not lay out its children for us, so without explicit
+             * bounds the packet can render through its children but still have a
+             * zero/incorrect hit box. That made the online plant packets look visible
+             * while they could not reliably be selected.
+             */
+            card.setSize(
+                    card.getPrefWidth(),
+                    card.getPrefHeight()
+            );
+            card.setTouchable(
+                    Touchable.enabled
+            );
+            card.validate();
+
             final String plantName = data.name();
 
             plantGroup.add(card);
@@ -399,7 +416,7 @@ public final class OnlineIZombieControlPanel extends Table {
         actionSender.accept(action);
     }
 
-
+    /** Original-game shovel mode. */
     public void activatePluckMode() {
         if (!clientSession.isPlantPlayer() || disabled) {
             return;
@@ -409,7 +426,7 @@ public final class OnlineIZombieControlPanel extends Table {
         plantMode = PlantMode.PLUCK;
     }
 
-
+    /** Original-game plant-food mode. */
     public void activateFeedMode() {
         if (!clientSession.isPlantPlayer() || disabled) {
             return;
@@ -499,10 +516,19 @@ public final class OnlineIZombieControlPanel extends Table {
                     enoughSun
             );
 
-            card.setAvailable(
+            boolean available =
                     !disabled
                             && enoughSun
-                            && ready
+                            && ready;
+
+            card.setAvailable(
+                    available
+            );
+
+            card.setTouchable(
+                    available
+                            ? Touchable.enabled
+                            : Touchable.disabled
             );
         }
 
@@ -643,6 +669,7 @@ public final class OnlineIZombieControlPanel extends Table {
             card.setTouchable(disabled ? Touchable.disabled : Touchable.enabled);
         }
     }
+
 
     public void setStatus(String text) {
         lastStatus = text == null ? "" : text;

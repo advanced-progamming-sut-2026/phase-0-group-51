@@ -1,74 +1,57 @@
 package views.graphical.screens.minigamesScreen.iZombie.online;
 
 import com.badlogic.gdx.graphics.Color;
-
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
-
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.Align;
-
+import com.badlogic.gdx.utils.Scaling;
 import graphics.PvzGame;
-
 import network.protocol.reaction.ReactionId;
 
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
-
 
 public final class ReactionOverlay extends Table {
 
-    private static final float FADE_IN_SECONDS =
-            0.12f;
-
-    private static final float HOLD_SECONDS =
-            1.80f;
-
-    private static final float FADE_OUT_SECONDS =
-            0.30f;
-
+    private static final float FADE_IN_SECONDS = 0.12f;
+    private static final float HOLD_SECONDS = 1.80f;
+    private static final float FADE_OUT_SECONDS = 0.30f;
 
     private final Label senderLabel;
-
     private final Label reactionLabel;
-
+    private final Image reactionImage;
+    private final Map<ReactionId, Drawable> emojiDrawables;
 
     public ReactionOverlay(
-            PvzGame game
+            PvzGame game,
+            Map<ReactionId, Drawable> emojiDrawables
     ) {
+        Objects.requireNonNull(game, "game cannot be null");
 
-        Objects.requireNonNull(
-                game,
-                "game cannot be null"
-        );
+        EnumMap<ReactionId, Drawable> copy =
+                new EnumMap<>(ReactionId.class);
 
+        if (emojiDrawables != null) {
+            copy.putAll(emojiDrawables);
+        }
 
-        setFillParent(
-                true
-        );
+        this.emojiDrawables =
+                Collections.unmodifiableMap(copy);
 
-        setTouchable(
-                Touchable.disabled
-        );
-
+        setFillParent(true);
+        setTouchable(Touchable.disabled);
         top();
+        padTop(78f);
 
-        padTop(
-                78f
-        );
-
-
-        Table bubble =
-                new Table();
-
-        bubble.pad(
-                12f,
-                22f,
-                14f,
-                22f
-        );
-
+        Table bubble = new Table();
+        bubble.pad(10f, 18f, 12f, 18f);
         bubble.setBackground(
                 game.getSkin().newDrawable(
                         "white_pixel",
@@ -76,11 +59,10 @@ public final class ReactionOverlay extends Table {
                                 0.05f,
                                 0.05f,
                                 0.05f,
-                                0.90f
+                                0.88f
                         )
                 )
         );
-
 
         senderLabel =
                 new Label(
@@ -92,15 +74,11 @@ public final class ReactionOverlay extends Table {
                 );
 
         senderLabel.setColor(
-                Color.valueOf(
-                        "FFE16A"
-                )
+                Color.valueOf("FFE16A")
         );
-
         senderLabel.setAlignment(
                 Align.center
         );
-
 
         reactionLabel =
                 new Label(
@@ -114,59 +92,57 @@ public final class ReactionOverlay extends Table {
         reactionLabel.setColor(
                 Color.WHITE
         );
-
         reactionLabel.setAlignment(
                 Align.center
         );
 
+        reactionImage = new Image();
+        reactionImage.setScaling(
+                Scaling.fit
+        );
+        reactionImage.setTouchable(
+                Touchable.disabled
+        );
+        reactionImage.setVisible(
+                false
+        );
 
-        bubble.add(
-                        senderLabel
-                )
+        Stack content = new Stack();
+        content.setTouchable(
+                Touchable.disabled
+        );
+        content.add(reactionLabel);
+        content.add(reactionImage);
+
+        bubble.add(senderLabel)
                 .expandX()
                 .fillX()
                 .center()
                 .row();
 
-
-        bubble.add(
-                        reactionLabel
-                )
-                .expandX()
-                .fillX()
-                .center()
-                .padTop(5f);
-
-
-        add(
-                bubble
-        )
-                .width(390f)
-                .height(126f)
+        bubble.add(content)
+                .size(310f, 76f)
+                .padTop(4f)
                 .center();
 
+        add(bubble)
+                .width(360f)
+                .height(118f)
+                .center();
 
-        setVisible(
-                false
-        );
-
-        getColor().a =
-                0f;
+        setVisible(false);
+        getColor().a = 0f;
     }
-
 
     public void showReaction(
             String senderUsername,
             ReactionId reactionId
     ) {
-
         if (reactionId == null) {
             return;
         }
 
-
         clearActions();
-
 
         String sender =
                 senderUsername == null
@@ -174,27 +150,33 @@ public final class ReactionOverlay extends Table {
                         ? "OPPONENT"
                         : senderUsername.trim();
 
+        senderLabel.setText(sender);
 
-        senderLabel.setText(
-                sender
-        );
-
-
-        reactionLabel.setText(
-                displayText(
+        Drawable emoji =
+                emojiDrawables.get(
                         reactionId
-                )
-        );
+                );
 
+        if (emoji != null) {
+            reactionLabel.setText("");
+            reactionLabel.setVisible(false);
 
-        getColor().a =
-                0f;
+            reactionImage.setDrawable(
+                    emoji
+            );
+            reactionImage.setVisible(true);
+        } else {
+            reactionImage.setVisible(false);
+            reactionImage.setDrawable(null);
 
+            reactionLabel.setText(
+                    displayText(reactionId)
+            );
+            reactionLabel.setVisible(true);
+        }
 
-        setVisible(
-                true
-        );
-
+        getColor().a = 0f;
+        setVisible(true);
 
         addAction(
                 Actions.sequence(
@@ -208,38 +190,20 @@ public final class ReactionOverlay extends Table {
                                 FADE_OUT_SECONDS
                         ),
                         Actions.run(
-                                () -> setVisible(
-                                        false
-                                )
+                                () -> setVisible(false)
                         )
                 )
         );
     }
 
-
     private String displayText(
             ReactionId reactionId
     ) {
-
         return switch (reactionId) {
-
-            case GOOD_LUCK ->
-                    "GOOD LUCK!";
-
-            case NICE_MOVE ->
-                    "NICE MOVE!";
-
-            case OH_NO ->
-                    "OH NO!";
-
-            case SMILE ->
-                    "\uD83D\uDE42";
-
-            case LAUGH ->
-                    "\uD83D\uDE02";
-
-            case SHOCKED ->
-                    "\uD83D\uDE31";
+            case GOOD_LUCK -> "GOOD LUCK!";
+            case NICE_MOVE -> "NICE MOVE!";
+            case OH_NO -> "OH NO!";
+            case SMILE, LAUGH, SHOCKED -> "";
         };
     }
 }

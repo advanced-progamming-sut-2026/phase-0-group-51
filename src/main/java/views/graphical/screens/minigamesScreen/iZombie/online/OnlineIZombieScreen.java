@@ -3,6 +3,7 @@ package views.graphical.screens.minigamesScreen.iZombie.online;
 import com.badlogic.gdx.Gdx;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
@@ -49,6 +50,8 @@ import views.graphical.screens.BaseScreen;
 
 import views.graphical.ui.BorderedPanel;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -74,6 +77,13 @@ public final class OnlineIZombieScreen extends BaseScreen {
             "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON";
     private static final String PLANT_FOOD_BUTTON_DOWN =
             "IMAGE_UI_HUD_INGAME_PLANTFOOD_BUTTON_DOWN";
+
+    private static final String REACTION_SMILE_PATH =
+            "assets/UIs/reactions/reaction_smile.png";
+    private static final String REACTION_LAUGH_PATH =
+            "assets/UIs/reactions/reaction_laugh.png";
+    private static final String REACTION_SHOCKED_PATH =
+            "assets/UIs/reactions/reaction_shocked.png";
     private static final float TOOL_CURSOR_ALPHA = 0.58f;
     private static final float TOOL_CURSOR_SCALE = 0.65f;
     private static final float LOCAL_WORLD_HEIGHT = 600f;
@@ -136,6 +146,12 @@ public final class OnlineIZombieScreen extends BaseScreen {
     private Image toolCursorPreview;
     private final Vector2 toolCursorPosition = new Vector2();
 
+    private final Map<ReactionId, Texture> reactionTextures =
+            new EnumMap<>(ReactionId.class);
+
+    private final Map<ReactionId, Drawable> reactionDrawables =
+            new EnumMap<>(ReactionId.class);
+
 
     public OnlineIZombieScreen(
             PvzGame game,
@@ -190,6 +206,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
                         boardArea
                 );
 
+
+        loadReactionAssets();
 
         buildUi();
     }
@@ -281,8 +299,12 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 true
         );
 
+        /*
+         * Keep match/time text out of the middle of the lawn.
+         * It now sits in the top-left HUD area, just to the right of the sun bank.
+         */
         matchInfoLayer.top()
-                .center();
+                .left();
 
 
         Table matchInfo =
@@ -330,7 +352,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
         matchInfoLayer.add(
                         matchInfo
                 )
-                .padTop(13f);
+                .padTop(13f)
+                .padLeft(150f);
 
 
         root.add(
@@ -359,7 +382,8 @@ public final class OnlineIZombieScreen extends BaseScreen {
 
         reactionOverlay =
                 new ReactionOverlay(
-                        game
+                        game,
+                        reactionDrawables
                 );
 
         root.add(
@@ -662,21 +686,18 @@ public final class OnlineIZombieScreen extends BaseScreen {
         panel.row();
 
 
-        addReactionButton(
+        addReactionImageButton(
                 panel,
-                "\uD83D\uDE42",
                 ReactionId.SMILE
         );
 
-        addReactionButton(
+        addReactionImageButton(
                 panel,
-                "\uD83D\uDE02",
                 ReactionId.LAUGH
         );
 
-        addReactionButton(
+        addReactionImageButton(
                 panel,
-                "\uD83D\uDE31",
                 ReactionId.SHOCKED
         );
 
@@ -728,6 +749,52 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 )
                 .width(112f)
                 .height(38f)
+                .pad(3f);
+    }
+
+
+    private void addReactionImageButton(
+            Table table,
+            ReactionId reactionId
+    ) {
+        Drawable drawable =
+                reactionDrawables.get(
+                        reactionId
+                );
+
+        if (drawable == null) {
+            return;
+        }
+
+        ImageButton.ImageButtonStyle style =
+                new ImageButton.ImageButtonStyle();
+
+        style.imageUp = drawable;
+        style.imageDown = drawable;
+        style.imageOver = drawable;
+
+        ImageButton button =
+                new ImageButton(
+                        style
+                );
+
+        button.addListener(
+                new ClickListener() {
+                    @Override
+                    public void clicked(
+                            InputEvent event,
+                            float x,
+                            float y
+                    ) {
+                        sendReaction(
+                                reactionId
+                        );
+                    }
+                }
+        );
+
+        table.add(button)
+                .size(48f)
                 .pad(3f);
     }
 
@@ -811,6 +878,55 @@ public final class OnlineIZombieScreen extends BaseScreen {
                     )
             );
         }
+    }
+
+
+    private void loadReactionAssets() {
+        loadReactionAsset(
+                ReactionId.SMILE,
+                REACTION_SMILE_PATH
+        );
+
+        loadReactionAsset(
+                ReactionId.LAUGH,
+                REACTION_LAUGH_PATH
+        );
+
+        loadReactionAsset(
+                ReactionId.SHOCKED,
+                REACTION_SHOCKED_PATH
+        );
+    }
+
+    private void loadReactionAsset(
+            ReactionId reactionId,
+            String path
+    ) {
+        Texture texture =
+                new Texture(
+                        Gdx.files.internal(
+                                path
+                        )
+                );
+
+        texture.setFilter(
+                Texture.TextureFilter.Linear,
+                Texture.TextureFilter.Linear
+        );
+
+        reactionTextures.put(
+                reactionId,
+                texture
+        );
+
+        reactionDrawables.put(
+                reactionId,
+                new TextureRegionDrawable(
+                        new TextureRegion(
+                                texture
+                        )
+                )
+        );
     }
 
 
@@ -980,6 +1096,23 @@ public final class OnlineIZombieScreen extends BaseScreen {
 
 
     @Override
+    public void dispose() {
+        super.dispose();
+
+        for (Texture texture :
+                reactionTextures.values()) {
+
+            if (texture != null) {
+                texture.dispose();
+            }
+        }
+
+        reactionTextures.clear();
+        reactionDrawables.clear();
+    }
+
+
+    @Override
     public void render(
             float delta
     ) {
@@ -1034,7 +1167,10 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 Math.max(
                         0,
                         snapshot.getRemainingTicks()
-                                / 10
+                                / Math.max(
+                                1,
+                                snapshot.getTicksPerSecond()
+                        )
                 );
 
 
