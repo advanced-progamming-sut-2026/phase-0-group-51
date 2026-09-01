@@ -91,7 +91,7 @@ public class MultiplayerIZombieGame extends Game {
         roster.keySet().removeIf(alias -> ZombieRegistry.getTemplate(alias) == null);
         if (roster.isEmpty()) {
             throw new IllegalStateException(
-                "No roster zombie for this stage is available in the ZombieRegistry.");
+                    "No roster zombie for this stage is available in the ZombieRegistry.");
         }
 
         for (int row = 1; row <= board.getLaneCount(); row++) {
@@ -188,7 +188,7 @@ public class MultiplayerIZombieGame extends Game {
         String alias = resolveZombieAlias(zombieName);
         if (alias == null) {
             throw new IllegalArgumentException(
-                "Zombie " + zombieName + " is not available in this stage.");
+                    "Zombie " + zombieName + " is not available in this stage.");
         }
         GameState state = getGameState();
         Board board = state.getBoard();
@@ -197,19 +197,19 @@ public class MultiplayerIZombieGame extends Game {
         int cooldownRemaining = getZombieCooldownTicks(alias);
         if (cooldownRemaining > 0) {
             throw new IllegalStateException(
-                alias + " is recharging for " + cooldownRemaining + " more ticks.");
+                    alias + " is recharging for " + cooldownRemaining + " more ticks.");
         }
         if (cost > zombieSun) {
             throw new IllegalStateException(
-                "Not enough sun to place " + alias + " (costs " + cost
-                    + ", you have " + zombieSun + ").");
+                    "Not enough sun to place " + alias + " (costs " + cost
+                            + ", you have " + zombieSun + ").");
         }
         if (y < 1 || y > board.getLaneCount() || x < 1 || x > board.getColumnCount()) {
             throw new IllegalArgumentException("Coordinates are outside the map.");
         }
         if (x <= RED_LINE_COLUMN) {
             throw new IllegalArgumentException(
-                "Zombies can only be placed to the right of the red line.");
+                    "Zombies can only be placed to the right of the red line.");
         }
 
         Zombie zombie = ZombieRegistry.spawn(alias);
@@ -219,7 +219,7 @@ public class MultiplayerIZombieGame extends Game {
         zombieSun -= cost;
         zombieReadyAtTick.put(alias, state.getTickCounter() + getZombieCooldownTotalTicks(alias));
         state.logEvent("Zombie " + alias + " placed at (" + x + ", " + y
-            + ") for " + cost + " sun.\n");
+                + ") for " + cost + " sun.\n");
         checkEnd(state);
         return zombie;
     }
@@ -240,13 +240,13 @@ public class MultiplayerIZombieGame extends Game {
         }
         if (x < PLANT_START_COLUMN || x > PLANT_END_COLUMN) {
             throw new IllegalArgumentException(
-                "Plants can only be placed between column " + PLANT_START_COLUMN
-                    + " and " + PLANT_END_COLUMN + ".");
+                    "Plants can only be placed between column " + PLANT_START_COLUMN
+                            + " and " + PLANT_END_COLUMN + ".");
         }
         if (data.cost() > plantSun) {
             throw new IllegalStateException(
-                "Not enough sun to plant " + data.name() + " (costs " + data.cost()
-                    + ", you have " + plantSun + ").");
+                    "Not enough sun to plant " + data.name() + " (costs " + data.cost()
+                            + ", you have " + plantSun + ").");
         }
         Tile tile = board.getTileAtUserCoordinates(x - 1, y - 1);
         if (tile == null || !tile.isOccupiable()) {
@@ -260,7 +260,7 @@ public class MultiplayerIZombieGame extends Game {
         plant.getPlantType().onPlanted(plant, state);
         plantSun -= data.cost();
         state.logEvent("Plant " + data.name() + " placed at (" + x + ", " + y
-            + ") for " + data.cost() + " sun.\n");
+                + ") for " + data.cost() + " sun.\n");
         return plant;
     }
 
@@ -276,8 +276,8 @@ public class MultiplayerIZombieGame extends Game {
         }
         if (x < PLANT_START_COLUMN || x > PLANT_END_COLUMN) {
             throw new IllegalArgumentException(
-                "Plants only exist between column " + PLANT_START_COLUMN
-                    + " and " + PLANT_END_COLUMN + ".");
+                    "Plants only exist between column " + PLANT_START_COLUMN
+                            + " and " + PLANT_END_COLUMN + ".");
         }
 
         Tile tile = board.getTileAtUserCoordinates(x - 1, y - 1);
@@ -303,8 +303,8 @@ public class MultiplayerIZombieGame extends Game {
         }
         if (x < PLANT_START_COLUMN || x > PLANT_END_COLUMN) {
             throw new IllegalArgumentException(
-                "Plants only exist between column " + PLANT_START_COLUMN
-                    + " and " + PLANT_END_COLUMN + ".");
+                    "Plants only exist between column " + PLANT_START_COLUMN
+                            + " and " + PLANT_END_COLUMN + ".");
         }
 
         Tile tile = board.getTileAtUserCoordinates(x - 1, y - 1);
@@ -343,7 +343,7 @@ public class MultiplayerIZombieGame extends Game {
 
     public boolean isFinished() {
         return outcome != Outcome.IN_PROGRESS
-            || (getGameState() != null && getGameState().isFinished());
+                || (getGameState() != null && getGameState().isFinished());
     }
 
     public Outcome getOutcome() {
@@ -396,22 +396,22 @@ public class MultiplayerIZombieGame extends Game {
     private static void requireRole(MatchRole actual, MatchRole required) {
         if (actual != required) {
             throw new IllegalStateException(
-                "This action requires the " + required + " role, but was sent as " + actual + ".");
+                    "This action requires the " + required + " role, but was sent as " + actual + ".");
         }
     }
 
     private String resolveZombieAlias(String requestedName) {
         return roster.keySet().stream()
-            .filter(alias -> alias.equalsIgnoreCase(requestedName))
-            .findFirst()
-            .orElse(null);
+                .filter(alias -> alias.equalsIgnoreCase(requestedName))
+                .findFirst()
+                .orElse(null);
     }
 
     private static PlantData resolvePlant(String requestedName) {
         return PlantRegistry.getAll().stream()
-            .filter(data -> data.name().equalsIgnoreCase(requestedName))
-            .findFirst()
-            .orElse(null);
+                .filter(data -> data.name().equalsIgnoreCase(requestedName))
+                .findFirst()
+                .orElse(null);
     }
 
     private void ensureRunning() {
@@ -426,21 +426,34 @@ public class MultiplayerIZombieGame extends Game {
 
     private static MinigameStage findIZombieStage(int stageNumber) {
         return MinigameStage.getStages(MinigameType.IZOMBIE).stream()
-            .filter(candidate -> candidate.getStageNumber() == stageNumber)
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException(
-                "I, Zombie stage must be 1, 2, or 3."));
+                .filter(candidate -> candidate.getStageNumber() == stageNumber)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "I, Zombie stage must be 1, 2, or 3."));
     }
 
     private static MinigameStage validateIZombieStage(MinigameStage stage) {
         Objects.requireNonNull(stage, "Minigame stage cannot be null.");
         if (stage.getMinigameType() != MinigameType.IZOMBIE) {
             throw new IllegalArgumentException(
-                "Multiplayer I, Zombie requires an IZOMBIE stage, not "
-                    + stage.getMinigameType() + ".");
+                    "Multiplayer I, Zombie requires an IZOMBIE stage, not "
+                            + stage.getMinigameType() + ".");
         }
         return stage;
     }
+
+
+    public static Map<String, Integer> getRosterForStage(
+            int stageNumber
+    ) {
+
+        return Collections.unmodifiableMap(
+                rosterForStage(
+                        stageNumber
+                )
+        );
+    }
+
 
     private static Map<String, Integer> rosterForStage(int stageNumber) {
         LinkedHashMap<String, Integer> roster = new LinkedHashMap<>();
@@ -467,7 +480,7 @@ public class MultiplayerIZombieGame extends Game {
                 roster.put("ZombieGargantuar", 300);
             }
             default -> throw new IllegalArgumentException(
-                "I, Zombie stage must be 1, 2, or 3.");
+                    "I, Zombie stage must be 1, 2, or 3.");
         }
         return roster;
     }

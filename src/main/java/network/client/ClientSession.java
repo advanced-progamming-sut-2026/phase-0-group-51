@@ -5,26 +5,41 @@ import network.protocol.match.MatchStartDto;
 import network.protocol.matchmaking.MatchFoundDto;
 
 public class ClientSession {
+
     public enum MatchState {
+
         IDLE,
         FOUND,
         RUNNING,
         ENDED
+
     }
+
 
     private String matchId;
     private String opponentUsername;
     private String role;
+
     private long seed;
     private int stageNumber;
     private int matchDurationTicks;
+
     private MatchEndedDto lastMatchResult;
-    private MatchState matchState = MatchState.IDLE;
+
+    private MatchState matchState =
+            MatchState.IDLE;
 
 
-    public synchronized boolean applyMatchFound(MatchFoundDto dto) {
+    public synchronized boolean applyMatchFound(
+            MatchFoundDto dto
+    ) {
 
-        if (dto == null || dto.matchId() == null || dto.matchId().isBlank()) {
+        if (
+                dto == null
+                        || dto.matchId() == null
+                        || dto.matchId().isBlank()
+        ) {
+
             return false;
         }
 
@@ -32,17 +47,31 @@ public class ClientSession {
             return false;
         }
 
+
+        if (
+                matchState == MatchState.RUNNING
+                        && matchId != null
+                        && !matchId.equals(dto.matchId())
+        ) {
+
+            return false;
+        }
+
         this.matchId =
                 dto.matchId();
 
         this.opponentUsername =
-                dto.opponentUsername();
+                normalizeNullable(
+                        dto.opponentUsername()
+                );
 
         this.role =
                 dto.role();
 
         this.seed = 0L;
+
         this.stageNumber = 0;
+
         this.matchDurationTicks = 0;
 
         this.lastMatchResult = null;
@@ -54,37 +83,53 @@ public class ClientSession {
     }
 
 
-    public synchronized boolean applyMatchStart(MatchStartDto dto) {
+    public synchronized boolean applyMatchStart(
+            MatchStartDto dto
+    ) {
 
-        if (dto == null || dto.getMatchId() == null || dto.getMatchId().isBlank()) {
-            return false;
-        }
-
-        if (matchId != null
-                && !matchId.equals(
-                dto.getMatchId()
-        )) {
-
-            return false;
-        }
-
-
-        if (!isValidRole(
-                dto.getRole()
-        )) {
+        if (
+                dto == null
+                        || dto.getMatchId() == null
+                        || dto.getMatchId().isBlank()
+        ) {
 
             return false;
         }
 
+        if (!isValidRole(dto.getRole())) {
 
-        this.matchId = dto.getMatchId();
-        this.role = dto.getRole();
-        this.seed = dto.getSeed();
-        this.stageNumber = dto.getStageNumber();
-        this.matchDurationTicks = dto.getMatchDurationTicks();
+            return false;
+        }
+
+        if (
+                matchId != null
+                        && !matchId.equals(
+                        dto.getMatchId()
+                )
+        ) {
+
+            return false;
+        }
+
+        this.matchId =
+                dto.getMatchId();
+
+        this.role =
+                dto.getRole();
+
+        this.seed =
+                dto.getSeed();
+
+        this.stageNumber =
+                dto.getStageNumber();
+
+        this.matchDurationTicks =
+                dto.getMatchDurationTicks();
 
         this.lastMatchResult = null;
-        this.matchState = MatchState.RUNNING;
+
+        this.matchState =
+                MatchState.RUNNING;
 
         return true;
     }
@@ -94,21 +139,33 @@ public class ClientSession {
             MatchEndedDto dto
     ) {
 
-        if (dto == null
-                || dto.getMatchId() == null) {
+        if (
+                dto == null
+                        || dto.getMatchId() == null
+                        || dto.getMatchId().isBlank()
+        ) {
+
+            return false;
+        }
+
+        if (
+                matchId == null
+                        || !matchId.equals(
+                        dto.getMatchId()
+                )
+        ) {
 
             return false;
         }
 
 
-        if (matchId == null
-                || !matchId.equals(
-                dto.getMatchId()
-        )) {
+        if (
+                matchState
+                        == MatchState.ENDED
+        ) {
 
-            return false;
+            return true;
         }
-
 
         this.lastMatchResult =
                 dto;
@@ -118,6 +175,7 @@ public class ClientSession {
 
         return true;
     }
+
 
     public synchronized void clearMatch() {
 
@@ -139,6 +197,26 @@ public class ClientSession {
                 MatchState.IDLE;
     }
 
+    public synchronized void reset() {
+
+        clearMatch();
+    }
+
+
+    public synchronized boolean isIdle() {
+
+        return matchState
+                == MatchState.IDLE;
+    }
+
+
+    public synchronized boolean isMatchFound() {
+
+        return matchState
+                == MatchState.FOUND;
+    }
+
+
     public synchronized boolean isInMatch() {
 
         return matchState
@@ -152,6 +230,13 @@ public class ClientSession {
 
         return matchState
                 == MatchState.RUNNING;
+    }
+
+
+    public synchronized boolean hasMatchEnded() {
+
+        return matchState
+                == MatchState.ENDED;
     }
 
 
@@ -169,6 +254,39 @@ public class ClientSession {
                 role
         );
     }
+
+
+    public synchronized boolean isRole(
+            String expectedRole
+    ) {
+
+        if (expectedRole == null) {
+            return false;
+        }
+
+        return expectedRole.equals(
+                role
+        );
+    }
+
+
+    public synchronized boolean belongsToMatch(
+            String candidateMatchId
+    ) {
+
+        if (
+                candidateMatchId == null
+                        || matchId == null
+        ) {
+
+            return false;
+        }
+
+        return matchId.equals(
+                candidateMatchId
+        );
+    }
+
 
     public synchronized String getMatchId() {
 
@@ -218,7 +336,28 @@ public class ClientSession {
     }
 
 
-    private boolean isValidRole(String role) {
-        return "PLANT".equals(role) || "ZOMBIE".equals(role);
+    private boolean isValidRole(
+            String role
+    ) {
+
+        return "PLANT".equals(role)
+                || "ZOMBIE".equals(role);
+    }
+
+
+    private String normalizeNullable(
+            String value
+    ) {
+
+        if (value == null) {
+            return null;
+        }
+
+        String normalized =
+                value.trim();
+
+        return normalized.isEmpty()
+                ? null
+                : normalized;
     }
 }
