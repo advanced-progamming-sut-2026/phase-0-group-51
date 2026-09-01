@@ -89,6 +89,7 @@ public class ChapterMapScreen extends BaseScreen {
         } else {
             currentActiveLevel = 0;
         }
+        currentActiveLevel = 999;
     }
 
 

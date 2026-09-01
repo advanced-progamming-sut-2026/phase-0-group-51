@@ -10,7 +10,9 @@ import models.App;
 import models.Board.Board;
 import models.Board.Tile;
 import models.Result;
+import models.Zombie.Behavior.Zombotany.PeashooterZombieBehavior;
 import models.Zombie.Zombie;
+import models.games.ChapterTheme;
 import models.games.GameState;
 import models.minigames.MinigameType;
 import models.minigames.zombotany.Zombotany;
@@ -20,6 +22,7 @@ import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.manager.PlantViewManager;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
+import views.graphical.gameplay.mower.MowerAnimationSystem;
 import views.graphical.screens.MainMenuScreen;
 import views.graphical.screens.minigamesScreen.BaseMinigameScreen;
 import views.graphical.screens.minigamesScreen.minigames;
@@ -31,19 +34,36 @@ import java.util.Map;
 
 public class ZombotanyScreen extends BaseMinigameScreen {
     private static final String BG_LEFT =
-            "IMAGE_BACKGROUNDS_JOUST_TEXTURE_LEFT";
+            "IMAGE_BACKGROUNDS_FRONTLAWN_PADDYS_TEXTURE_LEFT";
 
     private static final String BG_MID =
-            "IMAGE_BACKGROUNDS_JOUST_TEXTURE";
+            "IMAGE_BACKGROUNDS_FRONTLAWN_PADDYS_TEXTURE";
 
     private static final String BG_RIGHT =
-            "IMAGE_BACKGROUNDS_JOUST_TEXTURE_RIGHT";
+            "IMAGE_BACKGROUNDS_FRONTLAWN_PADDYS_TEXTURE_RIGHT";
 
     private static final String PEASHOOTER_ZOMBIE_WALK_TEXTURE =
             "assets/zombieP_walk.png";
 
     private static final String PEASHOOTER_ZOMBIE_SHOOT_TEXTURE =
             "assets/zombieP_shoot.png";
+
+    private static final String WALLNUT_ZOMBIE_WALK_TEXTURE =
+            "assets/zombieWN_walk.png";
+
+    private static final int WALLNUT_FRAME_WIDTH = 339;
+
+    private static final String SQUASH_ZOMBIE_WALK_TEXTURE =
+            "assets/zombieSQ_walk.png";
+
+    private static final int SQUASH_FRAME_WIDTH = 328;
+
+    private static final String JALAPENO_ZOMBIE_WALK_TEXTURE =
+            "assets/zombieJA_walk.png";
+
+    private static final int JALAPENO_FRAME_WIDTH = 292;
+
+    private static final float ZOMBOTANY_ZOMBIE_SCALE = 0.28f;
 
     private final ZombotanyController controller;
 
@@ -61,6 +81,14 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
     private SunViewManager sunViewManager;
 
+    private MowerAnimationSystem mowerAnimationSystem;
+
+    private boolean shovelMode;
+
+    private CenterGameNotice waveNotice;
+
+    private int lastWaveShown;
+
     private PlantSelectionMenuTable plantSelectionMenu;
 
     private PlantSlotsBar selectionSlotsBar;
@@ -71,6 +99,9 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
     private Texture peashooterZombieWalkTexture;
     private Texture peashooterZombieShootTexture;
+    private Texture wallnutWalkTexture;
+    private Texture squashWalkTexture;
+    private Texture jalapenoWalkTexture;
     private final Map<Zombie, Actor> customZombieActors =
             new HashMap<>();
 
@@ -130,6 +161,36 @@ public class ZombotanyScreen extends BaseMinigameScreen {
         );
         configurePeashooterTexture(
                 peashooterZombieShootTexture
+        );
+
+        wallnutWalkTexture =
+                new Texture(
+                        Gdx.files.internal(
+                                WALLNUT_ZOMBIE_WALK_TEXTURE
+                        )
+                );
+        configurePeashooterTexture(
+                wallnutWalkTexture
+        );
+
+        squashWalkTexture =
+                new Texture(
+                        Gdx.files.internal(
+                                SQUASH_ZOMBIE_WALK_TEXTURE
+                        )
+                );
+        configurePeashooterTexture(
+                squashWalkTexture
+        );
+
+        jalapenoWalkTexture =
+                new Texture(
+                        Gdx.files.internal(
+                                JALAPENO_ZOMBIE_WALK_TEXTURE
+                        )
+                );
+        configurePeashooterTexture(
+                jalapenoWalkTexture
         );
 
 
@@ -315,6 +376,23 @@ public class ZombotanyScreen extends BaseMinigameScreen {
 
         plantViewManager.sync(board);
 
+        mowerAnimationSystem =
+                new MowerAnimationSystem(
+                        game.getPamPlayer(),
+                        worldStage,
+                        boardTransform,
+                        ChapterTheme.MINIGAME
+                );
+
+        mowerAnimationSystem.update(
+                0f,
+                0f,
+                state.getTickCounter(),
+                state
+        );
+
+        gameHud.setOnShovelRequested(this::toggleShovelMode);
+
         gameplayViewsBuilt = true;
     }
 
@@ -351,6 +429,8 @@ public class ZombotanyScreen extends BaseMinigameScreen {
             controller.advanceTime(1);
 
             checkWinLossCondition();
+
+            maybeShowWaveBanner();
         }
     }
 
@@ -405,7 +485,18 @@ public class ZombotanyScreen extends BaseMinigameScreen {
                 partialTick
         );
 
+        if (mowerAnimationSystem != null) {
+            mowerAnimationSystem.update(
+                    renderDelta,
+                    partialTick,
+                    state.getTickCounter(),
+                    state
+            );
+        }
+
         syncCustomZombies();
+
+        spawnPendingPeas();
     }
 
 
@@ -420,6 +511,38 @@ public class ZombotanyScreen extends BaseMinigameScreen {
                 Texture.TextureWrap.ClampToEdge,
                 Texture.TextureWrap.ClampToEdge
         );
+    }
+
+    private void spawnPendingPeas() {
+        if (gameModel == null) {
+            return;
+        }
+
+        GameState state = gameModel.getGameState();
+
+        for (Zombie zombie : state.getZombiesInTheGame()) {
+            if (zombie == null || zombie.isDead()) {
+                continue;
+            }
+
+            if (!"ZombotanyPeashooter".equals(zombie.getAlias())) {
+                continue;
+            }
+
+            PeashooterZombieBehavior behavior =
+                    zombie.getBehavior(PeashooterZombieBehavior.class);
+
+            if (behavior != null && behavior.consumeShot()) {
+                worldStage.addActor(
+                        new ZombotanyPeaActor(
+                                game,
+                                boardTransform,
+                                zombie.getLane(),
+                                zombie.getX()
+                        )
+                );
+            }
+        }
     }
 
     private void syncCustomZombies() {
@@ -517,16 +640,8 @@ public class ZombotanyScreen extends BaseMinigameScreen {
     private Actor createCustomZombieActor(
             Zombie zombie
     ) {
-
-        String alias =
-                zombie.getAlias();
-
-
-        if (
-                "ZombotanyPeashooter"
-                        .equals(alias)
-        ) {
-
+        String alias = zombie.getAlias();
+        if ("ZombotanyPeashooter".equals(alias)) {
             return new ZombotanyPeashooterActor(
                     zombie,
                     peashooterZombieWalkTexture,
@@ -534,34 +649,36 @@ public class ZombotanyScreen extends BaseMinigameScreen {
                     boardTransform
             );
         }
-
-
-        /*
-         * بعداً:
-         *
-         * else if (
-         *     "ZombotanyWallNut".equals(alias)
-         * ) {
-         *
-         *     return new ZombotanyWallNutActor(...);
-         * }
-         *
-         * else if (
-         *     "ZombotanyJalapeno".equals(alias)
-         * ) {
-         *
-         *     return new ZombotanyJalapenoActor(...);
-         * }
-         *
-         * else if (
-         *     "ZombotanySquash".equals(alias)
-         * ) {
-         *
-         *     return new ZombotanySquashActor(...);
-         * }
-         */
-
-
+        if ("ZombotanyWallnut".equals(alias)) {
+            return new ZombotanyWalkActor(
+                    zombie,
+                    wallnutWalkTexture,
+                    WALLNUT_FRAME_WIDTH,
+                    8,
+                    boardTransform,
+                    ZOMBOTANY_ZOMBIE_SCALE
+            );
+        }
+        if ("ZombotanySquash".equals(alias)) {
+            return new ZombotanyWalkActor(
+                    zombie,
+                    squashWalkTexture,
+                    SQUASH_FRAME_WIDTH,
+                    8,
+                    boardTransform,
+                    ZOMBOTANY_ZOMBIE_SCALE
+            );
+        }
+        if ("ZombotanyJalapeno".equals(alias)) {
+            return new ZombotanyWalkActor(
+                    zombie,
+                    jalapenoWalkTexture,
+                    JALAPENO_FRAME_WIDTH,
+                    8,
+                    boardTransform,
+                    ZOMBOTANY_ZOMBIE_SCALE
+            );
+        }
         return null;
     }
 
@@ -589,6 +706,18 @@ public class ZombotanyScreen extends BaseMinigameScreen {
                         || isPaused()
                         || tile == null
         ) {
+            return;
+        }
+
+
+        if (shovelMode) {
+            if (tile.hasPlant()) {
+                tile.removePlant();
+                plantViewManager.sync(
+                        gameModel.getGameState().getBoard()
+                );
+            }
+            setShovelMode(false);
             return;
         }
 
@@ -639,6 +768,62 @@ public class ZombotanyScreen extends BaseMinigameScreen {
         }
     }
 
+
+    private void toggleShovelMode() {
+        setShovelMode(!shovelMode);
+    }
+
+    private void setShovelMode(boolean active) {
+        shovelMode = active;
+
+        if (active) {
+            gameHud.getPlantSlotsBar().clearPlantSelection();
+        }
+
+        gameHud.setShovelSelected(active);
+    }
+
+    private void maybeShowWaveBanner() {
+        if (gameModel == null) {
+            return;
+        }
+
+        int wavesSent = gameModel.getWavesSent();
+
+        if (wavesSent <= lastWaveShown) {
+            return;
+        }
+
+        lastWaveShown = wavesSent;
+
+        if (wavesSent == gameModel.getTotalWaves()) {
+            showWaveBanner("A HUGE WAVE OF ZOMBIES IS APPROACHING!");
+        }
+    }
+
+    private void showWaveBanner(String message) {
+        if (waveNotice != null) {
+            waveNotice.remove();
+            waveNotice = null;
+        }
+
+        CenterGameNotice notice =
+                new CenterGameNotice(game.getSkin(), false);
+
+        waveNotice = notice;
+
+        uiStage.addActor(notice);
+
+        notice.showSequence(
+                java.util.List.of(message),
+                1.6f,
+                () -> {
+                    if (waveNotice == notice) {
+                        waveNotice = null;
+                    }
+                }
+        );
+    }
 
     private void checkWinLossCondition() {
 
@@ -775,6 +960,11 @@ public class ZombotanyScreen extends BaseMinigameScreen {
         }
 
         customZombieActors.clear();
+
+        if (mowerAnimationSystem != null) {
+            mowerAnimationSystem.clear();
+            mowerAnimationSystem = null;
+        }
 
 
         /*
