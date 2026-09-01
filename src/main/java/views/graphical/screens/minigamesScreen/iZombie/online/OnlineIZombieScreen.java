@@ -336,9 +336,15 @@ public final class OnlineIZombieScreen extends BaseScreen {
                 matchInfoLayer
         );
 
+        root.add(
+                createPlacementInputLayer()
+        );
 
         root.add(
+                createSeedBankLayer()
+        );
 
+        root.add(
                 createReactionControls()
         );
 
@@ -350,13 +356,6 @@ public final class OnlineIZombieScreen extends BaseScreen {
 
         root.add(
                 reactionOverlay
-
-                createPlacementInputLayer()
-        );
-
-        root.add(
-                createSeedBankLayer()
-
         );
 
 
