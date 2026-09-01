@@ -36,7 +36,7 @@ public class MultiplayerIZombieGame extends Game {
     private static final int PLANT_SUN_INTERVAL_TICKS = 100;
     private static final int ZOMBIE_SUN_INTERVAL_TICKS = 80;
 
-    public static final int DEFAULT_MATCH_DURATION_TICKS = 120 * 10;
+    public static final int DEFAULT_MATCH_DURATION_TICKS = 240 * 10;
 
     private final MinigameStage stage;
     private final Random random;
