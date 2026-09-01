@@ -7,7 +7,7 @@ import Data.loader.ZombieRegistry;
 
 import java.io.IOException;
 
-public final class ServerMain {
+public final class  ServerMain {
     private ServerMain() {
     }
 

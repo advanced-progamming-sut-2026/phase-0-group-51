@@ -93,6 +93,10 @@ public class RangedAttackBehavior implements PersistableBehavior {
         }
     }
 
+    public boolean hasSnowballTarget(Zombie zombie, GameState state) {
+        return hasSnowballTarget(zombie, state.getBoard(), state);
+    }
+
     private boolean hasSnowballTarget(Zombie zombie, Board board, GameState state) {
         if (board.findNearestPlantInRange(
             zombie.getLane(), zombie.getColumn(), range) != null) {

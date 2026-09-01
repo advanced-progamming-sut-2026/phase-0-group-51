@@ -40,6 +40,22 @@ import views.graphical.ui.BorderedPanel;
 
 import java.util.Objects;
 
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
+
+import network.protocol.match.GameActionDto;
+import network.protocol.match.GameActionType;
+
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 @Getter
 public final class OnlineIZombieScreen
         extends BaseScreen {
@@ -108,6 +124,10 @@ public final class OnlineIZombieScreen
             -1;
 
     private boolean matchEnded;
+
+    private String selectedCardName;
+
+    private Label seedHintLabel;
 
 
     public OnlineIZombieScreen(
@@ -309,6 +329,15 @@ public final class OnlineIZombieScreen
 
         root.add(
                 matchInfoLayer
+        );
+
+
+        root.add(
+                createPlacementInputLayer()
+        );
+
+        root.add(
+                createSeedBankLayer()
         );
 
 
@@ -1038,5 +1067,231 @@ public final class OnlineIZombieScreen
                 .getClass()
                 .getSimpleName()
                 : message;
+    }
+
+    private Actor createPlacementInputLayer() {
+        Actor layer = new Actor() {
+            @Override
+            public Actor hit(float hx, float hy, boolean touchableCheck) {
+                if (touchableCheck && getTouchable() != Touchable.enabled) {
+                    return null;
+                }
+                BoardArea area = boardTransform.getArea();
+                if (hx < area.x()
+                        || hx > area.x() + area.width()
+                        || hy < area.y()
+                        || hy > area.y() + area.height()) {
+                    return null;
+                }
+                return this;
+            }
+        };
+        layer.setTouchable(Touchable.enabled);
+        layer.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(
+                    InputEvent event,
+                    float tx,
+                    float ty,
+                    int pointer,
+                    int buttonIndex
+            ) {
+                return handleBoardTouch(tx, ty);
+            }
+        });
+        return layer;
+    }
+
+    private boolean handleBoardTouch(float px, float py) {
+        BoardArea area = boardTransform.getArea();
+        if (px < area.x()
+                || px > area.x() + area.width()
+                || py < area.y()
+                || py > area.y() + area.height()) {
+            return false;
+        }
+
+        float tileW = area.width() / BoardTransform.COLUMNS;
+        float tileH = area.height() / BoardTransform.ROWS;
+
+        int column = (int) ((px - area.x()) / tileW);
+        int laneFromBottom = (int) ((py - area.y()) / tileH);
+        int lane = (BoardTransform.ROWS - 1) - laneFromBottom;
+
+        column = Math.max(0, Math.min(BoardTransform.COLUMNS - 1, column));
+        lane = Math.max(0, Math.min(BoardTransform.ROWS - 1, lane));
+
+        if (selectedCardName == null) {
+            game.notifyError("Select a card first.");
+            return true;
+        }
+
+        sendPlaceAction(lane, column);
+        return true;
+    }
+
+    private void sendPlaceAction(int lane, int column) {
+        if (selectedCardName == null) {
+            return;
+        }
+
+        GameActionType type = isPlantRole()
+                ? GameActionType.PLACE_PLANT
+                : GameActionType.PLACE_ZOMBIE;
+
+        GameActionDto action = new GameActionDto(
+                type,
+                selectedCardName,
+                lane,
+                column,
+                UUID.randomUUID().toString()
+        );
+
+        try {
+            matchClientService.sendAction(action)
+                    .whenComplete((result, error) ->
+                            Gdx.app.postRunnable(() -> {
+                                if (error != null) {
+                                    game.notifyError("Could not send action.");
+                                    return;
+                                }
+                                if (result != null && !result.isAccepted()) {
+                                    String reason = result.getReason();
+                                    game.notifyError(
+                                            reason == null
+                                                    ? "Action rejected."
+                                                    : reason
+                                    );
+                                }
+                            }));
+        } catch (IOException exception) {
+            game.notifyError("Not connected to the server.");
+        }
+    }
+
+    private boolean isPlantRole() {
+        return "PLANT".equalsIgnoreCase(clientSession.getRole());
+    }
+
+    private Table createSeedBankLayer() {
+        Table layer = new Table();
+        layer.setFillParent(true);
+        layer.bottom();
+        layer.setTouchable(Touchable.childrenOnly);
+
+        Table bank = new Table();
+
+        seedHintLabel = new Label(
+                "Select a card, then click a tile",
+                game.getSkin()
+        );
+
+        bank.add(seedHintLabel)
+                .padBottom(6f)
+                .row();
+
+        Table cards = new Table();
+
+        for (CardEntry card : rosterForRole()) {
+            TextButton button = new TextButton(
+                    card.name() + "   " + card.cost(),
+                    game.getSkin()
+            );
+
+            button.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    selectedCardName = card.name();
+                    seedHintLabel.setText("Selected: " + card.name());
+                }
+            });
+
+            cards.add(button)
+                    .width(140f)
+                    .height(52f)
+                    .pad(4f);
+        }
+
+        bank.add(cards);
+
+        layer.add(bank)
+                .padBottom(14f);
+
+        return layer;
+    }
+
+    private List<CardEntry> rosterForRole() {
+        List<CardEntry> cards = new ArrayList<>();
+
+        if (isPlantRole()) {
+            String[] names = {
+                    "Sunflower",
+                    "Peashooter",
+                    "Snow Pea",
+                    "Repeater",
+                    "Wall-nut"
+            };
+
+            for (String name : names) {
+                PlantData data = findPlant(name);
+                if (data != null) {
+                    cards.add(new CardEntry(data.name(), data.cost()));
+                }
+            }
+        } else {
+            for (Map.Entry<String, Integer> entry
+                    : zombieRoster(currentStage()).entrySet()) {
+                cards.add(new CardEntry(entry.getKey(), entry.getValue()));
+            }
+        }
+
+        return cards;
+    }
+
+    private PlantData findPlant(String name) {
+        for (PlantData data : PlantRegistry.getAll()) {
+            if (data.name().equalsIgnoreCase(name)) {
+                return data;
+            }
+        }
+        return null;
+    }
+
+    private int currentStage() {
+        int stage = clientSession.getStageNumber();
+        return (stage >= 1 && stage <= 3) ? stage : 1;
+    }
+
+    private Map<String, Integer> zombieRoster(int stage) {
+        LinkedHashMap<String, Integer> roster = new LinkedHashMap<>();
+
+        switch (stage) {
+            case 2 -> {
+                roster.put("ZombieExplorer", 75);
+                roster.put("ZombieBeachSnorkel", 75);
+                roster.put("ZombieIceAgeHunter", 100);
+                roster.put("ZombieProspector", 125);
+                roster.put("ZombieModernAllStar", 150);
+            }
+            case 3 -> {
+                roster.put("ZombieDefault", 50);
+                roster.put("ZombieBeachOctopus", 125);
+                roster.put("ZombieWizard", 150);
+                roster.put("ZombiePiano", 150);
+                roster.put("ZombieGargantuar", 300);
+            }
+            default -> {
+                roster.put("ZombieImp", 25);
+                roster.put("ZombieDefault", 50);
+                roster.put("ZombieNewspaper", 75);
+                roster.put("ZombieIceAgeDodo", 100);
+                roster.put("ZombieDarkJuggler", 125);
+            }
+        }
+
+        return roster;
+    }
+
+    private record CardEntry(String name, int cost) {
     }
 }

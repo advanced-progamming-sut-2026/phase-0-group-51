@@ -12,6 +12,8 @@ import views.graphical.gameplay.board.BoardTransform;
 public class ZombotanyPeashooterActor extends Actor {
     private static final int FRAME_WIDTH = 181;
 
+    private static final int WALK_FRAME_WIDTH = 377;
+
     private static final int FRAME_HEIGHT = 543;
 
     private static final int WALK_FRAME_COUNT = 8;
@@ -22,13 +24,15 @@ public class ZombotanyPeashooterActor extends Actor {
     /*
      * مدت زمان هر Frame
      */
-    private static final float FRAME_DURATION = 0.15f;
+    private static final float FRAME_DURATION = 0.3f;
 
 
     /*
      * اندازه نمایش Sprite
      */
-    private static final float SCALE = 0.35f;
+    private static final float SCALE = 0.28f;
+
+    private static final float VERTICAL_DROP = 34f;
 
     private final Zombie zombieModel;
     private final BoardTransform boardTransform;
@@ -73,7 +77,7 @@ public class ZombotanyPeashooterActor extends Actor {
         TextureRegion[][] walkSheetFrames =
                 TextureRegion.split(
                         walkSpriteSheet,
-                        FRAME_WIDTH,
+                        WALK_FRAME_WIDTH,
                         FRAME_HEIGHT
                 );
         TextureRegion[][] shootSheetFrames =
@@ -271,7 +275,8 @@ public class ZombotanyPeashooterActor extends Actor {
                 )
             +
             boardTransform.tileHeight()
-                * 0.5f;
+                * 0.5f
+            - VERTICAL_DROP;
 
 
         setPosition(pixelX, pixelY);
@@ -328,8 +333,8 @@ public class ZombotanyPeashooterActor extends Actor {
                 currentFrame,
                 getX(),
                 getY(),
-                getWidth(),
-                getHeight()
+                currentFrame.getRegionWidth() * SCALE,
+                currentFrame.getRegionHeight() * SCALE
         );
     }
 
