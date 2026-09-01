@@ -132,6 +132,11 @@ public enum WallNut implements PlantType {
     }
 
     @Override
+    public boolean movesZombieToAnotherLane() {
+        return mode == DefenseMode.REDIRECT;
+    }
+
+    @Override
     public int plantFoodDurationTicks(Plant plant, GameState state) {
         return 0;
     }

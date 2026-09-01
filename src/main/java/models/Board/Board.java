@@ -776,17 +776,33 @@ public class Board {
     }
 
     private Tile getFirstIceFloorCrossed(int lane, double fromX, double toX) {
-        int step = toX >= fromX ? 1 : -1;
-        int column = (int) Math.floor(fromX) + step;
-        int end = (int) Math.floor(toX);
-        while ((step > 0 && column <= end) || (step < 0 && column >= end)) {
-            Tile tile = getTile(lane, column);
-            if (tile != null && tile.getIceFloorDirection() != null) {
-                return tile;
-            }
-            column += step;
+        if (fromX == toX) {
+            return null;
         }
-        return null;
+        boolean movingLeft = toX < fromX;
+        int firstColumn = (int) Math.floor(Math.min(fromX, toX) - 0.5);
+        int lastColumn = (int) Math.ceil(Math.max(fromX, toX) - 0.5);
+        Tile crossed = null;
+        double crossedCenter = 0.0;
+        for (int column = firstColumn; column <= lastColumn; column++) {
+            double center = column + 0.5;
+            boolean centerCrossed = movingLeft
+                ? (toX <= center && center < fromX)
+                : (fromX < center && center <= toX);
+            if (!centerCrossed) {
+                continue;
+            }
+            Tile tile = getTile(lane, column);
+            if (tile == null || tile.getIceFloorDirection() == null) {
+                continue;
+            }
+            if (crossed == null
+                || (movingLeft ? center > crossedCenter : center < crossedCenter)) {
+                crossed = tile;
+                crossedCenter = center;
+            }
+        }
+        return crossed;
     }
 
     public void tickPlants(GameState state) {

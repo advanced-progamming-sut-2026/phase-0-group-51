@@ -2,6 +2,7 @@ package models.Zombie.Behavior;
 
 import lombok.Getter;
 import models.Board.Board;
+import models.Board.Tile;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
@@ -13,6 +14,8 @@ import java.util.Random;
 @Getter
 public class MovementBehavior implements PersistableBehavior {
     private static final Random RANDOM = new Random();
+
+    private static final int FLY_OVER_HP_THRESHOLD = 1000;
 
     public static final List<String> DODO_FLY_OVER_PLANTS = List.of(
         "iceburg",
@@ -70,12 +73,13 @@ public class MovementBehavior implements PersistableBehavior {
                 // Dodo rider
                 Plant ahead = board.findNearestPlantInRange(lane, col, 1);
                 if (ahead != null && isFlyOverTarget(ahead)) {
-                    skipEatingThisTick = true;
-                    float fromX = zombie.getX();
-                    float toX = Math.max(0f, ahead.getPosX() - 1);
-                    lastJumpFromX = fromX;
-                    lastJumpToX = toX;
-                    zombie.setX(toX);
+                    leapOver(zombie, Math.max(0f, ahead.getPosX() - 1));
+                } else {
+                    Tile here = board.getTile(lane, col);
+                    if (here != null && here.getIceFloorDirection() != null) {
+                        int landing = leftmostContiguousIce(board, lane, col);
+                        leapOver(zombie, Math.max(0f, landing - 1));
+                    }
                 }
             }
             case UNDERGROUND -> {
@@ -99,21 +103,32 @@ public class MovementBehavior implements PersistableBehavior {
         }
     }
 
+    private void leapOver(Zombie zombie, float toX) {
+        skipEatingThisTick = true;
+        lastJumpFromX = zombie.getX();
+        lastJumpToX = toX;
+        zombie.setX(toX);
+    }
+
+    private int leftmostContiguousIce(Board board, int lane, int startCol) {
+        int c = startCol;
+        while (c - 1 >= 0) {
+            Tile tile = board.getTile(lane, c - 1);
+            if (tile == null || tile.getIceFloorDirection() == null) {
+                break;
+            }
+            c--;
+        }
+        return c;
+    }
+
     private boolean isFlyOverTarget(Plant plant) {
         if (plant.getPlantType().blocksJumping()) {
             return false;
         }
-        String name = normalize(plant.getName());
-        if (name.isEmpty()) {
-            return false;
-        }
-        for (String target : flyOverTargets) {
-            String t = normalize(target);
-            if (name.equals(t) || name.startsWith(t) || t.startsWith(name)) {
-                return true;
-            }
-        }
-        return false;
+        return plant.getPlantStat().maxHp() >= FLY_OVER_HP_THRESHOLD
+            || plant.getPlantType().movesZombieToAnotherLane()
+            || plant.getPlantType().isMinePlant();
     }
 
     private static String normalize(String s) {

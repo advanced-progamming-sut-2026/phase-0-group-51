@@ -67,6 +67,14 @@ public interface PlantType {
         return false;
     }
 
+    default boolean movesZombieToAnotherLane() {
+        return false;
+    }
+
+    default boolean isMinePlant() {
+        return false;
+    }
+
     default double actionIntervalSeconds(Plant plant) {
         return plant.getPlantStat().actionInterval();
     }

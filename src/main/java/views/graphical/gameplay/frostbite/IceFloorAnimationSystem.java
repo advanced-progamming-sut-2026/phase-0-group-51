@@ -27,10 +27,16 @@ public final class IceFloorAnimationSystem extends Group {
 
     private static final String IDLE_CLIP = "idle";
 
+    private static final String ACTIVE_START_CLIP = "active_start";
+
+    private static final String ACTIVE_IDLE_CLIP = "active_idle";
+
+    private static final String ACTIVE_END_CLIP = "active_end";
+
     private static final String WHOLE_ANIMATION_CLIP = "";
 
 
-    private static final float TILE_FILL = 1.08f;
+    private static final float TILE_FILL = 1.24f;
     private static final float MIN_SCALE = 0.05f;
     private static final float MAX_SCALE = 4f;
 
@@ -215,6 +221,14 @@ public final class IceFloorAnimationSystem extends Group {
         return visuals.size();
     }
 
+    private float clipDuration(String pamPath, String clip, float fallback) {
+        try {
+            return Math.max(0.05f, pamPlayer.clipDurationSeconds(pamPath, clip));
+        } catch (RuntimeException exception) {
+            return fallback;
+        }
+    }
+
     private void loadPam() {
         loadAttempted = true;
         loadSinglePam(ICE_FLOOR_UP_PAM);
@@ -270,22 +284,26 @@ public final class IceFloorAnimationSystem extends Group {
 
         try {
             PamAnimationActor actor =
-                new PamAnimationActor(
+                new IceFloorTileActor(
                     pamPlayer,
                     pamPath,
-                    IDLE_CLIP,
-                    true
+                    ACTIVE_START_CLIP,
+                    ACTIVE_IDLE_CLIP,
+                    ACTIVE_END_CLIP,
+                    clipDuration(pamPath, ACTIVE_START_CLIP, 0.5f),
+                    clipDuration(pamPath, ACTIVE_IDLE_CLIP, 0.6f),
+                    clipDuration(pamPath, ACTIVE_END_CLIP, 0.5f)
                 );
             actor.setScale(1.5f);
 
             actor.setTouchable(Touchable.disabled);
 
             actor.setScaleX(
-                transform.tileWidth() * 1.02f / bounds.width
+                transform.tileWidth() * 1.17f / bounds.width
             );
 
             actor.setScaleY(
-                transform.tileHeight() * 0.95f / bounds.height
+                transform.tileHeight() * 1.09f / bounds.height
             );
 
             positionActor(actor, lane, column, bounds, resolvedScale.get(pamPath));

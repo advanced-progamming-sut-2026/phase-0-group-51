@@ -3,7 +3,8 @@ package models.effects;
 public record VisualEffectEvent(
     Type type,
     double posX,
-    double posY
+    double posY,
+    double intensity
 ) {
     public enum Type {
         PROJECTILE_IMPACT,
@@ -19,7 +20,8 @@ public record VisualEffectEvent(
         return new VisualEffectEvent(
             Type.PROJECTILE_IMPACT,
             posX,
-            posY
+            posY,
+            1.0
         );
     }
 
@@ -27,13 +29,21 @@ public record VisualEffectEvent(
         double posX,
         double posY
     ) {
+        return plantExplosion(posX, posY, 1.0);
+    }
+
+    public static VisualEffectEvent plantExplosion(
+        double posX,
+        double posY,
+        double intensity
+    ) {
         return new VisualEffectEvent(
             Type.PLANT_EXPLOSION,
             posX,
-            posY
+            posY,
+            intensity
         );
     }
-
 
     public static VisualEffectEvent plantDrowning(
         double posX,
@@ -42,7 +52,8 @@ public record VisualEffectEvent(
         return new VisualEffectEvent(
             Type.PLANT_DROWNING,
             posX,
-            posY
+            posY,
+            1.0
         );
     }
 
@@ -50,7 +61,8 @@ public record VisualEffectEvent(
         return new VisualEffectEvent(
             Type.ICY_WIND,
             0.0,
-            0.0
+            0.0,
+            1.0
         );
     }
 }

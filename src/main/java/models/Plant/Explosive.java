@@ -60,6 +60,11 @@ public enum Explosive implements PlantType {
     }
 
     @Override
+    public boolean isMinePlant() {
+        return mode.isMine();
+    }
+
+    @Override
     public void onPlanted(Plant plant, GameState state) {
         if (mode == ExplosionMode.INSTANT_SQUARE
             || mode == ExplosionMode.INSTANT_LANE
@@ -478,9 +483,19 @@ public enum Explosive implements PlantType {
         state.emitVisualEffect(
             VisualEffectEvent.plantExplosion(
                 plant.getPosX(),
-                plant.getPosY()
+                plant.getPosY(),
+                explosionShakeIntensity()
             )
         );
+    }
+
+    private double explosionShakeIntensity() {
+        return switch (mode) {
+            case GLOBAL_EXPLOSION -> 1.9;
+            case INSTANT_LANE -> 1.3;
+            case INSTANT_SQUARE, TRAP_SQUARE -> 1.0;
+            default -> 0.75;
+        };
     }
 
     private void crushRandomZombies(Plant plant, GameState state, int count) {
@@ -540,6 +555,12 @@ public enum Explosive implements PlantType {
     }
 
     private void damageZombie(Plant plant, GameState state, Zombie zombie) {
+        if (mode == ExplosionMode.INSTANT_SQUARE
+            || mode == ExplosionMode.INSTANT_LANE
+            || mode == ExplosionMode.GLOBAL_EXPLOSION) {
+            zombie.killInstantly(state, models.quests.QuestKillSourceType.PLANT);
+            return;
+        }
         ElementType element = PlantEnumSupport.elementFromTags(plant);
         zombie.takeDamage(plant.getDamage(), element, state, plant);
         element.onHit(zombie, state, 0, plant);
