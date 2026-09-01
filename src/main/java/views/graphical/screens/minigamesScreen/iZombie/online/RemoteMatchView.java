@@ -44,6 +44,7 @@ import views.graphical.gameplay.zombie.ZombieAnimationSystem;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -96,6 +97,10 @@ public final class RemoteMatchView
             lastPlantHp =
             new HashMap<>();
 
+    private final Map<Integer, Long>
+            lastPlantActionSerial =
+            new HashMap<>();
+
 
     private final Map<Integer, PamAnimationActor>
             zombieActors =
@@ -103,6 +108,22 @@ public final class RemoteMatchView
 
     private final Map<Integer, String>
             zombieAliases =
+            new HashMap<>();
+
+    private final Map<String, ZombieAnimationResolver.ResolvedAnimations>
+            zombieAnimationsByAlias =
+            new HashMap<>();
+
+    private final Map<Integer, Integer>
+            lastZombieRangedCooldown =
+            new HashMap<>();
+
+    private final Map<Integer, Boolean>
+            zombieEatingStates =
+            new HashMap<>();
+
+    private final Map<Integer, Float>
+            zombieOneShotRemaining =
             new HashMap<>();
 
 
@@ -177,6 +198,10 @@ public final class RemoteMatchView
     public void sync(
             MatchSnapshot snapshot
     ) {
+        if (snapshot == null) {
+            return;
+        }
+
         if (!firstSnapshotLogged) {
 
             firstSnapshotLogged =
@@ -225,11 +250,6 @@ public final class RemoteMatchView
                 }
             }
         }
-        if (snapshot == null) {
-            return;
-        }
-
-
         syncBrains(
                 snapshot
         );
@@ -477,7 +497,19 @@ public final class RemoteMatchView
                     plantLayer.addActor(
                             actor
                     );
+
+                    lastPlantActionSerial.put(
+                            id,
+                            state.getActionSerial()
+                    );
                 }
+
+                syncPlantAction(
+                        id,
+                        state,
+                        data,
+                        actor
+                );
 
 
                 Integer previousHp =
@@ -545,10 +577,61 @@ public final class RemoteMatchView
                         entry.getKey()
                 );
 
+                lastPlantActionSerial.remove(
+                        entry.getKey()
+                );
+
 
                 iterator.remove();
             }
         }
+    }
+
+    private void syncPlantAction(
+            int id,
+            PlantNetState state,
+            PlantData data,
+            PlantActor actor
+    ) {
+        Long previousSerial = lastPlantActionSerial.put(
+                id,
+                state.getActionSerial()
+        );
+
+        if (previousSerial == null
+                || previousSerial == state.getActionSerial()) {
+            return;
+        }
+
+        String action = state.getAction();
+        if (action == null) {
+            return;
+        }
+
+        switch (action.trim().toUpperCase(Locale.ROOT)) {
+            case "ATTACK" -> actor.playTemporaryAnimation(
+                    resolveRemotePlantAttack(data)
+            );
+            case "PRODUCE" -> actor.playTemporaryAnimation("produce");
+            case "EXPLODE" -> actor.playTerminalAnimation("attack");
+            default -> {
+            }
+        }
+    }
+
+    private String resolveRemotePlantAttack(PlantData data) {
+        if (data != null) {
+            if (data.hasAnimation("attack")) {
+                return "attack";
+            }
+            if (data.hasAnimation("attackBoth")) {
+                return "attackBoth";
+            }
+            if (data.hasAnimation("attack1")) {
+                return "attack1";
+            }
+        }
+        return "attack";
     }
 
     private void syncZombies(
@@ -579,12 +662,19 @@ public final class RemoteMatchView
                     actor.remove();
                     zombieActors.remove(id);
                     zombieAliases.remove(id);
+                    clearZombieAnimationState(id);
                     actor = null;
                 }
 
 
                 if (actor == null) {
-                    actor = createZombieActor(state.getAlias());
+                    ZombieAnimationResolver.ResolvedAnimations animations =
+                            resolveZombieAnimations(state.getAlias());
+
+                    actor = createZombieActor(
+                            state.getAlias(),
+                            animations
+                    );
                     if (actor == null) {
                         activeIds.remove(id);
                         continue;
@@ -596,6 +686,13 @@ public final class RemoteMatchView
                             id,
                             state.getAlias()
                     );
+
+                    if (state.getRangedCooldown() >= 0) {
+                        lastZombieRangedCooldown.put(
+                                id,
+                                state.getRangedCooldown()
+                        );
+                    }
 
 
                     zombieLayer.addActor(
@@ -615,6 +712,17 @@ public final class RemoteMatchView
                             state
                     );
                 }
+
+                zombieEatingStates.put(
+                        id,
+                        state.isEating()
+                );
+
+                syncZombieAnimation(
+                        id,
+                        state,
+                        actor
+                );
 
                 if (state.isFrozen()) {
 
@@ -661,6 +769,10 @@ public final class RemoteMatchView
                         entry.getKey()
                 );
 
+                clearZombieAnimationState(
+                        entry.getKey()
+                );
+
 
                 iterator.remove();
             }
@@ -669,7 +781,8 @@ public final class RemoteMatchView
 
 
     private PamAnimationActor createZombieActor(
-            String alias
+            String alias,
+            ZombieAnimationResolver.ResolvedAnimations animations
     ) {
 
         if (alias == null
@@ -681,12 +794,11 @@ public final class RemoteMatchView
 
         try {
 
-            String pamPath =
-                    ZombieAnimationSystem
-                            .resolvePamPath(
-                                    ChapterTheme.MINIGAME,
-                                    alias
-                            );
+            if (animations == null) {
+                return null;
+            }
+
+            String pamPath = animations.getPamPath();
 
 
             if (pamPath == null
@@ -694,15 +806,6 @@ public final class RemoteMatchView
 
                 return null;
             }
-
-
-            ZombieAnimationResolver.ResolvedAnimations
-                    animations =
-                    zombieAnimationResolver
-                            .resolve(
-                                    alias,
-                                    pamPath
-                            );
 
 
             PamAnimationActor actor =
@@ -736,8 +839,206 @@ public final class RemoteMatchView
             return actor;
 
         } catch (RuntimeException exception) {
-
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                        "RemoteMatchView",
+                        "Could not create zombie actor for alias: " + alias,
+                        exception
+                );
+            }
             return null;
+        }
+    }
+
+    private ZombieAnimationResolver.ResolvedAnimations resolveZombieAnimations(
+            String alias
+    ) {
+        if (alias == null || alias.isBlank()) {
+            return null;
+        }
+
+        if (zombieAnimationsByAlias.containsKey(alias)) {
+            return zombieAnimationsByAlias.get(alias);
+        }
+
+        try {
+            String pamPath = ZombieAnimationSystem.resolvePamPath(
+                    ChapterTheme.MINIGAME,
+                    alias
+            );
+
+            if (pamPath == null || pamPath.isBlank()) {
+                return null;
+            }
+
+            ZombieAnimationResolver.ResolvedAnimations animations =
+                    zombieAnimationResolver.resolve(alias, pamPath);
+
+            zombieAnimationsByAlias.put(alias, animations);
+            return animations;
+        } catch (RuntimeException exception) {
+            if (Gdx.app != null) {
+                Gdx.app.error(
+                        "RemoteMatchView",
+                        "Could not resolve animations for zombie: " + alias,
+                        exception
+                );
+            }
+            return null;
+        }
+    }
+
+    private void syncZombieAnimation(
+            int id,
+            ZombieNetState state,
+            PamAnimationActor actor
+    ) {
+        ZombieAnimationResolver.ResolvedAnimations animations =
+                resolveZombieAnimations(state.getAlias());
+
+        if (animations == null) {
+            return;
+        }
+
+        boolean rangedAttackStarted = false;
+
+        if (state.getRangedCooldown() >= 0) {
+            Integer previousCooldown = lastZombieRangedCooldown.put(
+                    id,
+                    state.getRangedCooldown()
+            );
+
+            rangedAttackStarted = previousCooldown != null
+                    && state.getRangedCooldown() > previousCooldown;
+        }
+
+        if (rangedAttackStarted) {
+            playZombieRangedAttack(
+                    id,
+                    state.getRangedAttackType(),
+                    actor,
+                    animations
+            );
+            return;
+        }
+
+        if (!zombieOneShotRemaining.containsKey(id)) {
+            applyZombieBaseAnimation(
+                    id,
+                    actor,
+                    animations
+            );
+        }
+    }
+
+    private void playZombieRangedAttack(
+            int id,
+            String rangedType,
+            PamAnimationActor actor,
+            ZombieAnimationResolver.ResolvedAnimations animations
+    ) {
+        String clip = findZombieRangedClip(
+                rangedType,
+                animations
+        );
+
+        actor.setPlaybackSpeed(1f);
+        actor.play(clip, false);
+        actor.restart();
+
+        float duration = 0.6f;
+        try {
+            duration = Math.max(
+                    0.05f,
+                    game.getPamPlayer().clipDurationSeconds(
+                            animations.getPamPath(),
+                            clip
+                    )
+            );
+        } catch (RuntimeException ignored) {
+        }
+
+        zombieOneShotRemaining.put(id, duration);
+    }
+
+    private String findZombieRangedClip(
+            String rangedType,
+            ZombieAnimationResolver.ResolvedAnimations animations
+    ) {
+        String normalizedType = rangedType == null
+                ? ""
+                : rangedType.trim().toUpperCase(Locale.ROOT);
+
+        String[] candidates = switch (normalizedType) {
+            case "SNOWBALL" -> new String[]{"throw", "attack"};
+            case "OCTOPUS_NET" -> new String[]{"toss", "throw", "attack"};
+            case "HOOK_PULL" -> new String[]{"cast", "attack"};
+            case "LASER_BEAM" -> new String[]{"attack", "special"};
+            case "JUGGLE_BALL" -> new String[]{"throw", "juggle", "attack"};
+            default -> new String[]{"attack", "special"};
+        };
+
+        for (String candidate : candidates) {
+            for (String available : animations.getAvailableClips()) {
+                if (available != null
+                        && available.equalsIgnoreCase(candidate)) {
+                    return available;
+                }
+            }
+        }
+
+        return animations.clip(EntityAnimationState.ATTACK);
+    }
+
+    private void applyZombieBaseAnimation(
+            int id,
+            PamAnimationActor actor,
+            ZombieAnimationResolver.ResolvedAnimations animations
+    ) {
+        EntityAnimationState baseState = zombieEatingStates.getOrDefault(
+                id,
+                false
+        )
+                ? EntityAnimationState.EAT
+                : EntityAnimationState.WALK;
+
+        actor.setPlaybackSpeed(1f);
+        actor.play(animations.clip(baseState), true);
+    }
+
+    private void clearZombieAnimationState(int id) {
+        lastZombieRangedCooldown.remove(id);
+        zombieEatingStates.remove(id);
+        zombieOneShotRemaining.remove(id);
+    }
+
+    @Override
+    public void act(float delta) {
+        super.act(delta);
+
+        Iterator<Map.Entry<Integer, Float>> iterator =
+                zombieOneShotRemaining.entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<Integer, Float> entry = iterator.next();
+            float remaining = entry.getValue() - Math.max(0f, delta);
+
+            if (remaining > 0f) {
+                entry.setValue(remaining);
+                continue;
+            }
+
+            int id = entry.getKey();
+            iterator.remove();
+
+            PamAnimationActor actor = zombieActors.get(id);
+            String alias = zombieAliases.get(id);
+            ZombieAnimationResolver.ResolvedAnimations animations =
+                    resolveZombieAnimations(alias);
+
+            if (actor != null && animations != null) {
+                applyZombieBaseAnimation(id, actor, animations);
+            }
         }
     }
 

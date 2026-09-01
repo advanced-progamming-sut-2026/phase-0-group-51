@@ -3,6 +3,7 @@ package network.server.match;
 import models.Board.Board;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
+import models.Zombie.Behavior.RangedAttackBehavior;
 import models.games.GameState;
 import models.minigames.iZombie.multiplayer.MultiplayerIZombieGame;
 import models.minigames.vaseBreaker.Brain;
@@ -38,7 +39,9 @@ public final class MatchSnapshotMapper {
                 plant.getPosX(),
                 plant.getCurrentHP(),
                 plant.getPlantStat().maxHp(),
-                plant.getLevel()));
+                plant.getLevel(),
+                plant.getLastAction().name(),
+                plant.getActionSerial()));
         }
 
         List<ZombieNetState> zombies = new ArrayList<>();
@@ -46,6 +49,9 @@ public final class MatchSnapshotMapper {
             if (zombie == null) {
                 continue;
             }
+            RangedAttackBehavior ranged =
+                zombie.getBehavior(RangedAttackBehavior.class);
+
             zombies.add(new ZombieNetState(
                 ids.idFor(zombie),
                 zombie.getAlias(),
@@ -55,7 +61,10 @@ public final class MatchSnapshotMapper {
                 zombie.getMaxHitpoints(),
                 zombie.isDead(),
                 zombie.isFrozen(),
-                zombie.isGlowing()));
+                zombie.isGlowing(),
+                zombie.isEating(),
+                ranged == null ? null : ranged.getType().name(),
+                ranged == null ? -1 : ranged.getCooldown()));
         }
 
         List<ProjectileNetState> projectiles = new ArrayList<>();

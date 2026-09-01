@@ -442,7 +442,14 @@ public class MultiplayerIZombieGame extends Game {
         return stage;
     }
 
-    private static Map<String, Integer> rosterForStage(int stageNumber) {
+    /**
+     * Returns the zombie choices shown to the zombie player for a stage.
+     *
+     * <p>The online client uses the same source of truth as the authoritative
+     * server. Keeping this public prevents the client UI from drifting away
+     * from the aliases and costs that {@link #placeZombie} validates.</p>
+     */
+    public static Map<String, Integer> rosterForStage(int stageNumber) {
         LinkedHashMap<String, Integer> roster = new LinkedHashMap<>();
         switch (stageNumber) {
             case 1 -> {
@@ -469,7 +476,7 @@ public class MultiplayerIZombieGame extends Game {
             default -> throw new IllegalArgumentException(
                 "I, Zombie stage must be 1, 2, or 3.");
         }
-        return roster;
+        return Collections.unmodifiableMap(roster);
     }
 
     public enum Outcome {

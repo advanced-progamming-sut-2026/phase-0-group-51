@@ -7,11 +7,14 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
@@ -28,8 +31,12 @@ import network.protocol.MessageType;
 import network.protocol.NetworkJsonCodec;
 import network.protocol.NetworkMessage;
 
+import network.protocol.match.GameActionDto;
+import network.protocol.match.GameActionType;
 import network.protocol.match.MatchEndedDto;
 import network.protocol.match.MatchSnapshot;
+
+import models.minigames.iZombie.multiplayer.MultiplayerIZombieGame;
 
 import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
@@ -38,7 +45,9 @@ import views.graphical.screens.BaseScreen;
 
 import views.graphical.ui.BorderedPanel;
 
+import java.io.IOException;
 import java.util.Objects;
+import java.util.UUID;
 
 @Getter
 public final class OnlineIZombieScreen
@@ -101,6 +110,8 @@ public final class OnlineIZombieScreen
 
     private Label sunLabel;
 
+    private OnlineUnitCardBar placementBar;
+
 
     private boolean active;
 
@@ -108,6 +119,8 @@ public final class OnlineIZombieScreen
             -1;
 
     private boolean matchEnded;
+
+    private boolean actionPending;
 
 
     public OnlineIZombieScreen(
@@ -166,8 +179,97 @@ public final class OnlineIZombieScreen
 
         buildUi();
     }
+    private void sendPlaceZombie(
+            String zombieName,
+            int row,
+            int column
+    ) {
+
+        GameActionDto action =
+                new GameActionDto();
 
 
+        action.setType(
+                GameActionType.PLACE_ZOMBIE
+        );
+
+
+        action.setEntityName(
+                zombieName
+        );
+
+
+        action.setRow(
+                row
+        );
+
+
+        action.setColumn(
+                column
+        );
+
+
+        action.setClientActionId(
+                UUID.randomUUID().toString()
+        );
+
+
+        try {
+
+            sendAction(action);
+
+        } catch (IOException e) {
+
+            actionPending = false;
+
+            game.notifyError(
+                    e.getMessage()
+            );
+        }
+    }
+    private void sendPlacePlant(
+            String plantName,
+            int row,
+            int column
+    ) {
+
+        GameActionDto action =
+                new GameActionDto();
+
+        action.setType(
+                GameActionType.PLACE_PLANT
+        );
+
+        action.setEntityName(
+                plantName
+        );
+
+        action.setRow(
+                row
+        );
+
+        action.setColumn(
+                column
+        );
+
+        action.setClientActionId(
+                UUID.randomUUID().toString()
+        );
+
+
+        try {
+
+            sendAction(action);
+
+        } catch (IOException e) {
+
+            actionPending = false;
+
+            game.notifyError(
+                    e.getMessage()
+            );
+        }
+    }
     private void buildUi() {
 
         Stack root =
@@ -216,6 +318,10 @@ public final class OnlineIZombieScreen
 
         root.add(
                 remoteMatchView
+        );
+
+        root.add(
+                createBoardInputLayer()
         );
 
         Stack sunBank =
@@ -311,10 +417,169 @@ public final class OnlineIZombieScreen
                 matchInfoLayer
         );
 
+        root.add(
+                createPlacementControls()
+        );
+
 
         stage.addActor(
                 root
         );
+    }
+
+    private Group createBoardInputLayer() {
+
+        Group inputLayer = new Group();
+        inputLayer.setTouchable(Touchable.childrenOnly);
+
+        for (int lane = 0; lane < BoardTransform.ROWS; lane++) {
+            for (int column = 0; column < BoardTransform.COLUMNS; column++) {
+                final int clickedLane = lane;
+                final int clickedColumn = column;
+
+                Actor tileInput = new Actor();
+                tileInput.setBounds(
+                        boardTransform.tileX(column),
+                        boardTransform.tileY(lane),
+                        boardTransform.tileWidth(),
+                        boardTransform.tileHeight()
+                );
+                tileInput.setTouchable(Touchable.enabled);
+                tileInput.addListener(new ClickListener() {
+                    @Override
+                    public void clicked(InputEvent event, float x, float y) {
+                        handleBoardClick(clickedLane, clickedColumn);
+                    }
+                });
+                inputLayer.addActor(tileInput);
+            }
+        }
+
+        return inputLayer;
+    }
+
+    private Table createPlacementControls() {
+
+        Table layer = new Table();
+        layer.setFillParent(true);
+        layer.bottom();
+
+        Table panel = new Table(
+                game.getSkin()
+        );
+        panel.setBackground(
+                game.getSkin().newDrawable(
+                        "white_pixel",
+                        new Color(0f, 0f, 0f, 0.72f)
+                )
+        );
+
+        Label title = createHudLabel(
+                clientSession.isPlantPlayer()
+                        ? "SELECT PLANT"
+                        : "SELECT ZOMBIE"
+        );
+
+        Label placementHintLabel = createHudLabel(
+                clientSession.isPlantPlayer()
+                        ? "Choose a plant, then click columns 2-6"
+                        : "Choose a zombie, then click columns 7-9"
+        );
+        placementHintLabel.setFontScale(0.75f);
+
+        placementBar = new OnlineUnitCardBar(
+                game,
+                clientSession.isPlantPlayer(),
+                clientSession.getStageNumber(),
+                ignored -> {
+                }
+        );
+
+        panel.add(title)
+                .left()
+                .pad(5f, 10f, 2f, 10f);
+        panel.add(placementHintLabel)
+                .right()
+                .expandX()
+                .pad(5f, 10f, 2f, 10f);
+        panel.row();
+        panel.add(placementBar)
+                .colspan(2)
+                .width(PvzGame.VIRTUAL_WIDTH - 80f)
+                .height(82f)
+                .pad(0f, 8f, 5f, 8f);
+
+        layer.add(panel)
+                .padBottom(4f);
+
+        return layer;
+    }
+
+    private void handleBoardClick(
+            int lane,
+            int column
+    ) {
+
+        if (!active || matchEnded || actionPending || placementBar == null) {
+            return;
+        }
+
+        String entityName = placementBar.getSelectedEntity();
+        if (entityName == null || entityName.isBlank()) {
+            game.notifyError("Select a unit first.");
+            return;
+        }
+
+        if (clientSession.isPlantPlayer()) {
+            if (column < MultiplayerIZombieGame.PLANT_START_COLUMN - 1
+                    || column > MultiplayerIZombieGame.PLANT_END_COLUMN - 1) {
+                game.notifyError("Plants can only be placed in columns 2-6.");
+                return;
+            }
+            sendPlacePlant(entityName, lane, column);
+        } else {
+            if (column < MultiplayerIZombieGame.RED_LINE_COLUMN) {
+                game.notifyError("Zombies can only be placed in columns 7-9.");
+                return;
+            }
+            sendPlaceZombie(entityName, lane, column);
+        }
+    }
+
+    private void sendAction(
+            GameActionDto action
+    ) throws IOException {
+
+        actionPending = true;
+
+        matchClientService.sendAction(action)
+                .whenComplete((result, throwable) ->
+                        Gdx.app.postRunnable(() -> {
+                            actionPending = false;
+
+                            if (!active) {
+                                return;
+                            }
+
+                            if (throwable != null) {
+                                game.notifyError(rootMessage(throwable));
+                                return;
+                            }
+
+                            if (result == null) {
+                                game.notifyError("Server returned no action result.");
+                                return;
+                            }
+
+                            if (!result.isAccepted()) {
+                                game.notifyError(
+                                        result.getReason() == null
+                                                ? "Action rejected."
+                                                : result.getReason()
+                                );
+                            }
+                        })
+                );
     }
 
     private Stack createSunBank() {
@@ -523,6 +788,10 @@ public final class OnlineIZombieScreen
         updateHud(
                 snapshot
         );
+
+        finishFromSnapshotIfNeeded(
+                snapshot
+        );
     }
 
 
@@ -557,19 +826,69 @@ public final class OnlineIZombieScreen
 
         if (clientSession.isPlantPlayer()) {
 
+            int availableSun = snapshot.getPlantSun();
+
             sunLabel.setText(
                     Integer.toString(
-                            snapshot.getPlantSun()
+                            availableSun
                     )
             );
+
+            if (placementBar != null) {
+                placementBar.setAvailableSun(availableSun);
+            }
 
         } else {
 
+            int availableSun = snapshot.getZombieSun();
+
             sunLabel.setText(
                     Integer.toString(
-                            snapshot.getZombieSun()
+                            availableSun
                     )
             );
+
+            if (placementBar != null) {
+                placementBar.setAvailableSun(availableSun);
+            }
+        }
+    }
+
+    private void finishFromSnapshotIfNeeded(
+            MatchSnapshot snapshot
+    ) {
+        if (matchEnded || snapshot == null || snapshot.getStatus() == null) {
+            return;
+        }
+
+        String outcome = snapshot.getStatus().trim().toUpperCase(
+                java.util.Locale.ROOT
+        );
+
+        String winnerRole = switch (outcome) {
+            case "PLANT_WON" -> "PLANT";
+            case "ZOMBIE_WON" -> "ZOMBIE";
+            default -> null;
+        };
+
+        if (winnerRole == null) {
+            return;
+        }
+
+        String reason = "PLANT".equals(winnerRole)
+                ? "The plant player protected at least one brain until time expired."
+                : "The zombie player ate every brain.";
+
+        MatchEndedDto ended = new MatchEndedDto(
+                snapshot.getMatchId(),
+                outcome,
+                winnerRole,
+                snapshot.getTick(),
+                reason
+        );
+
+        if (clientSession.applyMatchEnded(ended)) {
+            showMatchEndedPopup(ended);
         }
     }
 
@@ -880,22 +1199,27 @@ public final class OnlineIZombieScreen
         content.clearChildren();
 
 
-        String winner =
-                ended.getWinnerRole();
+        String winner = resolveWinnerRole(ended);
 
 
         boolean won =
                 winner != null
-                        && winner.equals(
+                        && winner.equalsIgnoreCase(
                         clientSession.getRole()
                 );
+
+        boolean hasWinner = winner != null;
+
+        String titleText = !hasWinner
+                ? "MATCH ENDED"
+                : won
+                ? "YOU WIN!"
+                : "YOU LOSE!";
 
 
         Label title =
                 new Label(
-                        won
-                                ? "YOU WIN!"
-                                : "YOU LOSE!",
+                        titleText,
                         game.getSkin().get(
                                 "big_outline",
                                 Label.LabelStyle.class
@@ -904,7 +1228,9 @@ public final class OnlineIZombieScreen
 
 
         title.setColor(
-                won
+                !hasWinner
+                        ? Color.WHITE
+                        : won
                         ? Color.valueOf("FFE16A")
                         : Color.valueOf("FF8A70")
         );
@@ -912,9 +1238,7 @@ public final class OnlineIZombieScreen
 
         Label reason =
                 new Label(
-                        ended.getReason() == null
-                                ? "Match finished."
-                                : ended.getReason(),
+                        matchEndReason(ended, winner),
                         game.getSkin().get(
                                 "medium_outline",
                                 Label.LabelStyle.class
@@ -1003,6 +1327,52 @@ public final class OnlineIZombieScreen
 
 
         darkLayer.toFront();
+    }
+
+    private String resolveWinnerRole(MatchEndedDto ended) {
+        if (ended == null) {
+            return null;
+        }
+
+        if (ended.getWinnerRole() != null
+                && !ended.getWinnerRole().isBlank()) {
+            return ended.getWinnerRole().trim().toUpperCase(
+                    java.util.Locale.ROOT
+            );
+        }
+
+        if (ended.getOutcome() == null) {
+            return null;
+        }
+
+        return switch (ended.getOutcome().trim().toUpperCase(
+                java.util.Locale.ROOT
+        )) {
+            case "PLANT_WON" -> "PLANT";
+            case "ZOMBIE_WON" -> "ZOMBIE";
+            default -> null;
+        };
+    }
+
+    private String matchEndReason(
+            MatchEndedDto ended,
+            String winner
+    ) {
+        if (ended != null
+                && ended.getReason() != null
+                && !ended.getReason().isBlank()) {
+            return ended.getReason();
+        }
+
+        if ("PLANT".equals(winner)) {
+            return "At least one brain survived until time expired.";
+        }
+
+        if ("ZOMBIE".equals(winner)) {
+            return "All brains were eaten.";
+        }
+
+        return "The match ended without a winner.";
     }
 
 

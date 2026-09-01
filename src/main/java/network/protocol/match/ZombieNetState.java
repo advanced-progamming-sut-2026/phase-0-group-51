@@ -11,12 +11,23 @@ public class ZombieNetState {
     private boolean dead;
     private boolean frozen;
     private boolean glowing;
+    private boolean eating;
+    private String rangedAttackType;
+    private int rangedCooldown = -1;
 
     public ZombieNetState() {
     }
 
     public ZombieNetState(int entityId, String alias, int lane, float x,
                           int hp, int maxHp, boolean dead, boolean frozen, boolean glowing) {
+        this(entityId, alias, lane, x, hp, maxHp, dead, frozen, glowing,
+            false, null, -1);
+    }
+
+    public ZombieNetState(int entityId, String alias, int lane, float x,
+                          int hp, int maxHp, boolean dead, boolean frozen,
+                          boolean glowing, boolean eating,
+                          String rangedAttackType, int rangedCooldown) {
         this.entityId = entityId;
         this.alias = alias;
         this.lane = lane;
@@ -26,6 +37,9 @@ public class ZombieNetState {
         this.dead = dead;
         this.frozen = frozen;
         this.glowing = glowing;
+        this.eating = eating;
+        this.rangedAttackType = rangedAttackType;
+        this.rangedCooldown = rangedCooldown;
     }
 
     public int getEntityId() { return entityId; }
@@ -54,4 +68,13 @@ public class ZombieNetState {
 
     public boolean isGlowing() { return glowing; }
     public void setGlowing(boolean glowing) { this.glowing = glowing; }
+
+    public boolean isEating() { return eating; }
+    public void setEating(boolean eating) { this.eating = eating; }
+
+    public String getRangedAttackType() { return rangedAttackType; }
+    public void setRangedAttackType(String rangedAttackType) { this.rangedAttackType = rangedAttackType; }
+
+    public int getRangedCooldown() { return rangedCooldown; }
+    public void setRangedCooldown(int rangedCooldown) { this.rangedCooldown = rangedCooldown; }
 }

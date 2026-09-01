@@ -9,12 +9,20 @@ public class PlantNetState {
     private int hp;
     private int maxHp;
     private int level;
+    private String action;
+    private long actionSerial;
 
     public PlantNetState() {
     }
 
     public PlantNetState(int entityId, String name, int row, int column,
                          int hp, int maxHp, int level) {
+        this(entityId, name, row, column, hp, maxHp, level, "NONE", 0L);
+    }
+
+    public PlantNetState(int entityId, String name, int row, int column,
+                         int hp, int maxHp, int level, String action,
+                         long actionSerial) {
         this.entityId = entityId;
         this.name = name;
         this.row = row;
@@ -22,6 +30,8 @@ public class PlantNetState {
         this.hp = hp;
         this.maxHp = maxHp;
         this.level = level;
+        this.action = action;
+        this.actionSerial = actionSerial;
     }
 
     public int getEntityId() { return entityId; }
@@ -44,4 +54,10 @@ public class PlantNetState {
 
     public int getLevel() { return level; }
     public void setLevel(int level) { this.level = level; }
+
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+
+    public long getActionSerial() { return actionSerial; }
+    public void setActionSerial(long actionSerial) { this.actionSerial = actionSerial; }
 }
