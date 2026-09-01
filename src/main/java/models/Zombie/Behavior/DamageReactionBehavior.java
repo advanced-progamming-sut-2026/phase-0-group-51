@@ -76,6 +76,25 @@ public class DamageReactionBehavior implements PersistableBehavior {
         return rawDamage;
     }
 
+    /**
+     * Synchronizes the authoritative raged flag into a client-side render
+     * mirror zombie (see RangedAttackBehavior#setCooldown for the same
+     * pattern). Normal game simulation continues to update this field
+     * through onTick().
+     */
+    public void setRaged(boolean raged) {
+        this.raged = raged;
+    }
+
+    /**
+     * Synchronizes the authoritative spinning flag into a client-side
+     * render mirror zombie. Normal game simulation continues to update
+     * this field through startSpin()/stopSpin().
+     */
+    public void setSpinning(boolean spinning) {
+        this.spinning = spinning;
+    }
+
     public void startSpinFromProjectile(Zombie zombie) {
         startSpin(zombie);
     }

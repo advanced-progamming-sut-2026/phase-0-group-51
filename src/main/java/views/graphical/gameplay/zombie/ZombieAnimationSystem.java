@@ -2846,7 +2846,7 @@ public final class ZombieAnimationSystem {
 
                 return new BaseAnimation(
                     clip,
-                    !zombie.isEating()
+                    true
                 );
             }
         }
@@ -2891,7 +2891,7 @@ public final class ZombieAnimationSystem {
                         "eat",
                         EntityAnimationState.EAT
                     ),
-                    false
+                    true
                 );
             }
 
@@ -2936,7 +2936,7 @@ public final class ZombieAnimationSystem {
 
                 return new BaseAnimation(
                     clip,
-                    false
+                    true
                 );
             }
         }
@@ -3039,6 +3039,7 @@ public final class ZombieAnimationSystem {
         return new BaseAnimation(
             clip,
             fallbackState == EntityAnimationState.WALK
+                || fallbackState == EntityAnimationState.EAT
         );
     }
 
@@ -3067,9 +3068,7 @@ public final class ZombieAnimationSystem {
 
         RangedAttackBehavior ranged =
             zombie.getBehavior(RangedAttackBehavior.class);
-        if (ranged != null) {
-            visual.lastRangedCooldown = ranged.getCooldown();
-        }
+        visual.lastAttackSerial = zombie.getAttackSerial();
 
         SunStealBehavior sunSteal =
             zombie.getBehavior(SunStealBehavior.class);
@@ -3181,8 +3180,8 @@ public final class ZombieAnimationSystem {
         RangedAttackBehavior ranged =
             zombie.getBehavior(RangedAttackBehavior.class);
         if (ranged != null) {
-            int currentCooldown = ranged.getCooldown();
-            if (currentCooldown > visual.lastRangedCooldown) {
+            long currentAttackSerial = zombie.getAttackSerial();
+            if (currentAttackSerial > visual.lastAttackSerial) {
                 switch (ranged.getType()) {
                     case SNOWBALL ->
                         enqueueSpecialClip(visual, "throw");
@@ -3199,11 +3198,11 @@ public final class ZombieAnimationSystem {
                         );
                     case LASER_BEAM ->
                         enqueueSpecialClip(visual, "attack");
-                    default -> {
-                    }
+                    case JUGGLE_BALL ->
+                        enqueueSpecialClip(visual, "throw");
                 }
             }
-            visual.lastRangedCooldown = currentCooldown;
+            visual.lastAttackSerial = currentAttackSerial;
         }
 
         SunStealBehavior sunSteal =
@@ -3929,7 +3928,7 @@ public final class ZombieAnimationSystem {
         private boolean gargantuarHideImpAfterFire;
         private boolean gargantuarImpHidden;
 
-        private int lastRangedCooldown;
+        private long lastAttackSerial;
         private int octopusIdleIndex;
         private boolean armDropped;
         private boolean headDropped;
@@ -3978,4 +3977,3 @@ public final class ZombieAnimationSystem {
         }
     }
 }
-

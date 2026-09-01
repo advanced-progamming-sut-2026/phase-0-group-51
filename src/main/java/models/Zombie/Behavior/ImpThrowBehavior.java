@@ -33,6 +33,16 @@ public class ImpThrowBehavior implements PersistableBehavior {
         spawn(zombie.getLane(), TARGET_COLUMN, summonCount, gs);
     }
 
+    /**
+     * Synchronizes the authoritative fired flag into a client-side render
+     * mirror zombie (see RangedAttackBehavior#setCooldown for the same
+     * pattern). Normal game simulation continues to update this field
+     * through onTick().
+     */
+    public void setFired(boolean fired) {
+        this.fired = fired;
+    }
+
     private void spawn(int lane, int column, int count, GameState gs) {
         for (int i = 0; i < count; i++) {
             Zombie template = ZombieRegistry.getTemplate(summonAlias);

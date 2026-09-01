@@ -57,7 +57,7 @@ final class PlantEnumSupport {
             return projectile;
         }
 
-        ProjectileVisualData visual = data.projectile("default");
+        ProjectileVisualData visual = data.resolveProjectile("default");
         if (visual == null || visual.releases() == null || visual.releases().isEmpty()) {
             return projectile;
         }

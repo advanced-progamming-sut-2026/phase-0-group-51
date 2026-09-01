@@ -389,6 +389,66 @@ public class Projectile {
         return this;
     }
 
+    /**
+     * Creates a non-simulating projectile model used by remote renderers.
+     * ProjectileViewManager can therefore use the exact same JSON visual,
+     * release offset and interpolation path as local gameplay.
+     */
+    public static Projectile renderMirror(
+        Plant sourcePlant,
+        String projectileKey,
+        int releaseId,
+        double posX,
+        double posY,
+        double visualArcOffset,
+        boolean launched,
+        Double targetX,
+        Double targetY
+    ) {
+        Projectile projectile = new Projectile(
+            0,
+            0,
+            ElementType.NORMAL,
+            List.of(),
+            0.0,
+            posX,
+            posY,
+            1.0,
+            0.0,
+            new StraightMove(),
+            1,
+            0.0,
+            0,
+            targetX,
+            targetY,
+            null
+        );
+        projectile.sourcePlant = sourcePlant;
+        projectile.visualProjectileKey =
+            projectileKey == null || projectileKey.isBlank()
+                ? "default"
+                : projectileKey;
+        projectile.visualReleaseId = releaseId;
+        projectile.visualArcOffset = visualArcOffset;
+        projectile.previousRenderArcOffset = visualArcOffset;
+        projectile.launched = launched;
+        return projectile;
+    }
+
+    /** Copies a new authoritative render sample without advancing gameplay. */
+    public void syncRenderSnapshot(
+        double nextX,
+        double nextY,
+        double nextArcOffset,
+        boolean launched
+    ) {
+        capturePreviousRenderState();
+        posX = nextX;
+        posY = nextY;
+        visualArcOffset = nextArcOffset;
+        this.launched = launched;
+    }
+
     public Projectile withVisualRelease(
         String projectileKey,
         int releaseId,

@@ -30,6 +30,7 @@ import views.graphical.gameplay.board.BoardArea;
 import views.graphical.gameplay.board.BoardTransform;
 import views.graphical.gameplay.board.BoardView;
 import views.graphical.gameplay.manager.PlantViewManager;
+import views.graphical.gameplay.manager.PlacementHighlightOverlay;
 import views.graphical.gameplay.manager.ProjectileViewManager;
 import views.graphical.gameplay.manager.SunViewManager;
 import views.graphical.gameplay.manager.WorldEffectManager;
@@ -61,8 +62,7 @@ public class IZombieScreen extends BaseMinigameScreen {
     private String selectedZombieAlias;
 
     private final Map<Zombie, Image> sunHats = new IdentityHashMap<>();
-    private Image rowHighlight;
-    private Image columnHighlight;
+    private PlacementHighlightOverlay placementHighlight;
 
 
     private PamAnimationActor zombiePlacementPreview;
@@ -121,8 +121,7 @@ public class IZombieScreen extends BaseMinigameScreen {
 
 
         createPlacementHighlights();
-        worldStage.addActor(rowHighlight);
-        worldStage.addActor(columnHighlight);
+        worldStage.addActor(placementHighlight);
         worldStage.addActor(boardView);
         buildBrains();
         plantViewManager = new PlantViewManager(game, boardTransform);
@@ -283,19 +282,10 @@ public class IZombieScreen extends BaseMinigameScreen {
     }
 
     private void createPlacementHighlights() {
-        Drawable highlightDrawable = game.getSkin().newDrawable(
-                "white_pixel",
-                new Color(1f, 1f, 1f, 0.70f)
+        placementHighlight = new PlacementHighlightOverlay(
+                game,
+                boardTransform
         );
-
-        rowHighlight = new Image(highlightDrawable);
-        columnHighlight = new Image(highlightDrawable);
-
-        rowHighlight.setTouchable(Touchable.disabled);
-        columnHighlight.setTouchable(Touchable.disabled);
-
-        rowHighlight.setVisible(false);
-        columnHighlight.setVisible(false);
     }
 
     private void handleTileHover(Tile tile) {
@@ -310,33 +300,15 @@ public class IZombieScreen extends BaseMinigameScreen {
             return;
         }
 
-        BoardArea area = boardTransform.getArea();
-
-        rowHighlight.setBounds(
-                area.x(),
-                boardTransform.tileY(tile.getLane()),
-                area.width(),
-                boardTransform.tileHeight()
+        placementHighlight.show(
+                tile.getLane(),
+                tile.getColumn()
         );
-
-        columnHighlight.setBounds(
-                boardTransform.tileX(tile.getColumn()),
-                area.y(),
-                boardTransform.tileWidth(),
-                area.height()
-        );
-
-        rowHighlight.setVisible(true);
-        columnHighlight.setVisible(true);
     }
 
     private void hidePlacementHighlights() {
-        if (rowHighlight != null) {
-            rowHighlight.setVisible(false);
-        }
-
-        if (columnHighlight != null) {
-            columnHighlight.setVisible(false);
+        if (placementHighlight != null) {
+            placementHighlight.hide();
         }
     }
 

@@ -304,7 +304,8 @@ public final class OnlineIZombieScreen
         remoteMatchView =
                 new RemoteMatchView(
                         game,
-                        boardTransform
+                        boardTransform,
+                        stage
                 );
 
 
@@ -447,6 +448,30 @@ public final class OnlineIZombieScreen
                 tileInput.setTouchable(Touchable.enabled);
                 tileInput.addListener(new ClickListener() {
                     @Override
+                    public void enter(
+                            InputEvent event,
+                            float x,
+                            float y,
+                            int pointer,
+                            Actor fromActor
+                    ) {
+                        showBoardHighlight(clickedLane, clickedColumn);
+                    }
+
+                    @Override
+                    public void exit(
+                            InputEvent event,
+                            float x,
+                            float y,
+                            int pointer,
+                            Actor toActor
+                    ) {
+                        if (remoteMatchView != null) {
+                            remoteMatchView.hidePlacementHighlight();
+                        }
+                    }
+
+                    @Override
                     public void clicked(InputEvent event, float x, float y) {
                         handleBoardClick(clickedLane, clickedColumn);
                     }
@@ -491,7 +516,11 @@ public final class OnlineIZombieScreen
                 game,
                 clientSession.isPlantPlayer(),
                 clientSession.getStageNumber(),
-                ignored -> {
+                selected -> {
+                    if ((selected == null || selected.isBlank())
+                            && remoteMatchView != null) {
+                        remoteMatchView.hidePlacementHighlight();
+                    }
                 }
         );
 
@@ -544,6 +573,21 @@ public final class OnlineIZombieScreen
             }
             sendPlaceZombie(entityName, lane, column);
         }
+    }
+
+    private void showBoardHighlight(int lane, int column) {
+        if (!active
+                || matchEnded
+                || placementBar == null
+                || placementBar.getSelectedEntity() == null
+                || placementBar.getSelectedEntity().isBlank()
+                || remoteMatchView == null) {
+            if (remoteMatchView != null) {
+                remoteMatchView.hidePlacementHighlight();
+            }
+            return;
+        }
+        remoteMatchView.showPlacementHighlight(lane, column);
     }
 
     private void sendAction(
@@ -734,6 +778,10 @@ public final class OnlineIZombieScreen
 
         active =
                 false;
+
+        if (remoteMatchView != null) {
+            remoteMatchView.hidePlacementHighlight();
+        }
 
 
         networkClient.setEventListener(
@@ -1161,6 +1209,10 @@ public final class OnlineIZombieScreen
 
         matchEnded =
                 true;
+
+        if (remoteMatchView != null) {
+            remoteMatchView.hidePlacementHighlight();
+        }
 
 
         Table darkLayer =

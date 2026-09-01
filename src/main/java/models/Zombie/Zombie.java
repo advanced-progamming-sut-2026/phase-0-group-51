@@ -53,6 +53,12 @@ public class Zombie {
     private boolean dead = false;
     private boolean hypnotized = false;
     private boolean glowing = false;
+    /**
+     * Monotonic server-side combat event counter.  Network render mirrors use
+     * this value to play one-shot attack clips without trying to infer an
+     * attack from a cooldown value.
+     */
+    private long attackSerial = 0L;
     private boolean questEligible = true;
     private int iceShellHealth;
 
@@ -324,6 +330,7 @@ public class Zombie {
                 target.getPlantType().onEatenBy(target, this, wholeDamage, gs
                 );
                 target.takeDamage(wholeDamage, gs);
+                signalAttack();
             }
         } else {
             eating = false;
@@ -335,6 +342,10 @@ public class Zombie {
                 gs.getBoard().applyIceFloorIfCrossed(this, previousX, x, gs);
             }
         }
+    }
+
+    public void signalAttack() {
+        attackSerial++;
     }
 
     private void tickHypnotized(GameState gs) {

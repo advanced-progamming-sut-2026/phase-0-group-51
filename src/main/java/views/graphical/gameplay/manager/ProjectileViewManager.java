@@ -82,10 +82,14 @@ public class ProjectileViewManager extends Group {
 
         PlantData plantData = PlantRegistry.getById(source.getId());
         if (plantData == null) {
+            plantData = PlantRegistry.getByName(source.getName());
+        }
+        if (plantData == null || !plantData.hasProjectiles()) {
             return null;
         }
-
-        return plantData.projectile(projectile.getVisualProjectileKey());
+        return plantData.resolveProjectile(
+                projectile.getVisualProjectileKey()
+        );
     }
 
     private ProjectileReleaseData resolveRelease(

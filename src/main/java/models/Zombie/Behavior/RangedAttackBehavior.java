@@ -5,6 +5,7 @@ import models.Board.Board;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
 import models.games.GameState;
+import models.effects.VisualEffectEvent;
 
 import java.util.Map;
 
@@ -34,6 +35,23 @@ public class RangedAttackBehavior implements PersistableBehavior {
         this.cooldown = intervalTicks;
     }
 
+    /**
+     * Synchronizes the authoritative cooldown into a client-side render mirror.
+     * Normal game simulation continues to update this field through onTick().
+     */
+    public void setCooldown(int cooldown) {
+        this.cooldown = Math.max(0, cooldown);
+    }
+
+    /**
+     * Synchronizes the authoritative octopus-has-target flag (used by
+     * suppressesMovement()) into a client-side render mirror. Normal game
+     * simulation continues to update this field through tickOctopus().
+     */
+    public void setOctopusHasTarget(boolean octopusHasTarget) {
+        this.octopusHasTarget = octopusHasTarget;
+    }
+
     @Override
     public void onTick(Zombie zombie, GameState state) {
         if (type == RangedAttackType.SNOWBALL) {
@@ -56,16 +74,28 @@ public class RangedAttackBehavior implements PersistableBehavior {
                 Plant target = board.findNearestPlantInRange(lane, col, range);
                 if (target != null) {
                     target.takeDamage(extraParam > 0 ? extraParam : DEFAULT_JUGGLE_DAMAGE, state);
+                    emitImpact(state, target);
+                    zombie.signalAttack();
                 }
             }
-            case HOOK_PULL -> hookPull(board, lane, col, state);
+            case HOOK_PULL -> {
+                if (hookPull(board, lane, col, state)) {
+                    zombie.signalAttack();
+                }
+            }
             case LASER_BEAM -> {
                 // Crystal skull: hits every plant ahead of it in the lane.
+                boolean hit = false;
                 for (Plant plant : board.getPlantsInLane(lane)) {
                     int dist = col - plant.getPosX();
                     if (dist >= 0 && dist <= range) {
                         plant.takeDamage(extraParam, state);
+                        emitImpact(state, plant);
+                        hit = true;
                     }
+                }
+                if (hit) {
+                    zombie.signalAttack();
                 }
             }
             default -> {
@@ -83,6 +113,7 @@ public class RangedAttackBehavior implements PersistableBehavior {
             return;
         }
         throwSnowball(zombie, board, state);
+        zombie.signalAttack();
         snowThrowCount++;
         int throwsPerSet = extraParam > 0 ? extraParam : 3;
         if (snowThrowCount >= throwsPerSet) {
@@ -123,6 +154,8 @@ public class RangedAttackBehavior implements PersistableBehavior {
         }
         cooldown = intervalTicks;
         target.attachOctopus();
+        emitImpact(state, target);
+        zombie.signalAttack();
     }
 
     private Plant findThrowablePlant(Board board, Zombie zombie) {
@@ -151,20 +184,27 @@ public class RangedAttackBehavior implements PersistableBehavior {
             zombie.getLane(), zombie.getColumn(), range);
         if (target != null) {
             target.addFrostLevel(state, "Hunter snowball");
+            emitImpact(state, target);
         }
     }
 
-    private void hookPull(Board board, int lane, int col, GameState gs) {
+    private void emitImpact(GameState state, Plant target) {
+        state.emitVisualEffect(VisualEffectEvent.projectileImpact(
+            target.getPosX(), target.getPosY()));
+    }
+
+    private boolean hookPull(Board board, int lane, int col, GameState gs) {
         // Fisherman
         Plant target = board.findNearestPlantInRange(lane, col, range);
         if (target == null) {
-            return;
+            return false;
         }
         if (col - target.getPosX() <= 1) {
             target.takeDamage(target.getCurrentHP(), gs);
         } else if (board.isTileFree(lane, target.getPosX() + 1)) {
             board.movePlant(target, lane, target.getPosX() + 1);
         }
+        return true;
     }
 
     @Override

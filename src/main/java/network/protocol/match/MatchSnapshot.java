@@ -17,6 +17,7 @@ public class MatchSnapshot {
     private List<ZombieNetState> zombies = new ArrayList<>();
     private List<ProjectileNetState> projectiles = new ArrayList<>();
     private List<BrainNetState> brains = new ArrayList<>();
+    private List<VisualEffectNetState> visualEffects = new ArrayList<>();
 
     public MatchSnapshot() {
     }
@@ -25,6 +26,15 @@ public class MatchSnapshot {
                          int plantSun, int zombieSun,
                          List<PlantNetState> plants, List<ZombieNetState> zombies,
                          List<ProjectileNetState> projectiles, List<BrainNetState> brains) {
+        this(matchId, tick, remainingTicks, status, plantSun, zombieSun,
+            plants, zombies, projectiles, brains, new ArrayList<>());
+    }
+
+    public MatchSnapshot(String matchId, int tick, int remainingTicks, String status,
+                         int plantSun, int zombieSun,
+                         List<PlantNetState> plants, List<ZombieNetState> zombies,
+                         List<ProjectileNetState> projectiles, List<BrainNetState> brains,
+                         List<VisualEffectNetState> visualEffects) {
         this.matchId = matchId;
         this.tick = tick;
         this.remainingTicks = remainingTicks;
@@ -35,6 +45,7 @@ public class MatchSnapshot {
         this.zombies = zombies;
         this.projectiles = projectiles;
         this.brains = brains;
+        this.visualEffects = visualEffects;
     }
 
     public String getMatchId() { return matchId; }
@@ -66,4 +77,7 @@ public class MatchSnapshot {
 
     public List<BrainNetState> getBrains() { return brains; }
     public void setBrains(List<BrainNetState> brains) { this.brains = brains; }
+
+    public List<VisualEffectNetState> getVisualEffects() { return visualEffects; }
+    public void setVisualEffects(List<VisualEffectNetState> visualEffects) { this.visualEffects = visualEffects; }
 }

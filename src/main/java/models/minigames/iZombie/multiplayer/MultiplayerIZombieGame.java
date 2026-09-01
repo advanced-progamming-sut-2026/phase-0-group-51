@@ -161,6 +161,11 @@ public class MultiplayerIZombieGame extends Game {
                 brain.eat();
                 state.logEvent("The zombies ate the brain in row " + brain.getRow() + "!\n");
             }
+
+            // Reaching the brain is the end of this zombie's run. Removing it
+            // from the authoritative state also removes it from the very next
+            // snapshot, so both online clients stop rendering it at the line.
+            state.removeZombie(zombie);
         }
     }
 

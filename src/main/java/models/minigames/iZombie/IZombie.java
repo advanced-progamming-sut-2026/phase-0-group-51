@@ -385,6 +385,10 @@ public class IZombie extends Game {
                     "The zombies ate the brain in row " + brain.getRow() + "!\n"
                 );
             }
+
+            // The board ends at the brain. Do not let a zombie continue
+            // walking off-screen after it has completed the lane.
+            state.removeZombie(zombie);
         }
     }
 

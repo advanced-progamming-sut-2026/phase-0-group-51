@@ -68,6 +68,16 @@ public class InstantKillBehavior implements PersistableBehavior {
         }
     }
 
+    /**
+     * Synchronizes the authoritative hasKilled flag into a client-side
+     * render mirror zombie (see RangedAttackBehavior#setCooldown for the
+     * same pattern). Normal game simulation continues to update this
+     * field through afterKill().
+     */
+    public void setHasKilled(boolean hasKilled) {
+        this.hasKilled = hasKilled;
+    }
+
     private boolean resistsInstantKill(Plant plant) {
         return plant.getPlantType() instanceof Explosive && !plant.isDisabled();
     }

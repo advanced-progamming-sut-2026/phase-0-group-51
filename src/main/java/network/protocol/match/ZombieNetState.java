@@ -14,6 +14,12 @@ public class ZombieNetState {
     private boolean eating;
     private String rangedAttackType;
     private int rangedCooldown = -1;
+    private long attackSerial;
+    private boolean raged;
+    private boolean spinning;
+    private boolean hasKilled;
+    private boolean impFired;
+    private boolean rangedHasTarget;
 
     public ZombieNetState() {
     }
@@ -21,13 +27,22 @@ public class ZombieNetState {
     public ZombieNetState(int entityId, String alias, int lane, float x,
                           int hp, int maxHp, boolean dead, boolean frozen, boolean glowing) {
         this(entityId, alias, lane, x, hp, maxHp, dead, frozen, glowing,
-            false, null, -1);
+            false, null, -1, 0L);
     }
 
     public ZombieNetState(int entityId, String alias, int lane, float x,
                           int hp, int maxHp, boolean dead, boolean frozen,
                           boolean glowing, boolean eating,
                           String rangedAttackType, int rangedCooldown) {
+        this(entityId, alias, lane, x, hp, maxHp, dead, frozen, glowing,
+            eating, rangedAttackType, rangedCooldown, 0L);
+    }
+
+    public ZombieNetState(int entityId, String alias, int lane, float x,
+                          int hp, int maxHp, boolean dead, boolean frozen,
+                          boolean glowing, boolean eating,
+                          String rangedAttackType, int rangedCooldown,
+                          long attackSerial) {
         this.entityId = entityId;
         this.alias = alias;
         this.lane = lane;
@@ -40,6 +55,7 @@ public class ZombieNetState {
         this.eating = eating;
         this.rangedAttackType = rangedAttackType;
         this.rangedCooldown = rangedCooldown;
+        this.attackSerial = attackSerial;
     }
 
     public int getEntityId() { return entityId; }
@@ -77,4 +93,29 @@ public class ZombieNetState {
 
     public int getRangedCooldown() { return rangedCooldown; }
     public void setRangedCooldown(int rangedCooldown) { this.rangedCooldown = rangedCooldown; }
+
+    public long getAttackSerial() { return attackSerial; }
+    public void setAttackSerial(long attackSerial) { this.attackSerial = attackSerial; }
+
+    // The following flags mirror the internal state of a zombie's
+    // ZombieBehavior instances (DamageReactionBehavior, InstantKillBehavior,
+    // ImpThrowBehavior, RangedAttackBehavior). They are required so that
+    // client-side render mirrors (e.g. RemoteMatchView) can reproduce the
+    // same special zombie animations (rage, spin, smash/tackle, imp throw,
+    // octopus net toss, ...) that the authoritative server-side simulation
+    // plays, since the mirror zombies are never actually ticked.
+    public boolean isRaged() { return raged; }
+    public void setRaged(boolean raged) { this.raged = raged; }
+
+    public boolean isSpinning() { return spinning; }
+    public void setSpinning(boolean spinning) { this.spinning = spinning; }
+
+    public boolean isHasKilled() { return hasKilled; }
+    public void setHasKilled(boolean hasKilled) { this.hasKilled = hasKilled; }
+
+    public boolean isImpFired() { return impFired; }
+    public void setImpFired(boolean impFired) { this.impFired = impFired; }
+
+    public boolean isRangedHasTarget() { return rangedHasTarget; }
+    public void setRangedHasTarget(boolean rangedHasTarget) { this.rangedHasTarget = rangedHasTarget; }
 }

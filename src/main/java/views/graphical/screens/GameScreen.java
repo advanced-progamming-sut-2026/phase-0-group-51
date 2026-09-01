@@ -233,8 +233,7 @@ public class GameScreen extends BaseScreen {
     private boolean screenShakeApplied;
     private float gargantuarStepTimer;
 
-    private Image rowHighlight;
-    private Image columnHighlight;
+    private PlacementHighlightOverlay placementHighlight;
 
     private static final String SHOVEL_CURSOR =
         "IMAGE_UI_HUD_INGAME_SHOVEL_ICON";
@@ -955,8 +954,7 @@ public class GameScreen extends BaseScreen {
         );
 
         createPlacementHighlights();
-        worldStage.addActor(rowHighlight);
-        worldStage.addActor(columnHighlight);
+        worldStage.addActor(placementHighlight);
         worldStage.addActor(boardView);
 
         if (deadlineOverlayManager != null) {
@@ -1418,16 +1416,10 @@ public class GameScreen extends BaseScreen {
         );
     }
     private void createPlacementHighlights() {
-        Drawable highlightDrawable = game.getSkin().newDrawable(
-            "white_pixel",
-            new Color(1f, 1f, 1f, 0.70f)
+        placementHighlight = new PlacementHighlightOverlay(
+            game,
+            boardTransform
         );
-        rowHighlight = new Image(highlightDrawable);
-        columnHighlight = new Image(highlightDrawable);
-        rowHighlight.setTouchable(Touchable.disabled);
-        columnHighlight.setTouchable(Touchable.disabled);
-        rowHighlight.setVisible(false);
-        columnHighlight.setVisible(false);
     }
     private void handleTileHover(Tile tile) {
         boolean hasPlantSelection =
@@ -1440,30 +1432,14 @@ public class GameScreen extends BaseScreen {
             hidePlacementHighlights();
             return;
         }
-        BoardArea area = boardTransform.getArea();
-        rowHighlight.setBounds(area.x(),
-            boardTransform.tileY(tile.getLane()),
-            area.width(),
-            boardTransform.tileHeight()
+        placementHighlight.show(
+            tile.getLane(),
+            tile.getColumn()
         );
-
-        columnHighlight.setBounds(
-            boardTransform.tileX(tile.getColumn()),
-            area.y(),
-            boardTransform.tileWidth(),
-            area.height()
-        );
-
-        rowHighlight.setVisible(true);
-        columnHighlight.setVisible(true);
     }
     private void hidePlacementHighlights() {
-        if (rowHighlight != null) {
-            rowHighlight.setVisible(false);
-        }
-
-        if (columnHighlight != null) {
-            columnHighlight.setVisible(false);
+        if (placementHighlight != null) {
+            placementHighlight.hide();
         }
     }
 
