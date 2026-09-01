@@ -1,5 +1,7 @@
 package network.server.match;
 
+import Data.loader.PlantData;
+import Data.loader.PlantRegistry;
 import models.Board.Board;
 import models.Plant.Plant;
 import models.Zombie.Zombie;
@@ -14,7 +16,9 @@ import network.protocol.match.ProjectileNetState;
 import network.protocol.match.ZombieNetState;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class MatchSnapshotMapper {
 
@@ -32,13 +36,13 @@ public final class MatchSnapshotMapper {
                 continue;
             }
             plants.add(new PlantNetState(
-                ids.idFor(plant),
-                plant.getName(),
-                plant.getPosY(),
-                plant.getPosX(),
-                plant.getCurrentHP(),
-                plant.getPlantStat().maxHp(),
-                plant.getLevel()));
+                    ids.idFor(plant),
+                    plant.getName(),
+                    plant.getPosY(),
+                    plant.getPosX(),
+                    plant.getCurrentHP(),
+                    plant.getPlantStat().maxHp(),
+                    plant.getLevel()));
         }
 
         List<ZombieNetState> zombies = new ArrayList<>();
@@ -47,15 +51,15 @@ public final class MatchSnapshotMapper {
                 continue;
             }
             zombies.add(new ZombieNetState(
-                ids.idFor(zombie),
-                zombie.getAlias(),
-                zombie.getLane(),
-                zombie.getX(),
-                zombie.getHitpoints(),
-                zombie.getMaxHitpoints(),
-                zombie.isDead(),
-                zombie.isFrozen(),
-                zombie.isGlowing()));
+                    ids.idFor(zombie),
+                    zombie.getAlias(),
+                    zombie.getLane(),
+                    zombie.getX(),
+                    zombie.getHitpoints(),
+                    zombie.getMaxHitpoints(),
+                    zombie.isDead(),
+                    zombie.isFrozen(),
+                    zombie.isGlowing()));
         }
 
         List<ProjectileNetState> projectiles = new ArrayList<>();
@@ -64,10 +68,10 @@ public final class MatchSnapshotMapper {
                 continue;
             }
             projectiles.add(new ProjectileNetState(
-                ids.idFor(projectile),
-                projectile.getVisualProjectileKey(),
-                projectile.getPosX(),
-                projectile.getPosY()));
+                    ids.idFor(projectile),
+                    projectile.getVisualProjectileKey(),
+                    projectile.getPosX(),
+                    projectile.getPosY()));
         }
 
         List<BrainNetState> brains = new ArrayList<>();
@@ -76,16 +80,69 @@ public final class MatchSnapshotMapper {
             brains.add(new BrainNetState(brain.getRow() - 1, brain.isEaten()));
         }
 
+        Map<String, Integer> plantCooldownTicks =
+                new LinkedHashMap<>();
+        Map<String, Integer> plantCooldownTotalTicks =
+                new LinkedHashMap<>();
+
+        for (PlantData data : PlantRegistry.getAll()) {
+            if (data == null
+                    || data.name() == null
+                    || data.name().isBlank()) {
+                continue;
+            }
+
+            plantCooldownTicks.put(
+                    data.name(),
+                    game.getPlantCooldownTicks(
+                            data.name()
+                    )
+            );
+
+            plantCooldownTotalTicks.put(
+                    data.name(),
+                    game.getPlantCooldownTotalTicks(
+                            data.name()
+                    )
+            );
+        }
+
+        Map<String, Integer> zombieCooldownTicks =
+                new LinkedHashMap<>();
+        Map<String, Integer> zombieCooldownTotalTicks =
+                new LinkedHashMap<>();
+
+        for (String alias : game.getRoster().keySet()) {
+            zombieCooldownTicks.put(
+                    alias,
+                    game.getZombieCooldownTicks(
+                            alias
+                    )
+            );
+
+            zombieCooldownTotalTicks.put(
+                    alias,
+                    game.getZombieCooldownTotalTicks(
+                            alias
+                    )
+            );
+        }
+
         return new MatchSnapshot(
-            matchId,
-            state.getTickCounter(),
-            game.getRemainingTicks(),
-            game.getOutcome().name(),
-            game.getPlantSun(),
-            game.getZombieSun(),
-            plants,
-            zombies,
-            projectiles,
-            brains);
+                matchId,
+                state.getTickCounter(),
+                Math.max(1, state.getTicksPerSecond()),
+                game.getRemainingTicks(),
+                game.getOutcome().name(),
+                game.getPlantSun(),
+                game.getZombieSun(),
+                plantCooldownTicks,
+                plantCooldownTotalTicks,
+                zombieCooldownTicks,
+                zombieCooldownTotalTicks,
+                plants,
+                zombies,
+                projectiles,
+                brains);
     }
 }

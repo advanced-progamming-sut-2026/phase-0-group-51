@@ -2,634 +2,348 @@ package views.graphical.screens.minigamesScreen.iZombie.online;
 
 import Data.loader.PlantData;
 import Data.loader.PlantRegistry;
-
-import com.badlogic.gdx.graphics.Color;
-
+import Data.loader.ZombieRegistry;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-
+import com.badlogic.gdx.scenes.scene2d.ui.ButtonGroup;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
-import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-
-import com.badlogic.gdx.utils.Align;
-
 import graphics.PvzGame;
-
 import models.minigames.iZombie.multiplayer.MultiplayerIZombieGame;
-
 import network.client.ClientSession;
-
 import network.protocol.match.GameActionDto;
 import network.protocol.match.GameActionType;
 import network.protocol.match.MatchSnapshot;
+import views.graphical.ui.PlantCard;
+import views.graphical.ui.ZombieCard;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-
-public final class OnlineIZombieControlPanel
-        extends Table {
+/**
+ * Server-authoritative online I, Zombie control strip.
+ *
+ * This deliberately reuses the exact PvZ card widgets used by the main game:
+ * PlantCard for the plant player and ZombieCard for the zombie player.
+ * There are no SelectBoxes or generic PLACE/PLUCK/FEED text buttons here.
+ */
+public final class OnlineIZombieControlPanel extends Table {
 
     private enum PlantMode {
-
         PLACE,
         PLUCK,
         FEED
     }
 
+    private static final float PLANT_CARD_SCALE = 0.90f;
+    private static final float ZOMBIE_CARD_SCALE = 0.60f;
+    private static final float CARD_GAP = 3f;
+
+    /* Keep the same compact defender roster that the old online seed bank exposed. */
+    private static final List<String> ONLINE_PLANT_ROSTER = List.of(
+            "Sunflower",
+            "Peashooter",
+            "Snow Pea",
+            "Repeater",
+            "Wall-nut"
+    );
 
     private final PvzGame game;
-
     private final ClientSession clientSession;
+    private final Consumer<GameActionDto> actionSender;
 
-    private final Consumer<GameActionDto>
-            actionSender;
+    private final ButtonGroup<PlantCard> plantGroup = new ButtonGroup<>();
+    private final ButtonGroup<ZombieCard> zombieGroup = new ButtonGroup<>();
 
+    private final Map<String, PlantCard> plantCards = new LinkedHashMap<>();
+    private final Map<String, ZombieCard> zombieCards = new LinkedHashMap<>();
+    private final Map<String, Label> zombieStatusLabels = new LinkedHashMap<>();
+    private final Map<String, Integer> costs = new LinkedHashMap<>();
 
-    private final SelectBox<String>
-            entitySelect;
-
-    private final Label
-            statusLabel;
-
-    private final Label
-            sunLabel;
-
-
-    private final TextButton
-            placeButton;
-
-    private TextButton
-            pluckButton;
-
-    private TextButton
-            feedButton;
-
-
-    private PlantMode plantMode =
-            PlantMode.PLACE;
-
-
+    private String selectedEntityName;
+    private PlantMode plantMode = PlantMode.PLACE;
     private boolean disabled;
-
+    private String lastStatus = "";
 
     public OnlineIZombieControlPanel(
             PvzGame game,
             ClientSession clientSession,
             Consumer<GameActionDto> actionSender
     ) {
-
-        this.game =
-                Objects.requireNonNull(
-                        game,
-                        "game cannot be null"
-                );
-
-
-        this.clientSession =
-                Objects.requireNonNull(
-                        clientSession,
-                        "clientSession cannot be null"
-                );
-
-
-        this.actionSender =
-                Objects.requireNonNull(
-                        actionSender,
-                        "actionSender cannot be null"
-                );
-
-
-        setTouchable(
-                Touchable.childrenOnly
-        );
-
-
-        pad(
-                10f
-        );
-
-
-        setBackground(
-                game.getSkin().newDrawable(
-                        "white_pixel",
-                        new Color(
-                                0.05f,
-                                0.05f,
-                                0.05f,
-                                0.86f
-                        )
-                )
-        );
-
-
-        Label title =
-                new Label(
-                        clientSession.isZombiePlayer()
-                                ? "ZOMBIE CONTROLS"
-                                : "PLANT CONTROLS",
-                        game.getSkin().get(
-                                "medium_outline",
-                                Label.LabelStyle.class
-                        )
-                );
-
-
-        title.setAlignment(
-                Align.center
-        );
-
-
-        add(
-                title
-        )
-                .colspan(3)
-                .growX()
-                .padBottom(8f)
-                .row();
-
-
-        sunLabel =
-                new Label(
-                        "SUN: 0",
-                        game.getSkin()
-                );
-
-
-        add(
-                sunLabel
-        )
-                .colspan(3)
-                .left()
-                .padBottom(6f)
-                .row();
-
-
-        entitySelect =
-                createEntitySelectBox();
-
-
-        if (clientSession.isZombiePlayer()) {
-
-            configureZombieItems();
-
-        } else {
-
-            configurePlantItems();
-        }
-
-
-        add(
-                entitySelect
-        )
-                .colspan(3)
-                .width(270f)
-                .height(42f)
-                .padBottom(8f)
-                .row();
-
-
-        placeButton =
-                new TextButton(
-                        clientSession.isZombiePlayer()
-                                ? "PLACE ZOMBIE"
-                                : "PLACE PLANT",
-                        game.getSkin(),
-                        "green"
-                );
-
-
-        placeButton.addListener(
-                new ChangeListener() {
-
-                    @Override
-                    public void changed(
-                            ChangeEvent event,
-                            Actor actor
-                    ) {
-
-                        if (clientSession.isPlantPlayer()) {
-
-                            setPlantMode(
-                                    PlantMode.PLACE
-                            );
-                        }
-
-
-                        setStatus(
-                                "Select a board tile."
-                        );
-                    }
-                }
-        );
-
-
-        add(
-                placeButton
-        )
-                .width(132f)
-                .height(42f);
-
-
-        if (clientSession.isPlantPlayer()) {
-
-            pluckButton =
-                    new TextButton(
-                            "PLUCK",
-                            game.getSkin(),
-                            "green"
-                    );
-
-
-            pluckButton.addListener(
-                    new ChangeListener() {
-
-                        @Override
-                        public void changed(
-                                ChangeEvent event,
-                                Actor actor
-                        ) {
-
-                            setPlantMode(
-                                    PlantMode.PLUCK
-                            );
-
-
-                            setStatus(
-                                    "Click a plant tile to remove it."
-                            );
-                        }
-                    }
-            );
-
-
-            add(
-                    pluckButton
-            )
-                    .width(88f)
-                    .height(42f)
-                    .padLeft(4f);
-
-
-            feedButton =
-                    new TextButton(
-                            "FEED",
-                            game.getSkin(),
-                            "green"
-                    );
-
-
-            feedButton.addListener(
-                    new ChangeListener() {
-
-                        @Override
-                        public void changed(
-                                ChangeEvent event,
-                                Actor actor
-                        ) {
-
-                            setPlantMode(
-                                    PlantMode.FEED
-                            );
-
-
-                            setStatus(
-                                    "Click a plant tile to feed it."
-                            );
-                        }
-                    }
-            );
-
-
-            add(
-                    feedButton
-            )
-                    .width(88f)
-                    .height(42f)
-                    .padLeft(4f);
-        }
-
-
-        row();
-
-
-        statusLabel =
-                new Label(
-                        "Select an action, then click a tile.",
-                        game.getSkin()
-                );
-
-
-        statusLabel.setWrap(
-                true
-        );
-
-
-        statusLabel.setAlignment(
-                Align.left
-        );
-
-
-        add(
-                statusLabel
-        )
-                .colspan(3)
-                .width(310f)
-                .padTop(8f)
+        this.game = Objects.requireNonNull(game, "game cannot be null");
+        this.clientSession = Objects.requireNonNull(clientSession, "clientSession cannot be null");
+        this.actionSender = Objects.requireNonNull(actionSender, "actionSender cannot be null");
+
+        setTouchable(Touchable.childrenOnly);
+        top().left();
+
+        plantGroup.setMinCheckCount(0);
+        plantGroup.setMaxCheckCount(1);
+        plantGroup.setUncheckLast(true);
+
+        zombieGroup.setMinCheckCount(0);
+        zombieGroup.setMaxCheckCount(1);
+        zombieGroup.setUncheckLast(true);
+
+        Group cards = clientSession.isPlantPlayer()
+                ? buildPlantCards()
+                : buildZombieCards();
+
+        add(cards)
+                .size(cards.getWidth(), cards.getHeight())
+                .top()
                 .left();
-
 
         pack();
     }
 
+    private Group buildPlantCards() {
+        Group group = new Group();
+        List<PlantCard> orderedCards = new ArrayList<>();
 
-    private SelectBox<String> createEntitySelectBox() {
+        float width = 0f;
+        float height = 0f;
 
-        Skin skin =
-                game.getSkin();
+        for (String requestedName : ONLINE_PLANT_ROSTER) {
+            PlantData data = findPlant(requestedName);
+            if (data == null) {
+                continue;
+            }
 
+            PlantCard card = new PlantCard(
+                    game,
+                    new PlantCard.ViewData(
+                            data,
+                            true,
+                            false,
+                            1,
+                            0,
+                            1,
+                            true,
+                            false
+                    ),
+                    PLANT_CARD_SCALE
+            );
 
-        com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle listStyle =
-                new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(
-                        skin.get(
-                                "default",
-                                com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle.class
-                        )
-                );
+            final String plantName = data.name();
 
+            plantGroup.add(card);
+            plantCards.put(plantName, card);
+            costs.put(plantName, data.cost());
+            orderedCards.add(card);
 
-        listStyle.font =
-                skin.getFont(
-                        "FBUSV8C5EI_2"
-                );
+            card.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (card.isChecked()) {
+                        selectedEntityName = plantName;
+                        plantMode = PlantMode.PLACE;
+                    } else if (plantName.equals(selectedEntityName)) {
+                        selectedEntityName = null;
+                    }
+                }
+            });
 
-        listStyle.fontColorSelected =
-                Color.WHITE;
-
-        listStyle.fontColorUnselected =
-                Color.WHITE;
-
-        listStyle.background =
-                skin.getDrawable(
-                        "image_ui_dialog_asset_inner_bkgd_10"
-                );
-
-        listStyle.selection =
-                skin.getDrawable(
-                        "image_ui_generic_greenbutton_10"
-                );
-
-        listStyle.over =
-                skin.getDrawable(
-                        "image_ui_generic_brownbutton_10"
-                );
-
-
-        ScrollPane.ScrollPaneStyle scrollStyle =
-                new ScrollPane.ScrollPaneStyle(
-                        skin.get(
-                                "default",
-                                ScrollPane.ScrollPaneStyle.class
-                        )
-                );
-
-
-        SelectBox.SelectBoxStyle selectStyle =
-                new SelectBox.SelectBoxStyle();
-
-
-        selectStyle.font =
-                skin.getFont(
-                        "FBUSV8C5EI_2"
-                );
-
-        selectStyle.fontColor =
-                Color.WHITE;
-
-        selectStyle.disabledFontColor =
-                Color.GRAY;
-
-
-        selectStyle.background =
-                skin.getDrawable(
-                        "image_ui_generic_brownbutton_10"
-                );
-
-        selectStyle.backgroundOver =
-                skin.getDrawable(
-                        "image_ui_generic_brownbutton_down_10"
-                );
-
-        selectStyle.backgroundOpen =
-                skin.getDrawable(
-                        "image_ui_generic_greenbutton_10"
-                );
-
-        selectStyle.backgroundDisabled =
-                skin.getDrawable(
-                        "image_ui_generic_disabledbutton_10"
-                );
-
-
-        selectStyle.listStyle =
-                listStyle;
-
-        selectStyle.scrollStyle =
-                scrollStyle;
-
-
-        SelectBox<String> selectBox =
-                new SelectBox<>(
-                        selectStyle
-                );
-
-
-        selectBox.setAlignment(
-                Align.center
-        );
-
-        selectBox.getList().setAlignment(
-                Align.center
-        );
-
-        selectBox.setMaxListCount(
-                6
-        );
-
-
-        return selectBox;
-    }
-
-
-    private void configureZombieItems() {
-
-        Map<String, Integer> roster =
-                MultiplayerIZombieGame
-                        .getRosterForStage(
-                                clientSession
-                                        .getStageNumber()
-                        );
-
-
-        List<String> aliases =
-                new ArrayList<>(
-                        roster.keySet()
-                );
-
-
-        entitySelect.setItems(
-                aliases.toArray(
-                        new String[0]
-                )
-        );
-    }
-
-
-    private void configurePlantItems() {
-
-        List<PlantData> plants =
-                new ArrayList<>(
-                        PlantRegistry.getAll()
-                );
-
-
-        plants.sort(
-                Comparator
-                        .comparing(
-                                PlantData::name,
-                                String.CASE_INSENSITIVE_ORDER
-                        )
-        );
-
-
-        List<String> names =
-                plants.stream()
-                        .map(
-                                PlantData::name
-                        )
-                        .toList();
-
-
-        entitySelect.setItems(
-                names.toArray(
-                        new String[0]
-                )
-        );
-    }
-
-
-    public void handleTileClick(
-            int lane,
-            int column
-    ) {
-
-        if (disabled
-                || !clientSession.isMatchRunning()) {
-
-            return;
+            width = Math.max(width, card.getPrefWidth());
+            height += card.getPrefHeight() + CARD_GAP;
         }
 
+        if (!orderedCards.isEmpty()) {
+            height -= CARD_GAP;
+        }
+
+        group.setSize(width, height);
+
+        float y = height;
+        for (PlantCard card : orderedCards) {
+            y -= card.getPrefHeight();
+            card.setPosition(0f, y);
+            group.addActor(card);
+            y -= CARD_GAP;
+        }
+
+        return group;
+    }
+
+    private Group buildZombieCards() {
+        Group group = new Group();
+        List<Table> wrappers = new ArrayList<>();
+
+        float width = 0f;
+        float height = 0f;
+
+        Map<String, Integer> roster =
+                MultiplayerIZombieGame.getRosterForStage(clientSession.getStageNumber());
+
+        for (Map.Entry<String, Integer> entry : roster.entrySet()) {
+            String alias = entry.getKey();
+            int cost = entry.getValue();
+
+            ZombieCard card = createZombieCard(alias);
+            zombieGroup.add(card);
+            zombieCards.put(alias, card);
+            costs.put(alias, cost);
+
+            Label costLabel =
+                    new Label(
+                            Integer.toString(cost),
+                            game.getSkin()
+                    );
+
+            Label statusLabel =
+                    new Label(
+                            "Ready",
+                            game.getSkin()
+                    );
+
+            zombieStatusLabels.put(
+                    alias,
+                    statusLabel
+            );
+
+            Stack stack = new Stack();
+            stack.add(card);
+
+            /*
+             * Match the local IZombieBar packet overlay:
+             * sun cost on the left, recharge/Ready on the right.
+             */
+            Table overlay = new Table();
+            overlay.setTouchable(Touchable.disabled);
+            overlay.bottom();
+
+            overlay.add(costLabel)
+                    .left()
+                    .expandX()
+                    .padLeft(12f)
+                    .padBottom(8f);
+
+            overlay.add(statusLabel)
+                    .right()
+                    .padRight(12f)
+                    .padBottom(8f);
+
+            stack.add(overlay);
+
+            Table wrapper = new Table();
+            wrapper.add(stack)
+                    .size(card.getPrefWidth(), card.getPrefHeight());
+            wrapper.pack();
+            wrapper.setTransform(true);
+            wrapper.setScale(ZOMBIE_CARD_SCALE);
+
+            wrappers.add(wrapper);
+
+            float scaledWidth = wrapper.getWidth() * ZOMBIE_CARD_SCALE;
+            float scaledHeight = wrapper.getHeight() * ZOMBIE_CARD_SCALE;
+            width = Math.max(width, scaledWidth);
+            height += scaledHeight + CARD_GAP;
+
+            card.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    if (card.isChecked()) {
+                        selectedEntityName = alias;
+                    } else if (alias.equals(selectedEntityName)) {
+                        selectedEntityName = null;
+                    }
+                }
+            });
+        }
+
+        if (!wrappers.isEmpty()) {
+            height -= CARD_GAP;
+        }
+
+        group.setSize(width, height);
+
+        float y = height;
+        for (Table wrapper : wrappers) {
+            float scaledHeight = wrapper.getHeight() * ZOMBIE_CARD_SCALE;
+            y -= scaledHeight;
+            wrapper.setPosition(0f, y);
+            group.addActor(wrapper);
+            y -= CARD_GAP;
+        }
+
+        return group;
+    }
+
+    private ZombieCard createZombieCard(String alias) {
+        return new ZombieCard(
+                game,
+                new ZombieCard.ViewData(
+                        alias,
+                        ZombieRegistry.getCardAssetId(alias),
+                        ZombieRegistry.getIdlePamPath(alias),
+                        ZombieRegistry.getIdleClip(alias),
+                        ZombieRegistry.getWalkClip(alias),
+                        ZombieRegistry.getIdleVisibleParts(alias),
+                        true
+                )
+        );
+    }
+
+    private PlantData findPlant(String name) {
+        for (PlantData data : PlantRegistry.getAll()) {
+            if (data.name().equalsIgnoreCase(name)) {
+                return data;
+            }
+        }
+        return null;
+    }
+
+    public void handleTileClick(int lane, int column) {
+        if (disabled || !clientSession.isMatchRunning()) {
+            return;
+        }
 
         if (lane < 0
                 || lane >= 5
                 || column < 0
                 || column >= 9) {
-
             return;
         }
-
 
         if (clientSession.isZombiePlayer()) {
-
-            handleZombieTileClick(
-                    lane,
-                    column
-            );
-
-            return;
-        }
-
-
-        if (clientSession.isPlantPlayer()) {
-
-            handlePlantTileClick(
-                    lane,
-                    column
-            );
+            handleZombieTileClick(lane, column);
+        } else if (clientSession.isPlantPlayer()) {
+            handlePlantTileClick(lane, column);
         }
     }
 
-
-    private void handleZombieTileClick(
-            int lane,
-            int column
-    ) {
-
-        /*
-         * Server rule:
-         * user-coordinate x must be greater than RED_LINE_COLUMN.
-         * GameActionDto uses zero-based column, so column 6 is user x=7.
-         */
-        if (column
-                < MultiplayerIZombieGame.RED_LINE_COLUMN) {
-
-            setStatus(
-                    "Zombies can only be placed to the right of the red line."
-            );
-
+    private void handleZombieTileClick(int lane, int column) {
+        if (column < MultiplayerIZombieGame.RED_LINE_COLUMN) {
+            setStatus("Zombies can only be placed to the right of the red line.");
             return;
         }
 
-
-        String alias =
-                entitySelect.getSelected();
-
-
-        if (alias == null
-                || alias.isBlank()) {
-
-            setStatus(
-                    "Select a zombie first."
-            );
-
+        if (selectedEntityName == null || selectedEntityName.isBlank()) {
+            setStatus("Select a zombie card first.");
             return;
         }
-
 
         send(
                 GameActionType.PLACE_ZOMBIE,
-                alias,
+                selectedEntityName,
                 lane,
                 column
         );
     }
 
+    private void handlePlantTileClick(int lane, int column) {
+        int userColumn = column + 1;
 
-    private void handlePlantTileClick(
-            int lane,
-            int column
-    ) {
-
-        int userColumn =
-                column + 1;
-
-
-        if (userColumn
-                < MultiplayerIZombieGame.PLANT_START_COLUMN
-                || userColumn
-                > MultiplayerIZombieGame.PLANT_END_COLUMN) {
-
+        if (userColumn < MultiplayerIZombieGame.PLANT_START_COLUMN
+                || userColumn > MultiplayerIZombieGame.PLANT_END_COLUMN) {
             setStatus(
                     "Plant actions are only allowed between columns "
                             + MultiplayerIZombieGame.PLANT_START_COLUMN
@@ -637,58 +351,37 @@ public final class OnlineIZombieControlPanel
                             + MultiplayerIZombieGame.PLANT_END_COLUMN
                             + "."
             );
-
             return;
         }
 
-
         switch (plantMode) {
-
             case PLACE -> {
-
-                String plantName =
-                        entitySelect.getSelected();
-
-
-                if (plantName == null
-                        || plantName.isBlank()) {
-
-                    setStatus(
-                            "Select a plant first."
-                    );
-
+                if (selectedEntityName == null || selectedEntityName.isBlank()) {
+                    setStatus("Select a plant card first.");
                     return;
                 }
 
-
                 send(
                         GameActionType.PLACE_PLANT,
-                        plantName,
+                        selectedEntityName,
                         lane,
                         column
                 );
             }
-
-
-            case PLUCK ->
-                    send(
-                            GameActionType.PLUCK_PLANT,
-                            null,
-                            lane,
-                            column
-                    );
-
-
-            case FEED ->
-                    send(
-                            GameActionType.FEED_PLANT,
-                            null,
-                            lane,
-                            column
-                    );
+            case PLUCK -> send(
+                    GameActionType.PLUCK_PLANT,
+                    null,
+                    lane,
+                    column
+            );
+            case FEED -> send(
+                    GameActionType.FEED_PLANT,
+                    null,
+                    lane,
+                    column
+            );
         }
     }
-
 
     private void send(
             GameActionType type,
@@ -696,141 +389,266 @@ public final class OnlineIZombieControlPanel
             int lane,
             int column
     ) {
+        GameActionDto action = new GameActionDto();
+        action.setType(type);
+        action.setEntityName(entityName);
+        action.setRow(lane);
+        action.setColumn(column);
+        action.setClientActionId(UUID.randomUUID().toString());
 
-        GameActionDto action =
-                new GameActionDto();
-
-
-        action.setType(
-                type
-        );
-
-
-        action.setEntityName(
-                entityName
-        );
-
-
-        action.setRow(
-                lane
-        );
-
-
-        action.setColumn(
-                column
-        );
-
-
-        action.setClientActionId(
-                UUID.randomUUID()
-                        .toString()
-        );
-
-
-        setStatus(
-                "Sending "
-                        + type
-                        + "..."
-        );
-
-
-        actionSender.accept(
-                action
-        );
+        actionSender.accept(action);
     }
 
 
-    private void setPlantMode(
-            PlantMode mode
-    ) {
-
-        if (mode == null) {
+    public void activatePluckMode() {
+        if (!clientSession.isPlantPlayer() || disabled) {
             return;
         }
 
-
-        plantMode =
-                mode;
+        clearCardSelection();
+        plantMode = PlantMode.PLUCK;
     }
 
 
-    public void updateFromSnapshot(
-            MatchSnapshot snapshot
-    ) {
+    public void activateFeedMode() {
+        if (!clientSession.isPlantPlayer() || disabled) {
+            return;
+        }
 
+        clearCardSelection();
+        plantMode = PlantMode.FEED;
+    }
+
+    public void activatePlaceMode() {
+        if (!clientSession.isPlantPlayer() || disabled) {
+            return;
+        }
+        plantMode = PlantMode.PLACE;
+    }
+
+    public void updateFromSnapshot(MatchSnapshot snapshot) {
         if (snapshot == null) {
             return;
         }
 
+        int currentSun = clientSession.isPlantPlayer()
+                ? snapshot.getPlantSun()
+                : snapshot.getZombieSun();
 
-        int sun =
-                clientSession.isPlantPlayer()
-                        ? snapshot.getPlantSun()
-                        : snapshot.getZombieSun();
+        Map<String, Integer> plantRemaining =
+                snapshot.getPlantCooldownTicks();
 
+        Map<String, Integer> plantTotal =
+                snapshot.getPlantCooldownTotalTicks();
 
-        sunLabel.setText(
-                "SUN: " + sun
-        );
+        for (Map.Entry<String, PlantCard> entry : plantCards.entrySet()) {
+            String plantName =
+                    entry.getKey();
+
+            int cost =
+                    costs.getOrDefault(
+                            plantName,
+                            Integer.MAX_VALUE
+                    );
+
+            int remaining =
+                    plantRemaining == null
+                            ? 0
+                            : Math.max(
+                            0,
+                            plantRemaining.getOrDefault(
+                                    plantName,
+                                    0
+                            )
+                    );
+
+            int total =
+                    plantTotal == null
+                            ? 0
+                            : Math.max(
+                            0,
+                            plantTotal.getOrDefault(
+                                    plantName,
+                                    0
+                            )
+                    );
+
+            float cooldownFraction =
+                    total <= 0
+                            ? 0f
+                            : Math.min(
+                            1f,
+                            remaining
+                                    / (float) total
+                    );
+
+            boolean enoughSun =
+                    currentSun >= cost;
+
+            boolean ready =
+                    remaining == 0;
+
+            PlantCard card =
+                    entry.getValue();
+
+            card.setCooldownFraction(
+                    cooldownFraction
+            );
+
+            card.setEnoughSun(
+                    enoughSun
+            );
+
+            card.setAvailable(
+                    !disabled
+                            && enoughSun
+                            && ready
+            );
+        }
+
+        Map<String, Integer> zombieRemaining =
+                snapshot.getZombieCooldownTicks();
+
+        int ticksPerSecond =
+                Math.max(
+                        1,
+                        snapshot.getTicksPerSecond()
+                );
+
+        for (Map.Entry<String, ZombieCard> entry : zombieCards.entrySet()) {
+            String alias =
+                    entry.getKey();
+
+            int cost =
+                    costs.getOrDefault(
+                            alias,
+                            Integer.MAX_VALUE
+                    );
+
+            int remaining =
+                    zombieRemaining == null
+                            ? 0
+                            : Math.max(
+                            0,
+                            zombieRemaining.getOrDefault(
+                                    alias,
+                                    0
+                            )
+                    );
+
+            boolean ready =
+                    remaining == 0;
+
+            boolean enoughSun =
+                    currentSun >= cost;
+
+            boolean available =
+                    !disabled
+                            && enoughSun
+                            && ready;
+
+            ZombieCard card =
+                    entry.getValue();
+
+            Label statusLabel =
+                    zombieStatusLabels.get(
+                            alias
+                    );
+
+            if (statusLabel != null) {
+                if (remaining > 0) {
+                    int seconds =
+                            Math.max(
+                                    1,
+                                    (
+                                            remaining
+                                                    + ticksPerSecond
+                                                    - 1
+                                    )
+                                            / ticksPerSecond
+                            );
+
+                    statusLabel.setText(
+                            seconds + "s"
+                    );
+
+                } else if (!enoughSun) {
+
+                    statusLabel.setText(
+                            ""
+                    );
+
+                } else {
+
+                    statusLabel.setText(
+                            "Ready"
+                    );
+                }
+            }
+
+            if (!available
+                    && card.isChecked()) {
+
+                card.setChecked(
+                        false
+                );
+
+                if (alias.equals(
+                        selectedEntityName
+                )) {
+                    selectedEntityName =
+                            null;
+                }
+            }
+
+            card.setDisabled(
+                    !available
+            );
+
+            card.setTouchable(
+                    available
+                            ? Touchable.enabled
+                            : Touchable.disabled
+            );
+        }
     }
-
 
     public void onActionAccepted() {
-
-        setStatus(
-                "Action accepted."
-        );
+        clearCardSelection();
+        plantMode = PlantMode.PLACE;
     }
 
-
-    public void setStatus(
-            String text
-    ) {
-
-        statusLabel.setText(
-                text == null
-                        ? ""
-                        : text
-        );
+    private void clearCardSelection() {
+        plantGroup.uncheckAll();
+        zombieGroup.uncheckAll();
+        selectedEntityName = null;
     }
 
+    public void setDisabled(boolean disabled) {
+        this.disabled = disabled;
 
-    public void setDisabled(
-            boolean disabled
-    ) {
-
-        this.disabled =
-                disabled;
-
-
-        entitySelect.setDisabled(
-                disabled
-        );
-
-
-        placeButton.setDisabled(
-                disabled
-        );
-
-
-        if (pluckButton != null) {
-            pluckButton.setDisabled(
-                    disabled
-            );
+        if (disabled) {
+            clearCardSelection();
+            plantMode = PlantMode.PLACE;
         }
 
-
-        if (feedButton != null) {
-            feedButton.setDisabled(
-                    disabled
-            );
+        for (PlantCard card : plantCards.values()) {
+            if (disabled) {
+                card.setAvailable(false);
+            }
         }
 
+        for (ZombieCard card : zombieCards.values()) {
+            card.setDisabled(disabled);
+            card.setTouchable(disabled ? Touchable.disabled : Touchable.enabled);
+        }
+    }
 
-        setTouchable(
-                disabled
-                        ? Touchable.disabled
-                        : Touchable.childrenOnly
-        );
+    public void setStatus(String text) {
+        lastStatus = text == null ? "" : text;
+    }
+
+    public String getLastStatus() {
+        return lastStatus;
     }
 }

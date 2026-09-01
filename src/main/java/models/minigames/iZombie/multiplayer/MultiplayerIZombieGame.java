@@ -235,6 +235,13 @@ public class MultiplayerIZombieGame extends Game {
         GameState state = getGameState();
         Board board = state.getBoard();
 
+        int cooldownRemaining = getPlantCooldownTicks(data.name());
+        if (cooldownRemaining > 0) {
+            throw new IllegalStateException(
+                    data.name() + " is recharging for "
+                            + cooldownRemaining + " more ticks.");
+        }
+
         if (y < 1 || y > board.getLaneCount()) {
             throw new IllegalArgumentException("Coordinates are outside the map.");
         }
@@ -259,6 +266,7 @@ public class MultiplayerIZombieGame extends Game {
         tile.setPlant(plant);
         plant.getPlantType().onPlanted(plant, state);
         plantSun -= data.cost();
+        state.startPlantCooldown(data);
         state.logEvent("Plant " + data.name() + " placed at (" + x + ", " + y
                 + ") for " + data.cost() + " sun.\n");
         return plant;
@@ -316,6 +324,47 @@ public class MultiplayerIZombieGame extends Game {
         plant.feed(state);
         state.logEvent("Plant fed at (" + x + ", " + y + ").\n");
         return plant;
+    }
+
+    public int getPlantCooldownTicks(String plantName) {
+        PlantData data = resolvePlant(plantName);
+        if (data == null) {
+            throw new IllegalArgumentException(
+                    "Plant " + plantName + " is not available.");
+        }
+
+        GameState state = getGameState();
+        if (state == null) {
+            return 0;
+        }
+
+        int readyAt = state.getPlantCooldownEnd(data.id());
+        return Math.max(0, readyAt - state.getTickCounter());
+    }
+
+    public int getPlantCooldownTotalTicks(String plantName) {
+        PlantData data = resolvePlant(plantName);
+        if (data == null) {
+            throw new IllegalArgumentException(
+                    "Plant " + plantName + " is not available.");
+        }
+
+        GameState state = getGameState();
+        int ticksPerSecond =
+                state == null
+                        ? 10
+                        : Math.max(1, state.getTicksPerSecond());
+
+        return Math.max(
+                0,
+                (int) Math.ceil(
+                        data.recharge() * ticksPerSecond
+                )
+        );
+    }
+
+    public boolean isPlantReady(String plantName) {
+        return getPlantCooldownTicks(plantName) == 0;
     }
 
     public int getZombieCooldownTicks(String zombieName) {
@@ -442,7 +491,12 @@ public class MultiplayerIZombieGame extends Game {
         return stage;
     }
 
-
+    /**
+     * Shared read-only roster definition for server and online client UI.
+     *
+     * This exposes match configuration only; it does not create or advance
+     * a local game simulation.
+     */
     public static Map<String, Integer> getRosterForStage(
             int stageNumber
     ) {
