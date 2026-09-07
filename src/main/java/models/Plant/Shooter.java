@@ -585,7 +585,8 @@ public enum Shooter implements PlantType {
                  column < state.getBoard().getColumnCount();
                  column++) {
                 Tile tile = state.getBoard().getTile(lane, column);
-                if (tile != null && tile.hasGrave() && isOnRay(
+                if (tile != null && tile.hasGrave()
+                        && !tile.getGrave().isDestroyed() && isOnRay(
                         plant.getPosX(),
                         plant.getPosY(),
                         column,
@@ -697,7 +698,8 @@ public enum Shooter implements PlantType {
         );
         for (int column = firstColumn; column <= lastColumn; column++) {
             Tile tile = state.getBoard().getTile(lane, column);
-            if (tile != null && tile.hasGrave()) {
+            if (tile != null && tile.hasGrave()
+                    && !tile.getGrave().isDestroyed()) {
                 return true;
             }
         }
@@ -735,7 +737,8 @@ public enum Shooter implements PlantType {
                     plant.getPosY(),
                     column
             );
-            if (tile != null && tile.hasGrave()) {
+            if (tile != null && tile.hasGrave()
+                    && !tile.getGrave().isDestroyed()) {
                 return true;
             }
         }
