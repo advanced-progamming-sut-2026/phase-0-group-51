@@ -6,6 +6,8 @@ import models.Zombie.Zombie;
 import models.games.GameState;
 
 public class SquashZombieBehavior implements ZombieBehavior {
+    private static final float CONTACT_RANGE = 0.7f;
+
     private boolean squashed = false;
 
     @Override
@@ -14,15 +16,15 @@ public class SquashZombieBehavior implements ZombieBehavior {
             return;
         }
         Plant target = gs.getBoard()
-            .findNearestPlantInRange(zombie.getLane(), (int) zombie.getX(), 0);
+            .findNearestPlantInRange(zombie.getLane(), zombie.getX(), CONTACT_RANGE);
         if (target == null || target.isDead()) {
             return;
         }
         squashed = true;
+        zombie.killInstantly(gs);
         target.takeDamage(target.getCurrentHP(), gs);
         gs.logEvent(zombie.getAlias() + " squashed a plant in lane "
             + (zombie.getLane() + 1) + " and was destroyed with it!\n");
-        zombie.killInstantly(gs);
     }
 
     @Override

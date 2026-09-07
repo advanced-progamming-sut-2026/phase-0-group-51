@@ -426,8 +426,6 @@ public class ZombotanyScreen extends BaseMinigameScreen {
                         .isFinished()
         ) {
 
-            controller.advanceTime(1);
-
             checkWinLossCondition();
 
             maybeShowWaveBanner();

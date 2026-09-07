@@ -82,19 +82,19 @@ public class Zombotany extends Game {
     }
 
     private void buildZombotanyTemplates() {
-        Zombie peashooter = new Zombie("ZombotanyPeashooter", 190f, 0.12f, 100f, 100f, 1000);
+        Zombie peashooter = new Zombie("ZombotanyPeashooter", 190f, 0.185f, 100f, 100f, 1000);
         peashooter.addBehavior(new PeashooterZombieBehavior(
             15,
             9,
             20));
         templates.add(peashooter);
-        Zombie wallnut = new Zombie("ZombotanyWallnut", 4000f, 0.12f, 100f, 150f, 600);
+        Zombie wallnut = new Zombie("ZombotanyWallnut", 4000f, 0.185f, 100f, 150f, 600);
         templates.add(wallnut);
-        Zombie jalapeno = new Zombie("ZombotanyJalapeno", 300f, 0.12f, 100f, 150f, 500);
+        Zombie jalapeno = new Zombie("ZombotanyJalapeno", 190f, 0.185f, 100f, 150f, 500);
         jalapeno.addBehavior(new JalapenoZombieBehavior(JALAPENO_FUSE_TICKS));
         templates.add(jalapeno);
 
-        Zombie squash = new Zombie("ZombotanySquash", 240f, 0.15f, 100f, 125f, 500);
+        Zombie squash = new Zombie("ZombotanySquash", 190f, 0.40f, 100f, 125f, 500);
         squash.addBehavior(new SquashZombieBehavior());
         templates.add(squash);
     }
